@@ -925,6 +925,24 @@ class Handler(BaseHTTPRequestHandler):
         if set_cookie:self.send_header('Set-Cookie',f'bsv_session={set_cookie}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_SECONDS}'+secure_cookie)
         if delete_cookie:self.send_header('Set-Cookie','bsv_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+secure_cookie)
         self.send_header('Content-Length',str(len(payload)));self.end_headers();self.wfile.write(payload)
+    def group_identity(self, staff_id, store_id, action):
+        if os.environ.get("BSV_POS_IDENTITY_REQUIRED") != "1":
+            return True
+        jar = cookies.SimpleCookie()
+        try:
+            jar.load(self.headers.get("Cookie", ""))
+        except cookies.CookieError:
+            return False
+        session = jar.get("bsv_identity_session")
+        if session is None:
+            return False
+        import sys
+        repo = str(ROOT.parents[2])
+        if repo not in sys.path:
+            sys.path.append(repo)
+        from integrations.auth.identity_client import authorize_pos
+        return authorize_pos(session.value, staff_id, store_id, action)
+
     def resolve_auth(self):
         jar=cookies.SimpleCookie()
         try:jar.load(self.headers.get('Cookie',''))
@@ -937,7 +955,10 @@ class Handler(BaseHTTPRequestHandler):
                 JOIN staff_store_access a ON a.staff_id=ss.staff_id AND a.store_id=ss.store_id
                 WHERE ss.token_digest=? AND ss.expires_at>? AND ss.store_id IS NOT NULL AND s.enabled=1''',
                 (hashlib.sha256(x.value.encode()).hexdigest(),timestamp())).fetchone()
-            return dict(r) if r else None
+            staff = dict(r) if r else None
+        if staff and not self.group_identity(staff['id'], staff['session_store_id'], 'pos.order.read'):
+            return None
+        return staff
     def read_body(self):
         try:n=int(self.headers.get('Content-Length','0'))
         except ValueError:raise UserError('无效请求长度')
@@ -956,6 +977,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'province':'北京市','stores':stores,'prototype':True,'version':APP_VERSION,'mode':MODE});return
         if path=='/api/health':self.send_json(health_snapshot());return
         # Headquarters API: authenticated + separately granted HQ role.
+        if os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1" and path.startswith(('/api/hq/','/hq','/api/reports/','/api/audit')):
+            self.send_json({'error':'此读操作尚未接入集团授权'},403)
+            return
         if path in ('/api/hq/status','/api/hq/stores','/api/hq/layout','/api/hq/art','/api/hq/image','/api/hq/modules'):
             staff=self.resolve_auth()
             if not staff:self.send_json({'error':'请先从点单页登录'},401);return
@@ -1200,6 +1224,8 @@ class Handler(BaseHTTPRequestHandler):
                            WHERE s.staff_code=? AND s.enabled=1 AND a.store_id=?''',(code,store_id)).fetchone()
                 if not staff or not hmac.compare_digest(pin_hash(pin,bytes.fromhex(staff['pin_salt'])),staff['pin_digest']):
                     raise UserError('员工代码、PIN或门店授权不匹配',401)
+                if not self.group_identity(staff['id'],store_id,'pos.order.read'):
+                    raise UserError('集团身份或本店授权未通过',403)
                 RATE_LIMIT.pop(key,None)
                 token=secrets.token_urlsafe(36);csrf=secrets.token_urlsafe(24)
                 with tx() as db:
@@ -1215,6 +1241,8 @@ class Handler(BaseHTTPRequestHandler):
             staff=self.resolve_auth()
             if not staff:raise UserError('登录失效，请重新选择门店',401)
             if self.headers.get('X-BSV-CSRF','')!=staff['csrf']:raise UserError('页面会话校验失败，请刷新',403)
+            if os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1" and path.startswith('/api/hq/'):
+                raise UserError('此操作尚未接入集团授权',403)
             if path in ('/api/hq/stores/create','/api/hq/layout/draft','/api/hq/layout/publish','/api/hq/layout/restore','/api/hq/image/upload'):
                 try:
                     with tx() as db:
@@ -1242,6 +1270,11 @@ class Handler(BaseHTTPRequestHandler):
                     with tx() as db:db.execute('DELETE FROM sessions WHERE token_digest=?',
                           (hashlib.sha256(jar['bsv_session'].value.encode()).hexdigest(),))
                 self.send_json({'ok':True},delete_cookie=True);return
+            if os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1":
+                order_paths = {'/api/seats/open','/api/drafts/add','/api/drafts/remove','/api/orders/submit'}
+                if path not in order_paths or not self.group_identity(
+                        staff['id'],staff['session_store_id'],'pos.order.create'):
+                    raise UserError('集团身份未授权此操作',403)
             self.send_json(handle_action(path,data,staff));return
         except UserError as e:self.send_json({'error':e.message},e.status)
         except sqlite3.IntegrityError as e:

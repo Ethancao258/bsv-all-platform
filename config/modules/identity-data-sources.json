@@ -1,0 +1,37 @@
+{
+  "version": "2.0-r2",
+  "routes": {
+    "A": {
+      "description": "唯一权威可写人员身份事实；现阶段仅隔离PostgreSQL/SQLite测试库；云端正式接入需G0/G1",
+      "driver": "sqlalchemy",
+      "primary_url_env": "BSV_DB_A_URL",
+      "fallback": null,
+      "allowed_operations": ["read", "write", "authorize", "audit"],
+      "connection_retries": 2
+    },
+    "B": {
+      "description": "可选只读物理副本，绝非另一套集团人员主档；不允许凭滞后副本判断权限",
+      "driver": "sqlalchemy",
+      "primary_url_env": "BSV_DB_B_READONLY_URL",
+      "fallback": null,
+      "allowed_operations": ["non_sensitive_reference_read"],
+      "connection_retries": 1
+    },
+    "LOCAL": {
+      "description": "A库加密离线灾备档案，仅经审核恢复到隔离数据库；不得自动回退以授权业务动作",
+      "path_env": "BSV_LOCAL_ARCHIVE_DIR",
+      "key_file_env": "BSV_BACKUP_KEY_FILE",
+      "allowed_operations": ["encrypted_backup", "isolated_restore"]
+    }
+  },
+  "bindings": {
+    "person_master": "A",
+    "identity_access": "A",
+    "qualifications_external_refs": "A",
+    "approval_audit": "A",
+    "authorization": "A",
+    "non_sensitive_reference_optional": "B",
+    "encrypted_disaster_recovery": "LOCAL"
+  },
+  "fail_closed": ["authorization", "grant_issuance", "employment_approval", "person_master_write"]
+}

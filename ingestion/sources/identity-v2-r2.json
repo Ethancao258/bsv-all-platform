@@ -1,0 +1,477 @@
+{
+  "source_id": "BSV-IDENTITY-V2-R2",
+  "version": "2.0.2-r2",
+  "archive": "BSV ALL｜统一人员身份系统 V2.0 R2.zip",
+  "archive_sha256": "15f9faf38cf35284ce5e4b5e384b54b0bbbd654acaec56fc711bc9996443b829",
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "f0ac5c5c81718f97ed0ab9cb52370d67e6bb0d0eed8cd404357e29e5fe321e32",
+      "bytes": 1376,
+      "target": "platform/lighthouse/identity/identity.env.example",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "4020782fd96acdd2f513eeec258742ff4755d0b159003a6a3f615bdded66eeb2",
+      "bytes": 138,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "CODEX_HANDOFF.md",
+      "sha256": "3e4530802c79c8288a560e4340f96e34358912f102b39d5d8c39847f13491990",
+      "bytes": 4249,
+      "target": "docs/architecture/identity/CODEX_HANDOFF.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "Dockerfile",
+      "sha256": "da7627472ea8e550392bcbeed348ebfa9ce8e58b21d9b852e63830ce466468ce",
+      "bytes": 1108,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "INTEGRATION_MAP.md",
+      "sha256": "fd39a0de584bea4ac2fb687083726b9be4dabbd5f326bf1b724e431f1124dd0f",
+      "bytes": 4853,
+      "target": "docs/architecture/identity/INTEGRATION_MAP.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "README.md",
+      "sha256": "437f1394e0e70c705eb244f481691136d4cc95275f194cf6f36cfa00363f22b0",
+      "bytes": 5417,
+      "target": "docs/architecture/identity/README.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "RELEASE_MANIFEST_SHA256.json",
+      "sha256": "82a177eb91981eeec76658a5d33a7481337455b900175e9c136c557e780d3da9",
+      "bytes": 11052,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "alembic.ini",
+      "sha256": "89749975f94f0a5ba41cac63edf0bf186c424b6ce233c9d764e9b8fc37908daa",
+      "bytes": 127,
+      "target": "platform/lighthouse/identity/alembic.ini",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/__init__.py",
+      "sha256": "4db6c730b9dd8895f3e09a1166940120108c9c892708c255349e60152c936ab0",
+      "bytes": 109,
+      "target": "services/api/identity/__init__.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "bsv_identity/api.py",
+      "sha256": "d85a55cf4331572de1a754c2094563a9b79de6e28c2c9d9d21647a4567139bb5",
+      "bytes": 32418,
+      "target": "services/api/identity/api.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/backup.py",
+      "sha256": "d6c369ee70e5f89a239c69a8999aa925efb642c8dcc1da638bc124318f2d85ad",
+      "bytes": 9984,
+      "target": "services/api/identity/backup.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/cli.py",
+      "sha256": "99181b204372163b81ccef9057a599eea298ffcc7fac858d3a92be15253d3c59",
+      "bytes": 1936,
+      "target": "services/api/identity/cli.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/config.py",
+      "sha256": "3adfed0fade1a8c9e7715aa96598c11cd08feb136430c5d4ffb64b0126fc8b2a",
+      "bytes": 4254,
+      "target": "services/api/identity/config.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/core.py",
+      "sha256": "77afb842bf67086259538e659130d49c91478e0fe7e1b31919fd5f7b2ebd4d0d",
+      "bytes": 36726,
+      "target": "domains/workforce/identity/core.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/database.py",
+      "sha256": "82b8d8fbcff6009c024656dc185e09451e3457999aca2823d297a9b820d5497e",
+      "bytes": 2703,
+      "target": "services/api/identity/database.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/models.py",
+      "sha256": "55b2236db86104f684563bf0d46a3632989c3de652886e8e67f8afd0d644587e",
+      "bytes": 17469,
+      "target": "domains/workforce/identity/models.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/security.py",
+      "sha256": "ba1d7fef15a49d9e51c9dbd1febe7c1b19fc31496e31158421e425836099a501",
+      "bytes": 4035,
+      "target": "domains/identity_access/identity/security.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/seed_isolated.py",
+      "sha256": "93a9cd6946687e2bc7eef5299e692e0e51d08957b5ce099cde7d3ad5313c165b",
+      "bytes": 4406,
+      "target": "services/api/identity/seed_isolated.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/web/hq.html",
+      "sha256": "e225905d39273772be89520b4203e345ae77cd913de8bf9bb3daf00715cdf220",
+      "bytes": 10096,
+      "target": "apps/hq-console/identity/hq.html",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "bsv_identity/web/index.html",
+      "sha256": "66167bf4fba7bbc6ff94ad01539cc2905e1e5402d6d49f5dccd8339e8b04ac07",
+      "bytes": 1168,
+      "target": "apps/staff-center/identity/index.html",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "bsv_identity/web/staff.html",
+      "sha256": "3b0527a989db9d4dcc6a4277a112cd1fdd005f474fa2ab4e4d98248b260d9507",
+      "bytes": 3938,
+      "target": "apps/staff-center/identity/staff.html",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "bsv_identity/web/static/common.js",
+      "sha256": "a3f010d91831b8e9b7a0a02abf7ea3ad348f8c740ed424d85c9238538e520ad2",
+      "bytes": 1831,
+      "target": "apps/staff-center/identity/assets/common.js",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "bsv_identity/web/static/hq.js",
+      "sha256": "631e2f2005e9ec0d53183ba019c017f1e9a1ff9705f6ff460e2275e6dda15ae3",
+      "bytes": 7469,
+      "target": "apps/hq-console/identity/hq.js",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "bsv_identity/web/static/staff.js",
+      "sha256": "689bef30fb121c48e998c14d732da9c926b639e78c481e63cb985b95be72c03e",
+      "bytes": 3178,
+      "target": "apps/staff-center/identity/assets/staff.js",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "bsv_identity/web/static/style.css",
+      "sha256": "14318e4cf044f4044e2b20d8944bf84fc1ae1455f0dc86da9a80a64de4532247",
+      "bytes": 4078,
+      "target": "apps/staff-center/identity/assets/style.css",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "config/data_sources.json",
+      "sha256": "75d24567d326bd3b8fb729065e5bb72a40ccb0a2c0cc27374bffedafdccdfef8",
+      "bytes": 1401,
+      "target": "config/modules/identity-data-sources.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "contracts/API_ERRORS.md",
+      "sha256": "3ad59b1fef92f391005229d7b62bf227efe4d1d9c5688507a180f9c5db1ca8a6",
+      "bytes": 2364,
+      "target": "contracts/identity/API_ERRORS.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "contracts/candidate-postgresql17-schema.sql",
+      "sha256": "bf43129bf92c5b4e63a3f940f3ed439b965abe4602fbe9c0fc297a1de5c21914",
+      "bytes": 10543,
+      "target": "contracts/identity/candidate-postgresql17-schema.sql",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "contracts/identity.openapi.json",
+      "sha256": "b12496e435ded681683fad2a94dbf3c706e268429492aaf0f444ebebc78ddaa9",
+      "bytes": 52631,
+      "target": "contracts/identity/identity.openapi.json",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "deploy/ci-identity.yml",
+      "sha256": "55aea386fd9a4361cf48b8c2e565a7851b93392f6419c553cf54346c8d627031",
+      "bytes": 1135,
+      "target": ".github/workflows/validate.yml",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "deploy/docker-compose.staging.yml",
+      "sha256": "3ca3249a6b495902774ea3504f6d6d20a869f43f7013a25f2f93f2b4130bed35",
+      "bytes": 1273,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/systemd/bsv-identity-backup.service",
+      "sha256": "80599dfb70d8f0acaf3827ff597b49032ff980546bd05ad4da9bff4014058127",
+      "bytes": 564,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/systemd/bsv-identity-backup.timer",
+      "sha256": "021a6270cfb451467944e676b33de47b64728836d3c1c65139cb73b3a3a53786",
+      "bytes": 171,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/systemd/bsv-identity.service",
+      "sha256": "dd3629110177ba2d57eda722826b42ffbf041774447acbccc72cd93d1dbea656",
+      "bytes": 612,
+      "target": "platform/lighthouse/identity/bsv-identity.service",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "docs/CHANGELOG.md",
+      "sha256": "b2a3668b7c986330982d4cd189b54cbfeaffdaf574e1e09cb01c7adb4135751e",
+      "bytes": 1097,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "docs/DATA_OWNERSHIP_PATCH.json",
+      "sha256": "c76380d249f837da1f50e0cc6163ddc2c905023fbd73ae64683703a62a61071f",
+      "bytes": 956,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "docs/DB_A_B_AND_BACKUP.md",
+      "sha256": "5f803d250d645411216b5c48cae7b0df7dda1145630a1891cc0aceeb0970dff3",
+      "bytes": 3016,
+      "target": "docs/architecture/identity/DB_A_B_AND_BACKUP.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "docs/DEPLOYMENT.md",
+      "sha256": "6b9059b2b15bea5aca61fba8dfb4b896a86829ae47b17cfd96c47768ec5f4da7",
+      "bytes": 4443,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "docs/SECURITY_AND_DATA.md",
+      "sha256": "2770c66518590cadf23990a1da0dd8fc650231bc15324e490d6afe306abaef90",
+      "bytes": 3882,
+      "target": "docs/architecture/identity/SECURITY_AND_DATA.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "docs/TEST_REPORT.md",
+      "sha256": "1ce4d53b31357e5e30f07c4082e1564a786fc0e5fe0d97404a6fbf2d5ddd28da",
+      "bytes": 2881,
+      "target": "docs/architecture/identity/TEST_REPORT.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "docs/source_spec/01_给开发AI的完整提示词.md",
+      "sha256": "18a53b148fc10c437570c591593283113dd294a7b67a0c04f87c053abe53388c",
+      "bytes": 18318,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "docs/source_spec/02_一页架构地图.md",
+      "sha256": "936bac2b054940a7bc2eb6a4687b4d3ec790fe97a86ead331b1317d605b3b202",
+      "bytes": 2577,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "docs/source_spec/交接原始README.md",
+      "sha256": "d3d416367c18074408b77a92f6a5f5169641cab6bd923caf94886a4b2f990b8b",
+      "bytes": 868,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "evidence/EXECUTION_ENVIRONMENT.md",
+      "sha256": "a0a0e93832a5a1cf71ca901052160873d57e29351fa7a3a424d091b3be2f48ed",
+      "bytes": 1302,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "evidence/alembic-smoke.txt",
+      "sha256": "09c3c1b12ae4058fca1c7f57740fe0f78f7d5c179a3f585cabdaffed6801144f",
+      "bytes": 50,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "evidence/deploy-preflight.json",
+      "sha256": "4a0e2759da0870c5f5e0fc734f49da3f3841504cded8f1466518a5880ae8479a",
+      "bytes": 435,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "evidence/http-live-e2e.json",
+      "sha256": "4ea78febef90fbb8ae81a983e13cb7111fba151c068d74ef750681f8f050a65d",
+      "bytes": 382,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "evidence/http-smoke.txt",
+      "sha256": "b1a1fce2c04b4dad6f1e74065dbe0ce8a0b9db544cf75e140bec0a6b51f3ae97",
+      "bytes": 495,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "evidence/pytest-final.txt",
+      "sha256": "6fc5fc0734847e26544d34fdfa583082f5481a824055a3f33fd5d4b769ab683a",
+      "bytes": 646,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "evidence/static-preflight.txt",
+      "sha256": "c4fdeb8d536eade51fc423c26b5f8b190b6085469755c994c7aa15a066036150",
+      "bytes": 80,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "migrations/env.py",
+      "sha256": "ca0eb346a348e561a41cfd805b39eb33ed75993aa90aa8c2aecdc477a55491e6",
+      "bytes": 1141,
+      "target": "platform/lighthouse/identity/migrations/env.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "migrations/versions/20261118_0001_identity.py",
+      "sha256": "e0672bc179d62e22bcb3066f6dcc966cdf1719ffd513ec17787dd59b89ae3ced",
+      "bytes": 926,
+      "target": "platform/lighthouse/identity/migrations/versions/20261118_0001_identity.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "38216a28455502606f94cd255f96bf43b775046d06478c610050abf8da1cd39e",
+      "bytes": 384,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "requirements-dev.txt",
+      "sha256": "ca0f801e585407867b6b4dab7a6819f99c6f801fd5ff033e3d42787a381329a2",
+      "bytes": 48,
+      "target": "services/api/identity/requirements.lock",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "3b9bbecd331162196051d60b95c95674bc1ab58adb01f3ce03b2c756bbb0d772",
+      "bytes": 269,
+      "target": "services/api/identity/requirements.in",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "review/THREE_EXPERT_GROUPS_R1_R2.md",
+      "sha256": "5c4f760ba15f258f73b03368fae428a290c9bb776a4b8dded717fa6d65a09245",
+      "bytes": 5806,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "scripts/deploy_dry_run.py",
+      "sha256": "99eb47c922bb08ba4c88a501d8fb107533a90456b16e7b7263edd7b62efb603f",
+      "bytes": 2172,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "scripts/export_contracts.py",
+      "sha256": "b99819525408bdf9b2f1b968cf2ee075b831cf597539b6563cb6fcf04f82039e",
+      "bytes": 1542,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "scripts/http_e2e.py",
+      "sha256": "bd5a7b7ce4b65199abebffd266bd16fdb99973f56e30eec18983676a69ef504b",
+      "bytes": 4658,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "scripts/release_bundle.py",
+      "sha256": "fe68b36705b30cdb465a2b0c5bbbe593a9283195a2ba61e97a62bccc50226774",
+      "bytes": 3784,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "scripts/verify_static.py",
+      "sha256": "215e44b0f3581b55308ab3a9f0728f3d07faf9b48f71072c1cbd84b12f44243c",
+      "bytes": 947,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "tests/__init__.py",
+      "sha256": "7e9af23c4d8769e855436c950c52874ef9d5ac0c36f24531913b3ca965d6860f",
+      "bytes": 20,
+      "target": "tests/identity/__init__.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "tests/conftest.py",
+      "sha256": "0fcc0ad34cdbea903376089d9637c07a09584fd8785fe1df6e344fdc9c68c9ca",
+      "bytes": 5250,
+      "target": "tests/identity/conftest.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_api.py",
+      "sha256": "b87dcfc223c0825e30d29740c51b2fcf7778ea810120dc8f625e66980a69920e",
+      "bytes": 9450,
+      "target": "tests/identity/test_api.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_backup.py",
+      "sha256": "19489ef6738c4f9ceafc4d231e962210002bfe1d96d25c89b667de8748af502a",
+      "bytes": 1323,
+      "target": "tests/identity/test_backup.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_core.py",
+      "sha256": "a14fa9d05233790bcd5a9c6aff12850eade3b6003ef001448123d39eeaf01176",
+      "bytes": 5760,
+      "target": "tests/identity/test_core.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_hardening.py",
+      "sha256": "fdce9375872544ab69a4e63f586d0c2d2b155c5d09c1fd4a79934a8640b046a0",
+      "bytes": 19072,
+      "target": "tests/identity/test_hardening.py",
+      "status": "INTEGRATION_ADAPTED"
+    }
+  ]
+}

@@ -8,6 +8,7 @@
     "role_id": "identity_access",
     "grant_id": "identity_access",
     "device_id": "identity_access",
+    "tr_code": "workforce",
     "employee_id": "workforce",
     "shift_id": "workforce",
     "employment_id": "workforce",

@@ -99,8 +99,8 @@ async def actor(request:Request):
     return me
 
 def scope_of(me):
-    fields = [me['employee_id'], me['department_id'], sorted(set(me['stores'])), sorted(set(me['roles']))]
-    return hashlib.sha256(json.dumps(fields).encode()).hexdigest()
+    fields = [me['employee_id'], me['department_id'], sorted(set(me['stores'])), sorted(set(me['roles'])), me.get('legal_entity_id'), me.get('role_stores')]
+    return hashlib.sha256(json.dumps(fields,sort_keys=True).encode()).hexdigest()
 
 def token_of(request):
     if settings.mode=='demo':return None
@@ -109,6 +109,9 @@ def token_of(request):
 def permitted(me,role,store=None):
     if role not in me.get('roles',[]):raise HTTPException(403,'缺少操作权限: '+role)
     if store and store not in me.get('stores',[]):raise HTTPException(403,'目标门店无权限')
+    scoped = me.get('role_stores')
+    if store and scoped is not None and store not in scoped.get(role, ()):
+        raise HTTPException(403,'目标门店未授权此操作')
 
 def remote_read(k,path,request,params=None):
     try:return gateway.read(k,path,user_token=token_of(request),params=params,permission_scope=request.state.scope)

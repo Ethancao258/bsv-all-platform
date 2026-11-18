@@ -1,0 +1,19 @@
+{
+  "id": "identity-v2-r2",
+  "status": "ISOLATED_POSTGRESQL_17_VERIFIED",
+  "service": "services/api/identity",
+  "domains": ["workforce", "identity_access", "learning", "organization", "event_audit"],
+  "authoritative_ids": {
+    "tr_code": "workforce",
+    "employee_id": "workforce",
+    "auth_subject_id": "identity_access",
+    "employment_id": "workforce",
+    "credential_id": "learning",
+    "grant_id": "identity_access"
+  },
+  "contract": "contracts/identity/INTEGRATION.md",
+  "resources": "config/modules/identity-data-sources.json",
+  "source": "ingestion/sources/identity-v2-r2.json",
+  "deployment": "platform/lighthouse/identity",
+  "official_cloudbase_migration": null
+}
