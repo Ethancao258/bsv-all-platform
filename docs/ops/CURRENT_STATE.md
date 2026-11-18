@@ -14,9 +14,14 @@
 | Lighthouse 北京 | 注册表报告 Ubuntu 24.04、4 核 4 GB、40 GB 磁盘，登记了 `/srv/bsv/{core,stores,public,services,data,incoming,ops}` 目录约定。本环境没有可用的已授权 SSH/TAT。实例 ID、运行服务、工作目录、端口、BSV1 路径、部署版本和备份均未核实。 |
 | EdgeOne Makers 菜单 | 已报告域名 `menu.bsvm.cn`，路径 `/cocktail/`、`/craft/`。本环境缺少已授权的 EdgeOne 项目查询工具。公开 HTTPS 检查在代理 CONNECT 阶段返回 403，未收到站点响应。Makers 项目 ID、域名绑定、生产部署及实际发布位置均未核实。 |
 
-## 校验脚本与 Git 工作区
+## 第二轮接入与校验
 
-原版校验脚本会把普通工作区的 `.git/` 计为额外一级目录，复现结果为 `FAIL Unexpected top-level dirs ['.git']`。本地将 Git 元数据放在工程目录之外，并使用 `.git` 指针文件，原版脚本校验通过。GitHub Actions 采用普通 checkout，发布后需跟进此兼容性问题。
+**核查时间** 2026-11-18T13:17:40+08:00
+
+- 校验器独立提交 `fee81eac7f06efb6c53a1764dc3e18bf1a4f0d31` 仅更新校验脚本及其文件清单哈希和字节数。现有工作区与含普通 `.git/` 的临时检验环境均通过，添加额外业务目录时仍会正确失败。GitHub Actions 结果为 UNKNOWN，待远端推送后核实。
+- GitHub CLI 官方设备登录及 `repo,workflow` 权限刷新均已完成，身份为 `Ethancao258`，但 `gh auth status` 仍显示无权限范围。个人 CLI 身份查询目标返回 HTTP 404，建库返回 `Resource not accessible by integration`。远端仓库存在性、私有属性和 `main` 均为 UNKNOWN。
+- CloudBase 国内站的官方 MCP OAuth 已启动并交接浏览器登录。OAuth 结果和目标环境绑定状态为 UNKNOWN。数据库版本、产品表、主键、约束、RLS、迁移记录及备份恢复能力均为 UNKNOWN。
+- Lighthouse 和 EdgeOne 延至下一阶段核查。
 
 ## 下一轮数据库底座阻断项
 
