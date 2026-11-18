@@ -139,29 +139,30 @@
       "module": "public_menu",
       "layer": "BSV1",
       "owner": "basic sales and visibility",
-      "state": "PRIVATE_STAGING_ONLY",
+      "state": "V13_1_STATIC_SNAPSHOT_INTEGRATED_NOT_DEPLOYED",
       "entities": [
         "product_id",
-        "menu_revision",
+        "bundle_id",
+        "publication_id",
         "store_id"
       ],
       "writes": [],
       "writes_via": "published sanitized public projection only",
       "domain_refs": [
-        "catalog"
+        "catalog",
+        "organization"
       ],
       "source_files": [
-        "services/api/bsv1/app.py"
+        "apps/guest-web/bsv1/site",
+        "services/api/bsv1/public_menu_projection.py"
       ],
-      "api": "/api/menu-preview",
-      "sqlite_tables": [
-        "bsv_v9_record",
-        "bsv_products"
-      ],
-      "ui": "apps/guest-web/bsv1",
-      "deploy": "platform/lighthouse/bsv1",
-      "fallback": "No runtime DB_A/DB_B connection",
-      "test": "tests/bsv1/test_one_foundation.py"
+      "api": "bsv.public-menu.v2 static public snapshot; /api/menu-preview remains private",
+      "sqlite_tables": [],
+      "ui": "apps/guest-web/bsv1/site",
+      "deploy": "platform/edgeone/menu",
+      "fallback": "same-origin approved public snapshot only; disabled in current release",
+      "test": "tests/menu-v13-1/check.sh",
+      "contract": "contracts/menu/public-menu-v2.schema.json"
     },
     {
       "module": "people",
