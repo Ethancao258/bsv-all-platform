@@ -1,16 +1,28 @@
-# 工程真实状态｜Codex 每次执行后更新（禁止虚假验收）
+# BSV ALL 工程真实状态
 
-**最后更新时间：** 2026-11-18 · 初始化设计阶段（没有实时云端审计）
+**盘点时间** 2026-11-18T13:09:24+08:00
+**执行者** Codex
+**V2.0 原样导入提交** `9d03b6eafe1f9c23e16a4b6b689d882a07369c20`
+**GitHub 目标** https://github.com/Ethancao258/bsv-all-platform
+**发布状态** 本地提交已完成，远端建库和推送受阻。本文所在提交可通过 `git log -1 --format=%H -- docs/ops/CURRENT_STATE.md` 查询。
 
-| 项目 | 状态 | 目前证据 | 下一步 |
-|---|---|---|---|
-| 本工程架构 | DESIGN_ONLY | 本地静态校验及ZIP可执行校验 | 提交私有仓库后填写Git SHA |
-| GitHub 私有主仓库 | UNVERIFIED | 创建工作区的意图，未由本包创建 | Codex检测是否已有同名仓库，再执行新建或对比 |
-| CloudBase数据库 | REPORTED_NOT_LIVE_VERIFIED | 用户此前反馈：上海PG、已有10产品表 | CloudBase MCP只读检查schema/迁移及备份 |
-| Lighthouse北京 | REPORTED_NOT_LIVE_VERIFIED | 用户此前反馈：4核4GB Ubuntu 24.04 | 通过独立授权工具只读盘点现有服务/目录 |
-| EdgeOne菜单 | REPORTED_NOT_LIVE_VERIFIED | 组织母版V5：menu.bsvm.cn及Makers | 核对网站及项目绑定 |
-| 正式数据库迁移 | NOT_STARTED | 本包不包含已授权可执行DDL | 只读核对后再计划 |
-| 真实会员/员工/交易导入 | NOT_STARTED | 未执行数据写入 | 按来源及权限做批次清单 |
-| BSV1同步与收款 | NOT_VERIFIED | 旧版本存在但生产状态未知 | 先盘点运行实例与代码、支付接口 |
+| 资源 | 证据与状态 |
+|---|---|
+| V2.0 锁定基线 | ZIP 中 106 个文件与原样导入提交逐字节一致。运行 `python3 scripts/verify_architecture.py` 通过：14 个一级目录、17 项经营职能、20 个数据领域、32 项功能映射、6 个界面入口、65 个 ID 唯一归属；组织 V5.0 原文 SHA-256 校验通过。独立上传的用例注册表与 ZIP 内版本逐字节一致。 |
+| GitHub 私有主仓库 | 已认证为 `Ethancao258`。目标仓库查询 HTTP 404，当前授权下不可见。GraphQL 创建返回 `Resource not accessible by integration`，REST 创建 HTTP 403。未获得仓库存在、私有属性或远端分支证据。旧仓库 `bsv`（`master`）及 `BsvAll-BarOps`（`main`）仅查询了元数据。 |
+| CloudBase PostgreSQL | 注册表报告 `ap-shanghai`、环境 `inadequate-marten-d1dn9lb5fce2c0`、PG 17.11 和 10 张产品表。远程 MCP 初始化 HTTP 401；本地 MCP 2.37.7 的 `auth(status)` 返回 `REQUIRED`，无已绑定环境。`queryPgDatabase(context)` 返回 `AUTH_REQUIRED`，`managePgDatabase(listMigrations)` 因未登录失败。实例、schema、10 张表的名称及约束、`bsv_stores`、RLS/GRANT、迁移版本和备份恢复条件均未核实。 |
+| Lighthouse 北京 | 注册表报告 Ubuntu 24.04、4 核 4 GB、40 GB 磁盘，登记了 `/srv/bsv/{core,stores,public,services,data,incoming,ops}` 目录约定。本环境没有可用的已授权 SSH/TAT。实例 ID、运行服务、工作目录、端口、BSV1 路径、部署版本和备份均未核实。 |
+| EdgeOne Makers 菜单 | 已报告域名 `menu.bsvm.cn`，路径 `/cocktail/`、`/craft/`。本环境缺少已授权的 EdgeOne 项目查询工具。公开 HTTPS 检查在代理 CONNECT 阶段返回 403，未收到站点响应。Makers 项目 ID、域名绑定、生产部署及实际发布位置均未核实。 |
 
-**每轮必填：** Git SHA | 操作AI | 时刻（ISO8601） | 工具动作 | 云端资源ID（脱敏） | 测试结果 | 备份恢复状态 | 是否生产变更 | 下一次安全动作。
+## 校验脚本与 Git 工作区
+
+原版校验脚本会把普通工作区的 `.git/` 计为额外一级目录，复现结果为 `FAIL Unexpected top-level dirs ['.git']`。本地将 Git 元数据放在工程目录之外，并使用 `.git` 指针文件，原版脚本校验通过。GitHub Actions 采用普通 checkout，发布后需跟进此兼容性问题。
+
+## 下一轮数据库底座阻断项
+
+1. G0：为 CloudBase MCP 接通目标环境的只读授权。核实 PG 实例与 schema、产品表结构和约束、门店 ID 权威来源、RLS/GRANT 及官方迁移历史。现阶段无法判断同名表或 ID 冲突。
+2. G1：核实有效备份、保留期、恢复权限、恢复目标及恢复点。取得隔离环境恢复演练、结构与数据校验的证据后，再进入候选迁移的设计与预览。
+3. 在确认运行依赖前，补查 Lighthouse 服务与 BSV1 部署目录、EdgeOne 发布绑定。主库位置与跨区 TLS、延迟、故障回退等决策沿用现有 ADR 的待验证状态。
+4. 取得目标私有仓库的建库和推送权限。目标已存在时先比较分支和文件差异。以该仓库及其 `config/` 注册表作为后续工作唯一事实源，继续保持 14 个一级目录和唯一主数据归属。
+
+本轮生产变更和数据库迁移版本均为无。备份恢复能力未知。本地状态记录可以单独回退，原样导入提交保留为 V2.0 基线。
