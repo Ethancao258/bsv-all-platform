@@ -1,0 +1,402 @@
+{
+  "version": "2.0",
+  "note": "Every use case maps exactly one primary circle capability, presentation app, authoritative domains and fallback",
+  "use_cases": [
+    {
+      "id": "bsv1.product.design",
+      "capability_id": "bsv1.product_standards",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "catalog",
+        "knowledge"
+      ],
+      "action": "研发并审批鸡尾酒、材料、套餐、配方及有效版本",
+      "fallback": "沿用批准的现行配方，暂停未审批产品",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.product.publish",
+      "capability_id": "bsv1.product_standards",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "catalog",
+        "event_audit"
+      ],
+      "action": "总部批准发布可售菜单与门店价格",
+      "fallback": "旧版保持可读，未确认版本不自动覆盖",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.store.floor",
+      "capability_id": "bsv1.store_service",
+      "app_id": "store-console",
+      "domain_ids": [
+        "organization",
+        "service_ops"
+      ],
+      "action": "选择店内座位、开桌、合分桌、清桌",
+      "fallback": "按现场已核实座位资料保守运行",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.store.order",
+      "capability_id": "bsv1.store_service",
+      "app_id": "store-console",
+      "domain_ids": [
+        "commerce",
+        "catalog"
+      ],
+      "action": "待下单商品转正式订单，记录价格快照",
+      "fallback": "离线只保存可审计待同步事件",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.store.payment",
+      "capability_id": "bsv1.store_service",
+      "app_id": "store-console",
+      "domain_ids": [
+        "commerce",
+        "payments"
+      ],
+      "action": "退款、分次支付、结账与可信核对",
+      "fallback": "未知支付状态不能认定为已到账",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.store.bartending",
+      "capability_id": "bsv1.store_service",
+      "app_id": "store-console",
+      "domain_ids": [
+        "catalog",
+        "service_ops",
+        "learning"
+      ],
+      "action": "使用审核配方与已授权制酒人员完成调酒引导",
+      "fallback": "继续使用已批准本地快照与合格员工",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.store.fulfillment",
+      "capability_id": "bsv1.store_service",
+      "app_id": "store-console",
+      "domain_ids": [
+        "commerce",
+        "service_ops"
+      ],
+      "action": "制作分派、制作人、送达人、出品结果",
+      "fallback": "纸质交接并稍后按编号补录",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.store.open_close",
+      "capability_id": "bsv1.management",
+      "app_id": "store-console",
+      "domain_ids": [
+        "service_ops",
+        "quality"
+      ],
+      "action": "开闭店、清洁、交接、风险升级",
+      "fallback": "使用受控纸质检查表，风险未清除不营业",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.store.local_procure",
+      "capability_id": "bsv1.local_procurement_inventory",
+      "app_id": "store-console",
+      "domain_ids": [
+        "procurement",
+        "inventory",
+        "catalog"
+      ],
+      "action": "门店按许可独立采购、验收与报损",
+      "fallback": "停卖缺料SKU，启动批准的备用采购",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.people.onboarding",
+      "capability_id": "bsv1.people",
+      "app_id": "staff-center",
+      "domain_ids": [
+        "workforce",
+        "knowledge",
+        "identity_access"
+      ],
+      "action": "招聘入职、有效合同和基础资料复核",
+      "fallback": "没有合法资格与健康证明的岗位不安排上岗",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.people.schedule",
+      "capability_id": "bsv1.people",
+      "app_id": "staff-center",
+      "domain_ids": [
+        "workforce",
+        "identity_access"
+      ],
+      "action": "排班、请假、候补、跨店资格验证",
+      "fallback": "责任人安排具备资格的替补，无法满足则停班",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.people.attendance",
+      "capability_id": "bsv1.people",
+      "app_id": "staff-center",
+      "domain_ids": [
+        "workforce",
+        "event_audit"
+      ],
+      "action": "考勤、打卡、交接与纠错",
+      "fallback": "线下留痕并由授权人复核",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.learning.courses",
+      "capability_id": "bsv1.people",
+      "app_id": "staff-center",
+      "domain_ids": [
+        "learning",
+        "knowledge"
+      ],
+      "action": "展示授权教程、SOP、视频与学习记录",
+      "fallback": "保留离线已发布的非敏感课程",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.learning.exams",
+      "capability_id": "bsv1.people",
+      "app_id": "staff-center",
+      "domain_ids": [
+        "learning",
+        "identity_access"
+      ],
+      "action": "线上考试、实操认证、资格有效期与基础权限激活",
+      "fallback": "没有有效资格不进入独立值班",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.identity.grants",
+      "capability_id": "bsv1.management",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "identity_access",
+        "learning",
+        "event_audit"
+      ],
+      "action": "按员工状态/门店/操作/有效期授权及回收",
+      "fallback": "权限系统失效时默认拒绝高风险操作",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.customer.menu",
+      "capability_id": "bsv1.basic_sales",
+      "app_id": "guest-web",
+      "domain_ids": [
+        "catalog",
+        "knowledge"
+      ],
+      "action": "按有效发布版本显示统一电子菜单",
+      "fallback": "返回已审核的只读静态菜单",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.customer.member",
+      "capability_id": "bsv1.basic_sales",
+      "app_id": "guest-web",
+      "domain_ids": [
+        "customer",
+        "commerce"
+      ],
+      "action": "自愿入会、查看权益和经授权的消费历史",
+      "fallback": "不影响非会员正常消费",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.customer.booking",
+      "capability_id": "bsv1.basic_sales",
+      "app_id": "guest-web",
+      "domain_ids": [
+        "commerce",
+        "organization"
+      ],
+      "action": "展示营业信息并接受预约",
+      "fallback": "必要时改为人工核实可用座位",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.customer.online_order",
+      "capability_id": "bsv1.basic_sales",
+      "app_id": "guest-web",
+      "domain_ids": [
+        "commerce",
+        "payments",
+        "catalog"
+      ],
+      "action": "未来线上下单但仍复用统一订单ID",
+      "fallback": "不可用时仅展示菜单不创建已收款订单",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.finance.daily",
+      "capability_id": "bsv1.operating_finance_compliance",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "operating_finance",
+        "payments",
+        "commerce"
+      ],
+      "action": "薪资、成本、日结对账与直营/合作经济归属",
+      "fallback": "暂停自动结算，保留原始资金差异",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.continuity.sync",
+      "capability_id": "bsv1.digital_continuity",
+      "app_id": "store-console",
+      "domain_ids": [
+        "event_audit",
+        "commerce"
+      ],
+      "action": "本地离线任务队列与幂等补传",
+      "fallback": "写入本地隔离队列，不跨店混单",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv1.marketing.basic_tasks",
+      "capability_id": "bsv1.basic_sales",
+      "app_id": "staff-center",
+      "domain_ids": [
+        "marketing",
+        "service_ops"
+      ],
+      "action": "基础营业信息更新、官方账号协作、顾客服务展示",
+      "fallback": "不得强制员工私人账号授权",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv2.growth.campaign",
+      "capability_id": "bsv2.growth",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "marketing",
+        "customer",
+        "commerce"
+      ],
+      "action": "总部获客、渠道投放、增量转化归因",
+      "fallback": "停专项投放但不停止基本服务",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv2.supply.central",
+      "capability_id": "bsv2.central_supply",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "procurement",
+        "production",
+        "inventory"
+      ],
+      "action": "集中制作、标签、跨店配送、签收和记录",
+      "fallback": "有条件回退门店独立采购/自制，否则停卖",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv2.supply.audit_sheet",
+      "capability_id": "bsv2.central_supply",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "production",
+        "inventory",
+        "quality"
+      ],
+      "action": "门店供货督查纸质表、机器预填后人工核验",
+      "fallback": "使用版本化A4检查表并记录差异",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv2.quality.independent",
+      "capability_id": "bsv2.independent_assurance",
+      "app_id": "inspector-console",
+      "domain_ids": [
+        "quality",
+        "event_audit"
+      ],
+      "action": "第三方或独立督查证据、整改、再复核",
+      "fallback": "恢复基础自检，同时管理层披露独立性缺口",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv2.partnership.manage",
+      "capability_id": "bsv2.partnerships_expansion",
+      "app_id": "partner-portal",
+      "domain_ids": [
+        "partnership",
+        "organization",
+        "operating_finance"
+      ],
+      "action": "咖啡厅合作、跨店项目、合同和经营归属",
+      "fallback": "停止新增合作，已签履约义务继续处理",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv2.system.licensing",
+      "capability_id": "bsv2.system_commercialization",
+      "app_id": "partner-portal",
+      "domain_ids": [
+        "partnership",
+        "identity_access",
+        "event_audit"
+      ],
+      "action": "向外部客户授权经营工具并作租户隔离",
+      "fallback": "未完成隔离前不得开放外部租户",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv3.capital.budget",
+      "capability_id": "bsv3.capital_budget",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "capital",
+        "operating_finance"
+      ],
+      "action": "安全底线、流动性、重大资本开支审批",
+      "fallback": "冻结影响薪资租金税务的投资计划",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv3.capital.investment",
+      "capability_id": "bsv3.capital_allocation",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "capital",
+        "operating_finance"
+      ],
+      "action": "投资与退出决策、风险与机会成本审计",
+      "fallback": "无可支配资本时不执行",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv3.capital.funding",
+      "capability_id": "bsv3.funding_equity_ma",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "capital",
+        "partnership",
+        "organization"
+      ],
+      "action": "融资、股权和并购审批及合同流转",
+      "fallback": "未批准不得以公司名义借款融资",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "bsv3.capital.regulated",
+      "capability_id": "bsv3.regulated_ventures",
+      "app_id": "hq-console",
+      "domain_ids": [
+        "capital",
+        "compliance"
+      ],
+      "action": "潜在受监管金融业务的合规预研",
+      "fallback": "未获许可不得实际经营",
+      "status": "DESIGN_ONLY"
+    }
+  ]
+}

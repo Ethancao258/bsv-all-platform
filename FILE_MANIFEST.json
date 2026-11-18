@@ -1,0 +1,531 @@
+{
+  "version": "2.0",
+  "contents": [
+    {
+      "path": ".github/workflows/validate.yml",
+      "sha256": "57a61b148842db6e81bb8a673237355a63a28e46f32bd7da64b2f264d13812d9",
+      "bytes": 462
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "e1619a052588a149b144f7431c7477efb88da0d40343b3469d2aca8e9d9d5210",
+      "bytes": 428
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "5b17294895716a1e9d67da70bdb6d5903dcfdf5c8e734929fd4d9db94aed5654",
+      "bytes": 3467
+    },
+    {
+      "path": "README.md",
+      "sha256": "bc7626a340259aa77006dbe2dd8fe0caeb3abd6d75701296a4281555765b2769",
+      "bytes": 3396
+    },
+    {
+      "path": "apps/README.md",
+      "sha256": "9257065a155ac3510b015a10d1f6c38d3eb3eeeaad0cc67291d1faa4e0fd2386",
+      "bytes": 157
+    },
+    {
+      "path": "apps/guest-web/README.md",
+      "sha256": "98daca4f0db25b89d77fbbcc78716efc678a110b376ee19c4741102615ef84ed",
+      "bytes": 539
+    },
+    {
+      "path": "apps/hq-console/README.md",
+      "sha256": "df7d788d7a3522292bb94afd1225546d906a886cb0f2fbdca842071de6747e9a",
+      "bytes": 553
+    },
+    {
+      "path": "apps/inspector-console/README.md",
+      "sha256": "cb20b6f126bd6b36addfa506c7fd3044a5acaa12a566dff772e495bfa49e6f82",
+      "bytes": 540
+    },
+    {
+      "path": "apps/partner-portal/README.md",
+      "sha256": "660acae624a11a1f4c015cef72bcbdebc46b99bcf03203e76f01a1c0468485a1",
+      "bytes": 533
+    },
+    {
+      "path": "apps/staff-center/README.md",
+      "sha256": "6ec39fffa4da9aaf65ea6551ef762c9c60d9a738868fe8524070bed821324333",
+      "bytes": 568
+    },
+    {
+      "path": "apps/store-console/README.md",
+      "sha256": "3cc3ed0f6cae23523a12a02435edc9a63c78523f4662c62baf29037058cb849a",
+      "bytes": 582
+    },
+    {
+      "path": "capabilities/README.md",
+      "sha256": "a5319825299af4321c0db7939244da8554b2743ee035e6d783651bad175d5b89",
+      "bytes": 165
+    },
+    {
+      "path": "capabilities/bsv1/basic_sales/README.md",
+      "sha256": "9fe0557f8359f1a8b0ca853b927890c5e3db138ae30c4ff58c53a45765771a77",
+      "bytes": 618
+    },
+    {
+      "path": "capabilities/bsv1/digital_continuity/README.md",
+      "sha256": "e8677e11b7526d1cefd304b0cf8c50616b4a395c81725c9da5ae8b31eb913799",
+      "bytes": 616
+    },
+    {
+      "path": "capabilities/bsv1/local_procurement_inventory/README.md",
+      "sha256": "997626c3d1f05c6def50a975da3a986803886158843c2af2e5764cb2ca873daa",
+      "bytes": 604
+    },
+    {
+      "path": "capabilities/bsv1/management/README.md",
+      "sha256": "6016d72daacb6c4d91da81a4b5b7ec8a688e679555c2e7a1d4d144be5c9b6fe7",
+      "bytes": 606
+    },
+    {
+      "path": "capabilities/bsv1/operating_finance_compliance/README.md",
+      "sha256": "04eace2b0ef6ab7b3ce65d8a09e9a4969b9c2514ac0984ba72ec494d3018c656",
+      "bytes": 610
+    },
+    {
+      "path": "capabilities/bsv1/people/README.md",
+      "sha256": "4c3ea23d291052542d2539f3c48d415a7435228d37312511bee39029327657ca",
+      "bytes": 591
+    },
+    {
+      "path": "capabilities/bsv1/product_standards/README.md",
+      "sha256": "35b4cfcd8b55fa15b8339f3bbbb3535dbed899eb079ec9d47d6044e1bd692abc",
+      "bytes": 587
+    },
+    {
+      "path": "capabilities/bsv1/store_service/README.md",
+      "sha256": "d91d10bac8b4c0502c07bc82b21e8454285ad5ce77baed81bad5af00d08282aa",
+      "bytes": 642
+    },
+    {
+      "path": "capabilities/bsv2/central_supply/README.md",
+      "sha256": "c6169b7c647b7c80bda68a0ee53b026634e9f0dad0a125dfbb18117496f97837",
+      "bytes": 611
+    },
+    {
+      "path": "capabilities/bsv2/growth/README.md",
+      "sha256": "72e3b1a022a3af3cfd2b20609f029be5e867b458605220c4d030a05674239449",
+      "bytes": 584
+    },
+    {
+      "path": "capabilities/bsv2/independent_assurance/README.md",
+      "sha256": "7b19b195bccf1267763d9334c40dedd4e3edbb7c72e5882987f7970580d5b4f4",
+      "bytes": 600
+    },
+    {
+      "path": "capabilities/bsv2/partnerships_expansion/README.md",
+      "sha256": "420b4bde46f3e87736d42ece407c0b037de704a60086bc41127705317ba8d268",
+      "bytes": 624
+    },
+    {
+      "path": "capabilities/bsv2/system_commercialization/README.md",
+      "sha256": "3c19ddb5784f938f868f00a67dedb81de532add9b3b05e0f0dbceb9e70bc658b",
+      "bytes": 608
+    },
+    {
+      "path": "capabilities/bsv3/capital_allocation/README.md",
+      "sha256": "39036ba907634951bdbbaa1ebf9dd2cd0a0ce71b87d133ee92e852c23217624e",
+      "bytes": 585
+    },
+    {
+      "path": "capabilities/bsv3/capital_budget/README.md",
+      "sha256": "cd3ef2778bcab4e624e9ddacc668067fb52bf4aa9f6cc43903944c8a364ef0ae",
+      "bytes": 584
+    },
+    {
+      "path": "capabilities/bsv3/funding_equity_ma/README.md",
+      "sha256": "0310e80c46236dd28720d708c452ab5568e11639f319c9a3dfbbf5b7173f4424",
+      "bytes": 588
+    },
+    {
+      "path": "capabilities/bsv3/regulated_ventures/README.md",
+      "sha256": "b392d33cac6c42f6511d433a574094eb66db0b6be6b18ae617770ef14ef577c6",
+      "bytes": 603
+    },
+    {
+      "path": "cloudbase/README.md",
+      "sha256": "11fbd71a642fa20a20372a331887161909fbaa44bf0b811cb51ba7a880bd11c1",
+      "bytes": 1068
+    },
+    {
+      "path": "cloudbase/audit/01_inventory_READ_ONLY.sql",
+      "sha256": "2e5690e47434bc5d1885fcfed9335df3c456f3ccab424522bbc99db53d51c9da",
+      "bytes": 889
+    },
+    {
+      "path": "cloudbase/audit/README.md",
+      "sha256": "82b9e6687d27ac6e5a0179b4c1e9c1567e5291898bf26b95f192c15f6bf7774d",
+      "bytes": 281
+    },
+    {
+      "path": "cloudbase/migrations/README.md",
+      "sha256": "9afe9790b205ff5e39cc6713bca8d92605c428c5bc21b75fdcc7d10e2a60ffe2",
+      "bytes": 244
+    },
+    {
+      "path": "config/README.md",
+      "sha256": "ff50c8a86bff8b9f0f451f83b3bf452dd3d9519a20888ebffa9678aefd9b88bf",
+      "bytes": 159
+    },
+    {
+      "path": "config/app-registry.json",
+      "sha256": "5b4902764efc029012a8b0c52de6495b6e3ecd5b5989c5dce62969832b8d0d8b",
+      "bytes": 1938
+    },
+    {
+      "path": "config/architecture-lock.json",
+      "sha256": "34b6e7a190986d1e5a32d61c0b24d30bdff39656a8e1144fe11ec4f1e53c4ce4",
+      "bytes": 712
+    },
+    {
+      "path": "config/circles-and-capabilities.json",
+      "sha256": "e2f16f53a4d59630f42ac0d37ec6a8965d171c1b0bf1c0ae4b6c276465006126",
+      "bytes": 7005
+    },
+    {
+      "path": "config/data-ownership.json",
+      "sha256": "4452bda2b9e09e0ec8f660ffebb15c87732611dcbeecfb45cd4026cbff6d8ec8",
+      "bytes": 2484
+    },
+    {
+      "path": "config/domain-registry.json",
+      "sha256": "8992b59c0cdb566d53aa37f3bccaddca8d87c4f4e96a5a7d032a18343f387357",
+      "bytes": 7797
+    },
+    {
+      "path": "config/resource-registry.json",
+      "sha256": "3a68301684e2bf59f44eb2a27537ef3ec97f50bfd86dbf37666e6c05ffe6cce5",
+      "bytes": 2447
+    },
+    {
+      "path": "config/use-case-registry.json",
+      "sha256": "34bf764134ff5e259597a6ad34bffd9be3a881f3ce0a661f4db4f09abb5e1252",
+      "bytes": 12145
+    },
+    {
+      "path": "contracts/API_AND_EVENTS.md",
+      "sha256": "5b7722309c7448a35320e64f9cf5c34b67e10c8b9f5f2f3b83549c4a2cae7f2d",
+      "bytes": 1514
+    },
+    {
+      "path": "contracts/DATABASE_DESIGN_GATES.md",
+      "sha256": "85c1b15f9778aa7b3c89228c9a39e518b8dc5de889227c93aa1802d3b6f63e9b",
+      "bytes": 2235
+    },
+    {
+      "path": "contracts/IDENTITY_AND_IDS.md",
+      "sha256": "3f286776a6fb7b60b3cd21486ade9534df181da48d10f7d7b64983cf827d7ca2",
+      "bytes": 1812
+    },
+    {
+      "path": "contracts/IMPORT_PROTOCOL.md",
+      "sha256": "3b42f2037bbddb74b91c26f2bd3dc255eec8b6076a989c6d0a1f8912fab420de",
+      "bytes": 2551
+    },
+    {
+      "path": "contracts/README.md",
+      "sha256": "945685991f0f3787afaef6dd2bd71c6c4cf1d0f981bf8ee13e86769b31b76658",
+      "bytes": 162
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "6186c4f541d27246090a122a5bc5b512c98d8601eac441c65d2a805e87da6f49",
+      "bytes": 157
+    },
+    {
+      "path": "docs/architecture/ARCHITECTURE_DECISION_RULES.md",
+      "sha256": "ea23a1fbacb5d9125040e4ebe2204770689475a54a1a578a953c3ea45169f4bb",
+      "bytes": 1271
+    },
+    {
+      "path": "docs/architecture/DEPLOYMENT_BOUNDARY.md",
+      "sha256": "7cdd0a0abd9c85b1aa3c6fa70df3e01553592e9cc5f5459d9c6c2700fd902bc2",
+      "bytes": 2354
+    },
+    {
+      "path": "docs/architecture/SYSTEM_MAP.md",
+      "sha256": "7d582ba60f41b85c7db752bdcae6770c4b9713cc7184e28e6a817b820af95758",
+      "bytes": 1687
+    },
+    {
+      "path": "docs/architecture/USE_CASE_MAPPING.md",
+      "sha256": "a1660e8a78b6a8706c7fe1ee3f661da7b0414930bcfdcc307827a717d8a4b8b8",
+      "bytes": 1334
+    },
+    {
+      "path": "docs/decisions/ADR-0001_organization-business-vs-technology.md",
+      "sha256": "0659b1d939261d257288f4546bca0bf01f20dce0c1e276bd4117b47be48e01c9",
+      "bytes": 647
+    },
+    {
+      "path": "docs/decisions/ADR-0002_database-deployment-placement-pending.md",
+      "sha256": "3b0454bf5584c4d75f88e2d07af1ca0c93dafb66dca1bfeb2b4500892a4d242f",
+      "bytes": 750
+    },
+    {
+      "path": "docs/governance/BSV-GOV-ARCH-2026-005_V5.0_20261118.md",
+      "sha256": "f08cbe38233dd309f523bc9ac7a794b358f3c9c1efb9744e54f31d90b0f9b5ec",
+      "bytes": 23320
+    },
+    {
+      "path": "docs/ops/BOOTSTRAP_PROMPT.md",
+      "sha256": "a2648e83b6e61b72a27c73a1b8a0892f442dc32b263eda4a54d14bed250f0645",
+      "bytes": 1805
+    },
+    {
+      "path": "docs/ops/CODEX_WORKFLOW.md",
+      "sha256": "eb6f854b68759d73d1c6ac0aa6533f1363f1a79155b16ac030804a879dc97e78",
+      "bytes": 1030
+    },
+    {
+      "path": "docs/ops/CURRENT_STATE.md",
+      "sha256": "dbb3d4bb24fb2c6f1e3c0ad48aa871efce830c5ad8f07a518b682bf91f973890",
+      "bytes": 1457
+    },
+    {
+      "path": "docs/ops/LEGACY_IMPORT_REGISTER.md",
+      "sha256": "5a8f24a1f2c6f7e329c49dc7237e2fe8d5a005a2d41e511cae31b906d89218a6",
+      "bytes": 2165
+    },
+    {
+      "path": "docs/ops/MIGRATION_AND_IMPORT_GATES.md",
+      "sha256": "cc6b31208e5fbd45e259708647ffbbc5caa9590b0dbbdf0f02b8435a222c06b3",
+      "bytes": 1547
+    },
+    {
+      "path": "domains/README.md",
+      "sha256": "7e69e02dc67b2d3bd4c057411f3c588192ea60fdf9110aa37f09b0e5ccf406fe",
+      "bytes": 160
+    },
+    {
+      "path": "domains/capital/README.md",
+      "sha256": "c61e8b106ec7c9e5482f0f83986e52130c7ce974ea4d00d60ef8ef2ede666801",
+      "bytes": 657
+    },
+    {
+      "path": "domains/catalog/README.md",
+      "sha256": "ea77d3be55a6f2ca2de38247eb128d340479798512b208591391cfe4d60a5952",
+      "bytes": 708
+    },
+    {
+      "path": "domains/commerce/README.md",
+      "sha256": "677cae3e624b4ea086940bb96408adc54d6f111fc829607e9c141d96207ad890",
+      "bytes": 647
+    },
+    {
+      "path": "domains/compliance/README.md",
+      "sha256": "2506371f48cb5b7e06d77faf0c1f7dca5f9e436a905c050af73a9a89dc796134",
+      "bytes": 673
+    },
+    {
+      "path": "domains/customer/README.md",
+      "sha256": "62bde5b634d68cd07bf2234755cbe9904f0487f1aa21151cf9f0e62458505fc3",
+      "bytes": 654
+    },
+    {
+      "path": "domains/event_audit/README.md",
+      "sha256": "d1952a375b8ff3cae63dc4048ac4e4a20124ad2257a6d5fa1880e397d4924b47",
+      "bytes": 698
+    },
+    {
+      "path": "domains/identity_access/README.md",
+      "sha256": "dc0139fc931cd9af2efc12a326184b332f3187d490cfa438473589c74f2f2a16",
+      "bytes": 669
+    },
+    {
+      "path": "domains/inventory/README.md",
+      "sha256": "0e5111424c3579c899bc57864581ad02bb27bcd55aa877cf7166bfa4bb8c67ec",
+      "bytes": 663
+    },
+    {
+      "path": "domains/knowledge/README.md",
+      "sha256": "3f6c858089ae5b5739d587a1dde484c8c6b2239d1400e1e6fba0db3ce3731d54",
+      "bytes": 682
+    },
+    {
+      "path": "domains/learning/README.md",
+      "sha256": "cd8f3cbfd2008e943656001aca09b5414db4b3d3fe3ff908805091dc76c8b91e",
+      "bytes": 659
+    },
+    {
+      "path": "domains/marketing/README.md",
+      "sha256": "d2cf450d7c80c81100e53f24647278b39d20b7e1e7df84e0cadee394476107bb",
+      "bytes": 680
+    },
+    {
+      "path": "domains/operating_finance/README.md",
+      "sha256": "d566b272332b300edd1d1294975f834bbf83a9591f5fdb0450b28a01aec4b4cd",
+      "bytes": 668
+    },
+    {
+      "path": "domains/organization/README.md",
+      "sha256": "90a8bec76f511b653c5340da4fd2d498511961d9895448eec65dfe1b8cdbe33d",
+      "bytes": 673
+    },
+    {
+      "path": "domains/partnership/README.md",
+      "sha256": "744724887768f4eaae62df82b5149a0291e6398579418b838ee5dbcac226ac27",
+      "bytes": 643
+    },
+    {
+      "path": "domains/payments/README.md",
+      "sha256": "be90f3d4a5b3dab62686531f9d0114170c4c1779907a7d4a6d3a39072cba9080",
+      "bytes": 642
+    },
+    {
+      "path": "domains/procurement/README.md",
+      "sha256": "5609260c8b63f926900252ae9261084ccd39cab888c6129ff187b383d596f459",
+      "bytes": 661
+    },
+    {
+      "path": "domains/production/README.md",
+      "sha256": "46be077a360b646baeb26c93e9ac6023d0c47c62ff6e64f29b2dfb6e5bed94b5",
+      "bytes": 674
+    },
+    {
+      "path": "domains/quality/README.md",
+      "sha256": "5c048ee2cb2aac4d9bfb2167fe769634ceaf105f2ac9a6916e36219505a08e0d",
+      "bytes": 658
+    },
+    {
+      "path": "domains/service_ops/README.md",
+      "sha256": "8a76608b6a0f42241a70bed55cfaab8588841cff20a7354de5bd4fc6a18b8f33",
+      "bytes": 657
+    },
+    {
+      "path": "domains/workforce/README.md",
+      "sha256": "96d7759a4e275fd7231239ec2952a8dbca88f60e5573ef90760d0c93d0683af3",
+      "bytes": 645
+    },
+    {
+      "path": "ingestion/README.md",
+      "sha256": "36c71a3cebaccab128b0b92445922159717f4d9217c4410bdb52c66713e49c4d",
+      "bytes": 627
+    },
+    {
+      "path": "ingestion/mappings/README.md",
+      "sha256": "a04d252450ae910ac4251b72d2eeb202eb0d21cb9ceba06fc764fa1941d9e881",
+      "bytes": 134
+    },
+    {
+      "path": "ingestion/pipelines/README.md",
+      "sha256": "04b82c19f0f2de3ee0b7888997102c978741a45b583cf0930683d58d44a63e1d",
+      "bytes": 135
+    },
+    {
+      "path": "ingestion/quarantine/README.md",
+      "sha256": "29a17f2adae158d88b30cfa97d2a7fd07e77ffe260994784d0f43c4cdf31dd4b",
+      "bytes": 136
+    },
+    {
+      "path": "ingestion/templates/README.md",
+      "sha256": "7ba51c5d633e82114e33e980508f8da5a2b68b1b6892e7c64faec4bae01a66e9",
+      "bytes": 135
+    },
+    {
+      "path": "ingestion/templates/import-batch.example.json",
+      "sha256": "4d8d1f7f78ecaec438e890f14a7981f2339fa1b56675c6e6e9555a35e1c49546",
+      "bytes": 772
+    },
+    {
+      "path": "integrations/README.md",
+      "sha256": "6b7f02f55fcaf3c8251a6fdb7b6461a3166db33af081042792a8a5118b047642",
+      "bytes": 655
+    },
+    {
+      "path": "integrations/ai/README.md",
+      "sha256": "3820793624dd70875929aa4545e25991b692f7936180d221946700d5c8538279",
+      "bytes": 158
+    },
+    {
+      "path": "integrations/devices/README.md",
+      "sha256": "d68852d4ae763718290289b9564e46c84539aed6da6c251dc31f7f1bdb072273",
+      "bytes": 163
+    },
+    {
+      "path": "integrations/marketplaces/README.md",
+      "sha256": "959124e60de6208d2906f0eebd68cb5f365ed959be9c0b7d6ac41a5fe81e82a4",
+      "bytes": 168
+    },
+    {
+      "path": "integrations/messaging/README.md",
+      "sha256": "d559a27d20be87919ea69afaabc9ad4ea36ab19d6b7022617a4bbfb7b72a8753",
+      "bytes": 165
+    },
+    {
+      "path": "integrations/payment/README.md",
+      "sha256": "8eaaf3ae740b8e38f474faf5445a33d39f0748c106cdc4853e68a8a5d9af666a",
+      "bytes": 163
+    },
+    {
+      "path": "platform/README.md",
+      "sha256": "8e33fa02d8f9a82c0a55c94a2dbe0b2aa0723f049f126e942d2e482924392bcf",
+      "bytes": 672
+    },
+    {
+      "path": "platform/cloudbase/README.md",
+      "sha256": "17d0359921dab6e155e305a5699edcaa646593d6bad6c92d0ff65ffb2ad7e029",
+      "bytes": 207
+    },
+    {
+      "path": "platform/edgeone/README.md",
+      "sha256": "891d241f031e19febff8e6c83adf1e251a87ab7aa7acb980839b987828de528c",
+      "bytes": 202
+    },
+    {
+      "path": "platform/lighthouse/README.md",
+      "sha256": "94ce6048f6b65fc94f471ccb240f6e90f6323a38f9dbc0910aba6bb9bfbb014a",
+      "bytes": 194
+    },
+    {
+      "path": "platform/observability/README.md",
+      "sha256": "ff79cfaaf880811b263f29ac947888129635d5f5b97ff2b2c7cc016d0813ffa8",
+      "bytes": 181
+    },
+    {
+      "path": "platform/security/README.md",
+      "sha256": "9bceb64226f0387efcb274572dcc1d7194b2c3bb9984a8aad8493cbd2e510fe3",
+      "bytes": 170
+    },
+    {
+      "path": "scripts/README.md",
+      "sha256": "aaa41518de32155be760a1c48cf4550977cd8c0f8218ede3e68fdd4ec482990e",
+      "bytes": 160
+    },
+    {
+      "path": "scripts/verify_architecture.py",
+      "sha256": "b4dc58ca34f067ec26552b7c34aa5eb1b190b2d94c888dbe07aa90369d44f77e",
+      "bytes": 4039
+    },
+    {
+      "path": "services/README.md",
+      "sha256": "5d756fcd88cd3d53a6056f70887990d7edc06612dd926e08d0e7f439c512b610",
+      "bytes": 549
+    },
+    {
+      "path": "services/api/README.md",
+      "sha256": "5694e16dbd06e11970aaa94d4f03ee14366e5559cfeb1184eef35c0a84236f93",
+      "bytes": 187
+    },
+    {
+      "path": "services/jobs/README.md",
+      "sha256": "1736bb9d71f007f73c97014300203f116df46602cbfec6de36429fc5ecc21b0e",
+      "bytes": 167
+    },
+    {
+      "path": "services/sync/README.md",
+      "sha256": "442bb01e2f6e7d2b5f8508fbe5aa7f4601a8b305beebe1f6ffab9a5a02b2cbd4",
+      "bytes": 179
+    },
+    {
+      "path": "tests/README.md",
+      "sha256": "f6f1462fc732fb5c21de87436f5ef2ce81af31e867d76cd256dbf66f77da77b2",
+      "bytes": 497
+    }
+  ],
+  "note": "Files except itself; integrity manifest, not cryptographic signature"
+}

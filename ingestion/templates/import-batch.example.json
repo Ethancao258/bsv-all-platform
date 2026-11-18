@@ -1,0 +1,23 @@
+{
+  "import_batch_id": "EXAMPLE-ONLY",
+  "source_kind": "excel|sqlite|html|image|contract|api",
+  "source_location": "private://placeholder",
+  "source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "source_size_bytes": 0,
+  "source_owner": "UNSET",
+  "captured_at_utc": "2026-11-18T00:00:00Z",
+  "target_domain_id": "catalog",
+  "legal_entity_id": null,
+  "store_id": null,
+  "classification": "INTERNAL",
+  "rights_status": "REVIEW_REQUIRED",
+  "source_version": "unverified",
+  "mapping_revision": "draft-v0",
+  "git_commit": "UNSET",
+  "row_count_input": null,
+  "row_count_accepted": null,
+  "row_count_quarantined": null,
+  "approved_by": null,
+  "run_status": "NOT_STARTED",
+  "notes": "Example structure only, not a real import."
+}

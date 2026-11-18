@@ -1,0 +1,271 @@
+{
+  "version": "2.0",
+  "source_of_truth": "each entity has one owning domain",
+  "domains": [
+    {
+      "id": "organization",
+      "display_name": "组织与经营主体",
+      "root_path": "domains/organization",
+      "entity_keys": [
+        "legal_entity_id",
+        "store_id",
+        "org_unit_id"
+      ],
+      "unique_owner": true,
+      "rule": "现有产品库可能含 bsv_stores，检查后复用，不再造第二主表",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "identity_access",
+      "display_name": "身份、设备与访问控制",
+      "root_path": "domains/identity_access",
+      "entity_keys": [
+        "auth_subject_id",
+        "role_id",
+        "grant_id",
+        "device_id"
+      ],
+      "unique_owner": true,
+      "rule": "密码/Token只归认证平台，不进入Git和业务表",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "workforce",
+      "display_name": "员工与排班",
+      "root_path": "domains/workforce",
+      "entity_keys": [
+        "employee_id",
+        "shift_id",
+        "employment_id"
+      ],
+      "unique_owner": true,
+      "rule": "员工身份不等于系统角色；跨店是一人多授权",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "learning",
+      "display_name": "课程、考试与岗位资格",
+      "root_path": "domains/learning",
+      "entity_keys": [
+        "course_id",
+        "exam_id",
+        "attempt_id",
+        "credential_id"
+      ],
+      "unique_owner": true,
+      "rule": "基础权限可规则化授予；高风险权限需审批",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "knowledge",
+      "display_name": "制度、教学资料和版本",
+      "root_path": "domains/knowledge",
+      "entity_keys": [
+        "document_id",
+        "document_version_id",
+        "acknowledgement_id"
+      ],
+      "unique_owner": true,
+      "rule": "视频原件进入受控对象存储，Git只存元数据",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "catalog",
+      "display_name": "商品、配方、物料定义",
+      "root_path": "domains/catalog",
+      "entity_keys": [
+        "product_id",
+        "bundle_id",
+        "material_id",
+        "recipe_version",
+        "publication_id"
+      ],
+      "unique_owner": true,
+      "rule": "已导入10表优先，必须现场核实实际主键及门店字段",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "procurement",
+      "display_name": "采购和供应商",
+      "root_path": "domains/procurement",
+      "entity_keys": [
+        "supplier_id",
+        "purchase_order_id",
+        "receipt_id"
+      ],
+      "unique_owner": true,
+      "rule": "BSV1门店采购与BSV2集中采购差别在场景，不分表",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "inventory",
+      "display_name": "库存与调拨",
+      "root_path": "domains/inventory",
+      "entity_keys": [
+        "stock_lot_id",
+        "stock_movement_id",
+        "inventory_count_id"
+      ],
+      "unique_owner": true,
+      "rule": "数量事实与物料主数据分离；所有调整有原因与签名",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "production",
+      "display_name": "制作、预调与配送追溯",
+      "root_path": "domains/production",
+      "entity_keys": [
+        "batch_id",
+        "shipment_id",
+        "label_id"
+      ],
+      "unique_owner": true,
+      "rule": "出品与中央配送共享批次身份；不能跨店造重复批次",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "commerce",
+      "display_name": "订单、报价与预约",
+      "root_path": "domains/commerce",
+      "entity_keys": [
+        "order_id",
+        "quote_id",
+        "booking_id"
+      ],
+      "unique_owner": true,
+      "rule": "线上下单与线下点单同一订单事实，不双写",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "payments",
+      "display_name": "支付与对账",
+      "root_path": "domains/payments",
+      "entity_keys": [
+        "payment_event_id",
+        "refund_id",
+        "reconciliation_id"
+      ],
+      "unique_owner": true,
+      "rule": "只有支付机构可信回调能确认资金状态",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "service_ops",
+      "display_name": "门店服务与执行",
+      "root_path": "domains/service_ops",
+      "entity_keys": [
+        "task_id",
+        "service_event_id",
+        "incident_id"
+      ],
+      "unique_owner": true,
+      "rule": "上报/执行/复核分人；任务勾选不是验收",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "customer",
+      "display_name": "顾客、会员和隐私授权",
+      "root_path": "domains/customer",
+      "entity_keys": [
+        "customer_id",
+        "consent_id",
+        "loyalty_account_id"
+      ],
+      "unique_owner": true,
+      "rule": "实名信息最小化；会员不等于所有顾客",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "marketing",
+      "display_name": "活动、渠道与增长",
+      "root_path": "domains/marketing",
+      "entity_keys": [
+        "campaign_id",
+        "touchpoint_id",
+        "attribution_id"
+      ],
+      "unique_owner": true,
+      "rule": "BSV1基础日常推广与BSV2总部增长共享事件，不重建会员",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "quality",
+      "display_name": "安全、质量与独立督查",
+      "root_path": "domains/quality",
+      "entity_keys": [
+        "inspection_id",
+        "finding_id",
+        "corrective_action_id"
+      ],
+      "unique_owner": true,
+      "rule": "BSV2独立复核不可自审自批，重大风险触发停用",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "partnership",
+      "display_name": "外部合作与授权经营",
+      "root_path": "domains/partnership",
+      "entity_keys": [
+        "partner_id",
+        "agreement_id",
+        "project_id",
+        "tenant_id"
+      ],
+      "unique_owner": true,
+      "rule": "经济归属和租户数据必须隔离",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "operating_finance",
+      "display_name": "日常经营财务",
+      "root_path": "domains/operating_finance",
+      "entity_keys": [
+        "cost_entry_id",
+        "payroll_run_id",
+        "settlement_id"
+      ],
+      "unique_owner": true,
+      "rule": "不可与BSV3可投资资本混同，来源事实需可追溯",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "compliance",
+      "display_name": "日常合规与证照",
+      "root_path": "domains/compliance",
+      "entity_keys": [
+        "license_id",
+        "policy_id",
+        "compliance_issue_id"
+      ],
+      "unique_owner": true,
+      "rule": "许可证与主体、场所、业务活动绑定，不自动跨店继承",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "capital",
+      "display_name": "资本治理与投资",
+      "root_path": "domains/capital",
+      "entity_keys": [
+        "capital_decision_id",
+        "funding_id",
+        "investment_id"
+      ],
+      "unique_owner": true,
+      "rule": "BSV3仅用可合法配置资金；未核准金融业务禁上线",
+      "status": "SCHEMA_NOT_VERIFIED"
+    },
+    {
+      "id": "event_audit",
+      "display_name": "事件、审计、发布和同步",
+      "root_path": "domains/event_audit",
+      "entity_keys": [
+        "audit_event_id",
+        "sync_event_id",
+        "schema_version_id"
+      ],
+      "unique_owner": true,
+      "rule": "CloudBase官方迁移历史是DDL唯一账本，禁止另建竞争迁移表",
+      "status": "SCHEMA_NOT_VERIFIED"
+    }
+  ]
+}

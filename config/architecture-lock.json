@@ -1,0 +1,26 @@
+{
+  "version": "2.0",
+  "frozen_top_level": [
+    ".github",
+    "apps",
+    "capabilities",
+    "domains",
+    "services",
+    "integrations",
+    "cloudbase",
+    "contracts",
+    "platform",
+    "ingestion",
+    "docs",
+    "config",
+    "tests",
+    "scripts"
+  ],
+  "rules": [
+    "Top-level directory names are fixed by this architecture baseline; new functions go beneath existing roots",
+    "Any exception requires ADR plus dependency review; never silently rename roots",
+    "Business circles are not data isolation boundaries",
+    "Do not create competing product, store, employee or customer masters"
+  ],
+  "source_doc_sha256": "f08cbe38233dd309f523bc9ac7a794b358f3c9c1efb9744e54f31d90b0f9b5ec"
+}

@@ -1,0 +1,32 @@
+# Secrets, credentials, customer and employee data
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+**/secrets/**
+**/private-data/**
+**/incoming/**
+**/raw/**
+**/production-export/**
+**/backups/**
+**/sensitive/**
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+*.xlsx
+*.xls
+*.pdf
+*.docx
+*.mp4
+*.mov
+*.zip
+# Protect source originals; commit only approved sanitized manifests
+!docs/governance/*.md
+__pycache__/
+.pytest_cache/
+.DS_Store

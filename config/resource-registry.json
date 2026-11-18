@@ -1,0 +1,64 @@
+{
+  "version": "2.0",
+  "resources": [
+    {
+      "id": "cloudbase-pg",
+      "provider": "Tencent Cloud CloudBase",
+      "reported_environment_id": "inadequate-marten-d1dn9lb5fce2c0",
+      "reported_region": "ap-shanghai",
+      "reported_resource": "PostgreSQL 17.11; 10 existing product tables",
+      "status": "REPORTED_NOT_LIVE_VERIFIED",
+      "authority": "business_master_data",
+      "code_path": "cloudbase/migrations",
+      "deployment_path": "cloud-managed"
+    },
+    {
+      "id": "lighthouse-beijing",
+      "provider": "Tencent Cloud Lighthouse",
+      "reported_region": "ap-beijing",
+      "reported_resource": "Ubuntu 24.04 4 vCPU 4GB RAM 40GB disk",
+      "status": "REPORTED_NOT_LIVE_VERIFIED",
+      "authority": "app_runtime_and_local_cache",
+      "code_path": "platform/lighthouse",
+      "deployment_path": "/srv/bsv/{core,stores,public,services,data,incoming,ops}"
+    },
+    {
+      "id": "edgeone-menu",
+      "provider": "Tencent EdgeOne Makers",
+      "reported_domain": "menu.bsvm.cn",
+      "reported_resource": "Customer menu hosting; /cocktail/ /craft/ URLs",
+      "status": "REPORTED_NOT_LIVE_VERIFIED",
+      "authority": "public_web_presentation",
+      "code_path": "apps/guest-web",
+      "deployment_path": "EdgeOne Makers project: verify ID before deployment"
+    },
+    {
+      "id": "github-repo",
+      "provider": "GitHub",
+      "reported_name": "Ethancao258/bsv-all-platform",
+      "status": "DESIRED_NOT_CREATED_BY_THIS_PACKAGE",
+      "authority": "code_and_architecture_versions",
+      "code_path": "/",
+      "deployment_path": "private repository; main branch"
+    },
+    {
+      "id": "local-pos",
+      "provider": "Store devices",
+      "reported_resource": "BSV1 local SQLite and store-specific maps, currently prototype versions",
+      "status": "REPORTED_NOT_LIVE_VERIFIED",
+      "authority": "offline_pending_events_only",
+      "code_path": "apps/store-console",
+      "deployment_path": "store device; actual path to inspect"
+    },
+    {
+      "id": "label-printer",
+      "provider": "HPRT",
+      "reported_resource": "T260L 203dpi 50x40mm labels ~400x320 mono pixels",
+      "status": "USER_REPORTED",
+      "authority": "output_device_only",
+      "code_path": "integrations/devices",
+      "deployment_path": "store device"
+    }
+  ],
+  "note": "Current resource metadata are reported, not live verified; deploy paths are candidates, not proofs of actual filesystem"
+}

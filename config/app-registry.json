@@ -1,0 +1,59 @@
+{
+  "version": "2.0",
+  "apps": [
+    {
+      "id": "store-console",
+      "display_name": "BSV1门店操作端",
+      "path": "apps/store-console",
+      "circle": "bsv1",
+      "description": "BSV1座位地图、待下单与结算、调酒引导、制作/送达、保洁、开闭店、离线同步；班次任务",
+      "kind": "UI_ONLY",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "staff-center",
+      "display_name": "员工工作中心",
+      "path": "apps/staff-center",
+      "circle": "bsv1",
+      "description": "招聘入职、员工档案、班次、考勤、学习、考试、技能资格、授权与基础增长任务",
+      "kind": "UI_ONLY",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "guest-web",
+      "display_name": "顾客体验网页",
+      "path": "apps/guest-web",
+      "circle": "bsv1",
+      "description": "公开电子菜单、会员登录/权益、预约、未来线上下单、活动信息",
+      "kind": "UI_ONLY",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "hq-console",
+      "display_name": "总部业务后台",
+      "path": "apps/hq-console",
+      "circle": "cross",
+      "description": "发布配方和菜单、招聘排班、财务审计、事件处理、营销与资本审批入口",
+      "kind": "UI_ONLY",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "inspector-console",
+      "display_name": "独立督查工作台",
+      "path": "apps/inspector-console",
+      "circle": "bsv2",
+      "description": "BSV2独立质检、证据登记、整改复核，不得自审自批",
+      "kind": "UI_ONLY",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "partner-portal",
+      "display_name": "合作伙伴门户",
+      "path": "apps/partner-portal",
+      "circle": "bsv2",
+      "description": "合作项目管理、技术授权、多租户安全访问；规划中",
+      "kind": "UI_ONLY",
+      "status": "DESIGN_ONLY"
+    }
+  ]
+}

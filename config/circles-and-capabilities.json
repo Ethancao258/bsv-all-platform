@@ -1,0 +1,237 @@
+{
+  "version": "2.0",
+  "source": "BSV-GOV-ARCH-2026-005 V5.0",
+  "business_circles": {
+    "bsv1": "基础经营与服务交付系统",
+    "bsv2": "经营增强、独立纠错与外部增长系统",
+    "bsv3": "资本治理与长期价值系统"
+  },
+  "capabilities": [
+    {
+      "id": "bsv1.management",
+      "circle": "bsv1",
+      "business_name": "经营管理",
+      "purpose": "经营决策、门店目标、岗位责任、标准、整改",
+      "domain_ids": [
+        "organization",
+        "identity_access",
+        "service_ops",
+        "compliance"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv1/management"
+    },
+    {
+      "id": "bsv1.people",
+      "circle": "bsv1",
+      "business_name": "人力与员工体系",
+      "purpose": "招聘、档案、排班、考勤、培训、资格、退出",
+      "domain_ids": [
+        "workforce",
+        "learning",
+        "identity_access"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv1/people"
+    },
+    {
+      "id": "bsv1.product_standards",
+      "circle": "bsv1",
+      "business_name": "产品研发与标准",
+      "purpose": "研发、产品、配方、成本、菜单版本发布",
+      "domain_ids": [
+        "catalog",
+        "knowledge",
+        "quality"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv1/product_standards"
+    },
+    {
+      "id": "bsv1.local_procurement_inventory",
+      "circle": "bsv1",
+      "business_name": "基础采购与库存",
+      "purpose": "门店采购、收货、库存、损耗和备用供应商",
+      "domain_ids": [
+        "procurement",
+        "inventory",
+        "catalog"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv1/local_procurement_inventory"
+    },
+    {
+      "id": "bsv1.store_service",
+      "circle": "bsv1",
+      "business_name": "门店制作与服务",
+      "purpose": "门店自制、收银、调酒、座位、服务、食品安全、闭店",
+      "domain_ids": [
+        "production",
+        "commerce",
+        "payments",
+        "service_ops",
+        "customer",
+        "quality"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv1/store_service"
+    },
+    {
+      "id": "bsv1.basic_sales",
+      "circle": "bsv1",
+      "business_name": "基础销售与员工推广",
+      "purpose": "营业信息、菜单、员工日常账号协作、基础客户接待",
+      "domain_ids": [
+        "catalog",
+        "customer",
+        "service_ops",
+        "marketing"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv1/basic_sales"
+    },
+    {
+      "id": "bsv1.operating_finance_compliance",
+      "circle": "bsv1",
+      "business_name": "日常财务与合规",
+      "purpose": "薪酬、税务、采购付款、日结对账、证照",
+      "domain_ids": [
+        "operating_finance",
+        "payments",
+        "compliance"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv1/operating_finance_compliance"
+    },
+    {
+      "id": "bsv1.digital_continuity",
+      "circle": "bsv1",
+      "business_name": "基础数字系统",
+      "purpose": "离线出品与记录、授权、备份、恢复及数据同步",
+      "domain_ids": [
+        "event_audit",
+        "identity_access",
+        "catalog",
+        "commerce"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv1/digital_continuity"
+    },
+    {
+      "id": "bsv2.growth",
+      "circle": "bsv2",
+      "business_name": "市场营销与增长",
+      "purpose": "总部营销、内容策划、投放、获客、增量分析",
+      "domain_ids": [
+        "marketing",
+        "customer",
+        "commerce"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv2/growth"
+    },
+    {
+      "id": "bsv2.central_supply",
+      "circle": "bsv2",
+      "business_name": "中央供应与共享服务",
+      "purpose": "集中生产、采购、批次、标签、配送、签收",
+      "domain_ids": [
+        "procurement",
+        "production",
+        "inventory",
+        "catalog"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv2/central_supply"
+    },
+    {
+      "id": "bsv2.independent_assurance",
+      "circle": "bsv2",
+      "business_name": "独立督查与纠错",
+      "purpose": "独立检查、神秘顾客、整改复验、职责隔离",
+      "domain_ids": [
+        "quality",
+        "service_ops",
+        "event_audit"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv2/independent_assurance"
+    },
+    {
+      "id": "bsv2.partnerships_expansion",
+      "circle": "bsv2",
+      "business_name": "外部合作与业务扩张",
+      "purpose": "咖啡厅合作、管理输出、授权、异业、跨区开店",
+      "domain_ids": [
+        "partnership",
+        "organization",
+        "operating_finance"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv2/partnerships_expansion"
+    },
+    {
+      "id": "bsv2.system_commercialization",
+      "circle": "bsv2",
+      "business_name": "系统对外商业化",
+      "purpose": "对外技术授权、客户租户隔离、服务合同",
+      "domain_ids": [
+        "partnership",
+        "identity_access",
+        "event_audit"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv2/system_commercialization"
+    },
+    {
+      "id": "bsv3.capital_budget",
+      "circle": "bsv3",
+      "business_name": "资金安全与资本预算",
+      "purpose": "资本开支、流动性底线、运营资金隔离",
+      "domain_ids": [
+        "capital",
+        "operating_finance"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv3/capital_budget"
+    },
+    {
+      "id": "bsv3.capital_allocation",
+      "circle": "bsv3",
+      "business_name": "资本配置与投资",
+      "purpose": "合规可支配资金、投资、退出、风险管理",
+      "domain_ids": [
+        "capital",
+        "operating_finance"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv3/capital_allocation"
+    },
+    {
+      "id": "bsv3.funding_equity_ma",
+      "circle": "bsv3",
+      "business_name": "融资、股权与并购",
+      "purpose": "融资、股权、并购、控制权及审查",
+      "domain_ids": [
+        "capital",
+        "partnership",
+        "organization"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv3/funding_equity_ma"
+    },
+    {
+      "id": "bsv3.regulated_ventures",
+      "circle": "bsv3",
+      "business_name": "潜在金融业务",
+      "purpose": "远期合规金融业务边界；未取得牌照前禁实际经营",
+      "domain_ids": [
+        "capital",
+        "compliance",
+        "organization"
+      ],
+      "status": "DESIGN_ONLY",
+      "module_path": "capabilities/bsv3/regulated_ventures"
+    }
+  ]
+}
