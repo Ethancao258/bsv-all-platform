@@ -44,3 +44,17 @@ jobs:
           python3 -m playwright install --with-deps chromium
       - name: Validate menu, POS projection and preview build
         run: bash tests/menu-v13-1/check.sh
+  supply-v2:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked supply dependencies
+        run: python -m pip install -r services/api/supply/requirements.lock
+      - name: Validate supply, inventory and quality integration
+        run: bash tests/supply/check.sh
