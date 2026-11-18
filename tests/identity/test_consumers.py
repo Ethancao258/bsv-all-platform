@@ -173,8 +173,10 @@ def test_legacy_preflight_commit_and_isolated_rollback():
     assert preview.status_code == 200 and preview.json()["write_count"] == 0
     duplicate=admin_post(one,path+"dry-run",{**base,"rows":base["rows"]*2})
     assert duplicate.json()["blocked"] == 1
-    committed=admin_post(two,path+"commit",{**base,"evidence_ref":"SYNTH-EVIDENCE","reason":"Approved legacy mapping"})
+    normalized={**base,"rows":[{"source_system":" bsv1_pos ","legacy_value":" SYNTH-OLD ","tr_code":tr.lower()}]}
+    committed=admin_post(two,path+"commit",{**normalized,"evidence_ref":"SYNTH-EVIDENCE","reason":"Approved legacy mapping"})
     assert committed.status_code == 200, committed.text
+    assert admin_post(one,path+"dry-run",base).json()["records"][0]["issues"] == ["ALREADY_MAPPED"]
     ids=committed.json()["created_alias_ids"]
     undone=admin_post(two,path+"rollback",{"alias_ids":ids,"legal_entity_id":"DEMO_LEGAL","reason":"Isolated rollback check"})
     assert undone.json() == {"removed":1,"identities_changed":False}

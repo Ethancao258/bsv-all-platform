@@ -564,8 +564,6 @@ def legacy_preview(db, rows, legal_entity_id):
         issues = []
         if not source or not raw or not TR_RE.fullmatch(tr) or tr.endswith("0000"):
             issues.append("INVALID_MAPPING_FIELDS")
-        elif not db.get(Person, tr):
-            issues.append("UNKNOWN_TR")
         k = (source, raw)
         if k in seen:
             issues.append("SAME_LEGACY_DIFFERENT_TR" if seen[k] != tr else "DUPLICATE_MAPPING_ROW")
@@ -574,6 +572,13 @@ def legacy_preview(db, rows, legal_entity_id):
         old = db.scalar(select(LegacyAlias).where(LegacyAlias.legal_entity_id == legal_entity_id,
                                                    LegacyAlias.source_system == source,
                                                    LegacyAlias.legacy_value == raw))
+        if not issues and not old:
+            engagement = db.scalar(select(Engagement.id).where(Engagement.tr_code == tr,
+                                  Engagement.legal_entity_id == legal_entity_id).limit(1))
+            registration = db.scalar(select(Registration.id).where(Registration.approved_tr_code == tr,
+                                    Registration.requested_legal_entity_id == legal_entity_id).limit(1))
+            if not engagement and not registration:
+                issues.append("TR_NOT_IN_LEGAL_SCOPE")
         if old and old.tr_code != tr:
             issues.append("EXISTING_ALIAS_CONFLICT")
         if old and old.tr_code == tr:

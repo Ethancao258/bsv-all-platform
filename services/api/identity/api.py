@@ -721,14 +721,14 @@ def legacy_commit(body: LegacyCommit, request: Request):
         if preview["blocked"] or any(r["issues"] for r in preview["records"]):
             raise DomainError("Resolve all mapping conflicts first", 409, "MIGRATION_PRECHECK_FAILED")
         inserted = []
-        for row in body.rows:
+        for row in preview["records"]:
             alias = LegacyAlias(legal_entity_id=body.legal_entity_id,
-                               source_system=row.source_system, legacy_value=row.legacy_value,
-                               tr_code=row.tr_code, approved_by=actor, evidence_ref=body.evidence_ref)
+                               source_system=row["source_system"], legacy_value=row["legacy_value"],
+                               tr_code=row["tr_code"], approved_by=actor, evidence_ref=body.evidence_ref)
             db.add(alias)
             inserted.append(alias)
-            log(db, "legacy.alias.committed", row.tr_code, actor, body.reason,
-                source_system=row.source_system, legal_entity_id=body.legal_entity_id)
+            log(db, "legacy.alias.committed", row["tr_code"], actor, body.reason,
+                source_system=row["source_system"], legal_entity_id=body.legal_entity_id)
         db.flush()
         return {"write_count": len(body.rows), "status": "committed_isolated_only",
                 "created_alias_ids": [alias.id for alias in inserted]}
