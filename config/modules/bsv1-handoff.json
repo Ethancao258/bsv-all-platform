@@ -1,0 +1,378 @@
+{
+  "schema_version": "BSV-INTEGRATION-CONTRACT-2026-11-18",
+  "company_governance": "BSV-GOV-ARCH-2026-005 V5.0",
+  "platform": "BSV ALL",
+  "modules": [
+    {
+      "module": "pos",
+      "layer": "BSV1",
+      "owner": "store operations",
+      "state": "PRIVATE_STAGING_ONLY",
+      "entities": [
+        "store_id",
+        "seat_id",
+        "order_id"
+      ],
+      "writes": [
+        "orders",
+        "visits"
+      ],
+      "writes_via": "pos API only",
+      "domain_refs": [
+        "organization",
+        "commerce",
+        "service_ops"
+      ],
+      "source_files": [
+        "services/api/bsv1/app.py",
+        "services/api/bsv1/bsv_layouts.py"
+      ],
+      "api": "/api/seats/open, /api/orders/submit, /api/checkouts/settle-demo",
+      "sqlite_tables": [
+        "seats",
+        "visits",
+        "orders",
+        "order_lines",
+        "demo_checkouts"
+      ],
+      "ui": "apps/store-console/bsv1",
+      "deploy": "platform/lighthouse/bsv1",
+      "fallback": "No runtime DB_A/DB_B connection",
+      "test": "tests/bsv1/test_integration.py"
+    },
+    {
+      "module": "bartending",
+      "layer": "BSV1",
+      "owner": "service delivery",
+      "state": "PRIVATE_STAGING_ONLY",
+      "entities": [
+        "product_id",
+        "recipe_version",
+        "order_id"
+      ],
+      "writes": [
+        "production_tasks"
+      ],
+      "writes_via": "bartending API only",
+      "domain_refs": [
+        "catalog",
+        "service_ops"
+      ],
+      "source_files": [
+        "services/api/bsv1/bsv_collab.py",
+        "services/api/bsv1/app.py"
+      ],
+      "api": "/api/production/*",
+      "sqlite_tables": [
+        "production_tasks",
+        "production_finishes",
+        "production_deliveries"
+      ],
+      "ui": "apps/store-console/bsv1",
+      "deploy": "platform/lighthouse/bsv1",
+      "fallback": "No runtime DB_A/DB_B connection",
+      "test": "tests/bsv1/test_integration.py"
+    },
+    {
+      "module": "floorplan_hq",
+      "layer": "BSV1",
+      "owner": "business management",
+      "state": "PRIVATE_STAGING_ONLY",
+      "entities": [
+        "store_id",
+        "seat_id",
+        "layout_revision"
+      ],
+      "writes": [
+        "bsv_layout_revisions"
+      ],
+      "writes_via": "HQ authenticated draft/publish API",
+      "domain_refs": [
+        "organization",
+        "service_ops",
+        "identity_access"
+      ],
+      "source_files": [
+        "services/api/bsv1/bsv_one.py",
+        "services/api/bsv1/store_layouts"
+      ],
+      "api": "/api/hq/layout/*",
+      "sqlite_tables": [
+        "bsv_layout_revisions",
+        "bsv_hq_roles"
+      ],
+      "ui": "apps/hq-console/bsv1",
+      "deploy": "platform/lighthouse/bsv1",
+      "fallback": "No runtime DB_A/DB_B connection",
+      "test": "tests/bsv1/test_one_foundation.py"
+    },
+    {
+      "module": "product_master",
+      "layer": "BSV1",
+      "owner": "product R&D standards",
+      "state": "PRIVATE_STAGING_ONLY",
+      "entities": [
+        "product_id",
+        "recipe_version",
+        "material_id"
+      ],
+      "writes": [],
+      "writes_via": "approved master-data service",
+      "domain_refs": [
+        "catalog",
+        "organization"
+      ],
+      "source_files": [
+        "services/api/bsv1/bsv_v9_import.py"
+      ],
+      "api": "/api/catalog/item",
+      "sqlite_tables": [
+        "bsv_v9_record",
+        "bsv_products"
+      ],
+      "ui": null,
+      "deploy": "platform/lighthouse/bsv1",
+      "fallback": "No runtime DB_A/DB_B connection",
+      "test": "tests/bsv1/test_one_foundation.py"
+    },
+    {
+      "module": "public_menu",
+      "layer": "BSV1",
+      "owner": "basic sales and visibility",
+      "state": "PRIVATE_STAGING_ONLY",
+      "entities": [
+        "product_id",
+        "menu_revision",
+        "store_id"
+      ],
+      "writes": [],
+      "writes_via": "published sanitized public projection only",
+      "domain_refs": [
+        "catalog"
+      ],
+      "source_files": [
+        "services/api/bsv1/app.py"
+      ],
+      "api": "/api/menu-preview",
+      "sqlite_tables": [
+        "bsv_v9_record",
+        "bsv_products"
+      ],
+      "ui": "apps/guest-web/bsv1",
+      "deploy": "platform/lighthouse/bsv1",
+      "fallback": "No runtime DB_A/DB_B connection",
+      "test": "tests/bsv1/test_one_foundation.py"
+    },
+    {
+      "module": "people",
+      "layer": "BSV1",
+      "owner": "workforce",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "employee_id",
+        "role_id",
+        "store_id"
+      ],
+      "writes": [
+        "employment",
+        "attendance",
+        "training"
+      ],
+      "writes_via": "people API; no duplicate employee master",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    },
+    {
+      "module": "store_procurement",
+      "layer": "BSV1",
+      "owner": "base purchasing and inventory",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "material_id",
+        "inventory_tx_id",
+        "store_id"
+      ],
+      "writes": [
+        "inventory_ledger"
+      ],
+      "writes_via": "single stock-transaction API",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    },
+    {
+      "module": "supply",
+      "layer": "BSV2",
+      "owner": "central supply",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "batch_id",
+        "shipment_id",
+        "material_id",
+        "store_id"
+      ],
+      "writes": [
+        "shipment_events"
+      ],
+      "writes_via": "shipment API then stock transaction service",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    },
+    {
+      "module": "label",
+      "layer": "BSV2",
+      "owner": "central supply/shared services",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "batch_id",
+        "material_id",
+        "label_template_revision"
+      ],
+      "writes": [
+        "label_print_events"
+      ],
+      "writes_via": "labels API",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    },
+    {
+      "module": "inspection",
+      "layer": "BSV2",
+      "owner": "independent supervision",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "inspection_id",
+        "department_id",
+        "employee_id"
+      ],
+      "writes": [
+        "inspection_reports"
+      ],
+      "writes_via": "audit API separate approval",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    },
+    {
+      "module": "marketing",
+      "layer": "BSV2",
+      "owner": "growth",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "campaign_id",
+        "product_id",
+        "store_id"
+      ],
+      "writes": [
+        "campaigns"
+      ],
+      "writes_via": "marketing API",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    },
+    {
+      "module": "collaboration",
+      "layer": "BSV2",
+      "owner": "partner growth",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "partner_id",
+        "contract_id",
+        "store_id"
+      ],
+      "writes": [
+        "contracts"
+      ],
+      "writes_via": "collaboration API",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    },
+    {
+      "module": "finance_ops",
+      "layer": "BSV1",
+      "owner": "daily finance/compliance",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "order_id",
+        "payment_id"
+      ],
+      "writes": [
+        "reconciliation"
+      ],
+      "writes_via": "payment webhook idempotent verifier",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    },
+    {
+      "module": "capital",
+      "layer": "BSV3",
+      "owner": "capital governance",
+      "state": "EXTERNAL_CHAT_UNMERGED",
+      "entities": [
+        "capital_decision_id"
+      ],
+      "writes": [
+        "capital_approvals"
+      ],
+      "writes_via": "separate restricted workflow",
+      "source_files": [],
+      "api": null,
+      "sqlite_tables": [],
+      "ui": null,
+      "deploy": null,
+      "fallback": null,
+      "test": null
+    }
+  ],
+  "forbidden": [
+    "cross-module direct table updates",
+    "front-end writes to database",
+    "unverified payment marked settled",
+    "duplicate entity identity per module",
+    "public menu leaks internal recipe or costs",
+    "AI bypasses publishing approval"
+  ],
+  "references": {
+    "ownership": "config/data-ownership.json",
+    "data_route_contract": "contracts/bsv1/data-routes.json",
+    "source": "ingestion/sources/bsv1-final-20261118.json"
+  }
+}

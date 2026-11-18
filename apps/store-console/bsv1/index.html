@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+ <meta name="theme-color" content="#233d50" />
+ <title>BSV1｜三店座位经营工作台 V2.9</title>
+ <link rel="stylesheet" href="/style.css" />
+ <script defer src="/app.js"></script>
+</head>
+<body>
+ <div id="loginPage" class="login-page hidden">
+   <div class="login-card">
+     <div class="login-logo-panel"><img src="/assets/BSV_完整徽标.png" alt="BAR ST VINCENT 官方徽标" class="login-brand-img" /></div>
+     <p class="eyebrow">BAR ST. VINCENT · BSV1</p>
+     <h1>门店座位工作台</h1>
+     <p class="muted">先选择所在地区与实际门店，核实后登录</p>
+     <form id="loginForm" autocomplete="off">
+       <label>① 所在地区<select id="loginDistrict" required><option value="">请选择地区</option></select></label>
+       <label>② 当前工作门店<select id="loginStore" required disabled><option value="">请先选择地区</option></select></label>
+       <div class="login-store-preview" id="loginStorePreview">尚未选择门店</div>
+       <label>③ 员工代码<input id="staffCode" placeholder="输入员工代码" required maxlength="48" /></label>
+       <label>④ 独立 PIN<input id="staffPin" type="password" inputmode="numeric" placeholder="输入登录 PIN" required maxlength="32" /></label>
+       <div id="loginError" class="form-error" role="alert"></div>
+       <button type="submit" class="primary large">确认门店并登录</button>
+     </form>
+     <div id="loginSystemStatus" class="login-system-status"><strong>系统自检</strong><span>正在检查本地服务、数据库与V9 Excel…</span></div>
+     <div class="demo-help"><strong>员工登录</strong><span>仅允许进入已授权的门店。员工代码与登录凭证由总部统一分配。</span></div>
+     <p class="footnote">V9商品资料已接入；核准价格不完整时禁止正式下单。尚未接入真实支付，不可用于收款或公网营业。</p>
+   </div>
+ </div>
+ <div id="appPage" class="app-frame hidden">
+  <aside class="sidebar">
+   <div class="brand-top"><img class="side-brand-img" src="/assets/BSV_徽记.png" alt="BSV 徽记" /><div class="side-brand-sub">BSV · OPERATIONS</div></div>
+   <div class="side-store"><span class="store-led"></span><span id="storeIdentity">当前门店核验中</span></div>
+   <div class="side-nav">
+      <button class="nav-button active" data-page="map"><span class="nav-icon">▦</span>座位点单</button>
+      <button class="nav-button" data-page="orders"><span class="nav-icon">☷</span>进行中桌次</button>
+      <button class="nav-button" data-page="queue"><span class="nav-icon">◴</span>待出品队列 <span id="queueBadge" class="side-count"></span></button>
+      <button class="nav-button" data-page="clean"><span class="nav-icon">✧</span>清洁任务 <span id="cleanBadge" class="side-count"></span></button>
+      <button class="nav-button" data-page="history"><span class="nav-icon">▤</span>历史结账单</button>
+      <button class="nav-button" data-page="audit"><span class="nav-icon">◷</span>操作记录</button>
+   </div>
+   <div class="sidebar-spacer"></div>
+   <div class="side-tip"><div class="side-tip-title">位置判断标准</div>以<strong>吧台内调酒师工作位</strong>为基准，按你的视角识别左右，不跟随设备旋转重排。</div>
+   <div class="side-footer"><span id="staffIdentity">—</span><button id="logoutBtn" class="text-button">退出</button></div>
+  </aside>
+  <main class="main-content">
+   <header class="topbar">
+     <div><p class="eyebrow" id="workEyebrow">BSV1 · STORE OPERATIONS</p><h1 id="pageTitle">密云店座位点单</h1><p class="subhead" id="storeSubhead">当前登录只对应一家门店 · 点击座位确认后进入</p></div>
+     <div class="top-actions"><span class="test-pill" title="未接入真实支付；V9报价与上架审核尚未完成">本地联调 · 不代表到账</span><button id="systemCheckBadge" class="system-pill" type="button" title="查看系统自检详情">系统状态：检查中</button><button class="outline" id="systemCheckBtn">系统自检</button><button class="outline" id="catalogBtn">商品资料库</button><a class="outline" href="/menu" id="menuEntry" style="padding:8px;text-decoration:none;">电子菜单</a><a class="outline" href="/hq" id="hqEntry" style="padding:8px;text-decoration:none;display:none">总部管理</a><button class="outline" id="refreshBtn">⟳ 刷新状态</button><button class="outline" id="switchStoreBtn">退出 / 换店</button></div>
+   </header>
+   <section id="pageMap" class="page-section">
+    <div class="stats-row">
+      <div class="stat"><div class="stat-name">当前占用位置</div><div id="statSeats" class="stat-number">0<span> / 13</span></div></div>
+      <div class="stat"><div class="stat-name">记录在店人数</div><div id="statGuests" class="stat-number">0<span> / 28 设计极限</span></div></div>
+      <div class="stat"><div class="stat-name">待出品项目</div><div id="statVisits" class="stat-number">0</div></div>
+      <div class="stat stat-note"><div class="legend"><span class="legend-dot available"></span>可选择<span class="legend-dot occupied"></span>使用中<span class="legend-dot dirty"></span>待清桌<span class="legend-dot blocked"></span>合桌停用</div><div class="stat-hint">点击一个位置，核对编号后进入订单</div></div>
+    </div>
+    <div id="alertStrip" class="alerts-strip" aria-live="polite"></div>
+
+    <div class="work-grid">
+      <section class="floor-panel">
+       <div class="panel-head">
+        <div><h2>室内座位平面图</h2><p>按图纸重新绘制 · 调酒师视角固定</p></div>
+        <button id="sourceImageBtn" class="outline subtle">查看本店工作手册 / 详细资料</button>
+       </div>
+       <div id="transferBanner" class="transfer-banner hidden" aria-live="assertive"></div>
+       <div class="map-hint">点击图中座位，先核对座位号；相邻位置可用左右按钮精确选择</div>
+       <div id="seatNavigator" class="seat-navigator"><span class="small-muted">点座位后即可进行精确选择</span></div>
+       <div class="floor-scroll"><div class="floor-stage" id="floorStage">
+        <img class="floor-svg" alt="正在加载本店独立座位图" />
+        <div id="transferPath"></div><div id="seatLayer" class="seat-layer"></div>
+        <div id="bathroomLayer" class="bathroom-layer"></div>
+       </div></div>
+       <div class="floor-foot"><span><span class="orientation-icon">⇠</span> 左右顺序：以调酒师在吧台内的实际视角为准</span><span>图纸标注设计上限以本店资料为准</span></div>
+       <div id="groupControls" class="group-controls"></div>
+      </section>
+      <aside id="orderPanel" class="order-panel">
+        <div class="empty-state"><div class="empty-glyph">▦</div><h2>选择一处座位</h2><p>在左侧点选客人所在位置，确认编号，即可开始点单或查看已有订单。</p><p class="small-muted">本店订单记录保存在数据库中。</p></div>
+      </aside>
+    </div>
+   </section>
+   <div id="detailSheet" class="detail-sheet hidden" role="dialog" aria-label="工作任务与记录" aria-modal="true"><div class="detail-panel"><div class="detail-top"><div><span class="detail-kicker">BSV1 · 当前门店</span><strong id="detailHeading">操作详情</strong></div><button id="detailDismiss" class="detail-close" type="button">关闭 ×</button></div>
+   <section id="pageCatalog" class="page-section hidden"><div class="section-card catalog-section">
+      <div class="panel-head"><div><h2>BSV ALL｜统一商品资料库</h2><p>直接读取V9 Excel固定商品ID；商品参考售价不作为门店应收价</p></div></div>
+      <div id="catalogSummary" class="catalog-summary"></div>
+      <div class="catalog-filters"><input id="catalogSearch" placeholder="搜索商品名称、固定ID、销售系列" autocomplete="off" aria-label="搜索商品" />
+        <select id="catalogDomain" aria-label="筛选商品分类"><option value="ALL">现场成品与套餐</option><option value="C">现场成品</option><option value="K">套餐组合</option><option value="READY">已核价可下单</option></select></div>
+      <div id="catalogList" class="catalog-list"></div>
+      <p class="catalog-footer-note">提示：商品/套餐审批、门店审核与Q页核准售价全部有效，才可以在对应门店点单。原始内容未被改写。</p>
+    </div></section>
+    <section id="pageOrders" class="page-section hidden"><div class="section-card"><div class="panel-head"><div><h2>进行中桌次</h2><p>仅显示正在营业的桌次</p></div></div><div id="ordersList" class="table-list"></div></div></section>
+   <section id="pageQueue" class="page-section hidden"><div class="section-card"><div class="panel-head"><div><h2>制作与送达任务</h2><p>领取制作 → 看图/配方/计时 → 我已做完 → 待上桌 → 已送达；制作与送达分别留痕</p></div></div><div id="queueList" class="task-list"></div></div></section>
+   <section id="pageClean" class="page-section hidden"><div class="section-card"><div class="panel-head"><div><h2>清洁任务</h2><p>卫生间首次登录即提醒；每次清洁完毕后重新计算两小时。座位离店后必须完成清桌。</p></div></div><div id="cleanList" class="task-list"></div></div></section>
+   <section id="pageHistory" class="page-section hidden"><div class="section-card history-section">
+     <div class="panel-head"><div><h2>历史结账 / 营业报表</h2><p>按北京时间每笔结账登记发生的日期统计；包含尚未离店客人的分次结账</p></div></div>
+     <div class="filters history-filter-row">
+       <div class="filter-quick"><button class="is-active" data-range="history:today">今天</button><button data-range="history:yesterday">昨天</button><button data-range="history:week">近7天</button><button data-range="history:month">本月</button><button data-range="history:custom">自选日期</button></div>
+       <label>开始<input type="date" id="historyFrom"/></label><label>结束<input type="date" id="historyTo"/></label>
+       <button id="historyExport" class="outline" type="button">导出本期 CSV</button>
+     </div>
+     <div class="history-scroll">
+       <div id="historySummary" class="history-summary-cards"></div>
+       <div id="historyRisk" class="history-risk-note"></div>
+       <div class="history-report-card history-chart-card"><div class="panel-head compact"><div><h3>按日登记结账趋势</h3><p>不将未结账商品计入；记录的支付状态均未由支付机构核验</p></div></div><div id="historyChart" class="history-chart"></div></div>
+       <div class="history-two-col"><div class="history-report-card"><div class="panel-head compact"><div><h3>逐日经营汇总</h3><p>汇总金额不受明细分页影响</p></div></div><div id="historyReport" class="history-report"></div></div>
+       <div class="history-record-card"><div class="panel-head compact"><div><h3>结账登记明细</h3><p>按登记时间倒序；一桌可有多笔</p></div></div><div id="historyList" class="table-list"></div><div class="history-paging"><span id="historyCount"></span><button id="historyMore" class="outline hidden" type="button">加载更多明细</button></div></div></div>
+       <div class="history-record-card history-closures"><div class="panel-head compact"><div><h3>已结束桌次</h3><p>这里按离店时间显示，供查找完整消费记录；不用于计算当日流水</p></div></div><div id="historyClosures" class="table-list"></div></div>
+       <p class="history-disclaimer">口径：账面金额＝已登记结账商品原价合计；优惠金额＝当次商品优惠；折后应收＝账面－优惠；登记结账＝系统结账登记金额。真实支付、退款、税费及平台手续费尚未接入，因此本报表不能替代支付平台与银行对账。</p>
+     </div>
+   </div></section>
+   <section id="pageAudit" class="page-section hidden"><div class="section-card"><div class="panel-head"><div><h2>员工操作记录 / 严重异常</h2><p>可按类别、日期筛选；系统自动记录严重超时事件</p></div></div>
+ <div class="filters"><select id="auditCategory" aria-label="操作分类"><option value="ALL">全部记录</option><option value="ORDERS">点单与制作</option><option value="PAYMENTS">结账</option><option value="SEATS">座位与转桌</option><option value="MEMBERS">会员</option><option value="CLEAN">清洁</option><option value="CRITICAL">严重异常 / 失职待复核</option><option value="STAFF">登录与员工操作</option></select>
+ <div class="filter-quick"><button class="is-active" data-range="audit:today">今天</button><button data-range="audit:yesterday">昨天</button><button data-range="audit:custom">自选日期</button></div><label>开始<input id="auditFrom" type="date"/></label><label>结束<input id="auditTo" type="date"/></label></div>
+ <div id="auditList" class="audit-list"></div></div></section>
+   </div></div>
+   <footer class="page-footer">BSV1 · 多店独立数据 · 经营工作台</footer>
+  </main>
+ </div>
+ <div id="modal" class="modal-root hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+   <div id="seatOuterNav" class="seat-outer-nav hidden"><button id="modalOuterLeft" type="button" class="outer-seat-button left"></button><button id="modalOuterRight" type="button" class="outer-seat-button right"></button></div>
+   <div class="modal-card"><div id="modalEyebrow" class="eyebrow"></div><h2 id="modalTitle"></h2><div id="modalBody" class="modal-body"></div><div class="modal-actions"><button id="modalCancel" class="outline">取消</button><button id="modalConfirm" class="primary">确认</button></div></div>
+ </div>
+ <div id="catalogDetailModal" class="image-root hidden" role="dialog" aria-modal="true" aria-label="商品详细信息"><div class="catalog-detail-card"><button id="closeCatalogDetail" class="outline" type="button">关闭 ×</button><div id="catalogDetailBody"></div></div></div>
+ <div id="manualModal" class="image-root hidden" role="dialog" aria-modal="true"><div class="manual-dialog"><button id="closeManual" class="outline image-close">关闭资料 ✕</button><div id="manualContent"></div></div></div>
+ <div id="receiptModal" class="image-root hidden" role="dialog" aria-modal="true"><div class="receipt-dialog"><div class="receipt-actions"><button id="printReceiptBtn" class="outline">打印纸质版</button><button id="closeReceipt" class="outline">关闭</button></div><div id="receiptContent"></div></div></div>
+ <div id="guideOverlay" class="guide-overlay hidden" role="dialog" aria-modal="true" aria-label="BSV 调酒引导工作台">
+  <div class="guide-shell">
+    <div class="guide-main">
+      <div class="guide-topline"><span>BSV1 · 视觉出品工作台</span><span class="guide-sound-disabled">🔇 音频永久禁用 · 仅视觉引导</span><button id="guideClose" class="outline" type="button">返回座位图 ×</button></div>
+      <div class="guide-name-row"><div><small id="guideContext">门店 · 座位</small><h2 id="guideName">请选择待出品项目</h2></div><span id="guideStatusTag" class="guide-stage-tag">待制作</span></div>
+      <div class="guide-four"><div class="guide-stat"><span>制作方式</span><strong id="guideAction">—</strong></div><div class="guide-stat"><span>操作标准</span><strong id="guideSeconds">—</strong></div><button id="guideTaste" class="guide-stat guide-info-btn" type="button"><span>风味 · 点击详情</span><strong id="guideFlavor">—</strong></button><button id="guideStory" class="guide-stat guide-info-btn" type="button"><span>故事 · 点击详情</span><strong>查看故事</strong></button></div>
+      <div class="guide-images"><button id="guideMaterials" class="guide-photo" type="button"><div class="guide-photo-head">01 · 备齐原料 <span>点击放大与寻酒</span></div><div id="guideMaterialsImg" class="guide-photo-body">原料图待导入</div></button><button id="guideFinishedImage" class="guide-photo" type="button"><div class="guide-photo-head">02 · 核对成品 <span>点击放大</span></div><div id="guideFinalImg" class="guide-photo-body">成品图待导入</div></button></div>
+      <div class="guide-instructions"><div><strong>制作指令</strong><span id="guideSourceNote">V9 原始文字 · 断网资料使用缓存快照</span></div><div id="guideInstructions" class="guide-original-text"></div></div>
+      <button id="guideTimer" class="guide-timer is-paused" type="button"><span id="guideTimerLabel">点击开始视觉计时</span><strong id="guideCountdown">—</strong><small id="guideTimerHint">黄色准备 → 绿色操作 → 红色停止；点击暂停，再点重新开始</small></button>
+      <div class="guide-footer"><span id="guideResponsibility">制作完成与送达必须分别确认 · 员工身份自动留档</span><button id="guideFinish" class="primary" type="button">我已做完</button><button id="guideDeliver" class="serve-btn hidden" type="button">确认已经上桌</button></div>
+    </div>
+    <aside class="guide-side"><div class="guide-side-head"><div><strong>本店任务</strong><small>当前登录员工与待送达项目</small></div><span id="guideTaskCount" class="guide-task-count">0</span></div><div class="guide-side-list" id="guideTaskList"></div><div class="guide-side-footer"><span class="guide-dot"></span>只显示本店已授权的订单；分配与状态以服务器为准</div></aside>
+  </div>
+  <div id="guideInfoPop" class="guide-infopop hidden"><div class="guide-info-card"><button id="guideInfoClose" class="outline" type="button">关闭 ×</button><h3 id="guideInfoTitle">资料</h3><div id="guideInfoContent"></div></div></div>
+ </div>
+ <div id="toast" class="toast hidden" role="status" aria-live="assertive"></div>
+ <div id="criticalOverlay" class="critical-overlay hidden" role="alertdialog" aria-modal="true" aria-labelledby="criticalTitle">
+   <div class="critical-window"><div class="critical-icon">⚠</div><h2 id="criticalTitle">严重超时</h2>
+   <p id="criticalDetail">请立即处理</p><p class="critical-help">严重异常已经由系统自动记录。处理后预警才会消失。</p>
+   <button id="criticalGo" type="button" class="danger-button">立即前往处理</button></div></div>
+ <div id="syncOffline" class="critical-overlay sync-offline hidden" role="alertdialog" aria-modal="true" aria-labelledby="offlineTitle">
+   <div class="critical-window"><div class="critical-icon">!</div><h2 id="offlineTitle">数据连接中断</h2>
+    <p>请暂停依赖当前页面下单或核销。检查网络与后台服务后重新连接。</p>
+    <button id="offlineRetry" type="button" class="danger-button">重新连接后台</button>
+   </div>
+ </div>
+</body>
+</html>

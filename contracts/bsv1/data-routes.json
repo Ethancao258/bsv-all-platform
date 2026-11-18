@@ -1,0 +1,34 @@
+{
+  "contract_version": "BSV-DATA-ROUTES-1",
+  "authoritative_business_source": "DB_A",
+  "primary": {
+    "alias": "DB_A",
+    "target_provider": "cloudbase_postgresql_PENDING_CONNECTION_AUDIT",
+    "connect_env": "BSV_DB_A_DSN",
+    "public_network_allowed": false,
+    "write_roles": ["approved_service_credential_only"],
+    "status": "NOT_CONNECTED_TO_POS"
+  },
+  "fallback": {
+    "alias": "DB_B",
+    "format": "verified_readonly_sqlite_reference_snapshot",
+    "path_env": "BSV_DB_B_SNAPSHOT_PATH",
+    "manifest_env": "BSV_DB_B_MANIFEST_PATH",
+    "default_max_age_seconds": 86400,
+    "allowed_domains": ["published_catalog","published_recipe","published_layout","store_directory","training_document"],
+    "status": "ROUTING_POLICY_TESTED_SNAPSHOT_EXPORT_NOT_IMPLEMENTED"
+  },
+  "pos_staging": {
+    "alias": "LEGACY_POS_STAGING_SQLITE",
+    "path_env": "BSV_DB_PATH",
+    "status": "WORKING_ISOLATED_PREVIEW_NOT_AUTHORITY_FOR_COMPANY_MASTER_DATA"
+  },
+  "routing": {
+    "reference_read": "DB_A if healthy else DB_B only if snapshot valid and allowed domain; mark STALE",
+    "transactional_read": "DB_A only; fail closed",
+    "all_writes": "DB_A only; fail closed; do not promote DB_B",
+    "offline_transactions": "NOT_IMPLEMENTED; require store-local append-only outbox + idempotency + settlement restrictions",
+    "provider_switch": "adapter configuration and approved migrations, never blind DSN swap between SQLite and PostgreSQL"
+  },
+  "secrets": "Never commit DSN/credentials; injected by deployment secret manager or mode-0600 environment file"
+}

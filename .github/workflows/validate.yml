@@ -14,4 +14,17 @@ jobs:
           python-version: '3.11'
       - name: Static architecture validation only
         run: python3 scripts/verify_architecture.py
-# This workflow does not deploy services, modify CloudBase, or contain production credentials.
+  bsv1:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: BSV1 integration tests
+        run: bash tests/bsv1/check.sh
+      - name: Isolated Lighthouse release simulation
+        run: bash platform/lighthouse/bsv1/release.sh --simulate

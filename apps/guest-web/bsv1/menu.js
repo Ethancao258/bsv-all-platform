@@ -1,0 +1,7 @@
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let all=[];async function get(path){const r=await fetch(path,{credentials:'same-origin',cache:'no-store'});const d=await r.json();if(!r.ok)throw Error(d.error||'请求失败');return d}
+function render(){const q=$('search').value.trim().toLowerCase();$('products').innerHTML=all.filter(x=>x.name.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)).map(p=>`<article class="product ${p.sale_enabled?'':'unpriced'}"><small>${esc(p.id)} · ${esc(p.series)}</small><h3>${esc(p.name)}</h3>${p.sale_enabled?`<strong>¥${(p.price_cents/100).toFixed(2)}</strong>`:`<small>尚未定价 · 不可下单</small>`}</article>`).join('')||'<p>暂无匹配商品</p>'}
+async function load(){try{const sid=$('store').value;const d=await get('/api/menu-preview?store_id='+encodeURIComponent(sid));all=d.products.filter(p=>p.domain==='C');$('status').textContent=`${sid} · C表 ${all.length} 款 · 已有售价 ${d.priced} 款 · 所有门店使用相同AJ价格 · 非公众菜单`;render()}catch(e){$('status').textContent=e.message}}
+$('store').onchange=load;$('search').oninput=render;(async()=>{try{const st=await get('/api/state');const boot=await get('/api/bootstrap');$('store').innerHTML=boot.stores.filter(x=>x.id===st.store.id).map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');if(!$('store').options.length)throw Error('当前账号没有可访问门店');await load()}catch(e){$('status').textContent=e.message+'。请先返回点单工作台登录。'}})();

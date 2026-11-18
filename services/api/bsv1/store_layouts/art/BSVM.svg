@@ -1,0 +1,31 @@
+<svg class="floor-svg" viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs><pattern id="hatch" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(30)"><line x1="1" y1="0" x2="1" y2="8" stroke="#d9dfe1" stroke-width="2"/></pattern></defs>
+          <rect x="34" y="24" width="1040" height="532" rx="14" fill="#f8f9f8" stroke="#c6d1d3" stroke-width="3"/>
+          <rect x="34" y="24" width="52" height="532" fill="#e7eceb"/>
+          <text x="60" y="282" fill="#71848c" font-size="15" font-weight="600" transform="rotate(-90 60 282)" text-anchor="middle">户外走廊 · 通往大门</text>
+          <path d="M84 24V556 M84 280H100" stroke="#bdc9cd" stroke-width="3" fill="none"/>
+          <rect x="110" y="85" width="64" height="115" rx="6" fill="#e6e6dd" stroke="#afb9b9" stroke-width="2"/>
+          <rect x="110" y="383" width="64" height="115" rx="6" fill="#e6e6dd" stroke="#afb9b9" stroke-width="2"/>
+          <rect x="217" y="102" width="67" height="94" rx="5" fill="#eee9df" stroke="#bcc3c0" stroke-width="2" stroke-dasharray="5 3"/>
+          <rect x="217" y="388" width="67" height="94" rx="5" fill="#eee9df" stroke="#bcc3c0" stroke-width="2" stroke-dasharray="5 3"/>
+          <circle cx="375" cy="144" r="30" fill="#f3eee7" stroke="#c1cbc9" stroke-width="2"/><circle cx="375" cy="433" r="30" fill="#f3eee7" stroke="#c1cbc9" stroke-width="2"/>
+          <circle cx="577" cy="139" r="31" fill="#f3eee7" stroke="#c1cbc9" stroke-width="2"/><circle cx="806" cy="139" r="31" fill="#f3eee7" stroke="#c1cbc9" stroke-width="2"/>
+          <path d="M460 24 V202 M470 24V202" stroke="#cad5d2" stroke-width="2"/>
+          <path d="M906 24 H1074V240H944Q906 231 906 190Z" fill="#eff2f0" stroke="#c4cccc" stroke-width="3"/>
+          <path d="M906 360Q950 360 944 337V556H906Z" fill="#eff2f0" stroke="#c4cccc" stroke-width="3"/>
+          <rect x="947" y="362" width="127" height="194" fill="#eff2f0" stroke="#c4cccc" stroke-width="2"/>
+          <text x="995" y="176" fill="#8b999c" font-size="20" text-anchor="middle">卫生间</text>
+          <text x="995" y="427" fill="#8b999c" font-size="18" text-anchor="middle">内部库房</text>
+          <rect x="499" y="294" width="369" height="81" rx="8" fill="#e0e7e2" stroke="#9faba9" stroke-width="3"/>
+          <rect x="510" y="378" width="348" height="140" rx="0" fill="#edf1f0" stroke="#c6d2d0" stroke-width="2"/>
+          <text x="687" y="432" fill="#aab7b9" font-size="19" text-anchor="middle" letter-spacing="3">吧台内工作区</text>
+          <text x="687" y="467" fill="#496577" font-size="18" text-anchor="middle" font-weight="700">你在这里 · 调酒师视角</text>
+          <path d="M636 488H738" stroke="#496577" stroke-width="3" stroke-linecap="round"/>
+          <path d="M636 488l9 -6v12z M738 488l-9 -6v12z" fill="#496577"/>
+          <path d="M490 295Q500 255 510 247 M868 295Q878 255 900 247" stroke="#d7dedc" stroke-width="2" fill="none"/>
+          <circle cx="562" cy="276" r="21" fill="#f8f9f8" stroke="#b7c6c6" stroke-width="2"/>
+          <circle cx="629" cy="276" r="21" fill="#f8f9f8" stroke="#b7c6c6" stroke-width="2"/>
+          <circle cx="696" cy="276" r="21" fill="#f8f9f8" stroke="#b7c6c6" stroke-width="2"/>
+          <circle cx="763" cy="276" r="21" fill="#f8f9f8" stroke="#b7c6c6" stroke-width="2"/>
+          <circle cx="830" cy="276" r="21" fill="#f8f9f8" stroke="#b7c6c6" stroke-width="2"/>
+        </svg>

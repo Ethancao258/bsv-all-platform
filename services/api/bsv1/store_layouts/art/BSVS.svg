@@ -1,0 +1,31 @@
+<svg class="floor-svg" viewBox="0 0 1100 580" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <defs><linearGradient id="bsvsroom" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fbfcfa"/><stop offset="1" stop-color="#f4f8f7"/></linearGradient></defs>
+ <rect x="25" y="24" width="1050" height="532" rx="23" fill="url(#bsvsroom)" stroke="#b9c9ca" stroke-width="3"/>
+ <!-- most distant line: window left, entrance upper middle (user annotated) -->
+ <rect x="75" y="63" width="355" height="93" rx="18" fill="#edf4f4" stroke="#b9ced0" stroke-width="2.4"/>
+ <text x="254" y="52" text-anchor="middle" font-size="14" fill="#617f8a" font-weight="800">最远 · 窗边 C1—C3</text>
+ <rect x="508" y="45" width="112" height="49" rx="13" fill="#fff2e3" stroke="#d0a267" stroke-width="2.5"/>
+ <text x="564" y="75" text-anchor="middle" font-size="24" fill="#99622b" font-weight="900">大门</text>
+ <path d="M508 106H620 M620 106l-18 -10m18 10l-18 10" fill="none" stroke="#ba8243" stroke-width="4" stroke-linecap="round"/>
+ <!-- bartender faces entrance after turning left; booth left, couples right -->
+ <rect x="140" y="166" width="254" height="104" rx="19" fill="#ece3d7" stroke="#bea47e" stroke-width="3"/>
+ <rect x="140" y="276" width="254" height="112" rx="19" fill="#ece3d7" stroke="#bea47e" stroke-width="3"/>
+ <text x="266" y="189" text-anchor="middle" font-size="15" fill="#916f4d" font-weight="800">左侧卡座 · 远（Z2）</text>
+ <text x="266" y="298" text-anchor="middle" font-size="15" fill="#916f4d" font-weight="800">左侧卡座 · 近（Z1）</text>
+ <rect x="535" y="166" width="244" height="104" rx="19" fill="#eef5f3" stroke="#bed2cf" stroke-width="2.5"/>
+ <rect x="535" y="276" width="244" height="112" rx="19" fill="#eef5f3" stroke="#bed2cf" stroke-width="2.5"/>
+ <text x="657" y="189" text-anchor="middle" font-size="15" fill="#617e84" font-weight="800">右侧双人位 · 远（y2）</text>
+ <text x="657" y="298" text-anchor="middle" font-size="15" fill="#617e84" font-weight="800">右侧双人位 · 近（y1）</text>
+ <!-- bathroom: bartender's right-front; storage: bartender's right-rear -->
+ <rect x="906" y="235" width="143" height="127" rx="14" fill="#e9f0ef" stroke="#b6c9cc" stroke-width="2.5"/>
+ <text x="978" y="249" text-anchor="middle" font-size="14" fill="#6a8790" font-weight="800">右前方·卫生间</text>
+ <rect x="906" y="427" width="141" height="102" rx="12" fill="#edf1ef" stroke="#c0d0cd" stroke-width="2.5"/>
+ <text x="977" y="476" text-anchor="middle" font-size="19" fill="#738c92" font-weight="800">库房</text>
+ <text x="977" y="496" text-anchor="middle" font-size="12" fill="#8ba1a5">右后方</text>
+ <!-- bar desk for real-time ordering; seats 1–6 mapped left to right -->
+ <rect x="176" y="402" width="692" height="71" rx="18" fill="#dee9e3" stroke="#9fb2ac" stroke-width="3"/>
+ <path d="M206 408H843" fill="none" stroke="#b0c3bc" stroke-width="2"/>
+ <rect x="205" y="480" width="661" height="55" rx="12" fill="#e7eff1" stroke="#bfd0d2" stroke-width="1"/>
+ <text x="535" y="508" text-anchor="middle" font-size="21" fill="#2f566c" font-weight="800">你在这里 · 调酒师工作位</text>
+ <text x="535" y="529" text-anchor="middle" font-size="12" fill="#66818b">面向大门：左卡座Z、右双人位y；吧台1—6自左至右</text>
+ </svg>

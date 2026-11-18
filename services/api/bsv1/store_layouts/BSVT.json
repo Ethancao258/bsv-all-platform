@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "store_id": "BSVT",
+  "layout_version": 1,
+  "orientation": "以吧台内调酒师工作位为准，左右关系以本店邻接表为准，不按页面坐标推断",
+  "background_svg": "art/BSVT.svg",
+  "viewport": {
+    "width": 1100,
+    "height": 580
+  },
+  "seats": [
+    {
+      "id": "BSVT-SEAT-0001",
+      "label": "卡座1",
+      "kind": "BOOTH",
+      "x": 17,
+      "y": 18,
+      "order": 10,
+      "capacity": 8,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0002",
+      "label": "卡座2",
+      "kind": "BOOTH",
+      "x": 35,
+      "y": 18,
+      "order": 20,
+      "capacity": 8,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0003",
+      "label": "卡座3",
+      "kind": "BOOTH",
+      "x": 53,
+      "y": 18,
+      "order": 30,
+      "capacity": 8,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0004",
+      "label": "卡座4",
+      "kind": "BOOTH",
+      "x": 71,
+      "y": 18,
+      "order": 40,
+      "capacity": 8,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0005",
+      "label": "窗1",
+      "kind": "WINDOW",
+      "x": 93,
+      "y": 33,
+      "order": 50,
+      "capacity": 2,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0006",
+      "label": "窗2",
+      "kind": "WINDOW",
+      "x": 93,
+      "y": 58,
+      "order": 60,
+      "capacity": 2,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0007",
+      "label": "临时1",
+      "kind": "TEMP",
+      "x": 8,
+      "y": 73,
+      "order": 65,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0008",
+      "label": "临时2",
+      "kind": "TEMP",
+      "x": 8,
+      "y": 57,
+      "order": 66,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0009",
+      "label": "临时3",
+      "kind": "TEMP",
+      "x": 8,
+      "y": 41,
+      "order": 67,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0010",
+      "label": "吧台1",
+      "kind": "BAR",
+      "x": 21,
+      "y": 59,
+      "order": 70,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0011",
+      "label": "吧台2",
+      "kind": "BAR",
+      "x": 29,
+      "y": 59,
+      "order": 80,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0012",
+      "label": "吧台3",
+      "kind": "BAR",
+      "x": 37,
+      "y": 59,
+      "order": 90,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0013",
+      "label": "吧台4",
+      "kind": "BAR",
+      "x": 45,
+      "y": 59,
+      "order": 100,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0014",
+      "label": "吧台5",
+      "kind": "BAR",
+      "x": 57,
+      "y": 59,
+      "order": 110,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0015",
+      "label": "吧台6",
+      "kind": "BAR",
+      "x": 65,
+      "y": 59,
+      "order": 120,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0016",
+      "label": "吧台7",
+      "kind": "BAR",
+      "x": 73,
+      "y": 59,
+      "order": 130,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    },
+    {
+      "id": "BSVT-SEAT-0017",
+      "label": "吧台8",
+      "kind": "BAR",
+      "x": 81,
+      "y": 59,
+      "order": 140,
+      "capacity": 1,
+      "group_id": null,
+      "is_secondary": false
+    }
+  ],
+  "neighbors": {
+    "BSVT-SEAT-0001": {
+      "left": null,
+      "right": "BSVT-SEAT-0002"
+    },
+    "BSVT-SEAT-0002": {
+      "left": "BSVT-SEAT-0001",
+      "right": "BSVT-SEAT-0003"
+    },
+    "BSVT-SEAT-0003": {
+      "left": "BSVT-SEAT-0002",
+      "right": "BSVT-SEAT-0004"
+    },
+    "BSVT-SEAT-0004": {
+      "left": "BSVT-SEAT-0003",
+      "right": null
+    },
+    "BSVT-SEAT-0005": {
+      "left": null,
+      "right": "BSVT-SEAT-0006"
+    },
+    "BSVT-SEAT-0006": {
+      "left": "BSVT-SEAT-0005",
+      "right": null
+    },
+    "BSVT-SEAT-0007": {
+      "left": null,
+      "right": "BSVT-SEAT-0008"
+    },
+    "BSVT-SEAT-0008": {
+      "left": "BSVT-SEAT-0007",
+      "right": "BSVT-SEAT-0009"
+    },
+    "BSVT-SEAT-0009": {
+      "left": "BSVT-SEAT-0008",
+      "right": null
+    },
+    "BSVT-SEAT-0010": {
+      "left": null,
+      "right": "BSVT-SEAT-0011"
+    },
+    "BSVT-SEAT-0011": {
+      "left": "BSVT-SEAT-0010",
+      "right": "BSVT-SEAT-0012"
+    },
+    "BSVT-SEAT-0012": {
+      "left": "BSVT-SEAT-0011",
+      "right": "BSVT-SEAT-0013"
+    },
+    "BSVT-SEAT-0013": {
+      "left": "BSVT-SEAT-0012",
+      "right": "BSVT-SEAT-0014"
+    },
+    "BSVT-SEAT-0014": {
+      "left": "BSVT-SEAT-0013",
+      "right": "BSVT-SEAT-0015"
+    },
+    "BSVT-SEAT-0015": {
+      "left": "BSVT-SEAT-0014",
+      "right": "BSVT-SEAT-0016"
+    },
+    "BSVT-SEAT-0016": {
+      "left": "BSVT-SEAT-0015",
+      "right": "BSVT-SEAT-0017"
+    },
+    "BSVT-SEAT-0017": {
+      "left": "BSVT-SEAT-0016",
+      "right": null
+    }
+  },
+  "groups": [],
+  "bathrooms": []
+}
