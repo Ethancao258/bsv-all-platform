@@ -1,0 +1,76 @@
+[
+  {
+    "store_id": "BSVM",
+    "name": "密云鸡尾酒吧",
+    "district": "北京市密云区",
+    "business_type": "鸡尾酒吧",
+    "design_max_guests": 28,
+    "layout_file": "BSVM.json",
+    "documents": [
+      {
+        "id": "BSVM-FLOOR",
+        "title": "原始座位图",
+        "filename": "assets/BSVM_原始座位图.png",
+        "kind": "FLOOR"
+      },
+      {
+        "id": "BSVM-FLOOR_HIGH",
+        "title": "高清施工图",
+        "filename": "assets/BSVM_高清图纸.jpg",
+        "kind": "FLOOR_HIGH"
+      }
+    ]
+  },
+  {
+    "store_id": "BSVF",
+    "name": "密云富民街精酿酒馆",
+    "district": "北京市密云区",
+    "business_type": "精酿啤酒 · 台球",
+    "design_max_guests": 0,
+    "layout_file": null
+  },
+  {
+    "store_id": "BSVS",
+    "name": "顺义鸡尾酒吧",
+    "district": "北京市顺义区",
+    "business_type": "鸡尾酒吧",
+    "design_max_guests": 25,
+    "layout_file": "BSVS.json",
+    "documents": [
+      {
+        "id": "BSVS-FLOOR",
+        "title": "顺义施工原图",
+        "filename": "assets/BSVS_原始图纸.png",
+        "kind": "FLOOR"
+      },
+      {
+        "id": "BSVS-FLOOR_MARKED",
+        "title": "顺义座位编号图",
+        "filename": "assets/BSVS_标注座位图.png",
+        "kind": "FLOOR_MARKED"
+      }
+    ]
+  },
+  {
+    "store_id": "BSVT",
+    "name": "通州高空鸡尾酒吧",
+    "district": "北京市通州区",
+    "business_type": "鸡尾酒吧",
+    "design_max_guests": 49,
+    "layout_file": "BSVT.json",
+    "documents": [
+      {
+        "id": "BSVT-FLOOR",
+        "title": "通州施工原图",
+        "filename": "assets/BSVT_原始图纸.png",
+        "kind": "FLOOR"
+      },
+      {
+        "id": "BSVT-FLOOR_MARKED",
+        "title": "通州座位编号图",
+        "filename": "assets/BSVT_标注座位图.png",
+        "kind": "FLOOR_MARKED"
+      }
+    ]
+  }
+]

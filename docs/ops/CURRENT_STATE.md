@@ -54,3 +54,13 @@
 - 通过 GitHub API 和 Git 引用查询确认目标是私有空仓库。现有本地 `main` 通过普通推送建立远程 `main`，完整保留本地提交历史。首次推送后，远程 SHA 与本地 `98432c112c4ec86c1a454459eeb257a33709fe5a` 一致。
 - 本地架构校验通过。GitHub Actions 的 `validate-architecture` 对首次推送运行成功。[运行记录](https://github.com/Ethancao258/bsv-all-platform/actions/runs/44245183954)
 - 后续以该私有仓库的 `main` 与现有业务注册表为工程版本来源。GitHub CLI 已验证可访问。其他客户端的读取状态取决于各自授权。
+
+## BSV1 V3.1 交接集成
+
+**日期** 2026-11-18（北京时间）。回退基线 `e2a0368bb89d30627c5eae9be062cae38f82760d`，集成提交见分支 `integration/bsv1-handoff`。
+
+- 交接 ZIP CRC、原包清单和 V5.0 治理文件哈希均通过。63 个原件及来源与目标映射记录在 `ingestion/sources/bsv1-final-20261118.json`。原始 V9 工作簿及原始平面图留在交接来源，Git 保留三店候选 JSON/SVG 和品牌标识。包内 V9 哈希与交接声明相符，CloudBase 权威库存版本未核实。
+- POS、调酒任务、HQ 地图与受控菜单已从交接源码集成。详细映射见 `config/modules/bsv1-handoff.json`。43 个候选座位键与现有门店代码未重写，初始地图未发布。旧订单 ID 无来源映射，继续待审。集团注册表暂未登记 `seat_id`，门店候选座位键按本模块上下文保留，集团归属待业务确认。包内模拟结账与集团 `payment_event_id` 无绑定。
+- 原包 28 项全过。集成 30 项以包内受控 V9 和合成 V9 两种来源分别通过，包含 HTTP 门店拒绝、开桌至模拟结账、外键与 A/B 参考读取替身。SQLite 一致性备份及隔离读取恢复通过。Python/JS/Bash 静态检查、架构检查、本地版本与失败回切模拟通过。现场座位、调酒计时显示、多浏览器缓存、生产并发和真实支付未验收。
+- 其他聊天的 EdgeOne V13、CloudBase 表、供货、标签、人事、督查、营销及资本源码未在当前交付范围找到，待独立接入。合成预览继续独立存在。
+- 生产 V2.9 未接触。Lighthouse 仅有本地模拟，当前沙箱无法写入 `/run/systemd` 完成主机级单元验证。实际服务、路径、权限、端口、代理及备份未验。CloudBase 缺少授权、实际表与恢复证据，迁移版本无，A/B 未接云库。若需撤回，关闭 PR 或在合并后回退集成提交；独立 staging 的回退见 `platform/lighthouse/bsv1/`。

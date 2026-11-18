@@ -1,0 +1,450 @@
+{
+  "source_id": "BSV-ONE-BSV1-FINAL-HANDOFF-20261118",
+  "version": "3.1.0-canonical-handoff-preview",
+  "archive": "BSV_ONE_BSV1_FINAL_HANDOFF_20261118.zip",
+  "archive_sha256": "0987921ad1fe5c6442cf66d5d1cf438c40e5c0f1278377605d11e8b1bcea66d2",
+  "file_count": 63,
+  "files": [
+    {
+      "path": "HANDOFF_MASTER.md",
+      "sha256": "5a40d227d051859dcb6a8e25b448ea684ee3b25c08b19bd85a88c4cc68863603",
+      "bytes": 25564,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "README.md",
+      "sha256": "20da2f18c1867faafc08b8d4cd23eed1946cbd68194840bfc695d49ce5d4043a",
+      "bytes": 838,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "SHA256SUMS.txt",
+      "sha256": "8754978bfc414aea1d2de7f578a75eec3317dfcce6c7f29fa66552bdb5d501cf",
+      "bytes": 5715,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/app.js",
+      "sha256": "980feb19e6476bc6a671a80352d4621b88fbaf07d504160d1ddb46bf10d1757d",
+      "bytes": 88210,
+      "target": "apps/store-console/bsv1/app.js",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "app/app.py",
+      "sha256": "4a6278e9538f8a7427128d20a9547f85c8195b5bf8f30cb5d38cb2be4654f136",
+      "bytes": 92277,
+      "target": "services/api/bsv1/app.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "app/assets/BSVM_原图平面局部.png",
+      "sha256": "9f442cbbd469bb63269c1759549b446049408fa60f738134b45cb501e80ac9e2",
+      "bytes": 187721,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSVM_原始座位图.png",
+      "sha256": "82c118887cf26c9255e6c3daddf0620e2a8b1955625d602dc73542c56fd92338",
+      "bytes": 739251,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSVM_高清图纸.jpg",
+      "sha256": "54ef06acd77691ad4ed5d375f5b33f4244f17049adfd6ffca710d658434ddd11",
+      "bytes": 149984,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSVS_交互地图母版.svg",
+      "sha256": "6eee7b32856c32e746ec2f3eb54af81b6b0faf5c6d7a7946041a3a1f12f7f7fe",
+      "bytes": 3318,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSVS_原始图纸.png",
+      "sha256": "9813a92b902d65c0504ce210432e8f07e144a59decbc128d23c6ea1fb06ae147",
+      "bytes": 575935,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSVS_标注座位图.png",
+      "sha256": "06c5038175b8974aa7d15c18def16e285429b41aa0702abc37749b3915a784cb",
+      "bytes": 593235,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSVT_交互地图母版.svg",
+      "sha256": "7633ad2f02e043f542678963e74d94dc3515042601c559ee2c8b55b36bd71154",
+      "bytes": 3248,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSVT_原始图纸.png",
+      "sha256": "7df27ac2303199d757c541a113d4731bb0433289b5a150d5ee51cb25fb6195e4",
+      "bytes": 231566,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSVT_标注座位图.png",
+      "sha256": "85a914f6b633e4b95a5303a04ee2da4eb365501a30ee6e2ce2c8f71947ae1938",
+      "bytes": 593902,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/assets/BSV_完整徽标.png",
+      "sha256": "1b766b02fc565f50486d1b8600d099d51a43a7cf16cc81e084bb6c91d8375e48",
+      "bytes": 1312289,
+      "target": "apps/store-console/bsv1/assets/BSV_完整徽标.png",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/assets/BSV_徽记.png",
+      "sha256": "b242376dddc404ef431eb45a2bd49a5e1e3ce5727c28a4b46fa0c8b0dc51d05d",
+      "bytes": 330524,
+      "target": "apps/store-console/bsv1/assets/BSV_徽记.png",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/backup_db.py",
+      "sha256": "69a943e35e78bb5566b279ceb63c656369cf265f1feb6331130c3ff5682f0820",
+      "bytes": 813,
+      "target": "services/api/bsv1/backup_db.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/bsv_catalog_config.py",
+      "sha256": "dfc7b256b056f0b34635756a7d962e51d1d74f8133bc332032e2b67dbdd3e2c7",
+      "bytes": 1043,
+      "target": "services/api/bsv1/bsv_catalog_config.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/bsv_collab.py",
+      "sha256": "e6617882754ea4898ae746192ca2b23ceeeeb9ba27287d14fe1447bd75c2c4da",
+      "bytes": 9414,
+      "target": "services/api/bsv1/bsv_collab.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/bsv_data_router.py",
+      "sha256": "b552aab6b6e4612ed225fdb07730a34149be829c27624da9a369cb5ba07bcb8d",
+      "bytes": 4711,
+      "target": "services/api/bsv1/bsv_data_router.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/bsv_database_config.py",
+      "sha256": "8e05daa2789b10b1c0f9befc3461fdab905cb6aa4ea2953f19a5b3cf989c94b5",
+      "bytes": 3014,
+      "target": "services/api/bsv1/bsv_database_config.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/bsv_layouts.py",
+      "sha256": "c086510355b6af0a923517076b12e50b2615ad60d5389feb74515469601d420b",
+      "bytes": 14695,
+      "target": "services/api/bsv1/bsv_layouts.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/bsv_ledger.py",
+      "sha256": "0b32d8e23b131c40bf1c0c27ccbc66495b00c73927da071076b2b146a28d22dc",
+      "bytes": 6284,
+      "target": "services/api/bsv1/bsv_ledger.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/bsv_one.py",
+      "sha256": "b5d9f086e005be1e208e71218345ca8f9e389adf7edb85e81393b0b7fba93b81",
+      "bytes": 20996,
+      "target": "services/api/bsv1/bsv_one.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/bsv_v9_import.py",
+      "sha256": "d5c842a13751aaba0e0cd299ff14c31ba88514dacbcbc132e0da73d771b3df13",
+      "bytes": 20069,
+      "target": "services/api/bsv1/bsv_v9_import.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/hq.css",
+      "sha256": "a49312fac4288d0f4a5c1f3c066d18ed75c4f3c6fd9eb896bae7328b18e7f6f8",
+      "bytes": 2900,
+      "target": "apps/hq-console/bsv1/hq.css",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/hq.html",
+      "sha256": "96488e5cab0f4eecfc9798d184acc9d3a1e11ebb77b7eb2e561611dd2cb93052",
+      "bytes": 3617,
+      "target": "apps/hq-console/bsv1/hq.html",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/hq.js",
+      "sha256": "4396ce088b22842aac738e4f143e5f1999aad81d231a4a67114c09b342893b2d",
+      "bytes": 9596,
+      "target": "apps/hq-console/bsv1/hq.js",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/hq_grant.py",
+      "sha256": "90a399c5c50b33817c78d884f58a4f2e1b879888ac775921ef7c139a3a34a49b",
+      "bytes": 1552,
+      "target": "services/api/bsv1/hq_grant.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/index.html",
+      "sha256": "efb5bf1a6721a721a751daff77e3d33c007f104a296cddb4cf10d266685f726c",
+      "bytes": 19026,
+      "target": "apps/store-console/bsv1/index.html",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "app/manage_staff.py",
+      "sha256": "8ef13e72fc057ed4dc4b35c50657eb61969882683872e06ae777050c4b196ad1",
+      "bytes": 4902,
+      "target": "services/api/bsv1/manage_staff.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/menu.css",
+      "sha256": "52237d574514299379b78700dc47a18508db9655d7eb6f5e3801ed3af7348bb7",
+      "bytes": 1049,
+      "target": "apps/guest-web/bsv1/menu.css",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/menu.html",
+      "sha256": "c9acd2d46956fd17ac27de1d2d7a635e2f386431edf621b8498e6f422027863d",
+      "bytes": 1031,
+      "target": "apps/guest-web/bsv1/menu.html",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/menu.js",
+      "sha256": "963669727d45f9bc8658cbb6f9c9036fe6dead1c832fc6f28f725174dd334368",
+      "bytes": 1656,
+      "target": "apps/guest-web/bsv1/menu.js",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/resources/BSV_ALL_V9.xlsx",
+      "sha256": "c74046197ccda43813ef5c11951ad6280bb0b2edf0e59c9013e714c335428726",
+      "bytes": 283289,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/resources/V9_字段字典.md",
+      "sha256": "a5cba34719ee1b5be7e375e4cc09708c653d2dedeca256675349f9799223a81e",
+      "bytes": 50512,
+      "target": "services/api/bsv1/resources/V9_字段字典.md",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "app/resources/product_images/图片请放这里.txt",
+      "sha256": "b77ef8842498f7a24b6d21b0f9e856e0951bd3b975d26af6f6993b3697f1b0c4",
+      "bytes": 299,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/store_layouts/BSVM.json",
+      "sha256": "12d5dabb20e8b2303042620724a524bf383a18b085acb6561433993315577c6f",
+      "bytes": 4899,
+      "target": "services/api/bsv1/store_layouts/BSVM.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/store_layouts/BSVS.json",
+      "sha256": "bfbc75177ae391c99495793acd0529b76a6983358c48120bc1247cb18e8bfe13",
+      "bytes": 4415,
+      "target": "services/api/bsv1/store_layouts/BSVS.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/store_layouts/BSVT.json",
+      "sha256": "4e16616854443ba12bd1e5afce4f54ab9d458b359e4aa2f24f556012664ee4a9",
+      "bytes": 5497,
+      "target": "services/api/bsv1/store_layouts/BSVT.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/store_layouts/art/BSVM.svg",
+      "sha256": "269943ccf21ba50e4973f1a757a808fa82af5bdd30752bd71548fde6a78b0a25",
+      "bytes": 3474,
+      "target": "services/api/bsv1/store_layouts/art/BSVM.svg",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/store_layouts/art/BSVS.svg",
+      "sha256": "6eee7b32856c32e746ec2f3eb54af81b6b0faf5c6d7a7946041a3a1f12f7f7fe",
+      "bytes": 3318,
+      "target": "services/api/bsv1/store_layouts/art/BSVS.svg",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/store_layouts/art/BSVT.svg",
+      "sha256": "7633ad2f02e043f542678963e74d94dc3515042601c559ee2c8b55b36bd71154",
+      "bytes": 3248,
+      "target": "services/api/bsv1/store_layouts/art/BSVT.svg",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/store_layouts/stores.json",
+      "sha256": "67f207273ede70fb55c31f47e77ecbfecc0f57794a9e7c5c0263681bf76cf0a8",
+      "bytes": 1910,
+      "target": "services/api/bsv1/store_layouts/stores.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/style.css",
+      "sha256": "d5ac70aabda727eb738d4cd0f719675ed545bb8f751bbd1aa9ceb21dbb315f97",
+      "bytes": 77854,
+      "target": "apps/store-console/bsv1/style.css",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "config/data_sources.json",
+      "sha256": "42b624259131d49d42429d5a9e1b94348db314b5b78a56ead4d6b9f77292ef1b",
+      "bytes": 1571,
+      "target": "contracts/bsv1/data-routes.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "contracts/module_contract.json",
+      "sha256": "ba7a0331627c9a624fd58a029d272c313f24938c7b42026547c932dae074a066",
+      "bytes": 3622,
+      "target": "config/modules/bsv1-handoff.json",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "deploy/backup_now.sh",
+      "sha256": "d043edf30e7ec119da4d1c2d60cbef7cd70b01e9a6c9b128028f55b4c75ec0e9",
+      "bytes": 653,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/bsv-one-canonical-stage-backup.service",
+      "sha256": "e5432823c7b638f2dc0e4f07a36ed46bea8bd8cd7c31ecba6c4502b1a98e14f3",
+      "bytes": 488,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/bsv-one-canonical-stage-backup.timer",
+      "sha256": "0c30ac70491a9f17a31b37aafa9f72a396cf39b86c106a957ad8d8cbb422e2d0",
+      "bytes": 183,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/bsv-one-canonical-stage.service",
+      "sha256": "e25a2236f58a2253265c1492afb00e707813f72361182fdaef5914d0d62ef761",
+      "bytes": 657,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/manage_stage_hq.sh",
+      "sha256": "e4205c5c4ef7b8af6b491300d80917d74f6e31a293f71180d09e1fa3851ebe48",
+      "bytes": 300,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/manage_stage_user.sh",
+      "sha256": "0f68ec9f7bc481d959f36b68830746c12c5a233a49d15aee92d804ec532f2172",
+      "bytes": 304,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/promote_live.sh",
+      "sha256": "0f0441baa5b0a1356f986b07477151e54f2edecc550ef8b9d8d45f00832519fb",
+      "bytes": 498,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "deploy/stage_cloud.sh",
+      "sha256": "9315a42f8d6a21558aad90e488458519f698f554cfad5e744f1a162c0054b515",
+      "bytes": 2931,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "docs/BSV-GOV-ARCH-2026-005_V5.0_20261118.md",
+      "sha256": "f08cbe38233dd309f523bc9ac7a794b358f3c9c1efb9744e54f31d90b0f9b5ec",
+      "bytes": 23320,
+      "target": "docs/governance/BSV-GOV-ARCH-2026-005_V5.0_20261118.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "docs/BSV_ALL_V9_数据字典.md",
+      "sha256": "a5cba34719ee1b5be7e375e4cc09708c653d2dedeca256675349f9799223a81e",
+      "bytes": 50512,
+      "target": "contracts/bsv1/BSV_ALL_V9_数据字典.md",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "scripts/verify_package.py",
+      "sha256": "65bfb8cca254693af16f84507bbaf5c0afa8e491f35e6c412907c66df7e4c48e",
+      "bytes": 1805,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "tests/test_backup_restore.py",
+      "sha256": "e260bae63e29dfb8edfc7c352782041eab9e4e25ef13db81d9c5db9f233bdf7c",
+      "bytes": 1554,
+      "target": "tests/bsv1/test_backup_restore.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_canonical_ids.py",
+      "sha256": "6bb008961e801b8411607dde8a2f288eb96c54c88b6d0b7e8016a0ea4d890c00",
+      "bytes": 2869,
+      "target": "tests/bsv1/test_canonical_ids.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_data_router.py",
+      "sha256": "4213defa297ca12b254449cfbc944b9987ddfec9454e8e1cf49c983d6ff9c5a3",
+      "bytes": 2538,
+      "target": "tests/bsv1/test_data_router.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_final_contract.py",
+      "sha256": "e095917c7cfb63eac99a8d8e69aaa22185bccf85ca15f4808012f42a5f60d5fe",
+      "bytes": 2644,
+      "target": "tests/bsv1/test_final_contract.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_one_foundation.py",
+      "sha256": "bafa5b2c17e8999b27eae98ead6038a1fa1bb628a0b520180dd97fbe7e2b91b9",
+      "bytes": 13775,
+      "target": "tests/bsv1/test_one_foundation.py",
+      "status": "INTEGRATION_ADAPTED"
+    }
+  ]
+}
