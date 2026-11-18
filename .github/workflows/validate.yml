@@ -28,3 +28,19 @@ jobs:
         run: bash tests/bsv1/check.sh
       - name: Isolated Lighthouse release simulation
         run: bash platform/lighthouse/bsv1/release.sh --simulate
+  menu-v13-1:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test runner
+        run: |
+          python3 -m pip install playwright==1.62.0 jsonschema==4.26.0
+          python3 -m playwright install --with-deps chromium
+      - name: Validate menu, POS projection and preview build
+        run: bash tests/menu-v13-1/check.sh

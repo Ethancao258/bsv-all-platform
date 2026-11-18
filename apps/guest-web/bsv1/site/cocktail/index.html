@@ -1,0 +1,103 @@
+<!doctype html>
+<!--
+BAR ST. VINCENT · 客用电子菜单 V13.1｜AI维护与源码导航（顾客不可见）
+========================================================================
+V13设计约束：顶栏/分类/底部操作始终固定，只有 #content 允许纵向滚动。
+            请勿把 window/body 改成滚动容器，也不要再加 min-height:480px。
+
+[HTML_STRUCTURE] 维护索引
+  #shell           应用视口固定容器；手机全屏、电脑中间窄栏。
+  .header          常驻顶部：徽标、门店、顶部搜索、语言、主题、清单。
+  #categories      常驻顶部的横向分类条（只可左右滑动）。
+  #content         ★唯一可纵向滚动的商品区；页面其它部分不随它移动。
+  .footbar         ★常驻底部：酒单、圆形搜索、帮我选；照顾刘海/底部手势安全区。
+  #searchPopover   中央搜索按钮上方的输入气泡；不属于商品滚动区。
+  #modalHost       商品详情/清单/出示给调酒师；独立弹窗滚动。
+
+[CONFIG] 以后主要修改的位置
+  数据接口地址： assets/menu-config.js  →  catalogUrl。
+  中文英文文案： assets/menu-copy.js；商品描述来自公开数据库JSON。
+  商品/套餐及价格： data/menu-public.json（C页AJ统一标价；K页套餐参考价）。
+  配色与组件：   assets/style.css → :root / [V12_FIXED_APP_VIEWPORT]。
+  交互与数据逻辑： assets/app.js → [CATALOG_READ]、[VIEW_RENDER]。
+  分类无残影：   assets/app.js → [MOTION_V11_NO_GHOST]（V12继续使用）。
+  视口/软键盘： assets/app.js → [V12_VISUAL_VIEWPORT]。
+  搜索气泡：     assets/app.js → [SEARCH_BUBBLE]。
+  推荐动画：     assets/app.js → [RECOMMEND_MOTION]（1.5秒）。
+  顾客意向接口： window.BSVMenuBridge.getSelection()；不是订单或支付。
+
+[SAFETY] 只公开静态网站与对客JSON；不要上传内部数据库、员工配方或成本。
+         免责声明固定：乐享美酒需适量，未成年人禁止饮酒。
+         真正的收款价仍需未来BSV1服务器端核定。
+========================================================================
+-->
+
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+  <meta name="theme-color" content="#171411">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="BAR ST. VINCENT 文森特鸡尾酒吧电子菜单。探索环球精选、经典鸡尾酒、季节特调与佐酒小食。">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests">
+  <title>BAR ST. VINCENT｜鸡尾酒菜单</title>
+  <link rel="icon" type="image/webp" href="./assets/bsv-mark.webp">
+  <link rel="stylesheet" href="./assets/style.css?v=13.1.0">
+  <script src="./assets/menu-config.js?v=13.1.0" defer></script>
+  <!-- Guest-visible copy: change this first when editing Chinese/English interface text. -->
+  <script src="./assets/menu-copy.js?v=13.1.0" defer></script>
+  <script src="./assets/app.js?v=13.1.0" defer></script>
+</head>
+<body>
+  <div id="shell">
+    <div class="aura" aria-hidden="true"></div>
+    <div class="scroll-sigil" aria-hidden="true">
+      <div class="scroll-sigil-halo"><img class="scroll-sigil-mark" src="./assets/bsv-mark.webp" alt="" width="43" height="43"></div>
+      <div class="scroll-sigil-rail"><span class="scroll-sigil-fill"></span></div>
+    </div>
+    <!-- [V12_FIXED_HEADER] 静态顶部：只跟随浏览器可视高度变化，绝不被商品滚动带走 -->
+    <header class="header">
+      <div class="brandrow">
+        <div class="brandidentity">
+          <img src="./assets/bsv-mark.webp" width="34" height="34" alt="" class="brandmark">
+          <div class="brandtext"><div class="brandname">BAR ST. VINCENT</div><div class="branddesc" data-i18n="brandSub">让今夜有一点不同</div></div>
+        </div>
+        <div class="header-actions">
+          <button id="lang" class="round-btn" type="button" aria-label="Switch language">EN</button>
+          <button id="theme" class="round-btn" type="button" aria-label="切换日夜模式" title="切换日夜模式"><span aria-hidden="true">◐</span></button>
+          <button id="cartTrigger" class="round-btn cart-button" type="button" aria-label="查看选酒清单" title="选酒清单"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5h2l2 10h10l2.2-7.7H6.2M10 20h.01M18 20h.01"/></svg><span id="cartCount" class="count" hidden>0</span></button>
+        </div>
+      </div>
+      <div class="searchrow">
+        <label class="storefield" for="store"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.6 7-12a7 7 0 0 0-14 0c0 5.4 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg><select id="store" aria-label="选择门店"><option value="">选择门店</option></select></label>
+        <label class="searchfield" for="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg><input id="search" type="search" placeholder="找酒款、口味或小食" enterkeyhint="search" autocomplete="off"></label>
+      </div>
+    </header>
+    <!-- [V12_FIXED_CATEGORIES] 只允许水平滑动的分类导航，纵向始终固定 -->
+    <nav class="categories" id="categories" aria-label="商品分类"></nav>
+    <!-- [V12_ONLY_SCROLL_AREA] 唯一纵向滚动区：从V9公开数据加载商品与套餐 -->
+    <main id="content" class="content" tabindex="-1" aria-live="off">
+      <div class="loading">正在为您翻开酒单…</div>
+    </main>
+    <!-- [V12_FIXED_DOCK] 紧贴屏幕底部含安全区，只有这里的三个入口可操作 -->
+    <footer class="footbar">
+      <button id="menuBtn" class="nav-btn on" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h12"/></svg><span data-i18n="menu">酒单</span></button>
+      <button id="searchBtn" class="search-orb" type="button" aria-label="搜索酒款" aria-controls="searchPopover" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.2"/><path d="m16 16 4.5 4.5"/></svg></button>
+      <button id="guideBtn" class="nav-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"/></svg><span data-i18n="guide">帮我选</span></button>
+    </footer>
+    <!-- [UI_SEARCH_BUBBLE] 点击底部中央搜索时弹出的细长输入气泡 -->
+    <div id="searchPopover" class="search-popover" role="search" aria-label="在酒单里搜索" aria-hidden="true" inert>
+      <span class="search-popover-mark" aria-hidden="true"></span>
+      <svg class="search-popover-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.2"/><path d="m16 16 4.5 4.5"/></svg>
+      <label for="searchBubble" class="sr-only">想喝什么？请输入酒名、口味或小食</label>
+      <input id="searchBubble" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="说说您想喝什么…" aria-label="搜索酒名、口味或小食">
+      <button id="searchBubbleClear" class="search-popover-clear" type="button" aria-label="清除搜索" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <button id="searchBubbleClose" class="search-popover-close" type="button" aria-label="收起搜索"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+  </div>
+  <!-- [UI_MODAL] 单品详情 / 套餐详情 / 选酒单 / 展示给调酒师 -->
+  <div id="modalHost"></div>
+  <div id="toast" class="toast" aria-live="polite" hidden></div>
+  <noscript><div class="noscript">请开启JavaScript以浏览完整酒单。</div></noscript>
+</body>
+</html>

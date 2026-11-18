@@ -1,0 +1,253 @@
+{
+  "source_id": "BSV1-MENU-V13.1",
+  "version": "V13.1",
+  "archive": "BSV1电子菜单｜V13.1 Codex完整交接包.zip",
+  "archive_sha256": "497a85a36747670f6d5e84612cd2cf1493a457d42f85c10b360e41a82db206f9",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 131,
+      "sha256": "46d2a9a7c8e3fbff9d6ba3a942f0fe6cde5c5a2f7c2e615c7f68ca101560a07d",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 1010,
+      "sha256": "e9165b89c510fbe595fc263065649a863fb61b35ea2208f84acc977189d656c2",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "CODEX_START_HERE.md",
+      "bytes": 4543,
+      "sha256": "1ef5dace19a847e7181f118f91ea9c661b0e6b4368b13f71946fc39a8d9b8f59",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "PACKAGE_MANIFEST.json",
+      "bytes": 5771,
+      "sha256": "41808fdd55512e9ef1a3ad44546b450a936cac2dcd009a7544b0513b064f0a34",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1230,
+      "sha256": "8a70e13898374609047923519386ba0e6aeb144fc5d888cb98261dab20c801c6",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "contracts/data-sources.json",
+      "bytes": 2204,
+      "sha256": "b60f9ec4e731695e2dc6553469dc213355dac8b1b4f75b575dc29196dbc65891",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "contracts/deployment-targets.json",
+      "bytes": 1855,
+      "sha256": "d7e8dc776d9b7332f0858943e127722579766418bd256f536980330e17e68f20",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "contracts/public-menu-v2.schema.json",
+      "bytes": 4627,
+      "sha256": "2df697dbdfe4e35c73231bf36f4264c52f4a5c329e7d969266c7b232f67c4e13",
+      "target": "contracts/menu/public-menu-v2.schema.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "docs/INTEGRATION_HANDOFF.md",
+      "bytes": 5664,
+      "sha256": "c7b911b5abe25dd73d061d1d9c2fe6ce63dd4b61b1dd4d6c3055d48be3fa386c",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "docs/QA_AND_LIMITATIONS.md",
+      "bytes": 3779,
+      "sha256": "6df51e79c5a5f9f07b44f8eb4925f9f3f765e82c16ac34927ab3fa7d5c2c9502",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "maintenance/__pycache__/build_public_v9.cpython-313.pyc",
+      "bytes": 18315,
+      "sha256": "ffc906b375d65b202a4b6628bbbcb4eb9c211560edb3ff26e85deb3bfe39c0c2",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "maintenance/build_public_v9.py",
+      "bytes": 9663,
+      "sha256": "10e8a2e341295d450d1526d0c24a2f12b4340d9b4cdace00eabea5e9de9ddeb2",
+      "target": "apps/guest-web/bsv1/maintenance/build_public_v9.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "maintenance/parse_v9_excel.py",
+      "bytes": 12448,
+      "sha256": "c313613f9d73c1386409fe4ec129053679d14d43b890ef92ab8dd33ac42e3760",
+      "target": "apps/guest-web/bsv1/maintenance/parse_v9_excel.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "maintenance/publish_from_excel.py",
+      "bytes": 2666,
+      "sha256": "8bd65996d6d978fe05a0ea3d465a90e906dbdaa6c2ae3e026fbfc1d5e278e12e",
+      "target": "apps/guest-web/bsv1/maintenance/publish_from_excel.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "reference/V13_Makers_unchanged.zip",
+      "bytes": 68255,
+      "sha256": "337ee1d630febedf3c0b4b0d98f50b92d2e92b1793e5e042e4bc8adb25222297",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "reference/V13_Source_unchanged.zip",
+      "bytes": 85178,
+      "sha256": "27cdbf788428d3b705abfdbe4b557bba133c73bb80662eb07b9802b338da2f8f",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "reference/V13_original_deployment_notes.md",
+      "bytes": 8188,
+      "sha256": "551502971d2219d4a610b26a456d74868220171cbeed2b3ffe43b1ab8e26ad2d",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "reference/V13_previous_QA_report.json",
+      "bytes": 4126,
+      "sha256": "e3972bf24964dd54c780d37151aa65d692b64bbb06127d0afd6d9cd854d8c90d",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "release/edgeone-makers-upload.zip",
+      "bytes": 69528,
+      "sha256": "5eb5126db9db82a467c0d6c8e9983ce6f60cb502d546d71689aca038e377cf88",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "site/cocktail/assets/app.js",
+      "bytes": 44305,
+      "sha256": "3e2f7a55adb12dd8dff980ca5804e9f6acc340f934439198f271b99fe127aded",
+      "target": "apps/guest-web/bsv1/site/cocktail/assets/app.js",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "site/cocktail/assets/bsv-mark.webp",
+      "bytes": 18466,
+      "sha256": "c065cfb679ddda7fd2a8d389210ea4ec41225cd628b8f6b5ba409b435a929c9c",
+      "target": "apps/guest-web/bsv1/site/cocktail/assets/bsv-mark.webp",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "site/cocktail/assets/menu-config.js",
+      "bytes": 677,
+      "sha256": "0e4d554b67546dbb17f96353081c4dc30ebd01a711dec0de429dc9717a622845",
+      "target": "apps/guest-web/bsv1/site/cocktail/assets/menu-config.js",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "site/cocktail/assets/menu-copy.js",
+      "bytes": 6344,
+      "sha256": "c62b34d176eae0a4f90bef2b1d5117e01f28cbff07a355f06cc670aaf96ba247",
+      "target": "apps/guest-web/bsv1/site/cocktail/assets/menu-copy.js",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "site/cocktail/assets/style.css",
+      "bytes": 36039,
+      "sha256": "641afea98202f6845d1904737086fe50cb392296a185b816823d510e9b8e962d",
+      "target": "apps/guest-web/bsv1/site/cocktail/assets/style.css",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "site/cocktail/data/menu-public.json",
+      "bytes": 87473,
+      "sha256": "ca7d6a12ff62c91e31fa98f9fb98bf88767fc1b50d5ef4d08b653a7f4c6e7faf",
+      "target": "apps/guest-web/bsv1/site/cocktail/data/menu-public.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "site/cocktail/index.html",
+      "bytes": 8127,
+      "sha256": "e981c3fadbc5c3be7ee4280244ad4a0ac8288fc7a64d30fb710f66d4c72fa81a",
+      "target": "apps/guest-web/bsv1/site/cocktail/index.html",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "site/edgeone.json",
+      "bytes": 804,
+      "sha256": "381c27b1d1bd54182af31ddc4100dcd2a6fc612c8128f9a955136fc6880e1781",
+      "target": "apps/guest-web/bsv1/site/edgeone.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "site/entry-redirect.js",
+      "bytes": 457,
+      "sha256": "20a7de552b64917f12905d8e33ab4284c3cc17c822f211855a0d382273a0780a",
+      "target": "apps/guest-web/bsv1/site/entry-redirect.js",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "site/index.html",
+      "bytes": 667,
+      "sha256": "22a6584fecc2be739c4aa98ca04b3c8ddeb56b9b1d2ac766d3a2381b06d546ce",
+      "target": "apps/guest-web/bsv1/site/index.html",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "tests/browser_smoke.py",
+      "bytes": 2762,
+      "sha256": "d1794182bd0da26b36b6deb9a2161878eb08422ca6ba37085b65bf2f12be8cc1",
+      "target": "tests/menu-v13-1/browser_smoke.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/compare_v12_db_export.py",
+      "bytes": 1357,
+      "sha256": "04b6d1b00644478af5cb47799f4302a308ec8fd95c265779b3587b4dc69d8052",
+      "target": "tests/menu-v13-1/compare_v12_db_export.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_maintenance.py",
+      "bytes": 2033,
+      "sha256": "44628f285b7e654b46896913f130fe53376083f795e6dc5e65aba30e63ff8152",
+      "target": "tests/menu-v13-1/test_maintenance.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_runtime.js",
+      "bytes": 2271,
+      "sha256": "0bb9d2fb83df29a296fdeace912b8e9b3ddab4b2af188265572bf5ab0dafc911",
+      "target": "tests/menu-v13-1/test_runtime.js",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/verify_manifest.py",
+      "bytes": 650,
+      "sha256": "f2962df685c39994d64cd1fd0b114f145d615a1ca25a071832e0dc3ef6c1660a",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "tests/verify_release.py",
+      "bytes": 3541,
+      "sha256": "b1bb5cd84f7fda1dd60e3ed02cbbb6eb96aeae879bcd28cabb4d9d90532c4470",
+      "target": null,
+      "status": "SOURCE_ONLY"
+    }
+  ]
+}

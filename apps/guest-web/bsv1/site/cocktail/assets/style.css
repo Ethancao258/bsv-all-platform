@@ -1,0 +1,330 @@
+/**
+ * BAR ST. VINCENT｜顾客菜单样式 V12
+ * 维护索引：顶部 :root 为颜色；页面整体布局与卡片在基础段落；
+ * 最末 [MOTION_V11_NO_GHOST] 是本版栏目过渡、分类选中、微交互；
+ * prefers-reduced-motion 会关掉所有非必要移动。
+ * 不要将未经核准的酒品“实拍图”用AI酒柜/虚构装修图替代。
+ */
+:root{color-scheme:dark;--bg:#171411;--bg2:#1e1915;--surface:#231d18;--surface2:#2d241c;--ink:#f2e7d6;--muted:#c5b6a1;--subtle:#998977;--gold:#cbb077;--line:#554534;--lineSoft:#3d3227;--veil:rgba(7,5,3,.80);--danger:#efd5b1;--shadow:0 12px 26px rgba(0,0,0,.17)}
+html[data-theme=light]{color-scheme:light;--bg:#f6f1e7;--bg2:#efe7da;--surface:#fffaf2;--surface2:#ede4d7;--ink:#3e3028;--muted:#635348;--subtle:#76675a;--gold:#82662f;--line:#cbbca8;--lineSoft:#dbccbb;--veil:rgba(25,18,10,.55);--danger:#7d4326;--shadow:0 12px 26px rgba(71,50,29,.06)}
+*{box-sizing:border-box}html,body{margin:0;min-width:320px;height:100%;background:var(--bg);color:var(--ink)}html{font-size:16px}body{font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button{cursor:pointer;touch-action:manipulation}button,select,input{accent-color:var(--gold)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:3px}button:disabled{cursor:not-allowed;opacity:.55}svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}h1,h2,h3,p{margin:0}#shell{position:relative;isolation:isolate;width:min(100%,560px);height:100dvh;min-height:480px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;background:radial-gradient(ellipse at 91% 0%,rgba(175,123,46,.07),transparent 28%),var(--bg);box-shadow:0 0 75px rgba(0,0,0,.18)}.aura{position:absolute;z-index:0;pointer-events:none;width:320px;height:320px;right:-172px;top:29%;background:var(--gold);opacity:.028;mask:url('./bsv-mark.webp') center/contain no-repeat;-webkit-mask:url('./bsv-mark.webp') center/contain no-repeat;transform:translateY(var(--auraY,0px));transition:transform .18s linear}.header,.categories,.content,.footbar{position:relative;z-index:1}.header{padding:15px 18px 12px;border-bottom:1px solid var(--lineSoft);flex-shrink:0;background:var(--bg)}.brandrow{display:flex;justify-content:space-between;align-items:center;gap:8px}.brandidentity{display:flex;align-items:center;min-width:0;gap:10px}.brandmark{width:30px;height:30px;object-fit:contain}.brandtext{min-width:0}.brandname{font:13px/1.15 Georgia,"Times New Roman",serif;letter-spacing:.145em;color:var(--gold);white-space:nowrap}.branddesc{font-size:10px;letter-spacing:.05em;color:var(--muted);margin-top:3px}.header-actions{display:flex;gap:6px;flex-shrink:0}.round-btn{height:42px;min-width:42px;display:grid;place-items:center;position:relative;border-radius:50%;background:transparent;border:1px solid var(--line);color:var(--ink);font-size:12px}.round-btn svg{width:19px;height:19px}.count{position:absolute;min-width:18px;height:18px;line-height:18px;border-radius:20px;background:var(--gold);color:var(--bg);font-size:10px;font-weight:700;right:-4px;top:-4px}.count[hidden]{display:none}.searchrow{display:flex;align-items:stretch;gap:9px;margin-top:13px;height:42px}.storefield,.searchfield{display:flex;align-items:center;min-width:0;border:1px solid var(--line);border-radius:22px;background:var(--surface);padding:0 11px;gap:7px}.storefield{flex:1 1 48%}.searchfield{flex:1 1 50%}.storefield svg,.searchfield svg{width:16px;height:16px;flex:0 0 auto;color:var(--gold)}select,input{min-width:0;width:100%;border:0;outline:0;background:transparent;color:var(--ink);font-size:12px}.storefield select{cursor:pointer;text-overflow:ellipsis}.storefield option{background:var(--surface);color:var(--ink)}.searchfield:focus-within,.storefield:focus-within{border-color:var(--gold)}input::placeholder{color:var(--subtle)}input::-webkit-search-cancel-button{cursor:pointer}.categories{display:flex;flex-shrink:0;gap:8px;padding:10px 16px 10px;overflow-x:auto;scrollbar-width:none;background:var(--bg);border-bottom:1px solid var(--lineSoft)}.categories::-webkit-scrollbar,.flavors::-webkit-scrollbar{display:none}.cat-btn{border:1px solid var(--line);color:var(--muted);background:var(--surface);border-radius:26px;padding:8px 13px;min-height:39px;white-space:nowrap;font-size:12px;flex:0 0 auto}.cat-btn.active{background:var(--gold);color:var(--bg);border-color:var(--gold);font-weight:680}.content{flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent;overscroll-behavior-y:contain}.inner{padding:0 18px 22px}.intro{padding-top:22px;padding-bottom:9px}.micro{font:italic 12px Georgia,serif;color:var(--gold);letter-spacing:.065em}.intro h1,.page-head h1{font:500 28px/1.36 "Songti SC","Noto Serif CJK SC","STSong",serif;letter-spacing:.035em;margin-top:5px}.intro p{font-size:12px;color:var(--muted);margin-top:5px}.notice{display:flex;align-items:start;gap:9px;font-size:11px;line-height:1.65;color:var(--muted);padding:11px 12px;border:1px solid var(--lineSoft);border-radius:10px;background:var(--surface);margin:12px 0 15px}.notice-icon{color:var(--gold);font:italic 16px Georgia,serif;line-height:1.2}.sec{padding:17px 0 7px;scroll-margin-top:70px}.sechead{display:flex;justify-content:space-between;align-items:end;gap:10px}.sechead h2{font:500 23px/1.3 "Songti SC","Noto Serif CJK SC","STSong",serif}.secenglish{font:italic 12px Georgia,serif;letter-spacing:.04em;color:var(--gold);margin-top:4px}.sectotal{font:12px Georgia,serif;white-space:nowrap;color:var(--subtle)}.goldline{height:1px;background:linear-gradient(to right,var(--gold),rgba(203,176,119,.12) 75%,transparent);margin:12px 0 13px;opacity:.72}.flavors{display:flex;gap:7px;overflow-x:auto;padding:2px 0 11px;scrollbar-width:none}.chip{border-radius:19px;border:1px solid var(--line);background:transparent;color:var(--muted);white-space:nowrap;padding:7px 12px;min-height:34px;font-size:11px}.chip.selected{background:var(--surface2);border-color:var(--gold);color:var(--gold)}.item{width:100%;display:flex;gap:12px;align-items:center;text-align:left;color:var(--ink);border:1px solid var(--lineSoft);background:linear-gradient(110deg,var(--surface),var(--surface) 70%,var(--bg2));border-radius:13px;min-height:95px;padding:15px 12px;margin-bottom:9px;transition:border-color .15s,transform .15s}.item:hover{border-color:var(--gold)}.item:active{transform:scale(.992)}.item-copy{flex:1;min-width:0}.item-title{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.item-title strong{font-size:16px;line-height:1.3;font-weight:610;overflow-wrap:anywhere}.item-label{border:1px solid var(--line);border-radius:20px;font-size:10px;padding:2px 7px;color:var(--gold);white-space:nowrap}.item-en{font:italic 12px/1.3 Georgia,serif;color:var(--muted);margin-top:4px}.item-flavor{font-size:12px;line-height:1.55;color:var(--muted);margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.item-side{text-align:right;min-width:77px;flex:0 0 77px}.item-price{font-size:17px;font-weight:620;white-space:nowrap;line-height:1.2}.item-price.pending{font-size:12px;font-weight:500;color:var(--muted)}.item-side small{display:block;margin-top:7px;color:var(--subtle);font-size:10px}.item-arrow{font-size:18px;color:var(--gold);line-height:1;margin-top:8px}.empty{border:1px dashed var(--line);padding:19px 15px;color:var(--muted);font-size:13px;line-height:1.8;border-radius:12px;background:var(--surface)}.empty button{color:var(--gold);background:none;border:0;text-decoration:underline;padding:8px 0}.legalfoot{font-size:11px;color:var(--subtle);text-align:center;line-height:2;margin:24px 0 4px;border-top:1px solid var(--lineSoft);padding-top:20px}.legalfoot b{font-weight:500;color:var(--muted)}.footbar{background:linear-gradient(180deg,var(--surface),var(--bg));border-top:1px solid var(--line);flex-shrink:0;min-height:69px;display:grid;grid-template-columns:1fr 88px 1fr;align-items:center;padding:8px 23px calc(7px + env(safe-area-inset-bottom));box-shadow:0 -7px 30px rgba(0,0,0,.1)}.nav-btn{color:var(--muted);background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;font-size:11px;justify-content:center}.nav-btn.active{color:var(--gold)}.nav-btn svg{width:19px;height:19px}.search-orb{width:53px;height:53px;display:grid;place-items:center;border:1px solid var(--gold);border-radius:50%;margin:-17px auto 0;color:var(--gold);background:var(--surface2);box-shadow:0 4px 19px rgba(0,0,0,.2)}.search-orb svg{width:22px;height:22px}.page-head{padding:27px 0 12px}.page-head>p{color:var(--muted);font-size:13px;margin-top:7px}.question{margin-top:20px}.question h3{font-size:13px;font-weight:530;color:var(--gold);margin-bottom:11px}.question .choices{display:flex;flex-wrap:wrap;gap:8px}.answer{border:1px solid var(--line);color:var(--muted);background:var(--surface);border-radius:22px;min-height:42px;padding:9px 13px;font-size:12px}.answer.on{border-color:var(--gold);color:var(--gold);background:var(--surface2)}.recommend-results{margin-top:28px}.reco-note{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:14px}.layer{position:fixed;z-index:50;inset:0;background:var(--veil);display:flex;justify-content:center;align-items:flex-end}.sheet{width:min(100%,560px);height:auto;max-height:92dvh;overflow:hidden;border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;background:var(--bg);box-shadow:0 10px 75px rgba(0,0,0,.4);display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}.sheet-handle{width:45px;height:4px;border-radius:8px;background:var(--line);margin:10px auto 0}.sheethead{display:flex;align-items:start;justify-content:space-between;gap:10px;padding:15px 20px 13px;flex-shrink:0}.sheethead .eyebrow{font:italic 12px Georgia,serif;color:var(--gold)}.sheethead h2{font:500 26px/1.3 "Songti SC","STSong",serif;margin-top:5px;overflow-wrap:anywhere}.close{height:40px;width:40px;border-radius:50%;background:var(--surface);color:var(--ink);border:1px solid var(--line);display:grid;place-items:center;flex-shrink:0;font-size:24px}.sheetbody{overflow:auto;min-height:0;padding:0 20px 16px;flex:1}.detail-en{font:italic 14px Georgia,serif;color:var(--muted)}.detail-image{height:138px;display:flex;align-items:center;justify-content:center;position:relative;border:1px solid var(--lineSoft);border-radius:14px;overflow:hidden;background:radial-gradient(circle at 30% 30%,rgba(203,176,119,.13),transparent 45%),linear-gradient(125deg,var(--surface),var(--bg2));margin:14px 0}.detail-image:before,.detail-image:after{content:"";position:absolute;border:1px solid var(--line);width:100px;height:100px;border-radius:50%;opacity:.65}.detail-image:before{transform:translate(-26px,12px)}.detail-image:after{transform:translate(28px,-9px)}.detail-image .symbol{z-index:1;font:italic 46px Georgia,serif;color:var(--gold);opacity:.64}.detail-image img{width:100%;height:100%;object-fit:contain;z-index:2}.detail-image-note{position:absolute;z-index:3;bottom:9px;right:11px;font-size:10px;color:var(--subtle);letter-spacing:.06em}.detail-tags{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 13px}.detail-tag{font-size:11px;border:1px solid var(--line);border-radius:24px;color:var(--gold);padding:4px 10px}.detail-section{border-top:1px solid var(--lineSoft);padding:16px 0}.detail-section h3{font-size:12px;font-weight:570;color:var(--gold);margin-bottom:7px}.detail-section p{white-space:pre-line;font-size:13px;color:var(--muted);line-height:1.75}.detail-price{display:flex;align-items:center;justify-content:space-between;gap:12px}.detail-price strong{font-size:19px}.detail-price span{color:var(--subtle);font-size:12px}.sheetfoot{flex-shrink:0;border-top:1px solid var(--line);padding:12px 20px 11px;background:var(--bg)}.primary-btn,.secondary-btn{width:100%;min-height:47px;border-radius:12px;border:1px solid var(--gold);background:var(--gold);color:var(--bg);font-weight:620}.secondary-btn{background:transparent;color:var(--gold);margin-top:8px}.sheet-hint{font-size:11px;color:var(--muted);text-align:center;line-height:1.65;margin-top:9px}.cart-line{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--lineSoft);padding:13px 0}.cartcopy{flex:1;min-width:0}.cartcopy strong{font-size:15px}.cartcopy small{display:block;margin-top:3px;color:var(--muted);font-size:11px}.qty{display:flex;align-items:center;gap:10px}.qty button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink)}.qty strong{min-width:20px;text-align:center;font-size:13px}.basket-note{margin-top:12px;background:var(--surface);border:1px solid var(--lineSoft);border-radius:12px;padding:12px;color:var(--muted);font-size:12px;line-height:1.8}.receipt-heading{border-left:2px solid var(--gold);padding:10px 12px;color:var(--ink);background:var(--surface);margin:10px 0 14px;font-size:13px}.toast{position:fixed;z-index:70;top:16px;left:50%;transform:translateX(-50%);max-width:calc(100% - 30px);background:var(--gold);color:var(--bg);border-radius:12px;padding:10px 18px;box-shadow:var(--shadow);font-size:13px;text-align:center}.toast[hidden]{display:none}.noscript{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center}.loading{color:var(--muted);padding:32px 20px;font-size:13px;text-align:center}@media(max-width:350px){.header{padding:12px 13px 10px}.brandname{font-size:11px}.header-actions{gap:4px}.round-btn{min-width:38px;height:38px}.brandidentity{gap:7px}.inner{padding:0 14px 22px}.item{padding:12px 10px}.item-side{min-width:66px;flex-basis:66px}.item-title strong{font-size:15px}.categories{padding-left:13px}.storefield,.searchfield{padding:0 8px}}
+@media(min-width:630px){body{background:radial-gradient(ellipse at 50% 3%,#30271f,#15110e 70%)}html[data-theme=light] body{background:#ede6dc}#shell{height:min(945px,96dvh);margin:max(2dvh,8px) auto;border:1px solid var(--line);border-radius:20px;box-shadow:0 18px 76px rgba(0,0,0,.26)}.layer{align-items:center}.sheet{border-radius:19px;border:1px solid var(--line);max-height:90dvh}.sheet-handle{display:none}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* Public menu: keep primary products above the fold and hide recommendations-only navigation */
+.categories[hidden]{display:none}.notice{margin:12px 0 3px}.sec:first-of-type{padding-top:12px}
+/* V8 guest experience · restrained, readable, warm */
+:root{--auraY:0px}
+.notice{background:transparent;border-color:var(--lineSoft);padding:9px 12px;margin:10px 0 4px;font-size:12px}
+.notice-icon{font-size:14px;color:var(--gold);flex:none}
+.item{min-height:91px}
+.item.bundle-item{border-color:var(--line);background:linear-gradient(125deg,var(--surface),var(--surface2))}
+.section-note{font-size:12px;color:var(--muted);line-height:1.7;margin:0 0 12px}
+.price-breakdown{padding:4px 0;display:grid;gap:9px}
+.price-line{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:var(--muted)}
+.price-line strong{font-size:18px;color:var(--ink);font-weight:620}
+.fine-print,.subtle-footnote{font-size:11px!important;color:var(--subtle)!important;line-height:1.7;margin-top:10px!important}
+.coming-note{border:1px solid var(--line);border-radius:12px;color:var(--ink);background:var(--surface);font-size:13px;padding:12px;text-align:center;line-height:1.65}
+.cart-total{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:18px 0 0;color:var(--muted);font-size:13px}
+.cart-total strong{color:var(--ink);font-size:21px}
+.store-in-cart{font-weight:600;color:var(--ink);margin-top:6px}
+.rec-progress{min-height:254px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:15px;border-radius:15px;border:1px solid var(--lineSoft);background:linear-gradient(140deg,var(--surface),var(--bg2));margin-top:10px}
+.rec-progress p{font:500 13px/1.5 "Songti SC","STSong",serif;color:var(--muted);letter-spacing:.06em}
+.rec-loader{display:flex;justify-content:center;align-items:center;gap:8px;height:52px}
+.rec-loader span{width:11px;height:11px;background:var(--gold);border:1px solid var(--line);border-radius:50%;opacity:.3;animation:bsvglow 1.1s ease-in-out infinite}
+.rec-loader span:nth-child(2){animation-delay:.16s}
+.rec-loader span:nth-child(3){animation-delay:.32s}
+@keyframes bsvglow{0%,70%,100%{transform:translateY(0);opacity:.28}35%{transform:translateY(-9px);opacity:.92}}
+.rec-reveal{animation:bsvRise .38s ease-out}
+@keyframes bsvRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.refresh-reco{display:block;margin:15px auto 7px;padding:11px 22px;min-height:44px;border:1px solid var(--gold);background:transparent;color:var(--gold);border-radius:24px;font-size:13px}
+.refresh-reco:hover{background:var(--surface2)}
+@media(prefers-reduced-motion:reduce){.rec-loader span,.rec-reveal{animation:none!important}.rec-loader span{opacity:.6}}
+.lead-price{background:var(--surface);border:1px solid var(--lineSoft)!important;border-radius:11px;padding:12px 14px;margin:9px 0 13px}
+.lead-price .detail-price strong{font-size:23px}
+.lead-price .price-line strong{font-size:19px}
+
+
+/* ============================================================
+   BSV customer menu V9 · scroll-signature and refined visual system
+   Source brand geometry: assets/bsv-mark.webp, not a generated mark.
+   ============================================================ */
+:root{--ease-velvet:cubic-bezier(.22,1,.36,1);--scroll-progress:0;--scroll-turn:0deg;--ambient-turn:0deg}
+#shell{background:radial-gradient(ellipse 85% 33% at 98% 0%,rgba(194,164,108,.065),transparent 74%),radial-gradient(ellipse 70% 34% at 0% 100%,rgba(123,81,43,.035),transparent 70%),var(--bg)}
+#shell::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.18;background-image:repeating-linear-gradient(0deg,transparent 0,transparent 7px,rgba(206,179,132,.018) 8px),repeating-linear-gradient(90deg,transparent 0,transparent 6px,rgba(206,179,132,.012) 7px)}
+.aura{width:330px;height:330px;right:-178px;top:31%;opacity:.045;transform:translate3d(0,var(--auraY),0) rotate(var(--ambient-turn));transition:none;mask-image:url('./bsv-mark.webp');-webkit-mask-image:url('./bsv-mark.webp');background:var(--gold)}
+html[data-theme=light] .aura{opacity:.035}
+.scroll-sigil{position:absolute;z-index:4;right:-26px;top:45%;width:70px;height:158px;display:flex;align-items:center;flex-direction:column;pointer-events:none;opacity:.41;transform:translateY(-50%)}
+.scroll-sigil-halo{width:70px;height:70px;display:grid;place-items:center;border:1px solid rgba(203,176,119,.34);border-radius:50%;background:radial-gradient(circle at center,rgba(203,176,119,.045),transparent 68%)}
+.scroll-sigil-halo::after{content:"";position:absolute;top:6px;left:6px;width:58px;height:58px;border-radius:50%;border:1px dotted rgba(203,176,119,.26)}
+.scroll-sigil-mark{display:block;object-fit:contain;opacity:.85;transform:rotate(var(--scroll-turn));transform-origin:50% 50%;backface-visibility:hidden}
+.scroll-sigil-rail{margin-top:13px;height:66px;width:1px;position:relative;background:var(--line);overflow:hidden}
+.scroll-sigil-fill{position:absolute;inset:0;background:var(--gold);transform:scaleY(var(--scroll-progress));transform-origin:top}
+html[data-theme=light] .scroll-sigil{opacity:.30}
+.brandmark{transform-origin:50% 50%;animation:bsv-enter-mark .58s var(--ease-velvet) both}
+@keyframes bsv-enter-mark{from{opacity:.3;transform:scale(.89) rotate(-8deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+.brandname{letter-spacing:.175em}
+.branddesc{letter-spacing:.075em}
+.header{box-shadow:0 4px 18px rgba(10,7,4,.055)}
+.cat-btn{transition:background-color .22s,border-color .22s,color .22s,transform .22s var(--ease-velvet)}
+.cat-btn:active{transform:scale(.955)}
+.item{position:relative;border-radius:14px;overflow:hidden;box-shadow:inset 0 1px 0 rgba(245,219,180,.026);transition:border-color .24s var(--ease-velvet),background .24s,transform .24s var(--ease-velvet),box-shadow .24s}
+.item::before{content:"";position:absolute;top:0;bottom:0;left:0;width:2px;background:var(--gold);opacity:0;transition:opacity .23s}
+.item:hover::before,.item:focus-visible::before{opacity:.75}
+.item:hover,.item:focus-visible{border-color:rgba(203,176,119,.70);box-shadow:0 7px 26px rgba(0,0,0,.085)}
+.item:active{transform:scale(.993)}
+.item-title strong{letter-spacing:.012em}
+.item-price{font-variant-numeric:tabular-nums;letter-spacing:.015em}
+.item-label{border-color:rgba(203,176,119,.32)}
+.goldline{background:linear-gradient(90deg,var(--gold) 0%,rgba(203,176,119,.26) 55%,transparent 100%)}
+.sechead h2,.page-head h1,.sheethead h2{font-feature-settings:'kern' 1}
+.search-orb{position:relative;isolation:isolate;transition:transform .22s var(--ease-velvet),background .25s,box-shadow .25s}
+.search-orb::after{content:"";position:absolute;inset:-5px;border:1px solid rgba(203,176,119,.22);border-radius:50%;pointer-events:none}
+.search-orb:active{transform:scale(.94)}
+.round-btn{transition:background .2s,border-color .2s,transform .22s var(--ease-velvet)}
+.round-btn:active{transform:scale(.93)}
+.footbar{box-shadow:0 -6px 24px rgba(0,0,0,.09)}
+.nav-btn.active{color:var(--gold)}
+.nav-btn.active svg{stroke-width:2}
+/* The brand seal takes the place of decorative/fake product visuals; real photo remains superior. */
+.detail-image{height:144px;border-radius:15px;background:radial-gradient(ellipse at 50% 43%,rgba(203,176,119,.10),transparent 50%),repeating-linear-gradient(135deg,transparent 0,transparent 17px,rgba(203,176,119,.014) 18px),var(--surface)}
+.detail-image::before,.detail-image::after{display:none}
+.detail-monogram{width:104px;height:104px;display:block;background:var(--gold);mask:url('./bsv-mark.webp') center/contain no-repeat;-webkit-mask:url('./bsv-mark.webp') center/contain no-repeat;opacity:.32}
+.detail-brand{position:absolute;bottom:13px;font:10px Georgia,serif;color:var(--gold);letter-spacing:.21em;opacity:.72}
+/* Modal backdrop appears immediately; the sheet remains fully opaque throughout entry.
+   Prevents underlying menu text showing through a semi-transparent entering dialog. */
+.layer{animation:none}
+.sheet{animation:bsv-sheet-in .24s var(--ease-velvet) both}
+@keyframes bsv-sheet-in{from{transform:translate3d(0,12px,0)}to{transform:translate3d(0,0,0)}}
+.primary-btn{transition:transform .2s var(--ease-velvet),filter .2s}
+.primary-btn:active{transform:scale(.987)}
+/* Recommendation ritual: 1.5s, brand-led and finite, never a fake progress computation. */
+.rec-progress{min-height:262px;position:relative;gap:8px;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,rgba(203,176,119,.08),transparent 55%),linear-gradient(145deg,var(--surface),var(--bg2));border-color:rgba(203,176,119,.28)}
+.rec-progress::before{content:"";position:absolute;inset:12px;border:1px solid rgba(203,176,119,.10);border-radius:10px;pointer-events:none}
+.rec-ritual{height:144px;width:144px;display:grid;place-items:center;position:relative;margin:-2px auto 1px}
+.rec-ring{position:absolute;display:block;border-radius:50%;pointer-events:none}
+.rec-ring-outer{width:142px;height:142px;border:1px solid rgba(203,176,119,.27);border-top-color:rgba(203,176,119,.81);border-bottom-color:rgba(203,176,119,.55);animation:bsv-ritual-turn 1.5s linear both}
+.rec-ring-inner{width:116px;height:116px;border:1px solid rgba(203,176,119,.21);border-left-color:rgba(203,176,119,.7);animation:bsv-ritual-counter 1.5s linear both}
+.rec-ring-outer::before,.rec-ring-outer::after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;background:var(--gold);top:14px;left:18px;box-shadow:0 0 9px rgba(203,176,119,.3)}
+.rec-ring-outer::after{top:auto;left:auto;bottom:14px;right:18px;width:3px;height:3px;opacity:.55}
+.rec-ritual-core{height:91px;width:91px;display:grid;place-items:center;background:radial-gradient(circle,rgba(203,176,119,.09),transparent 72%);border-radius:50%;animation:bsv-ritual-pulse 1.5s ease-in-out both}
+.rec-ritual-core img{display:block;object-fit:contain;width:79px;height:79px;opacity:.91;filter:none}
+.rec-ritual-star{position:absolute;font:18px Georgia,serif;color:var(--gold);opacity:.42}
+.rec-ritual-star-a{left:0;top:22px}.rec-ritual-star-b{right:-2px;bottom:27px;font-size:13px}
+.rec-progress p{font:500 13px/1.5 'Songti SC','STSong',serif;letter-spacing:.065em;color:var(--ink);margin-top:4px}
+.rec-small{font:9px/1.2 Georgia,serif;letter-spacing:.24em;color:var(--subtle);margin-top:4px}
+.rec-progress-track{height:2px;width:122px;margin-top:8px;background:var(--lineSoft);border-radius:5px;overflow:hidden}
+.rec-progress-track>span{display:block;height:100%;background:linear-gradient(90deg,var(--gold),rgba(236,209,149,.8));transform-origin:left;animation:bsv-ritual-progress 1.5s linear both}
+@keyframes bsv-ritual-turn{to{transform:rotate(210deg)}}
+@keyframes bsv-ritual-counter{to{transform:rotate(-128deg)}}
+@keyframes bsv-ritual-pulse{0%{opacity:.5;transform:scale(.94)}40%{opacity:1;transform:scale(1.018)}100%{opacity:1;transform:scale(1)}}
+@keyframes bsv-ritual-progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.rec-reveal{animation:bsv-reveal-velvet .4s var(--ease-velvet) both}
+@keyframes bsv-reveal-velvet{from{opacity:0;transform:translate3d(0,9px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+.refresh-reco{transition:background .18s,border-color .18s,transform .2s var(--ease-velvet)}
+.refresh-reco:active{transform:scale(.97)}
+@media(max-width:350px){.scroll-sigil{right:-33px;opacity:.28}.rec-progress{min-height:246px}.detail-image{height:128px}}
+@media(min-width:630px){.scroll-sigil{right:-24px}.sheet{animation:bsv-sheet-in .24s var(--ease-velvet) both}}
+@media(prefers-reduced-motion:reduce){
+ .scroll-sigil{opacity:.16}.scroll-sigil-mark{transform:none!important}
+ .aura{transform:none!important}
+ .brandmark,.rec-reveal,.layer,.sheet,.rec-ritual-core,.rec-ring,.rec-progress-track>span{animation:none!important}
+ .rec-progress-track>span{transform:scaleX(1)!important}
+ .item,.cat-btn,.round-btn,.search-orb,.primary-btn,.refresh-reco{transition:none!important}
+}
+
+
+/* V9 search capsule: bottom-centered, quietly springing from the central search seal.
+   GPU-friendly opacity + transform; outside-tap dismissal and accessible reduced-motion. */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.search-popover{
+  position:absolute;z-index:12;left:50%;bottom:calc(82px + env(safe-area-inset-bottom) + var(--keyboard-lift,0px));
+  width:min(420px,calc(100% - 32px));min-height:60px;padding:7px 8px 7px 12px;
+  display:flex;align-items:center;gap:10px;isolation:isolate;
+  background:linear-gradient(125deg,var(--surface2) 0%,var(--surface) 100%);
+  color:var(--ink);border:1px solid rgba(203,176,119,.66);border-radius:999px;
+  box-shadow:0 17px 52px rgba(0,0,0,.34),0 0 0 5px rgba(203,176,119,.035),inset 0 1px 0 rgba(246,223,175,.09);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transform:translate3d(-50%,15px,0) scale(.93);
+  transform-origin:50% 100%;
+  transition:opacity .25s ease,transform .40s cubic-bezier(.17,1.18,.32,1),visibility 0s linear .40s;
+}
+.search-popover.open{opacity:1;visibility:visible;pointer-events:auto;transform:translate3d(-50%,0,0) scale(1);transition:opacity .22s ease,transform .43s cubic-bezier(.18,1.15,.34,1),visibility 0s}
+.search-popover::after{content:"";position:absolute;z-index:-1;left:calc(50% - 7px);bottom:-7px;width:12px;height:12px;transform:rotate(45deg);background:var(--surface);border-bottom:1px solid rgba(203,176,119,.66);border-right:1px solid rgba(203,176,119,.66)}
+.search-popover-mark{display:block;width:3px;height:27px;background:linear-gradient(180deg,transparent,var(--gold),transparent);border-radius:6px;opacity:.85;flex-shrink:0}
+.search-popover-icon{color:var(--gold);width:19px;height:19px;flex:0 0 auto}
+.search-popover input{font-size:16px!important;line-height:24px;min-width:0;min-height:42px;flex:1;border:0!important;outline:none!important;outline-offset:0!important;padding:4px 1px;background:transparent;color:var(--ink);box-shadow:none!important}
+.search-popover input::placeholder{color:var(--muted);opacity:.86;letter-spacing:.012em}
+.search-popover button{width:36px;height:36px;flex:0 0 36px;border:0;border-radius:50%;color:var(--muted);background:transparent;display:grid;place-items:center;padding:0}
+.search-popover button:hover,.search-popover button:focus-visible{background:rgba(203,176,119,.11);color:var(--gold)}
+.search-popover button svg{width:16px;height:16px;stroke-width:1.5}
+.search-popover button[hidden]{display:none!important}
+.search-popover-close{border-left:1px solid var(--lineSoft)!important;border-radius:0!important;width:34px!important;flex-basis:34px!important}
+.search-orb[aria-expanded="true"]{background:var(--gold);color:var(--bg);box-shadow:0 0 0 4px rgba(203,176,119,.10),0 8px 26px rgba(0,0,0,.23)}
+.search-orb[aria-expanded="true"] svg{stroke-width:2}
+@media(max-width:350px){.search-popover{width:calc(100% - 22px);gap:7px;padding-left:10px}.search-popover .search-popover-close{width:30px!important;flex-basis:30px!important}}
+@media(prefers-reduced-motion:reduce){.search-popover,.search-popover.open{transition:opacity .12s ease,visibility 0s!important;transform:translate3d(-50%,0,0)!important}}
+
+.search-popover input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;display:none}
+.search-popover input::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
+
+
+/* ===========================================================
+ * [MOTION_V11_NO_GHOST]
+ * 分类切换仅对新的 .inner 做透明度淡入；app.js 不再使用
+ * document.startViewTransition / 浏览器旧新画面截图混合，避免文字双影。
+ * 唯一可改参数：--bsv-menu-enter；推荐 150~190ms。
+ * 分类按钮状态是独立的颜色过渡；不改变用户阅读位置。
+ * =========================================================== */
+:root{--bsv-menu-enter:170ms}
+.cat-btn{transition:background-color 165ms ease,border-color 165ms ease,color 165ms ease,box-shadow 165ms ease}
+.cat-btn.active{box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.chip,.answer{transition:color 170ms ease,background-color 170ms ease,border-color 170ms ease,box-shadow 170ms ease}
+.item{transition:border-color 180ms ease,background-color 180ms ease,box-shadow 180ms ease}
+.item:focus-visible{border-color:var(--gold);box-shadow:0 0 0 2px rgba(203,176,119,.20)}
+.legalfoot{letter-spacing:.012em}
+/* 窄屏／刘海屏：弹窗顶部与底部留出安全区，内部正文独立滚动。 */
+@media(max-width:629px){
+ .sheet{max-height:calc(100dvh - env(safe-area-inset-top,0px) - 8px)}
+ .sheetfoot{padding-bottom:max(12px,calc(env(safe-area-inset-bottom,0px) + 10px))}
+}
+@media(prefers-reduced-motion:reduce){.cat-btn,.chip,.answer,.item{transition:none!important}}
+
+
+/* ========================================================================
+ * [V12_FIXED_APP_VIEWPORT] 唯一滚动区布局 · 先看这里再调高度
+ * ------------------------------------------------------------------------
+ * 设计约束：根文档和 #shell 无纵向滚动；header/categories/footer 固定在
+ * shell 的网格行；#content 是唯一的纵向商品滚动容器。
+ * iOS Safari/微信以及Android浏览器的浏览器栏高度会变化，所以使用 100dvh；
+ * 对只有视觉视口收缩的软键盘浏览器，由 app.js 临时覆写 --bsv-app-height。
+ * 不要改用 position:sticky，它依赖外层滚动而且会有抖动。
+ * 不要设置 #shell min-height；短屏会导致整个 body 反向滚动。
+ * ======================================================================== */
+html,body{
+  height:100%;
+  min-height:0;
+  max-height:100%;
+  overflow:hidden!important;
+  overscroll-behavior:none;
+  overscroll-behavior-y:none;
+}
+body{
+  position:fixed;
+  inset:0;
+  width:100%;
+  max-width:100%;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+/* 手机必须铺满可见高度，短屏也不能把底栏推出屏幕。 */
+#shell{
+  height:100vh;
+  height:100dvh;
+  height:var(--bsv-app-height,100dvh);
+  min-height:0;
+  max-height:100%;
+  margin:0 auto;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto auto minmax(0,1fr) auto;
+  overflow:hidden;
+  overscroll-behavior:none;
+  padding-top:env(safe-area-inset-top,0px);
+}
+/* 顶部品牌/门店区域固定，减小占高但不改变原有视觉语言。 */
+.header{
+  grid-row:1;
+  min-height:0;
+  flex-shrink:0;
+  padding:10px 14px 9px;
+  z-index:4;
+}
+.brandmark{width:28px;height:28px;flex-shrink:0}
+.brandname{font-size:12px;letter-spacing:.145em}
+.branddesc{font-size:10px;margin-top:2px}
+.round-btn{height:38px;min-width:38px}
+.searchrow{margin-top:9px;height:39px;gap:8px}
+.storefield,.searchfield{border-radius:21px}
+/* 分类自身允许左右滑动，但不向根文档传播任何滚动。 */
+.categories{
+  grid-row:2;
+  min-height:0;
+  max-height:65px;
+  flex-shrink:0;
+  padding:8px 14px 9px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  z-index:3;
+}
+.cat-btn{min-height:37px;padding:7px 12px}
+.categories[hidden]{display:none!important}
+/* [V12_ONLY_SCROLL_AREA] 唯一纵向滚动区，滚动到头也不传递给外层。 */
+#content{
+  grid-row:3;
+  display:block;
+  min-width:0;
+  min-height:0;
+  max-height:100%;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  contain:layout;
+  scrollbar-gutter:stable;
+}
+/* 列表上下留白只在自己的滚动区内，不会撑大整页。 */
+#content .inner{padding-bottom:max(24px,env(safe-area-inset-bottom,0px))}
+/* [V12_FIXED_DOCK] 底栏不依赖页面滚动，吸附安全区内侧。 */
+.footbar{
+  grid-row:4;
+  min-height:64px;
+  width:100%;
+  flex-shrink:0;
+  z-index:5;
+  padding:6px 20px max(8px,env(safe-area-inset-bottom,0px));
+  grid-template-columns:minmax(0,1fr) 80px minmax(0,1fr);
+  box-shadow:0 -5px 22px rgba(0,0,0,.09);
+}
+.nav-btn{min-height:45px}
+.search-orb{width:51px;height:51px;margin:-12px auto 0}
+/* 底部搜索气泡锚定固定底栏，软键盘出现时整个shell缩短，不再二次抬升。 */
+.search-popover{
+  bottom:calc(73px + env(safe-area-inset-bottom,0px));
+  max-width:calc(100% - 24px);
+  z-index:16;
+}
+/* 侧边徽章锚定屏幕内的中段，仅随 #content.scrollTop 转动而不位移。 */
+.scroll-sigil{top:50%}
+/* 隐藏优先于作者样式 display，解决“帮我选”页面仍占据分类栏高度的问题。 */
+[hidden]{display:none!important}
+/* Desktop: 在视口内居中，不让根页面多出1px滚动。 */
+@media(min-width:630px){
+  #shell{
+    height:min(945px,calc(100dvh - 16px));
+    max-height:calc(100dvh - 16px);
+    margin:8px auto;
+    padding-top:0;
+    border-radius:20px;
+  }
+  .footbar{padding-bottom:9px}
+  .search-popover{bottom:78px}
+}
+/* 小高屏手机仍能把商品和底栏完整放下。 */
+@media(max-height:620px) and (max-width:629px){
+ .header{padding:6px 12px 6px}
+ .round-btn{height:34px;min-width:34px}
+ .brandmark{width:26px;height:26px}
+ .searchrow{height:35px;margin-top:6px}
+ .categories{padding:5px 12px 6px}
+ .cat-btn{min-height:34px;padding:5px 11px}
+ .footbar{min-height:58px;padding-top:3px;padding-bottom:max(5px,env(safe-area-inset-bottom,0px))}
+ .search-orb{width:46px;height:46px;margin:-11px auto 0}
+ .search-popover{bottom:calc(68px + env(safe-area-inset-bottom,0px))}
+}
+/* 低运动偏好：不取消独立滚动，只取消额外非必要动效。 */
+@media(prefers-reduced-motion:reduce){
+ #content{scroll-behavior:auto!important}
+}

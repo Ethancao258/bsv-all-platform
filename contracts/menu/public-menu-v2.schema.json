@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "bsv.public-menu.v2",
+  "title": "BAR ST VINCENT published customer menu snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "stores",
+    "items",
+    "currency"
+  ],
+  "properties": {
+    "schema": {
+      "const": "bsv.public-menu.v2"
+    },
+    "source": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "catalog_version": {
+      "type": "string"
+    },
+    "currency": {
+      "const": "CNY"
+    },
+    "note": {
+      "type": "string"
+    },
+    "stores": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "store_id",
+          "name",
+          "menu_type"
+        ],
+        "properties": {
+          "store_id": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{4,12}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "menu_type": {
+            "enum": [
+              "cocktail",
+              "craft"
+            ]
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "product_id",
+          "kind",
+          "name",
+          "category",
+          "reference_price"
+        ],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "pattern": "^[CK][0-9]{6,}$"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "pattern": "^[CK][A-Z]{4}[0-9]{5}$"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "prepared",
+              "bundle"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name_en": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "series": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "flavor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "flavor_tag": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "story": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "alcohol": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "contents": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "store_variant": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reference_price": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "amount",
+                  "label"
+                ],
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMaximum": 1000000
+                  },
+                  "label": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          },
+          "reference_prices": {
+            "type": "null"
+          },
+          "price_by_store": {
+            "type": "object",
+            "maxProperties": 0
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "selectable": {
+            "type": "boolean"
+          },
+          "public_flavor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          }
+        }
+      }
+    }
+  }
+}

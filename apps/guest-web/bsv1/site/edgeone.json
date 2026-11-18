@@ -1,0 +1,41 @@
+{
+  "headers": [
+    {
+      "source": "/cocktail/data/menu-public.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0, must-revalidate"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/cocktail/assets/menu-config.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/cocktail/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "caches": [
+    {
+      "source": "/cocktail/data/menu-public.json",
+      "cacheTtl": 0
+    }
+  ]
+}
