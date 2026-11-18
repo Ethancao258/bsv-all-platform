@@ -58,3 +58,19 @@ jobs:
         run: python -m pip install -r services/api/supply/requirements.lock
       - name: Validate supply, inventory and quality integration
         run: bash tests/supply/check.sh
+  identity-r2:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked identity dependencies
+        run: python -m pip install -r services/api/identity/requirements.lock
+      - name: Identity, POS and supply integration
+        run: bash tests/identity/check.sh
+      - name: PostgreSQL 17 migration, concurrency, encrypted recovery
+        run: bash tests/identity/pg/check.sh

@@ -1,0 +1,14 @@
+# Candidate only. Set host, certificate and local port after checking existing services.
+server {
+    listen 443 ssl;
+    server_name identity-staging.example.invalid;
+    ssl_certificate /etc/bsv-identity/tls/fullchain.pem;
+    ssl_certificate_key /etc/bsv-identity/tls/privkey.pem;
+    allow 127.0.0.1;
+    deny all;
+    location / {
+        proxy_pass http://127.0.0.1:18765;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}

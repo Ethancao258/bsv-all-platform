@@ -1,0 +1,24 @@
+[Unit]
+Description=BSV ALL Identity private staging
+After=network-online.target
+
+[Service]
+Type=simple
+User=bsvidentity
+Group=bsvidentity
+WorkingDirectory=/srv/bsv/services/identity/current
+EnvironmentFile=/etc/bsv-identity/staging.env
+Environment=PATH=/srv/bsv/services/identity/venv/bin:/usr/bin:/bin
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStartPre=/bin/bash /srv/bsv/services/identity/current/platform/lighthouse/identity/launch.sh --dry-run
+ExecStart=/bin/bash /srv/bsv/services/identity/current/platform/lighthouse/identity/launch.sh
+Restart=on-failure
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/bsv/data/identity-staging
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

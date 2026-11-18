@@ -34,6 +34,7 @@
       "display_name": "员工与排班",
       "root_path": "domains/workforce",
       "entity_keys": [
+        "tr_code",
         "employee_id",
         "shift_id",
         "employment_id"
