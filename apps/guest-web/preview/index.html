@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BSV 菜单预览</title>
+<style>
+body {max-width: 38rem; margin: 4rem auto; padding: 0 1.5rem; color: #28352d; background: #fbf7ed; font: 1.1rem system-ui}
+h1 {font-family: serif; font-size: 2.8rem}
+li {margin: 1rem 0}
+a {color: #315646}
+nav {display:flex; gap:1.2rem}
+</style>
+<main>
+<h1>BSV 菜单预览</h1>
+<p>合成测试数据</p>
+<nav aria-label="菜单分类">
+<a href="?category=cocktail">鸡尾酒</a>
+<a href="?category=craft">精酿</a>
+<a href="?">全部</a>
+</nav>
+<ul id="menu" aria-live="polite"></ul>
+</main>
+<script type="module">
+const menu = document.querySelector("#menu");
+const category = new URLSearchParams(location.search).get("category");
+try {
+  const response = await fetch("./menu.json");
+  if (!response.ok) throw new Error("Menu unavailable");
+  const {items} = await response.json();
+  for (const item of items.filter(item => !category || item.category === category)) {
+    const line = document.createElement("li");
+    line.textContent = item.name + " · ¥" + (item.price_minor / 100).toFixed(2);
+    menu.append(line);
+  }
+  if (!menu.children.length) menu.textContent = "该分类暂无商品";
+} catch {
+  menu.textContent = "菜单暂时不可用";
+}
+</script>
+</html>

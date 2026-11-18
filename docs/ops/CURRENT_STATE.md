@@ -37,3 +37,11 @@
 - GitHub 集成及个人 CLI 均查询目标仓库返回 HTTP 404。建库和推送沿用现有本地历史，等待确认私有仓库及访问授权。GitHub Actions 及跨工具仓库访问均为 UNKNOWN。
 - 扫描了用户附件、资料区及现有工程。排除工具缓存、授权文件和本地构建副本。可用来源共 3 个：1 个 V2.0 ZIP、1 份 Markdown 引导、1 份 JSON 用例注册表。ZIP 内 106 个文件已在原始提交归档，后两份与已归档文件逐字节一致。未发现新增的 SOP、配方、菜单、教学原件、标签规范或旧 BSV1 程序。安全原因排除的业务来源为 0。
 - `ingestion/mappings/source-index.json` 记录来源与 SHA-256。`ingestion/pipelines/validate_import.py` 可对已审核的映射及权威只读快照做预检。实际批次、正式导入与生产数据库变更均为无。
+
+## 第三轮 · 合成数据预览
+
+- 用户确认目标 GitHub 仓库尚未创建。个人 CLI 重试创建私有仓库返回 HTTP 403，远端 SHA、Actions 与 ChatGPT 跨工具读取仍为 UNKNOWN。
+- 本地菜单预览、BSV1 点单草稿演练和 `GET /api/v1/menu` 已实现。HTTP 检查通过，菜单网页和 API 使用同一合成快照。运行 `python3 services/api/preview.py` 后，菜单位于 `http://127.0.0.1:8765/`，门店演练位于 `/store/`。原版 BSV1 程序未提供。
+- 导入预检已用合成数据核验正常映射、拒绝已导入 SHA、拒绝 ID 冲突及哈希不符。未执行正式导入。
+- EdgeOne 预览候选目录是 `apps/guest-web/preview`。GitHub 及 EdgeOne 项目访问尚未打通，云端预览 URL 为 UNKNOWN。Lighthouse 未部署。生产菜单、收款、员工认证和会员服务未变更。
+- CloudBase G0 仍待已授权会话，包括实际版本、表、主键及约束、RLS、迁移和备份恢复能力。数据库迁移版本为无。发布前可分别回退本轮资料索引与预览提交。

@@ -1,0 +1,7 @@
+{
+  "publication_id": "demo-menu-v1",
+  "items": [
+    {"product_id": "demo-citrus", "category": "cocktail", "name": "柑橘气泡", "price_minor": 2800},
+    {"product_id": "demo-malt", "category": "craft", "name": "麦芽气泡", "price_minor": 3200}
+  ]
+}
