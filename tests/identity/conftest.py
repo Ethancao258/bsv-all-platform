@@ -8,7 +8,15 @@ from fastapi.testclient import TestClient
 TEST_DIR=Path(tempfile.mkdtemp(prefix="bsv-identity-tests-"))
 os.environ["BSV_APP_ENV"]="isolated"
 os.environ["BSV_AUTH_PROVIDER"]="isolated"
-os.environ["BSV_DB_A_URL"]="sqlite+pysqlite:///"+str(TEST_DIR/"identity.db")
+client_pg_url = os.environ.get("BSV_DB_PREFLIGHT_CLIENT_URL")
+if client_pg_url:
+    from sqlalchemy.engine import make_url
+
+    address = make_url(client_pg_url)
+    if (address.drivername != "postgresql+psycopg" or address.host != "127.0.0.1"
+            or address.database != "bsv_identity_isolated_clients"):
+        raise RuntimeError("Use only the disposable preflight client database")
+os.environ["BSV_DB_A_URL"] = client_pg_url or "sqlite+pysqlite:///"+str(TEST_DIR/"identity.db")
 os.environ["BSV_DEMO_ADMIN_1_PASSWORD"]="synthetic-admin-password-one-2026"
 os.environ["BSV_DEMO_ADMIN_2_PASSWORD"]="synthetic-admin-password-two-2026"
 os.environ["BSV_SERVICE_TOKENS_JSON"]='{"pos":{"token":"synthetic-long-service-token-1111111111","actions":["pos.order.create"],"legal_entities":["DEMO_LEGAL"],"stores":["BSVT"]}}'

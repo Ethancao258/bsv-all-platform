@@ -39,3 +39,15 @@ exec docker exec -i -e PGHOST -e PGUSER -e PGDATABASE -e PGSSLMODE -e PGPORT=543
 SH
 chmod 700 "$tmp/bin/"*
 PATH="$tmp/bin:$PATH" python tests/identity/pg/check.py
+if [[ "${1:-}" == --with-apps ]]; then
+    docker exec "$name" createdb -U postgres bsv_identity_isolated_clients
+    export BSV_DB_PREFLIGHT_CLIENT_URL="postgresql+psycopg://postgres@127.0.0.1:$port/bsv_identity_isolated_clients"
+    BSV_DB_A_URL="$BSV_DB_PREFLIGHT_CLIENT_URL" python -m alembic -c platform/lighthouse/identity/alembic.ini upgrade head
+    python -m pytest -q -p no:cacheprovider tests/identity/test_consumers.py
+    python -m pytest -q -p no:cacheprovider tests/db_preflight
+    if [[ "${2:-}" == --update ]]; then
+        python tests/db_preflight/schema_dictionary.py --update
+    else
+        python tests/db_preflight/schema_dictionary.py
+    fi
+fi

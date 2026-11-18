@@ -1,0 +1,5203 @@
+{
+  "cloudbase": {
+    "status": "UNKNOWN_G0",
+    "tables": null
+  },
+  "postgres17_identity_isolated": {
+    "bsv_identity_audit_events": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "event_type",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "legal_entity_id",
+          "nullable": true,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "target_tr",
+          "nullable": true,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "actor_subject",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "occurred_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "effective_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "reason",
+          "nullable": false,
+          "type": "VARCHAR(500)"
+        },
+        {
+          "default": null,
+          "name": "details",
+          "nullable": false,
+          "type": "JSON"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "columns": [
+            "occurred_at"
+          ],
+          "name": "idx_audit_time",
+          "unique": false
+        },
+        {
+          "columns": [
+            "legal_entity_id"
+          ],
+          "name": "ix_bsv_identity_audit_events_legal_entity_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "target_tr"
+          ],
+          "name": "ix_bsv_identity_audit_events_target_tr",
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER bsv_identity_block_update_delete BEFORE DELETE OR UPDATE ON public.bsv_identity_audit_events FOR EACH ROW EXECUTE FUNCTION bsv_identity_reject_mutation()",
+          "name": "bsv_identity_block_update_delete"
+        }
+      ],
+      "unique": []
+    },
+    "bsv_identity_auth_links": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "auth_subject_id",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "provider",
+          "nullable": false,
+          "type": "VARCHAR(25)"
+        },
+        {
+          "default": null,
+          "name": "linked_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "revoked_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "auth_subject_id"
+          ],
+          "name": "bsv_identity_auth_links_auth_subject_id_key",
+          "unique": true
+        },
+        {
+          "columns": [
+            "tr_code"
+          ],
+          "name": "idx_authlink_tr",
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "auth_subject_id"
+        ]
+      ]
+    },
+    "bsv_identity_auth_recovery_requests": {
+      "checks": [
+        "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying]::text[])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "legal_entity_id",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "new_auth_subject_id",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "previous_auth_subject_id",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "evidence_ref",
+          "nullable": false,
+          "type": "VARCHAR(160)"
+        },
+        {
+          "default": null,
+          "name": "requested_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(15)"
+        },
+        {
+          "default": null,
+          "name": "approved_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "approved_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "bsv_identity_auth_sessions": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "token_hash",
+          "nullable": false,
+          "type": "VARCHAR(64)"
+        },
+        {
+          "default": null,
+          "name": "subject",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "csrf_hash",
+          "nullable": false,
+          "type": "VARCHAR(64)"
+        },
+        {
+          "default": null,
+          "name": "issued_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "revoked_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "columns": [
+            "subject"
+          ],
+          "name": "ix_bsv_identity_auth_sessions_subject",
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "token_hash"
+      ],
+      "unique": []
+    },
+    "bsv_identity_bm_appointments": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "legal_entity_id",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "stage_request_id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "valid_from",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "valid_to",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(14)"
+        },
+        {
+          "default": null,
+          "name": "issued_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "revoked_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "revoked_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "stage_request_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_stage_requests"
+        },
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "stage_request_id"
+          ],
+          "name": "bsv_identity_bm_appointments_stage_request_id_key",
+          "unique": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "stage_request_id"
+        ]
+      ]
+    },
+    "bsv_identity_code_allocator": {
+      "checks": [
+        "next_index >= 0 AND next_index <= 239976"
+      ],
+      "columns": [
+        {
+          "default": "nextval('bsv_identity_code_allocator_id_seq'::regclass)",
+          "name": "id",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "next_index",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "updated_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "bsv_identity_engagements": {
+      "checks": [
+        "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'ended'::character varying, 'rejected'::character varying]::text[])",
+        "type::text = ANY (ARRAY['employee'::character varying, 'part_time'::character varying, 'contractor'::character varying, 'partner'::character varying]::text[])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "legal_entity_id",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "type",
+          "nullable": false,
+          "type": "VARCHAR(25)"
+        },
+        {
+          "default": null,
+          "name": "effective_from",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "effective_to",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "evidence_ref",
+          "nullable": false,
+          "type": "VARCHAR(160)"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(16)"
+        },
+        {
+          "default": null,
+          "name": "created_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "approved_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "tr_code",
+            "legal_entity_id",
+            "status"
+          ],
+          "name": "idx_eng_active",
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "bsv_identity_grants": {
+      "checks": [
+        "role::text = ANY (ARRAY['staff'::character varying, 'manager'::character varying, 'hq'::character varying]::text[])",
+        "status::text = ANY (ARRAY['pending'::character varying, 'active'::character varying, 'rejected'::character varying, 'revoked'::character varying]::text[])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "legal_entity_id",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": true,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "role",
+          "nullable": false,
+          "type": "VARCHAR(25)"
+        },
+        {
+          "default": null,
+          "name": "action",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "required_qualification",
+          "nullable": true,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "name": "valid_from",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "valid_to",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(14)"
+        },
+        {
+          "default": null,
+          "name": "requested_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "approved_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "approved_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "revoked_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "revoked_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "reason",
+          "nullable": false,
+          "type": "VARCHAR(500)"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "tr_code",
+            "legal_entity_id",
+            "store_id",
+            "action",
+            "status"
+          ],
+          "name": "idx_grant_scope",
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "bsv_identity_isolated_users": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "subject",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "username",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "password_hash",
+          "nullable": false,
+          "type": "VARCHAR(256)"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "disabled_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "columns": [
+            "username"
+          ],
+          "name": "bsv_identity_isolated_users_username_key",
+          "unique": true
+        }
+      ],
+      "primary_key": [
+        "subject"
+      ],
+      "unique": [
+        [
+          "username"
+        ]
+      ]
+    },
+    "bsv_identity_legacy_aliases": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "legal_entity_id",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "source_system",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "legacy_value",
+          "nullable": false,
+          "type": "VARCHAR(200)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "approved_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "evidence_ref",
+          "nullable": false,
+          "type": "VARCHAR(160)"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "legal_entity_id",
+            "source_system",
+            "legacy_value"
+          ],
+          "name": "legacy_alias_unique",
+          "unique": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "legal_entity_id",
+          "source_system",
+          "legacy_value"
+        ]
+      ]
+    },
+    "bsv_identity_people": {
+      "checks": [
+        "status::text = ANY (ARRAY['active'::character varying, 'suspended'::character varying, 'tombstone'::character varying]::text[])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "display_label",
+          "nullable": true,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(12)"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "updated_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "version",
+          "nullable": false,
+          "type": "INTEGER"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "tr_code"
+      ],
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER bsv_identity_tr_permanent BEFORE DELETE OR UPDATE ON public.bsv_identity_people FOR EACH ROW EXECUTE FUNCTION bsv_identity_reject_tr_change()",
+          "name": "bsv_identity_tr_permanent"
+        }
+      ],
+      "unique": []
+    },
+    "bsv_identity_privacy_requests": {
+      "checks": [
+        "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying]::text[])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "legal_entity_id",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "requested_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "evidence_ref",
+          "nullable": false,
+          "type": "VARCHAR(160)"
+        },
+        {
+          "default": null,
+          "name": "reason",
+          "nullable": false,
+          "type": "VARCHAR(500)"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(15)"
+        },
+        {
+          "default": null,
+          "name": "decided_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "decided_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "bsv_identity_qualification_links": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "qualification_code",
+          "nullable": false,
+          "type": "VARCHAR(60)"
+        },
+        {
+          "default": null,
+          "name": "learning_credential_id",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "source_evidence_ref",
+          "nullable": false,
+          "type": "VARCHAR(160)"
+        },
+        {
+          "default": null,
+          "name": "effective_from",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "effective_to",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(14)"
+        },
+        {
+          "default": null,
+          "name": "verified_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "learning_credential_id"
+          ],
+          "name": "bsv_identity_qualification_links_learning_credential_id_key",
+          "unique": true
+        },
+        {
+          "columns": [
+            "tr_code",
+            "qualification_code"
+          ],
+          "name": "idx_qualification_tr",
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "learning_credential_id"
+        ]
+      ]
+    },
+    "bsv_identity_registration_requests": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "subject",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "requested_legal_entity_id",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "idempotency_key",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "request_digest",
+          "nullable": false,
+          "type": "VARCHAR(64)"
+        },
+        {
+          "default": null,
+          "name": "display_label",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "proof_digest",
+          "nullable": true,
+          "type": "VARCHAR(64)"
+        },
+        {
+          "default": null,
+          "name": "consent_version",
+          "nullable": false,
+          "type": "VARCHAR(30)"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(20)"
+        },
+        {
+          "default": null,
+          "name": "verified_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "verification_reason",
+          "nullable": true,
+          "type": "VARCHAR(500)"
+        },
+        {
+          "default": null,
+          "name": "separate_person_confirmed",
+          "nullable": false,
+          "type": "BOOLEAN"
+        },
+        {
+          "default": null,
+          "name": "approved_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "approved_tr_code",
+          "nullable": true,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "approved_tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "proof_digest"
+          ],
+          "name": "idx_reg_proof",
+          "unique": false
+        },
+        {
+          "columns": [
+            "status"
+          ],
+          "name": "idx_reg_status",
+          "unique": false
+        },
+        {
+          "columns": [
+            "requested_legal_entity_id"
+          ],
+          "name": "ix_bsv_identity_registration_requests_requested_legal_entity_id",
+          "unique": false
+        },
+        {
+          "columns": [
+            "subject"
+          ],
+          "name": "ix_bsv_identity_registration_requests_subject",
+          "unique": false
+        },
+        {
+          "columns": [
+            "subject",
+            "idempotency_key"
+          ],
+          "name": "reg_idempotence_uk",
+          "unique": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "subject",
+          "idempotency_key"
+        ]
+      ]
+    },
+    "bsv_identity_stage_issuances": {
+      "checks": [
+        "stage::text = ANY (ARRAY['TR'::character varying, 'EMP'::character varying, 'BM'::character varying]::text[])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "stage",
+          "nullable": false,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "name": "issued_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "issued_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "approval_ref",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "reason",
+          "nullable": false,
+          "type": "VARCHAR(500)"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "tr_code",
+            "stage"
+          ],
+          "name": "one_stage_ever_per_person",
+          "unique": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER bsv_identity_block_update_delete BEFORE DELETE OR UPDATE ON public.bsv_identity_stage_issuances FOR EACH ROW EXECUTE FUNCTION bsv_identity_reject_mutation()",
+          "name": "bsv_identity_block_update_delete"
+        }
+      ],
+      "unique": [
+        [
+          "tr_code",
+          "stage"
+        ]
+      ]
+    },
+    "bsv_identity_stage_requests": {
+      "checks": [
+        "stage::text = ANY (ARRAY['EMP'::character varying, 'BM'::character varying]::text[])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": false,
+          "type": "VARCHAR(36)"
+        },
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": false,
+          "type": "VARCHAR(7)"
+        },
+        {
+          "default": null,
+          "name": "stage",
+          "nullable": false,
+          "type": "VARCHAR(3)"
+        },
+        {
+          "default": null,
+          "name": "legal_entity_id",
+          "nullable": false,
+          "type": "VARCHAR(80)"
+        },
+        {
+          "default": null,
+          "name": "requested_by",
+          "nullable": false,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "reason",
+          "nullable": false,
+          "type": "VARCHAR(500)"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "VARCHAR(14)"
+        },
+        {
+          "default": null,
+          "name": "decided_by",
+          "nullable": true,
+          "type": "VARCHAR(128)"
+        },
+        {
+          "default": null,
+          "name": "decided_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "tr_code"
+          ],
+          "options": {
+            "ondelete": "RESTRICT"
+          },
+          "referred_columns": [
+            "tr_code"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_identity_people"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    }
+  },
+  "postgres17_quality_test_fixture": {
+    "inspection": {
+      "checks": [
+        "kind = ANY (ARRAY['self_check'::text, 'independent'::text])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "inspection_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "inspector",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "subject_employee",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "kind",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "results",
+          "nullable": false,
+          "type": "JSONB"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "inspection_id"
+      ],
+      "unique": []
+    },
+    "review": {
+      "checks": [
+        "decision = ANY (ARRAY['APPROVED'::text, 'CHANGES_REQUIRED'::text])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "inspection_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "reviewer",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "decision",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "inspection_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "inspection_id"
+          ],
+          "referred_schema": "preflight_quality",
+          "referred_table": "inspection"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "inspection_id"
+      ],
+      "unique": []
+    }
+  },
+  "postgres17_supply_candidate": {
+    "idempotent_result": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "actor_scope",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "request_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "fingerprint",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "response",
+          "nullable": false,
+          "type": "JSONB"
+        },
+        {
+          "default": "now()",
+          "name": "committed_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "actor_scope",
+        "request_id"
+      ],
+      "unique": []
+    },
+    "movement": {
+      "checks": [
+        "from_location_id <> to_location_id",
+        "qty_base > 0::numeric"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "movement_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "request_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "shipment_id",
+          "nullable": true,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "package_id",
+          "nullable": true,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "item_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "lot_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "from_location_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "to_location_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "qty_base",
+          "nullable": false,
+          "type": "NUMERIC(18, 4)"
+        },
+        {
+          "default": null,
+          "name": "actor_employee_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "occurred_at",
+          "nullable": true,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": "now()",
+          "name": "committed_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "package_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "package_id"
+          ],
+          "referred_schema": "supply",
+          "referred_table": "shipment_package"
+        },
+        {
+          "constrained_columns": [
+            "shipment_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "shipment_id"
+          ],
+          "referred_schema": "supply",
+          "referred_table": "shipment"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "from_location_id",
+            "item_id",
+            "lot_id"
+          ],
+          "name": "idx_bsv_supply_movement_from",
+          "unique": false
+        },
+        {
+          "columns": [
+            "to_location_id",
+            "item_id",
+            "lot_id"
+          ],
+          "name": "idx_bsv_supply_movement_to",
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "movement_id"
+      ],
+      "unique": []
+    },
+    "shipment": {
+      "checks": [
+        "source_location_id <> dest_location_id",
+        "state = ANY (ARRAY['DRAFT'::text, 'READY'::text, 'DISPATCHED'::text, 'PARTIAL_RECEIVED'::text, 'RECEIVED'::text, 'DISPUTED'::text, 'CLOSED'::text, 'CANCELLED'::text])",
+        "version >= 1"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "shipment_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "source_location_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "dest_location_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "state",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "1",
+          "name": "version",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "created_by_employee_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "now()",
+          "name": "created_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "shipment_id"
+      ],
+      "unique": []
+    },
+    "shipment_package": {
+      "checks": [
+        "qty_base > 0::numeric",
+        "state = ANY (ARRAY['DRAFT'::text, 'READY'::text, 'IN_TRANSIT'::text, 'ACCEPTED'::text, 'HOLD'::text, 'RETURNED'::text, 'SCRAPPED'::text])"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "package_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "shipment_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "item_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "lot_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "base_uom",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "qty_base",
+          "nullable": false,
+          "type": "NUMERIC(18, 4)"
+        },
+        {
+          "default": null,
+          "name": "state",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "shipment_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "shipment_id"
+          ],
+          "referred_schema": "supply",
+          "referred_table": "shipment"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "shipment_id"
+          ],
+          "name": "idx_bsv_supply_package_shipment",
+          "unique": false
+        }
+      ],
+      "primary_key": [
+        "package_id"
+      ],
+      "unique": []
+    },
+    "stock_count": {
+      "checks": [
+        "NOT (method = 'FIVE_BUCKET'::text AND opened_count > 1)",
+        "full_package_count >= 0",
+        "method = ANY (ARRAY['FIVE_BUCKET'::text, 'UNKNOWN'::text, 'EXACT_MEASUREMENT'::text])",
+        "opened_bucket_pct = ANY (ARRAY[0, 25, 50, 75, 100])",
+        "opened_count >= 0"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "count_id",
+          "nullable": false,
+          "type": "UUID"
+        },
+        {
+          "default": null,
+          "name": "location_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "item_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "observer_employee_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "full_package_count",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "opened_count",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "opened_bucket_pct",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "method",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "observed_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        },
+        {
+          "default": "now()",
+          "name": "recorded_at",
+          "nullable": false,
+          "type": "TIMESTAMP"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "count_id"
+      ],
+      "unique": []
+    }
+  },
+  "sqlite_pos_local": {
+    "alert_escalations": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "category",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "entity_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "cycle_key",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "occurred_at",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "detail_json",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "category",
+          "entity_id",
+          "cycle_key"
+        ]
+      ]
+    },
+    "audit_events": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "action",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "target_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "detail_json",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "staff_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "store_id",
+            "created_at"
+          ],
+          "name": "ix_audit_store_date",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "bathroom_checks": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "bathroom_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "checklist_json",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "checked_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "staff_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        },
+        {
+          "constrained_columns": [
+            "bathroom_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "bathrooms"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "bathrooms": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "label",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "last_clean_at",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "last_clean_by",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": "7200",
+          "name": "interval_seconds",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "monitor_started_at",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "last_clean_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER bsv_canonical_restroom_insert BEFORE INSERT ON bathrooms\n        WHEN NEW.id NOT GLOB (NEW.store_id || '-RESTROOM-[0-9][0-9][0-9][0-9]')\n        BEGIN SELECT RAISE(ABORT,'noncanonical restroom_id'); END",
+          "name": "bsv_canonical_restroom_insert"
+        },
+        {
+          "definition": "CREATE TRIGGER bsv_immutable_restroom_key BEFORE UPDATE OF id,store_id ON bathrooms\n        BEGIN SELECT RAISE(ABORT,'restroom_id/store_id immutable'); END",
+          "name": "bsv_immutable_restroom_key"
+        }
+      ],
+      "unique": []
+    },
+    "bsv_hq_roles": {
+      "checks": [
+        "role='HQ_ADMIN'"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "role",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "granted_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "staff_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "staff_id"
+      ],
+      "unique": []
+    },
+    "bsv_layout_images": {
+      "checks": [
+        "mime IN ('image/png','image/jpeg')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "asset_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "mime",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "sha256",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "content",
+          "nullable": false,
+          "type": "BLOB"
+        },
+        {
+          "default": null,
+          "name": "created_by",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "created_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "asset_id"
+      ],
+      "unique": []
+    },
+    "bsv_layout_ownership": {
+      "checks": [
+        "origin='HQ_PUBLISHED'"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "origin",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "published_revision",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "published_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "store_id"
+      ],
+      "unique": []
+    },
+    "bsv_layout_revisions": {
+      "checks": [
+        "status IN ('DRAFT','PUBLISHED','SUPERSEDED')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "revision_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "base_version",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "version",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "payload_json",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "sha256",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_by",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "published_by",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "published_at",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "published_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "created_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "store_id",
+            "created_at"
+          ],
+          "name": "ix_bsv_layout_rev_store",
+          "unique": 0
+        },
+        {
+          "columns": [
+            "store_id"
+          ],
+          "name": "ux_bsv_layout_pub",
+          "unique": 1
+        }
+      ],
+      "primary_key": [
+        "revision_id"
+      ],
+      "unique": []
+    },
+    "bsv_platform_events": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "event_id",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "actor_staff_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "module",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "action",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "entity_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "payload_json",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "actor_staff_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "event_id"
+      ],
+      "unique": []
+    },
+    "bsv_platform_identity": {
+      "checks": [
+        "profile='BSV_ONE_CANONICAL_V1'"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "profile",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "instance_uuid",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "profile"
+      ],
+      "unique": [
+        [
+          "instance_uuid"
+        ]
+      ]
+    },
+    "bsv_products": {
+      "checks": [
+        "price_cents>=0"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "name",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "price_cents",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": "1",
+          "name": "demo_only",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": "1",
+          "name": "discount_eligible",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "source_domain",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": "1",
+          "name": "sale_enabled",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "catalog_sha",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "price_policy",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "bsv_v9_extra": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "section",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "source_row",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "fields_json",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "section",
+        "source_row"
+      ],
+      "unique": []
+    },
+    "bsv_v9_quote": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "quote_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "item_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "channel",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "price_cents",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "valid_from",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "valid_to",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "eligible",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "reason",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "quote_id"
+      ],
+      "unique": []
+    },
+    "bsv_v9_record": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "page",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "fixed_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "display_name",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "source_row",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "fields_json",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "imported_sha",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "columns": [
+            "page",
+            "display_name"
+          ],
+          "name": "ix_v9_record_display",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "page",
+        "fixed_id"
+      ],
+      "unique": []
+    },
+    "bsv_v9_sync": {
+      "checks": [
+        "one=1"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "one",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "source_path",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "source_sha",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "imported_at",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "summary_json",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "one"
+      ],
+      "unique": []
+    },
+    "command_dedup": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "action_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "response_json",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "action_id"
+      ],
+      "unique": []
+    },
+    "demo_checkouts": {
+      "checks": [
+        "amount_cents>=0",
+        "status='TEST_SETTLED'"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "amount_cents",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_by",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "created_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        },
+        {
+          "constrained_columns": [
+            "visit_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "visits"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "store_id",
+            "created_at"
+          ],
+          "name": "ix_checkouts_store_time",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "members": {
+      "checks": [
+        "tier='SILVER'"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "surname",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "phone",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "last4",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "tier",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "1",
+          "name": "active",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "columns": [
+            "last4",
+            "active"
+          ],
+          "name": "ix_members_last4",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "phone"
+        ]
+      ]
+    },
+    "order_drafts": {
+      "checks": [
+        "quantity>0"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "product_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "1",
+          "name": "quantity",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "created_by",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "price_cents_snapshot",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "source_revision_snapshot",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "created_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "product_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_products"
+        },
+        {
+          "constrained_columns": [
+            "visit_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "visits"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "visit_id"
+          ],
+          "name": "ix_draft_visit",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "order_lines": {
+      "checks": [
+        "quantity>=1"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "order_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "product_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "product_name_snapshot",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "price_cents",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "quantity",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "served_at",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": "'PENDING'",
+          "name": "status",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "checkout_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "added_by",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "list_price_cents",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": "0",
+          "name": "discount_cents",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "member_tier_snapshot",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "added_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "checkout_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "demo_checkouts"
+        },
+        {
+          "constrained_columns": [
+            "product_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "bsv_products"
+        },
+        {
+          "constrained_columns": [
+            "order_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "orders"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "status",
+            "created_at"
+          ],
+          "name": "ix_lines_queue",
+          "unique": 0
+        },
+        {
+          "columns": [
+            "checkout_id"
+          ],
+          "name": "ix_order_lines_checkout",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "orders": {
+      "checks": [
+        "status IN ('OPEN','CANCELLED','TEST_CLOSED')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "visit_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "visits"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "visit_id"
+        ]
+      ]
+    },
+    "production_deliveries": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "line_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "deliverer_staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "delivered_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "line_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "line_id"
+          ],
+          "referred_schema": null,
+          "referred_table": "production_tasks"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "store_id",
+            "delivered_at"
+          ],
+          "name": "ix_production_deliveries_store",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "line_id"
+      ],
+      "unique": []
+    },
+    "production_finishes": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "line_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "maker_staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "finished_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "line_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "line_id"
+          ],
+          "referred_schema": null,
+          "referred_table": "production_tasks"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "store_id",
+            "finished_at"
+          ],
+          "name": "ix_production_finishes_store",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "line_id"
+      ],
+      "unique": []
+    },
+    "production_tasks": {
+      "checks": [
+        "state IN('PENDING','CLAIMED','SERVED','CANCELLED')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "line_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "assigned_staff_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "claimed_by",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "claim_until",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": "'PENDING'",
+          "name": "state",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "assigned_at",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "claimed_at",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "columns": [
+            "store_id",
+            "state",
+            "assigned_staff_id"
+          ],
+          "name": "ix_tasks_store",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "line_id"
+      ],
+      "unique": []
+    },
+    "seat_cleaning": {
+      "checks": [
+        "state IN ('CLEAN','DIRTY')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "seat_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "'CLEAN'",
+          "name": "state",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "dirty_at",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "cleaned_at",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "cleaned_by",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "cleaned_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        },
+        {
+          "constrained_columns": [
+            "seat_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "seats"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "seat_id"
+      ],
+      "unique": []
+    },
+    "seat_edit_locks": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "seat_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "nullable": false,
+          "type": "INTEGER"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "seat_id"
+      ],
+      "unique": []
+    },
+    "seats": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "label",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "seat_type",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "x",
+          "nullable": false,
+          "type": "REAL"
+        },
+        {
+          "default": null,
+          "name": "y",
+          "nullable": false,
+          "type": "REAL"
+        },
+        {
+          "default": null,
+          "name": "display_order",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "group_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": "0",
+          "name": "is_secondary",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "seat_capacity",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": "1",
+          "name": "layout_enabled",
+          "nullable": false,
+          "type": "INTEGER"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "group_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "table_groups"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER bsv_canonical_seat_insert BEFORE INSERT ON seats\n        WHEN NEW.id NOT GLOB (NEW.store_id || '-SEAT-[0-9][0-9][0-9][0-9]')\n        BEGIN SELECT RAISE(ABORT,'noncanonical seat_id'); END",
+          "name": "bsv_canonical_seat_insert"
+        },
+        {
+          "definition": "CREATE TRIGGER bsv_immutable_seat_key BEFORE UPDATE OF id,store_id ON seats\n        BEGIN SELECT RAISE(ABORT,'seat_id/store_id immutable'); END",
+          "name": "bsv_immutable_seat_key"
+        }
+      ],
+      "unique": [
+        [
+          "store_id",
+          "label"
+        ]
+      ]
+    },
+    "sessions": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "token_digest",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "csrf",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "expires_at",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        },
+        {
+          "constrained_columns": [
+            "staff_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "token_digest"
+      ],
+      "unique": []
+    },
+    "staff": {
+      "checks": [
+        "role IN ('STAFF','MANAGER')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "staff_code",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "pin_salt",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "pin_digest",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "role",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "1",
+          "name": "enabled",
+          "nullable": false,
+          "type": "INTEGER"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": [
+        [
+          "staff_code"
+        ]
+      ]
+    },
+    "staff_presence": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "last_seen_at",
+          "nullable": false,
+          "type": "INTEGER"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "columns": [
+            "store_id",
+            "last_seen_at"
+          ],
+          "name": "ix_presence_store",
+          "unique": 0
+        }
+      ],
+      "primary_key": [
+        "staff_id",
+        "store_id"
+      ],
+      "unique": []
+    },
+    "staff_store_access": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        },
+        {
+          "constrained_columns": [
+            "staff_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "staff_id",
+        "store_id"
+      ],
+      "unique": []
+    },
+    "store_documents": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "title",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "filename",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "kind",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "0",
+          "name": "available",
+          "nullable": false,
+          "type": "INTEGER"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "store_layout_data": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "layout_version",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "content_sha",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "config_json",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "applied_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "store_id"
+      ],
+      "unique": []
+    },
+    "stores": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "name",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "design_max_guests",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "orientation",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "district",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "business_type",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": "0",
+          "name": "layout_ready",
+          "nullable": false,
+          "type": "INTEGER"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "table_groups": {
+      "checks": [
+        "mode IN ('SPLIT','MERGED')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "primary_seat",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "secondary_seat",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "mode",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "triggers": [
+        {
+          "definition": "CREATE TRIGGER bsv_canonical_group_insert BEFORE INSERT ON table_groups\n        WHEN NEW.id NOT GLOB (NEW.store_id || '-GROUP-[0-9][0-9][0-9][0-9]')\n        BEGIN SELECT RAISE(ABORT,'noncanonical group_id'); END",
+          "name": "bsv_canonical_group_insert"
+        },
+        {
+          "definition": "CREATE TRIGGER bsv_immutable_group_key BEFORE UPDATE OF id,store_id ON table_groups\n        BEGIN SELECT RAISE(ABORT,'group_id/store_id immutable'); END",
+          "name": "bsv_immutable_group_key"
+        }
+      ],
+      "unique": []
+    },
+    "visit_closures": {
+      "checks": [
+        "print_preference IN ('NONE','PAPER')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "closed_by",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "print_preference",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "closed_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "closed_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        },
+        {
+          "constrained_columns": [
+            "visit_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "visits"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "visit_id"
+      ],
+      "unique": []
+    },
+    "visit_member_links": {
+      "checks": [
+        "person_slot>=1"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "person_slot",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "member_reference",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "member_id",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "member_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "members"
+        },
+        {
+          "constrained_columns": [
+            "visit_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "visits"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "visit_id",
+        "person_slot"
+      ],
+      "unique": []
+    },
+    "visit_seat_events": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "visit_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "from_seat_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "to_seat_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "staff_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "to_seat_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "seats"
+        },
+        {
+          "constrained_columns": [
+            "visit_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "visits"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "visits": {
+      "checks": [
+        "status IN ('OPEN','CANCELLED','TEST_CLOSED')"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "seat_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": "1",
+          "name": "guests",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "status",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_by",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "closed_at",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": "1",
+          "name": "version",
+          "nullable": false,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "seat_label_snapshot",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "created_by"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        },
+        {
+          "constrained_columns": [
+            "seat_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "seats"
+        },
+        {
+          "constrained_columns": [
+            "store_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "stores"
+        }
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "store_id",
+            "closed_at"
+          ],
+          "name": "ix_visits_close_date",
+          "unique": 0
+        },
+        {
+          "columns": [
+            "store_id",
+            "status"
+          ],
+          "name": "ix_visits_store",
+          "unique": 0
+        },
+        {
+          "columns": [
+            "seat_id"
+          ],
+          "name": "one_open_visit_per_seat",
+          "unique": 1
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    }
+  },
+  "sqlite_supply_cache": {
+    "pending": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "request_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "source_key",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "path",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "method",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "payload",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "actor_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "state",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "response",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "REAL"
+        },
+        {
+          "default": null,
+          "name": "updated_at",
+          "nullable": false,
+          "type": "REAL"
+        },
+        {
+          "default": null,
+          "name": "permission_scope",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "request_id"
+      ],
+      "unique": []
+    },
+    "snapshots": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "key",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "payload",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "saved_at",
+          "nullable": false,
+          "type": "REAL"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "key"
+      ],
+      "unique": []
+    }
+  },
+  "sqlite_supply_demo": {
+    "action_audit": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "request_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "shipment_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "actor_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "operation",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "balances": {
+      "checks": [
+        "qty>=0"
+      ],
+      "columns": [
+        {
+          "default": null,
+          "name": "location",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "item_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "qty",
+          "nullable": false,
+          "type": "INTEGER"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "location",
+        "item_id"
+      ],
+      "unique": []
+    },
+    "counts": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "item_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "observer",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "full_packages",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "opened_count",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "opened_percent",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "method",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "idempotency": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "request_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "fingerprint",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "response",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "request_id"
+      ],
+      "unique": []
+    },
+    "inspection_kind": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "kind",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "inspections"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "inspection_reviews": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "reviewer",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "decision",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "inspections"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "inspections": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "store_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "inspector",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "department",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "subject_department",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "subject_employee",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "results",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "movements": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "shipment_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "item_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "src",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "dest",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "qty",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "occurred_at",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "actor_id",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    },
+    "packages": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "code",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "shipment_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "item_id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "state",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "batch_id",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "shipment_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "shipments"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "code"
+      ],
+      "unique": []
+    },
+    "shipments": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "id",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "src",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "dest",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "state",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "version",
+          "nullable": true,
+          "type": "INTEGER"
+        },
+        {
+          "default": null,
+          "name": "created_by",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": true,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "primary_key": [
+        "id"
+      ],
+      "unique": []
+    }
+  }
+}

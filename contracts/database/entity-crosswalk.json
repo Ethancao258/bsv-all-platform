@@ -1,0 +1,546 @@
+{
+  "version": 1,
+  "owner_registry": "config/data-ownership.json",
+  "field_dictionary": "contracts/database/field-dictionary.json",
+  "note": "Evidence tables are domain evidence, not assertions of a physical central column keyed by the named field.",
+  "entities": {
+    "legal_entity_id": {
+      "owner": "organization",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "store_id": {
+      "owner": "organization",
+      "source_schema": "sqlite_pos_local",
+      "evidence_tables": [
+        "stores"
+      ],
+      "status": "NO_VERIFIED_CLOUD_TABLE",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "org_unit_id": {
+      "owner": "organization",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "auth_subject_id": {
+      "owner": "identity_access",
+      "source_schema": "postgres17_identity_isolated",
+      "evidence_tables": [
+        "bsv_identity_auth_links",
+        "bsv_identity_auth_sessions",
+        "bsv_identity_grants",
+        "bsv_identity_bm_appointments"
+      ],
+      "status": "CANDIDATE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "role_id": {
+      "owner": "identity_access",
+      "source_schema": "postgres17_identity_isolated",
+      "evidence_tables": [
+        "bsv_identity_grants"
+      ],
+      "status": "ROLE_LABEL_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "grant_id": {
+      "owner": "identity_access",
+      "source_schema": "postgres17_identity_isolated",
+      "evidence_tables": [
+        "bsv_identity_auth_links",
+        "bsv_identity_auth_sessions",
+        "bsv_identity_grants",
+        "bsv_identity_bm_appointments"
+      ],
+      "status": "CANDIDATE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "device_id": {
+      "owner": "identity_access",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "tr_code": {
+      "owner": "workforce",
+      "source_schema": "postgres17_identity_isolated",
+      "evidence_tables": [
+        "bsv_identity_people",
+        "bsv_identity_engagements",
+        "bsv_identity_legacy_aliases"
+      ],
+      "status": "CANDIDATE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "employee_id": {
+      "owner": "workforce",
+      "source_schema": "postgres17_identity_isolated",
+      "evidence_tables": [
+        "bsv_identity_legacy_aliases",
+        "bsv_identity_people"
+      ],
+      "status": "APPROVED_ALIAS_REQUIRED",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "shift_id": {
+      "owner": "workforce",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "employment_id": {
+      "owner": "workforce",
+      "source_schema": "postgres17_identity_isolated",
+      "evidence_tables": [
+        "bsv_identity_people",
+        "bsv_identity_engagements",
+        "bsv_identity_legacy_aliases"
+      ],
+      "status": "CANDIDATE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "course_id": {
+      "owner": "learning",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "exam_id": {
+      "owner": "learning",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "attempt_id": {
+      "owner": "learning",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "credential_id": {
+      "owner": "learning",
+      "source_schema": "postgres17_identity_isolated",
+      "evidence_tables": [
+        "bsv_identity_qualification_links"
+      ],
+      "status": "EXTERNAL_REFERENCE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "document_id": {
+      "owner": "knowledge",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "document_version_id": {
+      "owner": "knowledge",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "acknowledgement_id": {
+      "owner": "knowledge",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "product_id": {
+      "owner": "catalog",
+      "source_schema": "sqlite_pos_local",
+      "evidence_tables": [
+        "bsv_products",
+        "bsv_v9_record",
+        "bsv_v9_quote"
+      ],
+      "status": "LOCAL_PROJECTION_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "bundle_id": {
+      "owner": "catalog",
+      "source_schema": "sqlite_pos_local",
+      "evidence_tables": [
+        "bsv_v9_record"
+      ],
+      "status": "LOCAL_PROJECTION_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "material_id": {
+      "owner": "catalog",
+      "source_schema": "sqlite_pos_local",
+      "evidence_tables": [
+        "bsv_products",
+        "bsv_v9_record",
+        "bsv_v9_quote"
+      ],
+      "status": "LOCAL_PROJECTION_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "recipe_version": {
+      "owner": "catalog",
+      "source_schema": "sqlite_pos_local",
+      "evidence_tables": [
+        "bsv_v9_record"
+      ],
+      "status": "VERSION_MAPPING_REQUIRED",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "publication_id": {
+      "owner": "catalog",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "STATIC_PUBLIC_SNAPSHOT_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "supplier_id": {
+      "owner": "procurement",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "purchase_order_id": {
+      "owner": "procurement",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "receipt_id": {
+      "owner": "procurement",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "stock_lot_id": {
+      "owner": "inventory",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "stock_movement_id": {
+      "owner": "inventory",
+      "source_schema": "postgres17_supply_candidate",
+      "evidence_tables": [
+        "movement",
+        "stock_count"
+      ],
+      "status": "CANDIDATE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "inventory_count_id": {
+      "owner": "inventory",
+      "source_schema": "postgres17_supply_candidate",
+      "evidence_tables": [
+        "movement",
+        "stock_count"
+      ],
+      "status": "CANDIDATE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "batch_id": {
+      "owner": "production",
+      "source_schema": "postgres17_supply_candidate",
+      "evidence_tables": [
+        "shipment_package"
+      ],
+      "status": "UNVERIFIED_EXTERNAL_REFERENCE",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "shipment_id": {
+      "owner": "production",
+      "source_schema": "postgres17_supply_candidate",
+      "evidence_tables": [
+        "shipment",
+        "shipment_package"
+      ],
+      "status": "CANDIDATE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "label_id": {
+      "owner": "production",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "order_id": {
+      "owner": "commerce",
+      "source_schema": "sqlite_pos_local",
+      "evidence_tables": [
+        "orders",
+        "order_lines",
+        "order_drafts",
+        "visits"
+      ],
+      "status": "LOCAL_FACT_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "quote_id": {
+      "owner": "commerce",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "booking_id": {
+      "owner": "commerce",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "payment_event_id": {
+      "owner": "payments",
+      "source_schema": "sqlite_pos_local",
+      "evidence_tables": [
+        "demo_checkouts"
+      ],
+      "status": "SIMULATION_ONLY_NO_EQUIVALENT",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "refund_id": {
+      "owner": "payments",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "reconciliation_id": {
+      "owner": "payments",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "task_id": {
+      "owner": "service_ops",
+      "source_schema": "sqlite_pos_local",
+      "evidence_tables": [
+        "production_tasks",
+        "production_finishes",
+        "production_deliveries"
+      ],
+      "status": "LOCAL_FACT_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "service_event_id": {
+      "owner": "service_ops",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "incident_id": {
+      "owner": "service_ops",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "customer_id": {
+      "owner": "customer",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "consent_id": {
+      "owner": "customer",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "loyalty_account_id": {
+      "owner": "customer",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "campaign_id": {
+      "owner": "marketing",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "touchpoint_id": {
+      "owner": "marketing",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "attribution_id": {
+      "owner": "marketing",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "inspection_id": {
+      "owner": "quality",
+      "source_schema": "postgres17_quality_test_fixture",
+      "evidence_tables": [
+        "inspection",
+        "review"
+      ],
+      "status": "TEST_FIXTURE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "finding_id": {
+      "owner": "quality",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "corrective_action_id": {
+      "owner": "quality",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "partner_id": {
+      "owner": "partnership",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "agreement_id": {
+      "owner": "partnership",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "project_id": {
+      "owner": "partnership",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "tenant_id": {
+      "owner": "partnership",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "cost_entry_id": {
+      "owner": "operating_finance",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "payroll_run_id": {
+      "owner": "operating_finance",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "settlement_id": {
+      "owner": "operating_finance",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "license_id": {
+      "owner": "compliance",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "policy_id": {
+      "owner": "compliance",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "compliance_issue_id": {
+      "owner": "compliance",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "capital_decision_id": {
+      "owner": "capital",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "funding_id": {
+      "owner": "capital",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "investment_id": {
+      "owner": "capital",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "audit_event_id": {
+      "owner": "event_audit",
+      "source_schema": "postgres17_identity_isolated",
+      "evidence_tables": [
+        "bsv_identity_audit_events"
+      ],
+      "status": "CANDIDATE_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "sync_event_id": {
+      "owner": "event_audit",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "schema_version_id": {
+      "owner": "event_audit",
+      "source_schema": null,
+      "evidence_tables": [],
+      "status": "REGISTRY_ONLY",
+      "cloudbase": "UNKNOWN_G0"
+    }
+  },
+  "local_keys_pending_registry": {
+    "seat_id": {
+      "observed": "sqlite_pos_local.seats.id",
+      "cloudbase": "UNKNOWN_G0"
+    },
+    "package_id": {
+      "candidate": "postgres17_supply_candidate.shipment_package.package_id",
+      "cloudbase": "UNKNOWN_G0"
+    }
+  }
+}
