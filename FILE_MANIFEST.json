@@ -498,8 +498,8 @@
     },
     {
       "path": "scripts/verify_architecture.py",
-      "sha256": "b4dc58ca34f067ec26552b7c34aa5eb1b190b2d94c888dbe07aa90369d44f77e",
-      "bytes": 4039
+      "sha256": "906484134a98c1752a4fbbc9eb850d0f1096a2d65438e863870a26b2c628ba18",
+      "bytes": 4060
     },
     {
       "path": "services/README.md",

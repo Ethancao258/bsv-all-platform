@@ -16,7 +16,7 @@ own=read('config/data-ownership.json')
 res=read('config/resource-registry.json')
 
 expected=set(lock.get('frozen_top_level',[]))
-actual={p.name for p in root.iterdir() if p.is_dir()}
+actual={p.name for p in root.iterdir() if p.is_dir() and p.name != '.git'}
 missing=expected-actual; extra=actual-expected
 if missing: errors.append(f'Missing frozen dirs {sorted(missing)}')
 if extra: errors.append(f'Unexpected top-level dirs {sorted(extra)}')
