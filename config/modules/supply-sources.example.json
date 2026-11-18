@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "mode": "demo",
+  "backup_dir": "./runtime/backups",
+  "cache_dir": "./runtime/cache",
+  "timeout_seconds": 6,
+  "max_snapshot_age_hours": 72,
+  "sources": {
+    "A": {"name": "公司产品及物料主数据", "primary": "https://products.replace.invalid/api/v1/master", "standby_read": "", "credential_env": "BSV_SOURCE_A_TOKEN", "read_only": true, "backup_paths": ["/items"]},
+    "B": {"name": "公司统一身份与人事权限", "primary": "https://identity.replace.invalid/api/v1", "standby_read": "", "credential_env": "BSV_SOURCE_B_TOKEN", "read_only": true, "backup_paths": []},
+    "C": {"name": "公司门店与库位主数据", "primary": "https://stores.replace.invalid/api/v1/master", "standby_read": "", "credential_env": "BSV_SOURCE_C_TOKEN", "read_only": true, "backup_paths": ["/stores"]},
+    "D": {"name": "公司唯一库存、配送及交易账本", "primary": "https://ledger.replace.invalid/api/v1", "standby_read": "", "credential_env": "BSV_SOURCE_D_TOKEN", "read_only": false, "backup_paths": ["/inventory/balances", "/supply/shipments"]},
+    "E": {"name": "公司独立督查与整改事件", "primary": "https://inspection.replace.invalid/api/v1", "standby_read": "", "credential_env": "BSV_SOURCE_E_TOKEN", "read_only": false, "backup_paths": ["/inspections"]},
+    "F": {"name": "可选视觉识别服务（仅返回候选）", "primary": "", "standby_read": "", "credential_env": "BSV_SOURCE_F_TOKEN", "read_only": true, "backup_paths": []},
+    "G": {"name": "公司事件通知服务", "primary": "", "standby_read": "", "credential_env": "BSV_SOURCE_G_TOKEN", "read_only": false, "backup_paths": []}
+  }
+}

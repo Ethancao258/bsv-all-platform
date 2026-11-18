@@ -214,24 +214,38 @@
       "module": "supply",
       "layer": "BSV2",
       "owner": "central supply",
-      "state": "EXTERNAL_CHAT_UNMERGED",
+      "state": "V2_OFFLINE_INTEGRATED",
       "entities": [
+        "material_id",
         "batch_id",
         "shipment_id",
-        "material_id",
-        "store_id"
+        "stock_movement_id",
+        "store_id",
+        "employee_id"
       ],
       "writes": [
         "shipment_events"
       ],
       "writes_via": "shipment API then stock transaction service",
-      "source_files": [],
-      "api": null,
+      "source_files": [
+        "services/api/supply",
+        "integrations/vision/supply_photo.py"
+      ],
+      "api": "/api/shipments, /api/inventory, /api/stock-count, /api/pending",
       "sqlite_tables": [],
-      "ui": null,
-      "deploy": null,
-      "fallback": null,
-      "test": null
+      "ui": "apps/hq-console/supply and apps/store-console/supply",
+      "deploy": "platform/lighthouse/supply",
+      "fallback": "scoped stale reads; D only writes; queued commands not committed",
+      "test": "tests/supply",
+      "domain_refs": [
+        "catalog",
+        "organization",
+        "production",
+        "inventory",
+        "workforce",
+        "identity_access",
+        "event_audit"
+      ]
     },
     {
       "module": "label",
@@ -259,23 +273,35 @@
       "module": "inspection",
       "layer": "BSV2",
       "owner": "independent supervision",
-      "state": "EXTERNAL_CHAT_UNMERGED",
+      "state": "V2_OFFLINE_INTEGRATED",
       "entities": [
         "inspection_id",
-        "department_id",
-        "employee_id"
+        "store_id",
+        "employee_id",
+        "corrective_action_id"
       ],
       "writes": [
         "inspection_reports"
       ],
       "writes_via": "audit API separate approval",
-      "source_files": [],
-      "api": null,
+      "source_files": [
+        "services/api/supply/main.py",
+        "services/api/supply/demo.py"
+      ],
+      "api": "/api/inspections and /api/inspections/{inspection_id}/review",
       "sqlite_tables": [],
-      "ui": null,
-      "deploy": null,
-      "fallback": null,
-      "test": null
+      "ui": "apps/inspector-console/supply and apps/store-console/supply",
+      "deploy": "platform/lighthouse/supply",
+      "fallback": "E only writes; no queued independent review",
+      "test": "tests/supply/test_integration.py",
+      "domain_refs": [
+        "quality",
+        "service_ops",
+        "organization",
+        "workforce",
+        "identity_access",
+        "event_audit"
+      ]
     },
     {
       "module": "marketing",

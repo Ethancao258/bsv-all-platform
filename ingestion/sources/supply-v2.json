@@ -1,0 +1,225 @@
+{
+  "source_id": "BSV-SUPPLY-INVENTORY-V2",
+  "version": "2.0.0",
+  "archive": "BSV Supply & Inventory V2.zip",
+  "archive_sha256": "f437387ac54b463ccece2363a8ba0453ced424d17e75127d07c8347d9688b672",
+  "files": [
+    {
+      "path": "MANIFEST_SHA256.json",
+      "sha256": "70a126748d0e077a38dfbe80f42f662e021a77b27558e8f993e5ea00d23e3ce4",
+      "bytes": 2882,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "README.md",
+      "sha256": "484ed46cdbca1a70f7f84006bab139fcde558683a44b9dc043ba025138fb4cec",
+      "bytes": 8550,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "app/__init__.py",
+      "sha256": "86a99bfdc62285bd45447452cad71782b114964392f908bd0b4ac4ecd581c30a",
+      "bytes": 68,
+      "target": "services/api/supply/__init__.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/backup.py",
+      "sha256": "9a7c63a06167ffabbd28bb4b866cf68928de46a536ec35fd38e6a91bc0d8c8e9",
+      "bytes": 2819,
+      "target": "services/api/supply/backup.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/cache.py",
+      "sha256": "f371c288862ec43d6a46e3970265cb7a11d409c08bd7f149e99aa5fdb714233e",
+      "bytes": 3055,
+      "target": "services/api/supply/cache.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "app/config.py",
+      "sha256": "3d46328ecccf0319f848f1ac5fed5db11e760bbc502978f4f221b03b4e89b5ff",
+      "bytes": 2805,
+      "target": "services/api/supply/config.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "app/demo.py",
+      "sha256": "30ebf744c7b27d9cc3d099c7d854eaa2d4edf7f1575e98f2f25f01622d7452d7",
+      "bytes": 16392,
+      "target": "services/api/supply/demo.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "app/domain.py",
+      "sha256": "1ce0b36e4a713fb58c282b97653c534baf114eeb1f948ff8d7f1fd7c6c90c7e2",
+      "bytes": 2961,
+      "target": "services/api/supply/domain.py",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "app/gateway.py",
+      "sha256": "94d3a10435dd7c494efb492074a21e18873b7593a01a07a77a20ea45e64f8b58",
+      "bytes": 3371,
+      "target": "services/api/supply/gateway.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "app/main.py",
+      "sha256": "98a60616f5458a7ce4382ec5c3cf954a00ebeda57f74c78f0a78a8d817ad5155",
+      "bytes": 14478,
+      "target": "services/api/supply/main.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "config/sources.example.json",
+      "sha256": "8e81e5e8e5212190596eda64e3467861ce144416bd153e05963439b63517f4b0",
+      "bytes": 1662,
+      "target": "config/modules/supply-sources.example.json",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "contracts/central_schema_proposal.sql",
+      "sha256": "40e95011cdcd4c52ec0bcfbe8b3c0ca541fa71f373810ca38614834bd04f70ed",
+      "bytes": 3389,
+      "target": "contracts/supply/central_schema_proposal.sql",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "contracts/openapi.json",
+      "sha256": "18b5d0d2a77d72c4b855a43317a775c7b10a73576227097418efc20523f09384",
+      "bytes": 24990,
+      "target": "contracts/supply/openapi.json",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "data/v9_source_catalog_reference.json",
+      "sha256": "7f64c853170b358bcaf97ba3fc6000ef839703733678b29dfbf5fd08c45d931b",
+      "bytes": 13206,
+      "target": "ingestion/sources/supply-v9-id-index.json",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "docs/INTEGRATION_CONTRACT.md",
+      "sha256": "645368dde8da9859d41f496bf4a5d7fbb9f66ff87d76439a139ddc6c508bff95",
+      "bytes": 7975,
+      "target": "contracts/supply/HANDOFF.md",
+      "status": "IDENTICAL"
+    },
+    {
+      "path": "docs/REVIEW_V1_TO_V2.md",
+      "sha256": "c3ac511c86d9f1bef9563b1d1086a671415696ed67a7ee878d8a504b2defcc80",
+      "bytes": 3956,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "pytest.ini",
+      "sha256": "b160d82f7811555051f8966d8e02750a985227c1d022208c784e606946f2eada",
+      "bytes": 42,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "e920af7b67e056dc5f2ae8e10140bf8365be58cc222358c3550dd0a15aa3569c",
+      "bytes": 185,
+      "target": "services/api/supply/requirements.lock",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "scripts/backup_scheduler.py",
+      "sha256": "f3bcc6aa20ca7b81974992999cecf6cd8ee8e2a56fe5c05a04d2342f6f461e68",
+      "bytes": 1066,
+      "target": "platform/lighthouse/supply/backup_scheduler.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "scripts/postgres_backup.py",
+      "sha256": "cb92ce200d701b56964e0eed493058160383844d124220eb51c29e16fe62fee5",
+      "bytes": 4555,
+      "target": "platform/lighthouse/supply/postgres_backup.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "start_demo.bat",
+      "sha256": "cd2158f5bb9e68e1283ed86257341870ce13b15b16ec6a6d6448653c3be8991e",
+      "bytes": 451,
+      "target": null,
+      "status": "SOURCE_ONLY"
+    },
+    {
+      "path": "start_demo.sh",
+      "sha256": "bfba0e482a8d4378aedc088d5c3c1e11a2f6941e92b76c6b7d781367544e4217",
+      "bytes": 206,
+      "target": "platform/lighthouse/supply/launch.sh",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_api.py",
+      "sha256": "8e281a03fb68fd2ef65e9c3070b7e953445010800cf00c69f45d2ca6ec22cb1f",
+      "bytes": 1931,
+      "target": "tests/supply/test_api.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_backup.py",
+      "sha256": "679b4d933642eb0dd1c5b17b8245ed618c129d13e3d0635618f0a5b71c98cf15",
+      "bytes": 1065,
+      "target": "tests/supply/test_backup.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_demo.py",
+      "sha256": "22e162ebdaa98cb41597fd134a3f91b41ff83f55b254da0b052fa4998dbcf74b",
+      "bytes": 3404,
+      "target": "tests/supply/test_demo.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_domain.py",
+      "sha256": "9cbb818a55636a3f9b8f83618c7c11fcc7df9b245005a919aafe4a625792367a",
+      "bytes": 1298,
+      "target": "tests/supply/test_domain.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_e2e_and_backup.py",
+      "sha256": "08d394cfb6f6c1679d2f3010dbe7d5e3a8684e22a043e5450b550bca55dd858c",
+      "bytes": 4068,
+      "target": "tests/supply/test_e2e_and_backup.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "tests/test_gateway.py",
+      "sha256": "584ff0c4fda9e2d1fc134c140765236c22042326f4ae432e9cb29777043a728a",
+      "bytes": 2025,
+      "target": "tests/supply/test_gateway.py",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "web/app.js",
+      "sha256": "0477b861badece4b64c3d96c57ae004b09a6b574a3902d248029b1a6e62cb2a4",
+      "bytes": 13793,
+      "target": "apps/hq-console/supply/app.js",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "web/index.html",
+      "sha256": "1068f6bd9f886e7cbf11f9db3c9f97c43c0a93294781ab3a4f21d130382a4f80",
+      "bytes": 5347,
+      "target": "apps/hq-console/supply/index.html",
+      "status": "INTEGRATION_ADAPTED"
+    },
+    {
+      "path": "web/style.css",
+      "sha256": "1b1bcc9af98d554135ff44b3e1b1f5f3a1ba6c9c461a2bfd60d67022ce9d52ad",
+      "bytes": 4984,
+      "target": "apps/hq-console/supply/style.css",
+      "status": "IDENTICAL"
+    }
+  ]
+}
