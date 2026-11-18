@@ -1,0 +1,61 @@
+{
+  "sources": [
+    {
+      "source_id": "BSV-SRC-001",
+      "file_type": "ZIP",
+      "business_domains": [
+        "cross_domain"
+      ],
+      "bsv_circles": [
+        "BSV1",
+        "BSV2",
+        "BSV3"
+      ],
+      "source": "用户上传附件 BSV-SRC-001",
+      "sha256": "5a0e0c7e1a315311757a0824e6d230f91e0f607f0be6dbeedfc83c86a856e529",
+      "sensitivity": "INTERNAL",
+      "version": "V2.0 / 组织 V5.0",
+      "authority_status": "LOCKED_BASELINE",
+      "import_target": "9d03b6eafe1f9c23e16a4b6b689d882a07369c20",
+      "processing_status": "ARCHIVED_AS_GIT_TREE"
+    },
+    {
+      "source_id": "BSV-SRC-002",
+      "file_type": "Markdown",
+      "business_domains": [
+        "knowledge"
+      ],
+      "bsv_circles": [
+        "BSV1",
+        "BSV2",
+        "BSV3"
+      ],
+      "source": "用户上传附件 BSV-SRC-002",
+      "sha256": "a2648e83b6e61b72a27c73a1b8a0892f442dc32b263eda4a54d14bed250f0645",
+      "sensitivity": "INTERNAL",
+      "version": "V2.0",
+      "authority_status": "MATCHES_LOCKED_BASELINE",
+      "import_target": "docs/ops/BOOTSTRAP_PROMPT.md",
+      "processing_status": "DUPLICATE_ALREADY_ARCHIVED"
+    },
+    {
+      "source_id": "BSV-SRC-003",
+      "file_type": "JSON",
+      "business_domains": [
+        "cross_domain"
+      ],
+      "bsv_circles": [
+        "BSV1",
+        "BSV2",
+        "BSV3"
+      ],
+      "source": "用户上传附件 BSV-SRC-003",
+      "sha256": "34bf764134ff5e259597a6ad34bffd9be3a881f3ce0a661f4db4f09abb5e1252",
+      "sensitivity": "INTERNAL",
+      "version": "V2.0",
+      "authority_status": "MATCHES_LOCKED_BASELINE",
+      "import_target": "config/use-case-registry.json",
+      "processing_status": "DUPLICATE_ALREADY_ARCHIVED"
+    }
+  ]
+}
