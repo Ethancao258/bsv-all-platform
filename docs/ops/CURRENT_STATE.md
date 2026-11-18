@@ -4,7 +4,7 @@
 **执行者** Codex
 **V2.0 原样导入提交** `9d03b6eafe1f9c23e16a4b6b689d882a07369c20`
 **GitHub 目标** https://github.com/Ethancao258/bsv-all-platform
-**发布状态** 本地提交已完成，远端建库和推送受阻。本文所在提交可通过 `git log -1 --format=%H -- docs/ops/CURRENT_STATE.md` 查询。
+**发布状态** 私有仓库 `main` 已发布。本文所在提交可通过 `git log -1 --format=%H -- docs/ops/CURRENT_STATE.md` 查询。
 
 | 资源 | 证据与状态 |
 |---|---|
@@ -18,7 +18,7 @@
 
 **核查时间** 2026-11-18T13:17:40+08:00
 
-- 校验器独立提交 `fee81eac7f06efb6c53a1764dc3e18bf1a4f0d31` 仅更新校验脚本及其文件清单哈希和字节数。现有工作区与含普通 `.git/` 的临时检验环境均通过，添加额外业务目录时仍会正确失败。GitHub Actions 结果为 UNKNOWN，待远端推送后核实。
+- 校验器独立提交 `fee81eac7f06efb6c53a1764dc3e18bf1a4f0d31` 仅更新校验脚本及其文件清单哈希和字节数。现有工作区与含普通 `.git/` 的临时检验环境均通过，添加额外业务目录时仍会正确失败。GitHub Actions 结果为 UNKNOWN，详见下方 GitHub 主仓库发布记录。
 - GitHub CLI 官方设备登录及 `repo,workflow` 权限刷新均已完成，身份为 `Ethancao258`，但 `gh auth status` 仍显示无权限范围。个人 CLI 身份查询目标返回 HTTP 404，建库返回 `Resource not accessible by integration`。远端仓库存在性、私有属性和 `main` 均为 UNKNOWN。
 - CloudBase 国内站的官方 MCP OAuth 已启动并交接浏览器登录。OAuth 结果和目标环境绑定状态为 UNKNOWN。数据库版本、产品表、主键、约束、RLS、迁移记录及备份恢复能力均为 UNKNOWN。
 - Lighthouse 和 EdgeOne 延至下一阶段核查。
@@ -45,3 +45,12 @@
 - 导入预检已用合成数据核验正常映射、拒绝已导入 SHA、拒绝 ID 冲突及哈希不符。未执行正式导入。
 - EdgeOne 预览候选目录是 `apps/guest-web/preview`。GitHub 及 EdgeOne 项目访问尚未打通，云端预览 URL 为 UNKNOWN。Lighthouse 未部署。生产菜单、收款、员工认证和会员服务未变更。
 - CloudBase G0 仍待已授权会话，包括实际版本、表、主键及约束、RLS、迁移和备份恢复能力。数据库迁移版本为无。发布前可分别回退本轮资料索引与预览提交。
+
+
+## GitHub 主仓库发布
+
+**核查时间** 2026-11-18T13:34:52+08:00
+
+- 通过 GitHub API 和 Git 引用查询确认目标是私有空仓库。现有本地 `main` 通过普通推送建立远程 `main`，完整保留本地提交历史。首次推送后，远程 SHA 与本地 `98432c112c4ec86c1a454459eeb257a33709fe5a` 一致。
+- 本地架构校验通过。GitHub Actions 的 `validate-architecture` 对首次推送运行成功。[运行记录](https://github.com/Ethancao258/bsv-all-platform/actions/runs/44245183954)
+- 后续以该私有仓库的 `main` 与现有业务注册表为工程版本来源。GitHub CLI 已验证可访问。其他客户端的读取状态取决于各自授权。
