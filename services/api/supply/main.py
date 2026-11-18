@@ -13,6 +13,7 @@ from .cache import LocalCache
 from .demo import DemoCentral, DEMO_STORES, DEMO_ITEMS, DEMO_ACTORS
 from .domain import calc_reorder, validate_count, unique_codes
 from .gateway import Gateway, Unreachable
+from .shipment_contract import shipment_for_console
 
 settings=load_settings()
 cache=LocalCache(settings.cache_dir)
@@ -158,14 +159,17 @@ async def stores(request:Request,current=Depends(actor)):
 async def shipments(request:Request,store_id:str|None=None,current=Depends(actor)):
     if store_id:permitted(current,'receive' if 'receive' in current['roles'] else 'dispatch',store_id)
     if demo:return {"data":demo.list(current,store_id),"meta":{"source":"DEMO_DATA","stale":False}}
-    return remote_read('D','/supply/shipments',request,{'store_id':store_id} if store_id else None)
+    envelope=remote_read('D','/supply/shipments',request,{'store_id':store_id} if store_id else None)
+    if not isinstance(envelope['data'],list):raise HTTPException(502,'无效配送单列表')
+    return {**envelope,'data':[shipment_for_console(row) for row in envelope['data']]}
 
 @app.get('/api/shipments/{sid}')
 async def shipment_detail(sid:str,request:Request,current=Depends(actor)):
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',sid):
         raise HTTPException(422,'无效配送单编号')
     if demo:return {"data":demo.view(sid,current),"meta":{"source":"DEMO_DATA","stale":False}}
-    return remote_read('D','/supply/shipments/'+sid,request)
+    envelope=remote_read('D','/supply/shipments/'+sid,request)
+    return {**envelope,'data':shipment_for_console(envelope['data'],detail=True)}
 
 @app.get('/api/inventory')
 async def inventory(request:Request,store_id:str|None=None,current=Depends(actor)):
@@ -178,7 +182,9 @@ async def create(body:ShipmentCreate,request:Request,current=Depends(actor)):
     permitted(current,'dispatch',body.source_store_id)
     d=body.model_dump(mode='json')
     if demo:return demo.mutate('create',None,d,current)
-    return remote_mutation('D','/supply/shipments',d,request,current)
+    result=remote_mutation('D','/supply/shipments',d,request,current)
+    if isinstance(result,dict):result['data']=shipment_for_console(result['data'])
+    return result
 
 async def _change(sid,operation,body,request,current):
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',sid):
@@ -192,7 +198,9 @@ async def _change(sid,operation,body,request,current):
     if operation=='receive':permitted(current,'receive')
     if operation=='prepare':permitted(current,'dispatch')
     # The central ledger independently checks source/destination membership and optimistic version.
-    return remote_mutation('D',f'/supply/shipments/{sid}/{operation}',d,request,current)
+    result=remote_mutation('D',f'/supply/shipments/{sid}/{operation}',d,request,current)
+    if isinstance(result,dict):result['data']=shipment_for_console(result['data'])
+    return result
 
 @app.post('/api/shipments/{sid}/prepare')
 async def prepare(sid:str,body:Action,request:Request,current=Depends(actor)):
