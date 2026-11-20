@@ -1,0 +1,254 @@
+{
+  "schema_version": "ux-v2.2-preservation-contract-1",
+  "design_status": "CORRECTED_UX_SPEC_ONLY_NO_CODE_OR_HOST_CHANGES",
+  "base_v41_commit": "c51b58d67dabae53afcdf9851a80cdc93d4200f6",
+  "base_r32_design_commit": "75bbc7bd171567afff35b68a236d17dc51951ad2",
+  "rejected_design": "standalone_four_scenario_html_demo",
+  "rejected_reason": "the prior standalone demo visually unified separate programs and omitted original interactive per-store seat maps; it is NOT a replacement for the running multi-program UI",
+  "invariants": [
+    "existing applications remain separate pages and original URLs; shared identity/nav does not mean a single-page rewrite",
+    "POS interactive per-store floor maps remain first-class on desktop and tablet and reachable on mobile",
+    "original SVG/JSON, seat node IDs and neighbor graph remain unchanged by visual-only work",
+    "none of the existing order/transfer/production/cleaning/history/audit actions are removed",
+    "only add a small return-to-workbench/safe-origin link where absent, not a giant all-app navigation panel",
+    "reuse existing severe alert system and business severity data, not create a second alarm state source",
+    "existing customer menu layout and scrolling constraints remain intact",
+    "no auth/POS/supply/database migration/new service/production API changes are authorized in UX-only patches"
+  ],
+  "existing_app_routes": [
+    {
+      "app": "staff-center",
+      "route": "/",
+      "entry": "apps/staff-center/identity/workbench.html",
+      "preserve": "priority/task/shift/business links, internal navigation"
+    },
+    {
+      "app": "employee-profile",
+      "route": "/staff",
+      "entry": "apps/staff-center/identity/",
+      "preserve": "staff identity and auth settings"
+    },
+    {
+      "app": "academy",
+      "route": "/academy",
+      "entry": "apps/staff-center/identity/academy.html",
+      "preserve": "courses, certifications, exam, shift"
+    },
+    {
+      "app": "academy-admin",
+      "route": "/academy/admin",
+      "entry": "apps/staff-center/identity/academy-admin.html",
+      "preserve": "course review, practical, shift, device"
+    },
+    {
+      "app": "hq",
+      "route": "/hq",
+      "entry": "apps/hq-console/identity/hq.html",
+      "preserve": "two-person approvals, legacy mapping and grants"
+    },
+    {
+      "app": "pos",
+      "route": "/pos",
+      "entry": "apps/store-console/bsv1/index.html",
+      "preserve": "actual floor SVG+seats, selections, seating groups, kitchen queue, clean, orders, pay mock, audit"
+    },
+    {
+      "app": "supply",
+      "route": "/supply-ui/",
+      "entry": "apps/hq-console/supply/",
+      "preserve": "separate independent supply application"
+    },
+    {
+      "app": "guest-menu",
+      "route": "/cocktail/",
+      "entry": "apps/guest-web/bsv1/site/cocktail/index.html",
+      "preserve": "V13 menu header/categories/content single vertical scroll/footer"
+    },
+    {
+      "app": "future-private-craft",
+      "route": "/work/craft",
+      "entry": null,
+      "stage": "PROPOSED_NOT_IMPLEMENTED",
+      "preserve": "future staff workflow must link to existing POS order_id and return"
+    },
+    {
+      "app": "historical-public-craft",
+      "route": "/craft/",
+      "entry": null,
+      "stage": "CURRENT_404",
+      "preserve": "do not silently reuse public path for private craft"
+    }
+  ],
+  "store_maps": [
+    {
+      "store_id": "BSVM",
+      "name": "密云鸡尾酒吧",
+      "data": "services/api/bsv1/store_layouts/BSVM.json",
+      "svg": "services/api/bsv1/store_layouts/art/BSVM.svg",
+      "observed_seat_nodes": 13,
+      "preserve_fields": [
+        "store_id",
+        "layout_version",
+        "orientation",
+        "background_svg",
+        "viewport",
+        "seats",
+        "neighbors",
+        "groups",
+        "bathrooms"
+      ]
+    },
+    {
+      "store_id": "BSVS",
+      "name": "顺义鸡尾酒吧",
+      "data": "services/api/bsv1/store_layouts/BSVS.json",
+      "svg": "services/api/bsv1/store_layouts/art/BSVS.svg",
+      "observed_seat_nodes": 13,
+      "preserve_fields": [
+        "store_id",
+        "layout_version",
+        "orientation",
+        "background_svg",
+        "viewport",
+        "seats",
+        "neighbors",
+        "groups",
+        "bathrooms"
+      ]
+    },
+    {
+      "store_id": "BSVT",
+      "name": "通州高空鸡尾酒吧",
+      "data": "services/api/bsv1/store_layouts/BSVT.json",
+      "svg": "services/api/bsv1/store_layouts/art/BSVT.svg",
+      "observed_seat_nodes": 17,
+      "preserve_fields": [
+        "store_id",
+        "layout_version",
+        "orientation",
+        "background_svg",
+        "viewport",
+        "seats",
+        "neighbors",
+        "groups",
+        "bathrooms"
+      ]
+    },
+    {
+      "store_id": "BSVF",
+      "name": "密云富民街精酿酒馆",
+      "data": null,
+      "svg": null,
+      "observed_seat_nodes": null,
+      "original_registry": "services/api/bsv1/store_layouts/stores.json",
+      "preserve": "layout_file null; never borrow another store map; new layout requires confirmed store-specific data"
+    }
+  ],
+  "critical_existing_pos_dom": [
+    "floorStage",
+    "seatLayer",
+    "seatNavigator",
+    "pageMap",
+    "orderPanel",
+    "alertStrip",
+    "pageQueue",
+    "queueList",
+    "pageClean",
+    "cleanList",
+    "pageOrders",
+    "ordersList",
+    "criticalOverlay",
+    "criticalGo",
+    "systemCheckBadge"
+  ],
+  "critical_existing_pos_functions": [
+    "renderFloor",
+    "renderSeats",
+    "neighborGraph",
+    "renderSeatNav",
+    "clickSeat",
+    "renderOrderPanel",
+    "renderQueue",
+    "renderCleaning",
+    "renderAlerts",
+    "setPage"
+  ],
+  "critical_existing_pos_nav": [
+    "map",
+    "orders",
+    "queue",
+    "clean",
+    "history",
+    "audit"
+  ],
+  "exact_ux_edit_surface": [
+    "apps/staff-center/identity/workbench.html",
+    "apps/staff-center/identity/assets/style.css",
+    "apps/hq-console/identity/hq.html",
+    "apps/store-console/bsv1/index.html",
+    "apps/store-console/bsv1/style.css",
+    "apps/store-console/bsv1/app.js"
+  ],
+  "change_policy": {
+    "layout_data_and_svg": "READ_ONLY_FOR_UX",
+    "pos_backend_or_database": "NO_TOUCH",
+    "identity_auth_backend": "NO_TOUCH",
+    "pos_old_workflows": "REGRESSION_PRESERVE",
+    "guest_menu": "NO_PUBLIC_MENU_REDESIGN",
+    "screens": "INCREMENTAL_IN_EXISTING_APP",
+    "cross_program_return": "LINK_ONLY_AND_SAFE_RETURN",
+    "alert": "REUSE_CRITICAL_OVERLAY_AND_ALERTSTRIP"
+  },
+  "verification_requirements": [
+    {
+      "test_id": "UX-P01",
+      "gate": "three real store maps load with 13/13/17 interactive seats and unchanged identity/neighbor data"
+    },
+    {
+      "test_id": "UX-P02",
+      "gate": "seat selection, cancel, transfer, new order and queue actions regress no worse than V4.1"
+    },
+    {
+      "test_id": "UX-P03",
+      "gate": "existing POS 6 nav tabs + safe return to independent workbench survive"
+    },
+    {
+      "test_id": "UX-P04",
+      "gate": "BSVF stays no map, no fallback to BSVM map"
+    },
+    {
+      "test_id": "UX-P05",
+      "gate": "original critical-overlay alerts navigate to actual queue/clean actions and never delete real incidents"
+    },
+    {
+      "test_id": "UX-P06",
+      "gate": "original HQ form IDs and approval semantics stay; only visual priority changes"
+    },
+    {
+      "test_id": "UX-P07",
+      "gate": "academy, staff, HQ, POS, supply and guest menu remain independently addressable"
+    },
+    {
+      "test_id": "UX-P08",
+      "gate": "guest V13 layout and public privacy unchanged"
+    },
+    {
+      "test_id": "UX-P09",
+      "gate": "no fabricated success feedback and backend permissions unchanged"
+    },
+    {
+      "test_id": "UX-P10",
+      "gate": "320/375/390/768/1024/1440 responsive map and safe tap test"
+    },
+    {
+      "test_id": "UX-P11",
+      "gate": "same tasks compared to baseline, results recorded, no invented impact"
+    },
+    {
+      "test_id": "UX-P12",
+      "gate": "all modified existing DOM IDs/routes/API calls and seat files pass unchanged tests"
+    }
+  ],
+  "release_gate": "NO UX implementation until user approves updated design; G0 evidence plus CODEx controlled batch; no auto merge, production deploy or database writes",
+  "caveat": "This JSON is a proposed PR review guardrail; no CI guard/test runner or application changes have been implemented."
+}
