@@ -1,5 +1,5 @@
 {
-  "schema_version": "ux-v2.2-preservation-contract-2",
+  "schema_version": "ux-v2.2-preservation-contract-3",
   "design_status": "CORRECTED_UX_SPEC_ONLY_NO_CODE_OR_HOST_CHANGES",
   "base_v41_commit": "c51b58d67dabae53afcdf9851a80cdc93d4200f6",
   "base_r32_design_commit": "75bbc7bd171567afff35b68a236d17dc51951ad2",
@@ -335,10 +335,30 @@
     {
       "test_id": "UX-P20",
       "gate": "PR includes only approved UX design/document changes before Codex; any later functional diff must enumerate altered existing functionality with pre/post integration tests"
+    },
+    {
+      "test_id": "HQ-R01",
+      "gate": "/hq and /hq/stores/layout are separate; original HQ floor editor works under real group BM authorization, no POS shift/device requirement"
+    },
+    {
+      "test_id": "HQ-R02",
+      "gate": "anonymous, POS-staff, hq.people.read-only, local SQLite HQ_ADMIN-only and identity A-unavailable users cannot read/write layout data"
+    },
+    {
+      "test_id": "HQ-R03",
+      "gate": "read/edit/publish/store.register separate grants, actor TR authentic, all changes auditable and no accidental staff_store_access insertion"
+    },
+    {
+      "test_id": "HQ-R04",
+      "gate": "map edit/upload/draft/publish/restore and cross-store permissions all pass on isolated PG+SQLite after controlled stage authorization"
+    },
+    {
+      "test_id": "HQ-R05",
+      "gate": "public V13 menu has no injected internal navigation for anonymous users; legacy V9 /menu preview still exists under its original authorized POS session"
     }
   ],
   "release_gate": "NO UX implementation until user approves updated design; G0 evidence plus CODEx controlled batch; no auto merge, production deploy or database writes",
-  "caveat": "This JSON is a proposed PR review guardrail; no CI guard/test runner or application changes have been implemented.",
+  "caveat": "The agreed ADR/prompt removes remaining architectural choices only. No CodeX run, code patch, route fix, CI, stage deployment or true functional restoration has yet occurred. Preserve original map editor, POS embedded recipe guide, and internal V9 menu.",
   "audit_latest": "2026-11-21",
   "audit_scope": "GitHub read-only static code/manifest/CI evidence; does not execute browser/POS/production or verify unattached Windows V2.8 ZIP",
   "immutable_source_evidence": {
@@ -568,5 +588,123 @@
     "all UX changes must be tested per independent BSVM/BSVS/BSVT map and map editor publish/revision rollbacks, not one generic floor plan",
     "V4.1 PR12 code changes had removals within files but CI pass; full human baseline equivalence still requires old vs new functional black-box regression",
     "unattached historical Windows V2.8 ZIP and standalone Android QR resources require comparison if they will be migrated; cannot assert byte-identical preservation from GitHub alone"
-  ]
+  ],
+  "integrated_architecture_decision": {
+    "adr": "docs/architecture/ADR_R3_2_07_HQ_LAYOUT_AND_CRAFT_BRIDGE.md",
+    "codex_task": "docs/ops/CODEX_R3_2_G0_HQ_LAYOUT_CRAFT_EXECUTION.md",
+    "resolution_status": "DESIGN_DECIDED_IMPLEMENTATION_NOT_RUN",
+    "specific_fixes": [
+      {
+        "issue": "HQ_ROUTE_COLLISION",
+        "decision": "/hq -> identity personnel; /hq/stores/layout -> original POS floor editor; /api/hq/* -> original POS map business under new identity gate",
+        "code_status": "NOT_IMPLEMENTED"
+      },
+      {
+        "issue": "LEGACY_HQ_LOCAL_AUTH_V4_DENIED",
+        "decision": "dedicated live A-backed HQ session authorization; four separate HQ layout actions; never bypass the existing 403 by opening SQLite HQ_ADMIN",
+        "code_status": "NOT_IMPLEMENTED"
+      },
+      {
+        "issue": "LEGACY_HQ_POS_SESSION_CSRF",
+        "decision": "HQ admin status+identity CSRF independent from store POS shift/device; do not fetch /api/state on HQ floor editor",
+        "code_status": "NOT_IMPLEMENTED"
+      },
+      {
+        "issue": "HQ_ACTOR_PROJECTION_RISK",
+        "decision": "TR-to-legacy staff FK projection must not call device_pos.bind_actor or grant staff_store_access",
+        "code_status": "NOT_IMPLEMENTED"
+      },
+      {
+        "issue": "CRAFT_DUPLICATION",
+        "decision": "preserve original POS guideOverlay and all task/recipe endpoints; new /work/craft is a view over same order/task IDs",
+        "code_status": "NOT_IMPLEMENTED"
+      },
+      {
+        "issue": "PUBLIC_MENU_INTERNAL_NAV",
+        "decision": "/cocktail/ anonymous has public menu only; user-supplied from=pos is not proof of internal identity",
+        "code_status": "NOT_IMPLEMENTED"
+      }
+    ],
+    "fixed_routes": [
+      {
+        "route": "/hq",
+        "destination": "identity",
+        "business": "people_approval"
+      },
+      {
+        "route": "/hq/stores/layout",
+        "destination": "pos",
+        "business": "legacy_layout_admin",
+        "requires": "hq.layout.read"
+      },
+      {
+        "route": "/hq/stores/layout/assets/app.js",
+        "destination": "pos",
+        "business": "legacy_hq_js"
+      },
+      {
+        "route": "/hq/stores/layout/assets/style.css",
+        "destination": "pos",
+        "business": "legacy_hq_css"
+      },
+      {
+        "route": "/api/hq/layout",
+        "destination": "pos",
+        "business": "sole_SQLite_layout",
+        "requires": "hq.layout.read"
+      },
+      {
+        "route": "/api/hq/layout/draft",
+        "destination": "pos",
+        "business": "sole_SQLite_layout",
+        "requires": "hq.layout.edit"
+      },
+      {
+        "route": "/api/hq/layout/publish",
+        "destination": "pos",
+        "business": "sole_SQLite_layout",
+        "requires": "hq.layout.publish"
+      },
+      {
+        "route": "/api/hq/layout/restore",
+        "destination": "pos",
+        "business": "sole_SQLite_layout",
+        "requires": "hq.layout.edit"
+      },
+      {
+        "route": "/api/hq/stores/create",
+        "destination": "pos",
+        "business": "organization_approved_store_projection",
+        "requires": "hq.store.register"
+      },
+      {
+        "route": "/pos",
+        "destination": "pos",
+        "business": "existing_floor_map_and_bartending"
+      },
+      {
+        "route": "/work/craft",
+        "destination": "pos",
+        "business": "future_view_over_same_pos_tasks",
+        "status": "PROPOSED_NOT_IMPLEMENTED"
+      },
+      {
+        "route": "/cocktail/",
+        "destination": "public_menu",
+        "business": "existing_v13_menu"
+      },
+      {
+        "route": "/menu",
+        "destination": "pos",
+        "business": "existing_v9_internal_price_preview",
+        "status": "PRESERVE_EXISTING_POS_SESSION_GATED"
+      }
+    ],
+    "permission_actions": [
+      "hq.layout.read",
+      "hq.layout.edit",
+      "hq.layout.publish",
+      "hq.store.register"
+    ]
+  }
 }
