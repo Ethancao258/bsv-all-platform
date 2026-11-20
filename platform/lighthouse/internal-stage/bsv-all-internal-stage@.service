@@ -6,10 +6,10 @@ After=network.target
 Type=simple
 User=bsvint-%i
 Group=bsvint-%i
-WorkingDirectory=/opt/bsv-all-internal-stage/current
+WorkingDirectory=/opt/bsv-all-internal-stage/current/src
 EnvironmentFile=/opt/bsv-all-internal-stage/config/%i.env
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=/bin/bash /opt/bsv-all-internal-stage/current/platform/lighthouse/internal-stage/run.sh %i
+ExecStart=/bin/bash /opt/bsv-all-internal-stage/current/src/platform/lighthouse/internal-stage/run.sh %i
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true
