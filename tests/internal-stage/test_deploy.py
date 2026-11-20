@@ -1,6 +1,7 @@
 """Exercise release switching and failure handling without systemd or host mutations."""
 import importlib.util
 from pathlib import Path
+import os
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -15,6 +16,13 @@ NEW = "2" * 40
 
 
 class ReleaseTest(unittest.TestCase):
+    def setUp(self):
+        original = stage.write_secret
+        fixture_writer = patch.object(stage, "write_secret", side_effect=lambda path, value:
+                                      original(path, value, os.getuid(), os.getgid()))
+        fixture_writer.start()
+        self.addCleanup(fixture_writer.stop)
+
     def test_success_and_rollback_preserve_state(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
@@ -49,6 +57,19 @@ class ReleaseTest(unittest.TestCase):
             self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
             self.assertIsNone(stage.sha_at(stage.ROOT / "previous"))
             self.assertEqual([call.args for call in services.call_args_list], [(False,), (True,)] * 2)
+
+    def test_interrupted_activation_recovers_previous_version(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "switch_services") as services, patch.object(stage, "verify"):
+            for sha in (OLD, NEW):
+                (stage.ROOT / "releases" / sha).mkdir(parents=True)
+            stage.link("current", NEW)
+            marker = stage.ROOT / "activation.pending"
+            marker.write_text(OLD + "\n")
+            stage.recover_pending()
+            self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
+            self.assertFalse(marker.exists())
+            self.assertEqual([call.args for call in services.call_args_list], [(False,), (True,)])
 
 
 if __name__ == "__main__":

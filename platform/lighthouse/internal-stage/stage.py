@@ -350,7 +350,25 @@ def locked():
         os.close(fd)
 
 
+def recover_pending():
+    marker = ROOT / "activation.pending"
+    if not marker.exists():
+        return
+    previous = marker.read_text().strip()
+    if previous and not re.fullmatch(r"[a-f0-9]{40}", previous):
+        raise RuntimeError("Invalid managed activation journal")
+    switch_services(False)
+    if previous:
+        link("current", previous)
+        switch_services(True)
+        verify()
+    else:
+        (ROOT / "current").unlink(missing_ok=True)
+    marker.unlink()
+
+
 def deploy(sha):
+    recover_pending()
     preflight(sha)
     previous = sha_at(ROOT / "current")
     if previous and previous != sha:
@@ -364,6 +382,8 @@ def deploy(sha):
     if previous == sha and all(active(name) for name in START_ORDER):
         verify()
         return
+    marker = ROOT / "activation.pending"
+    write_secret(marker, previous or "")
     try:
         switch_services(False)
         link("current", sha)
@@ -371,21 +391,19 @@ def deploy(sha):
         bootstrap(dest, identity, pos, pin)
         switch_services(True)
         verify()
+        if previous and previous != sha:
+            link("previous", previous)
     except (Exception, KeyboardInterrupt):
-        switch_services(False)
-        if previous:
-            link("current", previous)
-            switch_services(True)
-            verify()
-        else:
-            (ROOT / "current").unlink(missing_ok=True)
+        recover_pending()
         raise
-    if previous and previous != sha:
-        link("previous", previous)
+    marker.unlink()
     print(f"DEPLOYED_INTERNAL_STAGE {sha}", flush=True)
 
 
 def rollback():
+    if (ROOT / "activation.pending").exists():
+        recover_pending()
+        return
     current, previous = sha_at(ROOT / "current"), sha_at(ROOT / "previous")
     switch_services(False)
     if not current:
