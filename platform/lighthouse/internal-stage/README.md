@@ -1,12 +1,12 @@
-# Lighthouse 内部集成测试版
+# Lighthouse V4.1 内部集成测试版
 
 仅面向既有北京 Lighthouse 的 SSH 隧道。保留 8765、8767、其 systemd 单元和数据目录。新服务安装于 `/opt/bsv-all-internal-stage/releases/<sha>`，测试状态位于 `/var/lib/bsv-all-internal-stage`。全部监听 `127.0.0.1`。请只在受信任的主机和本机 SSH 客户端使用。未来 HTTPS 私有发布需要另行配置可信主机名、Secure Cookie 和访问门禁。
 
 | 启动顺序 | 端口与入口 | 依赖和数据 |
 |---|---|---|
 | PostgreSQL 17 | 18764，专用 peer socket 及 SCRAM TCP | 独立实例与数据库 `bsv_identity_isolated_internal`。非超级用户拥有该测试库。仅目标库和测试角色可经 TCP 进入。 |
-| 人员身份 R2 | 18761，`services.api.identity.api:app` | 独立锁定 venv。A 使用本机 PG，B 不配置。一次性应用已有候选迁移 `bsv_identity_0001`。隔离认证、双审核人及 AES-GCM 归档。 |
-| 门店 POS | 18762，`services/api/bsv1/app.py` | Python 标准库。新 SQLite 与仓库生成的合成 V9。服务端对 R2 逐次鉴权。BSVT 测试别名；下单仅允许未付款模式。 |
+| 人员身份及学院 | 18761，`services.api.identity.api:app` | 独立锁定 venv。A 使用本机 PG，B 不配置。仅隔离环境依次应用 `bsv_identity_0001` 与 `bsv_academy_0002`。隔离认证、双审核人及 AES-GCM 归档。 |
+| 门店 POS | 18762，`services/api/bsv1/app.py` | 保留 SQLite 和已有合成 V9。V4.1 启动启用设备核验，身份服务逐次核对门店资格、权限、确认班次和设备。仅可保存未付款演练订单。 |
 | 供货和督查 | 18763，`services.api.supply.main:app` | 另一套锁定 venv。仅接 B 身份源。A/C 目录及 D/E 事实服务当前未接，写入返回 503。 |
 | 私有入口 | 18760，`ingress:app` | 同源转发 POS、`/staff`、`/hq`、`/supply-ui/hq/supply`、`/supply-ui/inspector/supply`。`/cocktail/` 提供已有菜单文件。`/craft/` 返回 404。 |
 
@@ -14,13 +14,12 @@
 
 Ubuntu 24.04 需具备 `sudo`、`python3.12-venv`、`ss` 和 `/usr/lib/postgresql/17/bin` 的 PG17 客户端及服务端。发布不安装系统包。请用现有私有仓库 Deploy Key 拉取代码，使用已批准的完整 SHA 创建独立工作树。两个旧服务及其端口必须在发布前处于运行状态。`18760–18764` 只允许受管理实例绑定 `127.0.0.1`。
 
-使用有私有仓库读取权限的 GitHub 客户端导出已成功的 PR 运行证据。把 `ci-proof.json` 传到主机受控路径，核对其链接、工作流和批准的不可变 SHA。主机无需 GitHub 写入令牌。`bsvctl.py` 校验证据的结构和内容，由经营负责人核验证据来源和批准发布。
+用有仓库读取权限的 GitHub CLI 客户端从 GitHub 直接导出已成功的 PR 运行。候选版本的发布器核对不可变 SHA 和全部八项作业。经现有 SSH 通道将导出文件传到主机，由经营负责人核对其来源并批准。主机使用既有只读 Deploy Key，无需保存 GitHub CLI 令牌。
 
 ```bash
-# 从能够读取此私有仓库的客户端执行，再通过安全渠道传输 ci-proof.json
-# CI_RUN_ID 取最终 PR 的成功 pull_request 运行编号
-gh run view "$CI_RUN_ID" -R Ethancao258/bsv-all-platform \
-  --json url,headSha,event,status,conclusion,workflowName,jobs > ci-proof.json
+# 从候选提交工作树和已登录 gh 的客户端执行
+python3 platform/lighthouse/internal-stage/bsvctl.py ci-evidence \
+  --sha "$APPROVED_SHA" --run "$CI_RUN_ID" > ci-proof.json
 ```
 
 ```bash
@@ -28,22 +27,24 @@ gh run view "$CI_RUN_ID" -R Ethancao258/bsv-all-platform \
 ctl=platform/lighthouse/internal-stage/bsvctl.py
 python3 "$ctl" status
 sudo python3 "$ctl" deploy --sha "$APPROVED_SHA" --approve-isolated \
-  --ci-proof "$HOME/ci-proof.json" --request-id ISSUE-9 \
+  --ci-proof "$HOME/ci-proof.json" --request-id ISSUE-11 \
   --module identity-api --module identity-hq-ui --module store-pos --module deployment-config
 python3 "$ctl" verify
 ```
 
-发布命令只调用本地受控部署代码。发生变更时先暂停五个隔离单元中的应用写入，保留隔离 PG17 连接，创建加密 PG 与一致性 POS 备份，再切换版本。验证失败会恢复原版本并重新检查其路由与端口。已有库和服务配置继续保留。迁移目录变化会阻止本路径升级。
+发布时先暂停隔离应用写入，保留隔离 PG17 连接，生成 PG 加密归档、POS 一致性快照和已有学院媒体私有副本。发布器仅接受原迁移目录不变或只增加已审核的学院 `20261120_0002_academy.py`，并记录真实 Alembic 修订。验证失败会恢复前一版本并复查路由与端口。V3 的数据、旧 POS 码映射和系统配置留在原有位置。
 
 `verify` 检查两个旧服务、五个隔离监听、本地 HTTP 路由、健康及匿名拒绝，成功显示 `RELEASE_HEALTH_OK` 和 `VERIFY_OK`。业务验收另行执行一次，明确批准通过真实 HTTP 写入临时合成授权及未付款测试记录。
 
 ```bash
 stage=/opt/bsv-all-internal-stage/current
-sudo "$stage/identity/bin/python" "$stage/src/platform/lighthouse/internal-stage/acceptance.py" \
+sudo "$stage/identity/bin/python" "$stage/src/platform/lighthouse/internal-stage/acceptance_v41.py" \
   --expected-sha "$APPROVED_SHA" --execute-isolated
 ```
 
-`STAGING_ACCEPTED` 是本次内部隔离验收结果。中央 D/E 写入仍标为 `BLOCKED`。仅供登录人员的浏览器可在已有 SSH 隧道下打开 `http://127.0.0.1:18760/`。测试身份与 POS PIN 由验收脚本在主机读取，输出不含凭据。旧码 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001` 的已有精确映射按幂等结果处理。
+`V4_STAGING_ACCEPTED` 是本次内部隔离业务验收结果。中央 D/E 写入仍标为 `BLOCKED`。员工经已有 SSH 隧道打开 `http://127.0.0.1:18760/`，登录后进入学院，完成门店相应版本课程和实操。由负责人完成班次审批，再由员工确认，才进入已注册点单终端。旧码 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001` 的已有精确映射保留。验收输出不含设备令牌与账号凭据。
+
+学院媒体保存在隔离服务账户的私有目录。没有能实际扫描文件的 `clamdscan` 时，服务明确拒绝上传。部署器不安装扫描程序或配置外部对象存储。真实课件、视频和员工资料仍需单独的隐私、版权、存储、备份和访问审批。
 
 ## 安全回切与检查点
 
@@ -52,8 +53,16 @@ sudo "$stage/identity/bin/python" "$stage/src/platform/lighthouse/internal-stage
 sudo python3 platform/lighthouse/internal-stage/bsvctl.py rollback
 ```
 
-回切前同样生成检查点，只更改这五个隔离测试单元。原版本存在时启动并核查其健康，无原版本时停止测试服务并保留数据。代码回切沿用已有隔离库，快照不自动写回。若半途退出，激活日志保留原版本，下一次受控操作会恢复原先状态。若缺少受管活动版本但存在旧库文件，先由操作者核对状态，部署会停止。用 `journalctl -u 'bsv-all-internal-stage@*.service'` 查阅隔离服务的启动日志。
+在 V4.1 候选工作树执行回切。回切前同样生成检查点，只更改五个隔离单元。恢复 V3 代码时保留新增学院表、数据、POS SQLite 和媒体，V3 启动器恢复原有设备策略。回切不执行数据库降级，也不会自动写回快照。中断时保留激活日志供下一次受控操作恢复。若缺少受管活动版本但存在旧库文件，部署会停下来。用 `journalctl -u 'bsv-all-internal-stage@*.service'` 查看隔离服务日志。
 
-`sudo python3 platform/lighthouse/internal-stage/stage.py --backup` 生成独立手动检查点，带 `CHECKPOINT_READY` 和根账户只读的 `recovery/<时间>-<标识>/receipt.json` 路径。PG17 归档使用 AES-GCM，检查点复核加密完整性和 SHA-256；SQLite 采用在线备份 API，并核验快照 `PRAGMA quick_check` 和 SHA-256。按受控流程分别保存归档和密钥。部署前检查点暂停隔离应用写入，手动检查点只保证两个单独数据库各自一致。`tests/identity/pg/check.sh` 在真正的临时 PG17 目标中完成解密恢复与合成数据校验。生产级恢复演练与 Lighthouse 实机回切仍为 `HOST_NOT_RUN`，需以本机证据更新记录。
+以下为可单独执行的备份与恢复检查命令。使用前一条输出中完整的 `checkpoint` 路径。
+
+```bash
+stage_tool=platform/lighthouse/internal-stage/stage.py
+sudo python3 "$stage_tool" --backup
+sudo python3 "$stage_tool" --recovery-check "$CHECKPOINT_RECEIPT"
+```
+
+`CHECKPOINT_READY` 回执受根账户保护。恢复检查实际校验 AES-GCM、PG 文件 SHA-256、SQLite `PRAGMA quick_check` 和学院媒体指纹，成功显示 `RECOVERY_CHECK_READY`。按受控流程分别保存归档和密钥。部署前检查点暂停隔离写入，手动备份不承诺跨库同一时点。`tests/identity/pg/check.sh` 在真正的临时 PG17 目标中执行解密恢复与合成数据校验。生产恢复与 V4.1 Lighthouse 实机回切仍须实际执行后更新证据。
 
 一句话自动启动 Codex、从 GitHub 自动触发主机和生产数据迁移为 `NOT_CONNECTED`。`bsvctl.py` 只提供已经实现的人工批准入口。

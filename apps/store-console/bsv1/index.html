@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
  <meta charset="utf-8" />
- <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content" />
  <meta name="theme-color" content="#233d50" />
  <title>BSV1｜三店座位经营工作台 V2.9</title>
  <link rel="stylesheet" href="/style.css" />
@@ -15,13 +15,21 @@
      <p class="eyebrow">BAR ST. VINCENT · BSV1</p>
      <h1>门店座位工作台</h1>
      <p class="muted">先选择所在地区与实际门店，核实后登录</p>
-     <p class="stage-pos-note">仅供内部演练。先在 <a href="/staff">个人中心</a> 登录，再核对门店和员工 PIN。<a href="/">返回工作台</a></p>
+     <p class="stage-pos-note">仅供内部演练。先在 <a href="/staff">个人中心</a> 登录，再核对门店和员工 PIN。<a href="/">返回工作台</a> · <a href="/cocktail/?from=pos">鸡尾酒菜单</a></p>
      <form id="loginForm" autocomplete="off">
        <label>① 所在地区<select id="loginDistrict" required><option value="">请选择地区</option></select></label>
        <label>② 当前工作门店<select id="loginStore" required disabled><option value="">请先选择地区</option></select></label>
        <div class="login-store-preview" id="loginStorePreview">尚未选择门店</div>
-       <label>③ 员工代码<input id="staffCode" placeholder="输入员工代码" required maxlength="48" /></label>
-       <label>④ 独立 PIN<input id="staffPin" type="password" inputmode="numeric" placeholder="输入登录 PIN" required maxlength="32" /></label>
+       <label id="legacy-code-label">③ 员工代码<input id="staffCode" placeholder="输入员工代码" required maxlength="48" /></label>
+       <label id="legacy-pin-label">④ 独立 PIN<input id="staffPin" type="password" inputmode="numeric" placeholder="输入登录 PIN" required maxlength="32" /></label>
+       <div id="device-entry" class="hidden">
+        <p id="device-caption" role="status">正在核对设备。</p>
+        <div id="device-credentials" class="hidden">
+         <label>设备编号<input id="device-id" maxlength="70" autocomplete="off" disabled></label>
+         <label>设备口令<input id="device-token" type="password" maxlength="160" autocomplete="off" disabled></label>
+        </div>
+        <button id="device-forget" type="button" class="outline hidden">撤下本机登记</button>
+       </div>
        <div id="loginError" class="form-error" role="alert"></div>
        <button type="submit" class="primary large">确认门店并登录</button>
      </form>
@@ -51,6 +59,14 @@
      <div><p class="eyebrow" id="workEyebrow">BSV1 · STORE OPERATIONS</p><h1 id="pageTitle">密云店座位点单</h1><p class="subhead" id="storeSubhead">当前登录只对应一家门店 · 点击座位确认后进入</p></div>
      <div class="top-actions"><span class="test-pill" title="未接入真实支付；V9报价与上架审核尚未完成">本地联调 · 不代表到账</span><button id="systemCheckBadge" class="system-pill" type="button" title="查看系统自检详情">系统状态：检查中</button><button class="outline" id="systemCheckBtn">系统自检</button><button class="outline" id="catalogBtn">商品资料库</button><a class="outline" href="/menu" id="menuEntry" style="padding:8px;text-decoration:none;">电子菜单</a><a class="outline" href="/hq" id="hqEntry" style="padding:8px;text-decoration:none;display:none">总部管理</a><button class="outline" id="refreshBtn">⟳ 刷新状态</button><button class="outline" id="switchStoreBtn">退出 / 换店</button></div>
    </header>
+   <details id="pos-command-review" class="command-review hidden">
+     <summary>核对提交结果</summary>
+     <form id="pos-command-form">
+       <label>提交编号<input id="pos-command-id" minlength="8" maxlength="90" pattern="[A-Za-z0-9-]+" required autocomplete="off"></label>
+       <button type="submit" class="outline">查询提交状态</button>
+     </form>
+     <p id="pos-command-result" role="status"></p>
+   </details>
    <section id="pageMap" class="page-section">
     <div class="stats-row">
       <div class="stat"><div class="stat-name">当前占用位置</div><div id="statSeats" class="stat-number">0<span> / 13</span></div></div>
@@ -119,9 +135,9 @@
    <footer class="page-footer">BSV1 · 多店独立数据 · 经营工作台</footer>
   </main>
  </div>
- <div id="modal" class="modal-root hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+ <div id="modal" class="modal-root hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalBody">
    <div id="seatOuterNav" class="seat-outer-nav hidden"><button id="modalOuterLeft" type="button" class="outer-seat-button left"></button><button id="modalOuterRight" type="button" class="outer-seat-button right"></button></div>
-   <div class="modal-card"><div id="modalEyebrow" class="eyebrow"></div><h2 id="modalTitle"></h2><div id="modalBody" class="modal-body"></div><p id="modalResult" class="form-error" role="status" aria-live="polite" tabindex="-1"></p><div class="modal-actions"><button id="modalCancel" class="outline">取消</button><button id="modalConfirm" class="primary">确认</button></div></div>
+   <div class="modal-card"><div id="modalEyebrow" class="eyebrow"></div><h2 id="modalTitle"></h2><div id="modalBody" class="modal-body"></div><div id="modalResult" class="form-error" role="status" aria-live="polite" tabindex="-1"></div><div class="modal-actions"><button id="modalCancel" class="outline">取消</button><button id="modalConfirm" class="primary">确认</button></div></div>
  </div>
  <div id="catalogDetailModal" class="image-root hidden" role="dialog" aria-modal="true" aria-label="商品详细信息"><div class="catalog-detail-card"><button id="closeCatalogDetail" class="outline" type="button">关闭 ×</button><div id="catalogDetailBody"></div></div></div>
  <div id="manualModal" class="image-root hidden" role="dialog" aria-modal="true"><div class="manual-dialog"><button id="closeManual" class="outline image-close">关闭资料 ✕</button><div id="manualContent"></div></div></div>

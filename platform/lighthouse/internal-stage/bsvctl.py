@@ -17,7 +17,8 @@ REPO = Path(__file__).resolve().parents[3]
 PROOF_ROOT = stage.ROOT / "control"
 REPO_NAME = "Ethancao258/bsv-all-platform"
 JOBS = {"architecture", "bsv1", "menu-v13-1", "supply-v2", "identity-r2",
-        "db-contract-preflight", "lighthouse-internal-stage"}
+        "db-contract-preflight", "lighthouse-internal-stage", "v4-1-integration"}
+CI_FIELDS = ("url", "headSha", "event", "status", "conclusion", "workflowName", "jobs")
 REMOTE = re.compile(r"^(?:https://github\.com/|git@github\.com:)Ethancao258/bsv-all-platform(?:\.git)?$")
 SHA = re.compile("[a-f0-9]{40}")
 
@@ -57,6 +58,21 @@ def validate_ci(proof, sha):
     if not JOBS <= successful:
         raise ValueError("CI proof lacks required isolated release checks")
     return url
+
+
+def export_ci(sha, run_id):
+    """Read the evidence from GitHub using the operator's authenticated gh client."""
+    if not SHA.fullmatch(sha) or not re.fullmatch("[1-9][0-9]*", run_id):
+        raise ValueError("Specify the complete approved SHA and the GitHub Actions run ID")
+    source = json.loads(stage.output("gh", "run", "view", run_id, "-R", REPO_NAME,
+                                     "--json", ",".join(CI_FIELDS)))
+    url = validate_ci(source, sha)
+    if url.rsplit("/", 1)[-1] != run_id:
+        raise ValueError("GitHub CLI returned an unexpected run")
+    proof = {field: source[field] for field in CI_FIELDS if field != "jobs"}
+    proof["jobs"] = [{field: row[field] for field in ("name", "status", "conclusion")}
+                     for row in source["jobs"]]
+    return proof
 
 
 def persist(payload):
@@ -130,7 +146,8 @@ def deploy(args):
         "approved_release_sha": sha, "proposed_release_sha": sha, "repo_head_sha": sha,
         "ci_run_url": url, "ci_conclusion": "success", "ci_evidence": "operator_supplied_github_export",
         "approval_actor": os.environ.get("SUDO_USER", "root"), "approval_timestamp": utc(),
-        "migration_ids": ["bsv_identity_0001"], "artifact_digest": "git-tree:" + git("rev-parse", "HEAD^{tree}"),
+        "migration_ids": stage.migration_revisions(REPO),
+        "artifact_digest": "git-tree:" + git("rev-parse", "HEAD^{tree}"),
         "config_revision_hash": hashlib.sha256(config.read_bytes()).hexdigest(),
         "config_revision_scope": "tracked change-routing index; runtime credentials excluded",
         "resource_preflight": "PENDING", "expected_units": [stage.unit(x) for x in stage.START_ORDER],
@@ -146,7 +163,8 @@ def deploy(args):
         persist(manifest)
         try:
             stage.deploy(sha)
-            manifest.update(release_state(), state="HOST_VERIFIED", host_verification="HEALTH_ONLY")
+            manifest.update(release_state(), state="HOST_VERIFIED", host_verification="HEALTH_ONLY",
+                            isolated_db_revision=stage.database_revision())
         except (RuntimeError, OSError, subprocess.SubprocessError, KeyboardInterrupt):
             manifest.update(release_state(), state="BLOCKED", host_verification="FAILED_OR_ROLLED_BACK")
             raise
@@ -175,6 +193,7 @@ def rollback():
             "rollout_environment": "isolated", "state": "ROLLED_BACK",
             "time": utc(), "before": before, "after": after,
             "backup_snapshot_ref": checkpoint_ref(previous_checkpoints),
+            "isolated_db_revision_retained": stage.database_revision() if after["deployed_sha"] else None,
         }
         print("RELEASE_MANIFEST", persist(evidence))
 
@@ -183,6 +202,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_subparsers(dest="operation", required=True)
     modes.add_parser("status")
+    proof = modes.add_parser("ci-evidence")
+    proof.add_argument("--sha", required=True)
+    proof.add_argument("--run", required=True)
     release = modes.add_parser("deploy")
     release.add_argument("--sha", required=True)
     release.add_argument("--approve-isolated", action="store_true")
@@ -194,6 +216,8 @@ def main():
     args = parser.parse_args()
     if args.operation == "status":
         print(json.dumps(release_state(), sort_keys=True))
+    elif args.operation == "ci-evidence":
+        print(json.dumps(export_ci(args.sha, args.run), sort_keys=True))
     elif args.operation == "deploy":
         deploy(args)
     elif args.operation == "verify":

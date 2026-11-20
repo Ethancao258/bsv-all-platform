@@ -1,0 +1,4 @@
+/* Served only by the isolated internal gateway. Keeps navigation within the header grid row. */
+.private-menu-return{display:flex;align-items:center;gap:14px;min-width:0;flex-wrap:wrap}
+.private-menu-return a{display:inline-flex;align-items:center;min-height:44px;color:var(--ink);font-weight:650;text-underline-offset:3px}
+.private-menu-return a:focus-visible{outline:2px solid currentColor;outline-offset:2px}

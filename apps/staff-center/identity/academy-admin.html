@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>培训与门店管理</title><link rel="stylesheet" href="/assets/style.css">
+<script src="/assets/common.js" defer></script><script src="/academy-admin.js" defer></script>
+</head><body class="academy-layout">
+<header><div class="brand">文森特学院与门店管理</div><nav aria-label="返回"><a href="/">返回工作台</a><a href="/academy">我的培训与排班</a><a href="/hq">总部人员审批</a></nav></header>
+<main>
+<h1>培训、班次与门店设备</h1>
+<p class="lead">按实际授权安排课程、核验实操和班次。这里只接受合成练习资料。</p>
+<p id="notice" class="notice hidden" role="status"></p>
+<div class="flex"><p id="admin-status" role="status">正在核对管理权限…</p><button type="button" id="admin-refresh" class="secondary">重新核对</button></div>
+<datalist id="academy-store-list"></datalist>
+<div id="admin-content" hidden>
+<nav class="tab-list" aria-label="管理栏目"><a href="#courses">课程</a><a href="#practical">实操</a><a href="#shifts">排班</a><a href="#devices">设备</a></nav>
+<section id="courses" class="panel" aria-labelledby="courses-title">
+<h2 id="courses-title">课程草稿与发布</h2>
+<p>课程、理论考核与现场核验分别记录。发布须交给有权的另一位审批人。正式材料及账号暂不得用于隔离演练。</p>
+<form id="draft-course" class="compact-form">
+<label>课程编号<input name="course_id" required maxlength="70"></label>
+<label>版本<input name="version" type="number" min="1" required value="1"></label>
+<label>课程名称<input name="title" required maxlength="160"></label>
+<label>适用门店（空白表示集团基础课）<input name="store_id" list="academy-store-list" maxlength="20"></label>
+<p class="small">当前可演练岗位：调酒师</p>
+<label>通过分数（0 至 100）<input name="passing_score" type="number" required min="1" max="100" value="80"></label>
+<label>版权与内部使用经办记录编号<input name="rights_ref" required maxlength="250"></label>
+<label>现场实操核验要求<textarea name="practical_requirements" required maxlength="500"></textarea></label>
+<div id="draft-questions"></div>
+<button type="button" id="add-question" class="secondary">添加一道理论题</button>
+<button type="submit">保存课程草稿</button>
+</form>
+<div id="course-admin-list" class="stack"></div>
+</section>
+<section id="practical" class="panel" aria-labelledby="practical-title">
+<h2 id="practical-title">核验门店实操</h2>
+<p>只登记你有权核验的门店，并填写能够复核的证据编号。</p>
+<form id="practical-review" class="compact-form">
+<label>门店课程与版本<select name="course" id="practical-courses" required></select></label>
+<label>员工人员编号<input name="tr_code" required pattern="TR[A-Z][0-9]{4}" maxlength="7"></label>
+<label>核验结果<select name="decision"><option value="verified">确认通过</option><option value="rejected">未通过</option></select></label>
+<label>实操证据编号<input name="evidence_ref" required maxlength="250"></label>
+<label>核验理由和下一步<textarea name="reason" required maxlength="500"></textarea></label>
+<button type="submit">提交实操核验</button>
+</form>
+<details><summary>暂停或撤销门店资格</summary>
+<p>仅处理已知的资格编号。操作会影响员工现有及后续排班和点单权限。</p>
+<form id="credential-control" class="compact-form">
+<label>门店资格编号<input name="credential_id" required maxlength="36"></label>
+<label>操作<select name="operation"><option value="suspend">暂停资格</option><option value="revoke">撤销资格</option></select></label>
+<label><input type="checkbox" required> 已核对员工、门店和资格编号</label>
+<button type="submit" class="danger">提交资格处理</button>
+</form></details>
+</section>
+<section id="shifts" class="panel" aria-labelledby="shifts-title">
+<h2 id="shifts-title">安排班次</h2>
+<p>先按门店查询合格人选。班次需要审批和员工确认。所有时间均按北京时间录入。</p>
+<form id="eligible-filter" class="compact-form"><label>门店<input name="store_id" list="academy-store-list" required maxlength="20"></label><button type="submit" class="secondary">查询可以排班的人员</button></form>
+<form id="assign-shift" class="compact-form" hidden>
+<p id="shift-store-caption" role="status"></p><label>人选<select id="eligible-employees" name="tr_code" required></select></label>
+<label>开始时间<input name="start" type="datetime-local" required></label>
+<label>结束时间<input name="end" type="datetime-local" required></label>
+<label>原班次编号（需要替班时填写）<input name="replaces_shift_id" maxlength="36"></label>
+<button type="submit">保存待审批班次</button></form>
+<div id="shift-admin-list" class="stack"></div>
+</section>
+<section id="devices" class="panel" aria-labelledby="devices-title">
+<h2 id="devices-title">登记点单设备</h2>
+<p>设备口令只显示一次，请在目标设备的内部点单页输入。共享设备应在每位员工离开时锁定。</p>
+<form id="register-device" class="compact-form">
+<label>门店<input name="store_id" list="academy-store-list" required maxlength="20"></label>
+<label>设备编号<input name="device_id" required maxlength="70"></label>
+<button type="submit">登记设备</button>
+</form>
+<div id="device-result" role="status" aria-live="polite"></div>
+<div id="device-admin-list" class="stack"></div>
+</section>
+</div></main></body></html>

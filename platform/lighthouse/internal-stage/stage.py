@@ -34,6 +34,11 @@ REPO = Path(__file__).resolve().parents[3]
 DB = "bsv_identity_isolated_internal"
 DB_USER = "bsv_internal_app"
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+MIGRATIONS = Path("platform/lighthouse/identity/migrations")
+IDENTITY_REVISION = "bsv_identity_0001"
+ACADEMY_REVISION = "bsv_academy_0002"
+ACADEMY_MIGRATION = "versions/20261120_0002_academy.py"
+MEDIA_FILE = re.compile(r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\.bin")
 
 
 def run(*args, **kwargs):
@@ -85,6 +90,52 @@ def sync_directory(path):
         os.fsync(fd)
     finally:
         os.close(fd)
+
+
+def migration_files(source):
+    directory = source / MIGRATIONS
+    if not directory.is_dir() or directory.is_symlink():
+        raise RuntimeError("Missing managed isolated migration directory")
+    files = {}
+    for path in directory.rglob("*"):
+        relative = path.relative_to(directory)
+        if "__pycache__" in relative.parts:
+            continue
+        if path.is_symlink():
+            raise RuntimeError("Unexpected symlink in isolated migrations")
+        if path.is_file():
+            files[relative.as_posix()] = path.read_bytes()
+    return files
+
+
+def migration_revisions(source):
+    revisions = [IDENTITY_REVISION]
+    if ACADEMY_MIGRATION in migration_files(source):
+        revisions.append(ACADEMY_REVISION)
+    return revisions
+
+
+def migration_compatibility(older, newer):
+    """Allow release-only swaps across the reviewed additive V3 → V4.1 revision."""
+    old_files, new_files = migration_files(older), migration_files(newer)
+    if old_files == new_files:
+        return
+    if (all(new_files.get(path) == content for path, content in old_files.items())
+            and new_files.keys() - old_files.keys() == {ACADEMY_MIGRATION}):
+        return
+    raise RuntimeError("Isolated migrations differ outside the approved additive V4.1 revision")
+
+
+def database_revision():
+    result = as_user(
+        "postgres", PG / "psql", "-XAt", "-h", DATA / "postgres", "-p", str(PORTS["postgres"]),
+        "-U", user("postgres"), "-d", DB, "-v", "ON_ERROR_STOP=1",
+        "-c", "SELECT version_num FROM alembic_version;", stdout=subprocess.PIPE, timeout=15,
+    )
+    revision = result.stdout.strip()
+    if revision not in {IDENTITY_REVISION, ACADEMY_REVISION}:
+        raise RuntimeError("Unknown isolated PostgreSQL migration revision")
+    return revision
 
 
 def link(name, sha):
@@ -329,6 +380,15 @@ def bootstrap(dest, identity, pos, pin):
     source = dest / "src"
     identity_tool(dest, identity, "-m", "alembic", "-c",
                   source / "platform/lighthouse/identity/alembic.ini", "upgrade", "head")
+    revision = database_revision()
+    if revision != migration_revisions(source)[-1]:
+        raise RuntimeError("Unexpected isolated database revision after release migration")
+    print(f"IDENTITY_SCHEMA {revision}", flush=True)
+    if revision == ACADEMY_REVISION:
+        media = DATA / "identity" / "academy-media"
+        if not media.exists() and not media.is_symlink():
+            as_user("identity", "/usr/bin/install", "-d", "-m", "0700", media)
+        private_directory(media, pwd.getpwnam(user("identity")).pw_uid)
     reviewer3 = write_secret(ROOT / "config" / "reviewer3", secrets.token_urlsafe(36))
     identity_tool(dest, {**identity, "BSV_DEMO_ADMIN_3_PASSWORD": reviewer3}, "-m",
                   "services.api.identity.seed_isolated", "--i-understand-isolated")
@@ -344,6 +404,12 @@ def private_file(path, owner):
     st = path.lstat()
     if not stat.S_ISREG(st.st_mode) or st.st_uid != owner or st.st_mode & 0o077:
         raise RuntimeError(f"Unsafe recovery file: {path}")
+
+
+def private_directory(path, owner):
+    st = path.lstat()
+    if not stat.S_ISDIR(st.st_mode) or st.st_uid != owner or st.st_mode & 0o077:
+        raise RuntimeError(f"Unsafe private recovery directory: {path}")
 
 
 def file_sha256(path):
@@ -435,6 +501,35 @@ def sqlite_snapshot(current, destination):
     return {"archive": str(destination), "sha256": file_sha256(destination), "integrity": "QUICK_CHECK_OK"}
 
 
+def academy_media_snapshot(directory):
+    source = DATA / "identity" / "academy-media"
+    if not source.exists() and not source.is_symlink():
+        return []
+    owner = pwd.getpwnam(user("identity")).pw_uid
+    private_directory(source, owner)
+    result = []
+    for path in sorted(source.iterdir()):
+        if path.name.startswith(".scan-"):
+            continue
+        if not MEDIA_FILE.fullmatch(path.name):
+            raise RuntimeError("Unexpected file in managed Academy media storage")
+        if not directory.exists():
+            directory.mkdir(mode=0o700)
+        target = directory / path.name
+        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW), "rb") as original:
+            st = os.fstat(original.fileno())
+            if not stat.S_ISREG(st.st_mode) or st.st_uid != owner or st.st_mode & 0o077 or st.st_nlink != 1:
+                raise RuntimeError("Unsafe file in managed Academy media storage")
+            with os.fdopen(os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600), "wb") as copy:
+                shutil.copyfileobj(original, copy)
+                copy.flush()
+                os.fsync(copy.fileno())
+        result.append({"name": path.name, "filesize": target.stat().st_size, "sha256": file_sha256(target)})
+    if result:
+        sync_directory(directory)
+    return result
+
+
 def backup(current=None, purpose="manual"):
     if DATA.is_symlink() or DATA.stat().st_uid != 0 or DATA.stat().st_mode & 0o022:
         raise RuntimeError("Unsafe private data directory")
@@ -443,21 +538,87 @@ def backup(current=None, purpose="manual"):
         raise RuntimeError("A managed private stage release is required before backup")
     recovery = DATA / "recovery"
     recovery.mkdir(mode=0o700, exist_ok=True)
-    if recovery.is_symlink() or recovery.stat().st_uid != 0 or recovery.stat().st_mode & 0o077:
-        raise RuntimeError("Unsafe private recovery directory")
+    private_directory(recovery, 0)
     stamp = datetime.now(timezone.utc)
     dest = recovery / f"{stamp:%Y%m%dT%H%M%SZ}-{secrets.token_hex(5)}"
     dest.mkdir(mode=0o700)
     postgres = postgres_snapshot(current)
     pos = sqlite_snapshot(current, dest / "pos.sqlite3")
+    media = academy_media_snapshot(dest / "academy-media")
     receipt = dest / "receipt.json"
-    record = {"version": 1, "time": stamp.isoformat(), "mode": "isolated", "purpose": purpose,
+    record = {"version": 2, "time": stamp.isoformat(), "mode": "isolated", "purpose": purpose,
               "status": "CHECKPOINT_READY", "checkpoint": str(receipt), "release_sha": current,
-              "postgres": postgres, "pos_sqlite": pos}
+              "postgres": postgres, "pos_sqlite": pos, "academy_media": media,
+              "isolated_db_revision": database_revision()}
     write_secret(receipt, json.dumps(record, ensure_ascii=False))
     sync_directory(recovery)
     print(json.dumps(record, ensure_ascii=False), flush=True)
     return record
+
+
+def recovery_check(receipt):
+    """Verify a managed checkpoint and its key without writing a live database."""
+    recovery = DATA / "recovery"
+    if (receipt.name != "receipt.json" or receipt.parent.parent != recovery
+            or not re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[a-f0-9]{10}", receipt.parent.name)):
+        raise RuntimeError("Specify a managed isolated checkpoint receipt")
+    private_directory(recovery, 0)
+    private_directory(receipt.parent, 0)
+    private_file(receipt, 0)
+    record = json.loads(receipt.read_text())
+    if (record.get("version") not in {1, 2} or record.get("mode") != "isolated"
+            or record.get("status") != "CHECKPOINT_READY" or record.get("checkpoint") != str(receipt)):
+        raise RuntimeError("Invalid isolated checkpoint receipt")
+    current = sha_at(ROOT / "current")
+    if not current:
+        raise RuntimeError("No isolated application release available to verify PostgreSQL ciphertext")
+    identity = service_config("identity")
+    pg = record.get("postgres", {})
+    archive = Path(pg.get("archive", ""))
+    archive_dir = DATA / "identity" / "archives"
+    archive_key = DATA / "identity" / "archive.key"
+    owner = pwd.getpwnam(user("identity")).pw_uid
+    if (archive.parent != archive_dir
+            or not re.fullmatch(r"identity-A-[0-9]{8}T[0-9]{6}Z-[a-f0-9]{6}\.bsvenc", archive.name)
+            or identity.get("BSV_LOCAL_ARCHIVE_DIR") != str(archive_dir)
+            or identity.get("BSV_BACKUP_KEY_FILE") != str(archive_key)
+            or identity.get("BSV_APP_ENV") != "isolated"):
+        raise RuntimeError("Checkpoint references an unmanaged PostgreSQL archive or key")
+    private_directory(archive_dir, owner)
+    private_file(archive, owner)
+    private_file(archive_key, owner)
+    if pg.get("sha256") != file_sha256(archive):
+        raise RuntimeError("PostgreSQL checkpoint checksum mismatch")
+    verified = identity_tool(ROOT / "releases" / current, identity, "-m", "services.api.identity.backup",
+                             "restore", "--archive", archive, stdout=subprocess.PIPE, timeout=120)
+    pg_result = json.loads(verified.stdout)
+    if (pg_result.get("integrity") != "AES_GCM_VERIFIED" or pg_result.get("restore") != "DRY_RUN_NO_WRITE"
+            or pg_result.get("meta", {}).get("type") != "postgresql"):
+        raise RuntimeError("PostgreSQL checkpoint did not pass its no-write verification")
+    pos = receipt.parent / "pos.sqlite3"
+    private_file(pos, 0)
+    if record.get("pos_sqlite", {}).get("sha256") != file_sha256(pos):
+        raise RuntimeError("POS checkpoint checksum mismatch")
+    with closing(sqlite3.connect(pos.as_uri() + "?mode=ro", uri=True)) as snapshot:
+        if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+            raise RuntimeError("POS checkpoint integrity check failed")
+    files = record.get("academy_media", [])
+    names = set()
+    directory = receipt.parent / "academy-media"
+    if files:
+        private_directory(directory, 0)
+    for entry in files:
+        name = entry.get("name", "")
+        if name in names or not MEDIA_FILE.fullmatch(name):
+            raise RuntimeError("Unexpected Academy media checkpoint file")
+        path = directory / name
+        private_file(path, 0)
+        if entry.get("filesize") != path.stat().st_size or entry.get("sha256") != file_sha256(path):
+            raise RuntimeError("Academy media checkpoint checksum mismatch")
+        names.add(name)
+    print(json.dumps({"status": "RECOVERY_CHECK_READY", "mode": "isolated", "checkpoint": str(receipt),
+                      "postgres": "AES_GCM_VERIFIED", "pos_sqlite": "QUICK_CHECK_OK",
+                      "academy_media_files": len(names), "live_restore": "NOT_RUN"}), flush=True)
 
 
 def http_check(path, expected):
@@ -471,13 +632,18 @@ def http_check(path, expected):
 
 
 def verify():
+    deployed = sha_at(ROOT / "current")
+    routes = [
+        ("/health/ready", 200), ("/api/health", 200), ("/staff", 200), ("/pos", 200),
+        ("/supply-ui/api/health", 200), ("/api/state", 401), ("/supply-ui/api/me", 401),
+        ("/api/v1/identity/pos-session", 404), ("/cocktail/", 200), ("/craft/", 404),
+        ("/__bsv_unknown_release_route__", 404),
+    ]
+    if deployed and ACADEMY_REVISION in migration_revisions(ROOT / "releases" / deployed / "src"):
+        routes.append(("/api/v1/academy/work", 401))
     for _ in range(35):
         if (all(active(name) for name in START_ORDER) and
-                all(http_check(path, status) for path, status in (
-                    ("/health/ready", 200), ("/api/health", 200), ("/staff", 200), ("/pos", 200),
-                    ("/supply-ui/api/health", 200), ("/api/state", 401), ("/supply-ui/api/me", 401),
-                    ("/api/v1/identity/pos-session", 404), ("/cocktail/", 200), ("/craft/", 404),
-                    ("/__bsv_unknown_release_route__", 404)))):
+                all(http_check(path, status) for path, status in routes)):
             evidence = host_evidence()
             print(json.dumps({"status": "RELEASE_HEALTH_OK", "mode": "isolated",
                               "time": datetime.now(timezone.utc).isoformat(), **evidence}), flush=True)
@@ -542,8 +708,7 @@ def deploy(sha):
     preflight(sha)
     previous = sha_at(ROOT / "current")
     if previous and previous != sha:
-        run("diff", "-qr", ROOT / "releases" / previous / "src/platform/lighthouse/identity/migrations",
-            REPO / "platform/lighthouse/identity/migrations", stdout=subprocess.DEVNULL)
+        migration_compatibility(ROOT / "releases" / previous / "src", REPO)
     if not previous and ((DATA / "postgres" / "pg" / "PG_VERSION").exists()
                          or (DATA / "pos" / "synthetic.sqlite3").exists()):
         raise RuntimeError("Existing private data has no managed active release; investigate before deployment")
@@ -582,6 +747,9 @@ def rollback():
     current, previous = sha_at(ROOT / "current"), sha_at(ROOT / "previous")
     if not current:
         raise RuntimeError("No managed private stage release is active")
+    if previous:
+        migration_compatibility(ROOT / "releases" / previous / "src",
+                                ROOT / "releases" / current / "src")
     host_evidence(require_all=False)
     marker = ROOT / "activation.pending"
     write_secret(marker, current)
@@ -610,11 +778,12 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     for operation in ("preflight", "deploy", "verify", "rollback", "backup"):
         group.add_argument("--" + operation, action="store_const", dest="operation", const=operation)
+    group.add_argument("--recovery-check", type=Path, metavar="RECEIPT")
     parser.add_argument("--sha")
     args = parser.parse_args()
     if args.operation in {"preflight", "deploy"} and not re.fullmatch(r"[a-f0-9]{40}", args.sha or ""):
         parser.error("A full approved --sha is required")
-    if args.operation in {"deploy", "rollback", "backup"} and os.geteuid() != 0:
+    if (args.operation in {"deploy", "rollback", "backup"} or args.recovery_check) and os.geteuid() != 0:
         parser.error("Use sudo for systemd changes")
     if args.operation == "preflight":
         preflight(args.sha)
@@ -626,6 +795,8 @@ def main():
                 deploy(args.sha)
             elif args.operation == "rollback":
                 rollback()
+            elif args.recovery_check:
+                recovery_check(args.recovery_check)
             else:
                 backup()
 

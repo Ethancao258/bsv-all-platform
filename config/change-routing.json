@@ -134,7 +134,10 @@
         "收银",
         "POS权限",
         "门店地图",
-        "测试PIN"
+        "测试PIN",
+        "注册点单终端",
+        "平板点单",
+        "设备撤销"
       ],
       "primary_domain": "commerce",
       "code_paths": [
@@ -150,10 +153,11 @@
       ],
       "test_paths": [
         "tests/bsv1",
-        "tests/internal-stage"
+        "tests/internal-stage",
+        "tests/v4-1"
       ],
       "risk": "HIGH_FINANCIAL",
-      "stage": "ISOLATED_UNPAID_ONLY"
+      "stage": "ISOLATED_UNPAID_AND_DEVICE_SCOPED"
     },
     {
       "module_id": "supply-api",
@@ -274,7 +278,8 @@
         "tests/internal-stage",
         "tests/internal-stage/test_control.py",
         "tests/identity/test_acceptance_v3.py",
-        "tests/ui"
+        "tests/ui",
+        "tests/v4-1"
       ],
       "risk": "HIGH_RELEASE",
       "stage": "MANUAL_CONTROLLER_IMPLEMENTED_HOST_NOT_RUN"
@@ -300,6 +305,82 @@
       "test_paths": [],
       "risk": "DEVICE_AND_LABEL_SAFETY",
       "stage": "DESIGN_NOT_DEPLOYED"
+    },
+    {
+      "module_id": "vincent-academy",
+      "examples": [
+        "文森特学院",
+        "门店培训",
+        "课程版本",
+        "理论考试",
+        "实操核验"
+      ],
+      "primary_domain": "learning",
+      "code_paths": [
+        "services/api/identity",
+        "domains/learning",
+        "apps/staff-center/identity",
+        "apps/hq-console/identity",
+        "platform/lighthouse/identity/migrations"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@identity.service"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "test_paths": [
+        "tests/v4-1",
+        "tests/ui"
+      ],
+      "risk": "HIGH_SECURITY",
+      "stage": "ISOLATED_SYNTHETIC"
+    },
+    {
+      "module_id": "store-shifts",
+      "examples": [
+        "排班",
+        "班次确认",
+        "替班",
+        "当班资格"
+      ],
+      "primary_domain": "workforce",
+      "code_paths": [
+        "services/api/identity",
+        "domains/workforce",
+        "apps/staff-center/identity"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@identity.service"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "test_paths": [
+        "tests/v4-1"
+      ],
+      "risk": "HIGH_SECURITY",
+      "stage": "ISOLATED_SYNTHETIC"
+    },
+    {
+      "module_id": "reviewed-import",
+      "examples": [
+        "真实资料预检",
+        "CSV导入",
+        "公司人员导入",
+        "课程资料导入"
+      ],
+      "primary_domain": "platform",
+      "code_paths": [
+        "ingestion/v4-1"
+      ],
+      "runtime_units": [],
+      "data_sources": [],
+      "test_paths": [
+        "tests/ingestion"
+      ],
+      "risk": "HIGH_PRIVACY",
+      "stage": "ISOLATED_ONLY_REAL_IMPORT_NOT_RUN"
     }
   ],
   "change_type_rules": {

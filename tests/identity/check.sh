@@ -13,7 +13,7 @@ export BSV_APP_ENV=isolated BSV_AUTH_PROVIDER=isolated BSV_IDENTITY_PORT=0
 export BSV_DB_A_URL="sqlite+pysqlite:///$tmp/identity.sqlite3"
 bash -n platform/lighthouse/identity/launch.sh
 bash platform/lighthouse/identity/launch.sh --dry-run
-python -m alembic -c platform/lighthouse/identity/alembic.ini upgrade head
+python -m alembic -c platform/lighthouse/identity/alembic.ini upgrade bsv_identity_0001
 bash platform/lighthouse/identity/launch.sh > "$tmp/http.log" 2>&1 &
 pid=$!
 port=

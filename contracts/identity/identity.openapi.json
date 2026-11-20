@@ -1550,6 +1550,929 @@
           }
         }
       }
+    },
+    "/api/v1/academy/work": {
+      "get": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Work",
+        "operationId": "work_api_v1_academy_work_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/admin": {
+      "get": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Admin",
+        "operationId": "admin_api_v1_academy_admin_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/courses": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Draft",
+        "operationId": "draft_api_v1_academy_courses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Draft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/courses/{course_id}/{version}/publish": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Publish",
+        "operationId": "publish_api_v1_academy_courses__course_id___version__publish_post",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/courses/{course_id}/{version}/retire": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Retire",
+        "operationId": "retire_api_v1_academy_courses__course_id___version__retire_post",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/courses/{course_id}/{version}/enroll": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Enroll",
+        "operationId": "enroll_api_v1_academy_courses__course_id___version__enroll_post",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/courses/{course_id}/{version}/complete": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Complete",
+        "operationId": "complete_api_v1_academy_courses__course_id___version__complete_post",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/courses/{course_id}/{version}/exam": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Exam",
+        "operationId": "exam_api_v1_academy_courses__course_id___version__exam_post",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Exam"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/courses/{course_id}/{version}/practical": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Practical",
+        "operationId": "practical_api_v1_academy_courses__course_id___version__practical_post",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Review"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/credentials/{credential_id}/suspend": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Change Credential",
+        "operationId": "change_credential_api_v1_academy_credentials__credential_id__suspend_post",
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/credentials/{credential_id}/revoke": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Change Credential",
+        "operationId": "change_credential_api_v1_academy_credentials__credential_id__revoke_post",
+        "parameters": [
+          {
+            "name": "credential_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Credential Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/eligible": {
+      "get": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Eligible",
+        "operationId": "eligible_api_v1_academy_eligible_get",
+        "parameters": [
+          {
+            "name": "store_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Store Id"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "const": "bartender",
+              "type": "string",
+              "title": "Role"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/shifts": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Schedule",
+        "operationId": "schedule_api_v1_academy_shifts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Schedule"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/shifts/{shift_id}/{operation}": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Shift Decision",
+        "operationId": "shift_decision_api_v1_academy_shifts__shift_id___operation__post",
+        "parameters": [
+          {
+            "name": "shift_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Shift Id"
+            }
+          },
+          {
+            "name": "operation",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "approve",
+                "confirm",
+                "cancel"
+              ],
+              "type": "string",
+              "title": "Operation"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/devices": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Register Device",
+        "operationId": "register_device_api_v1_academy_devices_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Terminal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/devices/{device_id}/revoke": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Revoke Device",
+        "operationId": "revoke_device_api_v1_academy_devices__device_id__revoke_post",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/pos-authorize": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Pos Authorize",
+        "operationId": "pos_authorize_api_v1_academy_pos_authorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TerminalCheck"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/courses/{course_id}/{version}/media": {
+      "post": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Upload",
+        "operationId": "upload_api_v1_academy_courses__course_id___version__media_post",
+        "parameters": [
+          {
+            "name": "course_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+              "title": "Course Id"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Version"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/academy/media/{asset_id}": {
+      "get": {
+        "tags": [
+          "Vincent Academy"
+        ],
+        "summary": "Private Media",
+        "operationId": "private_media_api_v1_academy_media__asset_id__get",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Asset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1636,6 +2559,88 @@
         ],
         "title": "Decision"
       },
+      "Draft": {
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+            "title": "Course Id"
+          },
+          "version": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Version"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 140,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "store_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store Id"
+          },
+          "role": {
+            "type": "string",
+            "const": "bartender",
+            "title": "Role"
+          },
+          "passing_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Passing Score"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/Question"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Questions"
+          },
+          "rights_ref": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Rights Ref"
+          },
+          "practical_requirements": {
+            "type": "string",
+            "maxLength": 3500,
+            "title": "Practical Requirements",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "course_id",
+          "version",
+          "title",
+          "role",
+          "passing_score",
+          "questions",
+          "rights_ref"
+        ],
+        "title": "Draft"
+      },
+      "Empty": {
+        "properties": {},
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Empty"
+      },
       "EngagementInput": {
         "properties": {
           "tr_code": {
@@ -1692,6 +2697,39 @@
           "evidence_ref"
         ],
         "title": "EngagementInput"
+      },
+      "Exam": {
+        "properties": {
+          "answers": {
+            "items": {
+              "type": "integer",
+              "maximum": 5.0,
+              "minimum": 0.0
+            },
+            "type": "array",
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Answers"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "title": "Exam"
       },
       "GrantInput": {
         "properties": {
@@ -2039,6 +3077,41 @@
         ],
         "title": "QualificationInput"
       },
+      "Question": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Prompt"
+          },
+          "options": {
+            "items": {
+              "type": "string",
+              "maxLength": 160,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 6,
+            "minItems": 2,
+            "title": "Options"
+          },
+          "correct_index": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Correct Index"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "prompt",
+          "options",
+          "correct_index"
+        ],
+        "title": "Question"
+      },
       "RecoveryInput": {
         "properties": {
           "tr_code": {
@@ -2124,6 +3197,106 @@
         ],
         "title": "RedactInput"
       },
+      "Review": {
+        "properties": {
+          "tr_code": {
+            "type": "string",
+            "pattern": "^TR[A-Z][0-9]{4}$",
+            "title": "Tr Code"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "rejected"
+            ],
+            "title": "Decision"
+          },
+          "evidence_ref": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Evidence Ref"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tr_code",
+          "decision",
+          "evidence_ref",
+          "reason"
+        ],
+        "title": "Review"
+      },
+      "Schedule": {
+        "properties": {
+          "tr_code": {
+            "type": "string",
+            "pattern": "^TR[A-Z][0-9]{4}$",
+            "title": "Tr Code"
+          },
+          "store_id": {
+            "type": "string",
+            "title": "Store Id"
+          },
+          "role": {
+            "type": "string",
+            "const": "bartender",
+            "title": "Role"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "timezone": {
+            "type": "string",
+            "const": "Asia/Shanghai",
+            "title": "Timezone"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Request Id"
+          },
+          "replaces_shift_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaces Shift Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tr_code",
+          "store_id",
+          "role",
+          "start",
+          "end",
+          "timezone",
+          "request_id"
+        ],
+        "title": "Schedule"
+      },
       "StageInput": {
         "properties": {
           "legal_entity_id": {
@@ -2174,6 +3347,97 @@
           "request_id"
         ],
         "title": "StageIssueInput"
+      },
+      "Terminal": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+            "title": "Device Id"
+          },
+          "store_id": {
+            "type": "string",
+            "title": "Store Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device_id",
+          "store_id"
+        ],
+        "title": "Terminal"
+      },
+      "TerminalCheck": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$",
+            "title": "Device Id"
+          },
+          "store_id": {
+            "type": "string",
+            "title": "Store Id"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "pos.order.read",
+              "pos.order.create"
+            ],
+            "title": "Action"
+          },
+          "device_token": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 32,
+            "title": "Device Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device_id",
+          "store_id",
+          "action",
+          "device_token"
+        ],
+        "title": "TerminalCheck"
+      },
+      "Upload": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "mime": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Mime"
+          },
+          "content_base64": {
+            "type": "string",
+            "maxLength": 3733336,
+            "title": "Content Base64"
+          },
+          "rights_ref": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Rights Ref"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "mime",
+          "content_base64",
+          "rights_ref"
+        ],
+        "title": "Upload"
       },
       "ValidationError": {
         "properties": {

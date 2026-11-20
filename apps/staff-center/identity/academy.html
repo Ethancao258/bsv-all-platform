@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>文森特学院与排班</title><link rel="stylesheet" href="/assets/style.css">
+<script src="/assets/common.js" defer></script><script src="/academy.js" defer></script>
+</head>
+<body class="academy-layout">
+<header><div class="brand">文森特学院</div><nav aria-label="返回"><a href="/">返回工作台</a><a href="/staff">个人中心</a><a href="/academy/admin">培训与门店管理</a></nav></header>
+<main>
+<h1>我的培训与排班</h1>
+<p class="lead">先完成基础课程，再完成目标门店的理论和实操。取得本店资格后，由负责人安排班次。</p>
+<p id="notice" class="notice hidden" role="status"></p>
+<div class="flex"><p id="academy-status" role="status">正在核对你的学习与班次…</p><button type="button" id="academy-refresh" class="secondary">重新核对</button></div>
+<section aria-labelledby="academy-courses-title"><h2 id="academy-courses-title">已发布课程</h2><div id="academy-courses" class="stack"></div></section>
+<section class="panel" aria-labelledby="academy-stores-title"><h2 id="academy-stores-title">门店资格与点单范围</h2><div id="academy-stores" class="stack"></div></section>
+<section class="panel" aria-labelledby="academy-shifts-title"><h2 id="academy-shifts-title">我的班次</h2><div id="academy-shifts" class="stack"></div></section>
+</main></body></html>

@@ -131,3 +131,38 @@ jobs:
           name: isolated-stage-ui
           path: ${{ runner.temp }}/bsv-stage-ui
           if-no-files-found: warn
+  v4-1-integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build locked V4.1 test environments
+        run: |
+          python -m venv "$RUNNER_TEMP/bsv-identity"
+          python -m venv "$RUNNER_TEMP/bsv-supply"
+          "$RUNNER_TEMP/bsv-identity/bin/python" -m pip install -r services/api/identity/requirements.lock playwright==1.62.0
+          "$RUNNER_TEMP/bsv-supply/bin/python" -m pip install -r services/api/supply/requirements.lock
+          "$RUNNER_TEMP/bsv-identity/bin/python" -m playwright install --with-deps chromium
+      - name: Validate import and run upgraded PG17 real HTTP and browser flows
+        run: |
+          export PATH="$RUNNER_TEMP/bsv-identity/bin:$PATH"
+          export BSV_STAGE_SUPPLY_PYTHON="$RUNNER_TEMP/bsv-supply/bin/python"
+          export BSV_V41_BROWSER=1
+          export BSV_V41_UI_ARTIFACTS="$RUNNER_TEMP/v41-ui"
+          python3 -m unittest discover -s tests/ingestion
+          bash tests/v4-1/check.sh
+      - name: Upload isolated V4.1 browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v4-1-isolated-browser
+          path: ${{ runner.temp }}/v41-ui
+          if-no-files-found: warn

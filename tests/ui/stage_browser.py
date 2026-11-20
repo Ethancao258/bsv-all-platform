@@ -50,6 +50,7 @@ def check(base_url, *, username, password, expected_tr):
             if screenshots:
                 desktop.screenshot(path=screenshots / "workbench-desktop.png", full_page=True)
 
+            desktop.get_by_role("navigation", name="工作台导航").get_by_role("link", name="业务").click()
             desktop.get_by_role("link", name="核对督查范围").click()
             expect(desktop.get_by_role("heading", name="独立督查")).to_be_visible()
             expect(desktop.locator("#stage-availability")).to_contain_text("暂不能提交或复核")

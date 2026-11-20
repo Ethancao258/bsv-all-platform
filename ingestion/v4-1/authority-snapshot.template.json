@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "mode": "synthetic",
+  "legal_entity_id": "DEMO_LEGAL",
+  "approved_by_ref": "SYNTH-REPLACE-REVIEWER",
+  "authorization_ref": "SYNTH-REPLACE-APPROVAL",
+  "valid_until": "2026-11-20T00:00:00Z",
+  "records": {
+    "companies": [],
+    "stores": [],
+    "people": [],
+    "pos_aliases": [],
+    "engagements": [],
+    "courses": [],
+    "media_assets": [],
+    "qualifications": [],
+    "shifts": []
+  }
+}
