@@ -88,3 +88,24 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Validate PG17 contract and all four application boundaries
         run: bash tests/db_preflight/check.sh
+  lighthouse-internal-stage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build independent locked environments
+        run: |
+          python -m venv "$RUNNER_TEMP/bsv-identity"
+          python -m venv "$RUNNER_TEMP/bsv-supply"
+          "$RUNNER_TEMP/bsv-identity/bin/python" -m pip install -r services/api/identity/requirements.lock
+          "$RUNNER_TEMP/bsv-supply/bin/python" -m pip install -r services/api/supply/requirements.lock
+      - name: Run actual HTTP integration with isolated PostgreSQL
+        run: |
+          export PATH="$RUNNER_TEMP/bsv-identity/bin:$PATH"
+          export BSV_STAGE_SUPPLY_PYTHON="$RUNNER_TEMP/bsv-supply/bin/python"
+          bash tests/identity/pg/check.sh --with-apps
+          python tests/internal-stage/test_deploy.py
+          python platform/lighthouse/internal-stage/stage.py --help
+          bash -n platform/lighthouse/internal-stage/run.sh

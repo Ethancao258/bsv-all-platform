@@ -1,6 +1,6 @@
 """Independent BSV delivery app, central-ledger-first and configuration-driven."""
 from __future__ import annotations
-import hashlib, json, os, re, uuid
+import hashlib, hmac, json, os, re, uuid
 from typing import Literal
 from pathlib import Path
 from typing import Any
@@ -77,16 +77,34 @@ class Replenishment(BaseModel):
     reliable:bool=True
     max_packs:int|None=None
 
-async def actor(request:Request):
-    if settings.mode=='demo':
-        host=request.client.host if request.client else ''
-        authority=request.url.hostname
-        forwarded=any(k in request.headers for k in ('forwarded','x-forwarded-for','x-forwarded-host'))
-        if host not in ('127.0.0.1','::1','localhost','testclient') or authority not in ('127.0.0.1','localhost','::1','testserver') or forwarded:
-            raise HTTPException(403,'演示模式只允许本机访问，生产请接公司身份服务')
-        name=request.headers.get('X-Demo-Actor','DEMO-E01')
-        return demo.actor(name)
-    header=request.headers.get('Authorization','')
+def demo_actor(request: Request):
+    host=request.client.host if request.client else ''
+    authority=request.url.hostname
+    forwarded=any(k in request.headers for k in ('forwarded','x-forwarded-for','x-forwarded-host'))
+    if host not in ('127.0.0.1','::1','localhost','testclient') or authority not in ('127.0.0.1','localhost','::1','testserver') or forwarded:
+        raise HTTPException(403,'演示模式只允许本机访问，生产请接公司身份服务')
+    name=request.headers.get('X-Demo-Actor','DEMO-E01')
+    return demo.actor(name)
+
+
+def session_header(request: Request):
+    if settings.mode == 'internal-stage':
+        cookie = request.cookies.get('bsv_identity_session', '')
+        if request.method not in {'GET', 'HEAD'}:
+            csrf = request.headers.get('X-CSRF-Token', '')
+            expected = request.cookies.get('bsv_csrf', '')
+            origin = request.headers.get('Origin', '')
+            if not csrf or not expected or not hmac.compare_digest(csrf.encode(), expected.encode()) or (
+                    origin and origin != f'{request.url.scheme}://{request.url.netloc}'):
+                raise HTTPException(403, '内部测试会话 CSRF 校验失败')
+        return 'Bearer ' + cookie if cookie else ''
+    return request.headers.get('Authorization', '')
+
+
+async def actor(request: Request):
+    if settings.mode == 'demo':
+        return demo_actor(request)
+    header = session_header(request)
     if not header.startswith('Bearer ') or not header[7:].strip():raise HTTPException(401,'请使用公司统一身份令牌')
     token=header[7:].strip()
     try:
@@ -105,7 +123,7 @@ def scope_of(me):
 
 def token_of(request):
     if settings.mode=='demo':return None
-    return request.headers.get('Authorization','')[7:]
+    return session_header(request)[7:]
 
 def permitted(me,role,store=None):
     if role not in me.get('roles',[]):raise HTTPException(403,'缺少操作权限: '+role)
@@ -119,6 +137,8 @@ def remote_read(k,path,request,params=None):
     except Unreachable as e:raise HTTPException(503,str(e))
 
 def remote_mutation(k,path,body,request,me,allow_queue=True):
+    if settings.mode == 'internal-stage':
+        raise HTTPException(503, '中央 D/E 权威服务未接入，未提交且未排队')
     try:return {'state':'COMMITTED','data':gateway.write(k,path,body,user_token=token_of(request))}
     except Unreachable as e:
         if not allow_queue:raise HTTPException(503,str(e))
@@ -132,11 +152,15 @@ def remote_mutation(k,path,body,request,me,allow_queue=True):
 @app.get('/hq/supply',response_class=HTMLResponse)
 @app.get('/store/supply',response_class=HTMLResponse)
 @app.get('/inspector/supply',response_class=HTMLResponse)
-def index():return (ROOT/'apps/hq-console/supply/index.html').read_text('utf-8')
+def index():
+    page = (ROOT/'apps/hq-console/supply/index.html').read_text('utf-8')
+    if settings.mode == 'internal-stage':
+        return page.replace('"/assets/', '"/supply-ui/assets/')
+    return page
 
 @app.get('/api/health')
 def health():
-    return {"status":"OK","mode":settings.mode,"version":"2.0.0","production_connected":False if demo else 'NOT_VERIFIED',
+    return {"status":"OK","mode":settings.mode,"version":"2.0.0","production_connected":False if settings.mode != 'remote' else 'NOT_VERIFIED',
             "source_aliases":{k:{'name':v.name,'configured':bool(v.primary and '.invalid' not in v.primary),
                            'standby_read':bool(v.standby_read)} for k,v in settings.sources.items()}}
 

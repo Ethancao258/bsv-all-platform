@@ -103,3 +103,12 @@
 - PG17 隔离预检复用身份原迁移和真实加密恢复，POS 身份 HTTP 使用 PG A，POS 订单仍由 SQLite 承接。供货 API 对接写入 PG 候选表的 D/E 测试替身，发 10 收 9、幂等、权限、恢复后重放及观察不改账通过。菜单保持冻结公开投影。
 - 发现供货 UI 的 id/code 别名无法读取中央候选 shipment_id/package_id。接口层做显式映射，拒绝 ID 冲突及把库位误当门店。没有改历史标识或生产接口。
 - 仍受阻：CloudBase G0/G1、全域实际 PK/FK/RLS/GRANT/迁移/备份、生产 POS 上传消费与支付、真实 D/E 权限/事务、配方版本、门店/库位及旧人员 ID 权威映射。关闭未合并 PR 可撤回；隔离库自动销毁，生产回滚从已验恢复点执行。
+
+## 2026-11-20 Lighthouse 私有集成测试版
+
+- 远端 PR #7 基线已核对为 `97d2c7c884e60b72327c89b7057e5cf50082e59d`。本批代码使用 `integration/lighthouse-internal-stage`，以 PR #7 分支为 base，完整 SHA 见本节提交及对应 PR。保留 14 个根目录与既有 ID 归属。
+- USER_REPORTED · 经营负责人终端显示 Lighthouse 北京 Ubuntu 24.04.4，`bsv1-preview.service`/8765 和 `bsv-all-bsv1-stage.service`/8767 均 active。后者有健康响应及独立 `STAGEADMIN01`，主仓库只读 Deploy Key 和 PR #7 checkout 已配置。Codex 未直连该主机，状态可能变化。
+- USER_REPORTED · 经营负责人在 CloudBase 上海目标环境的只读 SQL 取证记录 PostgreSQL 17.11、36 张表、public 中 10 张 BSV 表及其字段、主外键和约束。10 张表均未启用 RLS，anon 全部有 SELECT，authenticated 和 service_role 有广泛权限。bsv_products 的有效 ACL 经数据库函数核实。此证据更新此前 UNKNOWN_G0 的对应项。真实数据 API 可达性、JWT/JWKS、迁移账本和备份恢复仍未知，Codex 凭据未连接生产。 [Issue #3 权限证据](https://github.com/Ethancao258/bsv-all-platform/issues/3#issuecomment-6981854517)
+- PASS_ISOLATED · 真实 PG17 候选迁移和回退、120 并发发码、重试/事务/约束、撤权、加密 dump 与空目标恢复通过。隔离 HTTP 以独立 venv 运行身份、供货、POS 和统一入口，测试 BM/EMP 派生、临时别名、真实登录和未付款订单、门店隔离、供货/督查同 Cookie 认证、跨站拒绝和撤权。POS 仍有独立 PIN 步骤。
+- MOCK_ONLY · 版本符号链接回切及失败恢复已模拟。PG17 供货及督查合同替身验证 10 发 9 收的守恒、收货幂等、断连和禁止自审。BLOCKED · D/E 没有运行中的权威事实 API。测试入口只接 B 身份源，不返回中央成功。A/C 目录仍未提供，CloudBase 生产迁移为无。
+- NOT_RUN · Lighthouse 新单元安装、实际端口与主机 systemd 回切。隔离环境无运行中的 systemd PID 1。新部署操作和合成数据边界见 `platform/lighthouse/internal-stage/`。本批无云端写入、部署或生产配置修改。

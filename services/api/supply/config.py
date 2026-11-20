@@ -32,15 +32,20 @@ def load_settings(path: str | None = None) -> Settings:
     f = Path(path or os.environ.get("BSV_SOURCES_CONFIG", ROOT / "config/modules/supply-sources.example.json"))
     c = json.loads(f.read_text(encoding="utf-8"))
     mode = os.environ.get("BSV_MODE", c["mode"]).strip().lower()
-    if mode not in {"demo", "remote"}:
-        raise ValueError("BSV_MODE 必须为 demo 或 remote")
+    if mode not in {"demo", "remote", "internal-stage"}:
+        raise ValueError("BSV_MODE 必须为 demo、remote 或 internal-stage")
     sources = {}
     for k, v in c["sources"].items():
         for field in ("primary", "standby_read"):
             u = v.get(field, "")
             if u:
                 p = urlsplit(u)
-                if p.scheme != "https" or not p.hostname or p.username or p.password or p.query or p.fragment:
+                stage_local = (mode == "internal-stage" and k == "B" and field == "primary"
+                               and p.scheme == "http" and p.hostname == "127.0.0.1"
+                               and p.port and p.path == "/api/v1")
+                if mode == "internal-stage" and not stage_local:
+                    raise ValueError("内部测试仅允许本机 B 身份源")
+                if (p.scheme != "https" and not stage_local) or not p.hostname or p.username or p.password or p.query or p.fragment:
                     raise ValueError(f"数据源 {k}.{field} 必须为 HTTPS URL")
                 if mode == "remote" and p.hostname and p.hostname.endswith(".invalid"):
                     raise ValueError(f"数据源 {k}.{field} 仍为示例URL")
@@ -50,6 +55,8 @@ def load_settings(path: str | None = None) -> Settings:
                             tuple(v.get("backup_paths", [])))
     if set(sources) != set("ABCDEFG"):
         raise ValueError("必须保留 A-G 七个可配置数据源别名")
+    if mode == "internal-stage" and (not sources["B"].primary or not sources["B"].read_only):
+        raise ValueError("内部测试需要 B 只读身份源")
     for key in "ABCDE":
         if mode == "remote" and not sources[key].primary:
             raise ValueError(f"正式模式缺失 {key} 主地址")

@@ -44,6 +44,9 @@ if [[ "${1:-}" == --with-apps ]]; then
     export BSV_DB_PREFLIGHT_CLIENT_URL="postgresql+psycopg://postgres@127.0.0.1:$port/bsv_identity_isolated_clients"
     BSV_DB_A_URL="$BSV_DB_PREFLIGHT_CLIENT_URL" python -m alembic -c platform/lighthouse/identity/alembic.ini upgrade head
     python -m pytest -q -p no:cacheprovider tests/identity/test_consumers.py
+    if [[ -n "${BSV_STAGE_SUPPLY_PYTHON:-}" ]]; then
+        python -m pytest -q -p no:cacheprovider tests/identity/test_internal_stage.py
+    fi
     python -m pytest -q -p no:cacheprovider tests/db_preflight
     if [[ "${2:-}" == --update ]]; then
         python tests/db_preflight/schema_dictionary.py --update
