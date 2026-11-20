@@ -53,7 +53,7 @@ def user(name):
 
 
 def as_user(name, *args, **kwargs):
-    return run("runuser", "-u", user(name), "--", *args, **kwargs)
+    return run("/usr/sbin/runuser", "-u", user(name), "--", *args, **kwargs)
 
 
 def git(*args):
@@ -87,7 +87,9 @@ def preflight(sha):
     if output("/usr/bin/python3", "-c", "import sys; print('ok' if sys.version_info >= (3,12) else 'no')") != "ok":
         raise RuntimeError("Requires Python 3.12 or newer")
     run("/usr/bin/python3", "-c", "import ensurepip, venv")
-    for required in ("git", "tar", "useradd", "runuser", "systemctl", "diff"):
+    if not os.access("/usr/sbin/runuser", os.X_OK):
+        raise RuntimeError("Missing host dependency: /usr/sbin/runuser")
+    for required in ("git", "tar", "useradd", "systemctl", "diff"):
         if not shutil.which(required):
             raise RuntimeError(f"Missing host dependency: {required}")
     for executable in ("postgres", "initdb", "psql", "pg_isready", "pg_dump", "pg_restore"):
