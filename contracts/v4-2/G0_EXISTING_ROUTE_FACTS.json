@@ -1,0 +1,178 @@
+{
+  "schema_version": "G0_ROUTE_FACTS_STATIC_V1",
+  "status": "CHATGPT_SOURCE_STATIC_VERIFIED_NOT_RUNTIME_TESTED",
+  "as_of": "2026-11-21",
+  "source_commit": "c51b58d67dabae53afcdf9851a80cdc93d4200f6",
+  "scope": "V4.1 source plus design. Not an authoritative owner map, new route implementation, or CI pass",
+  "routes": [
+    {
+      "path": "/",
+      "now": "staff-center workbench.html via ingress STAFF_PAGES",
+      "desired": "unchanged",
+      "status": "CODE_PRESENT"
+    },
+    {
+      "path": "/staff",
+      "now": "identity service",
+      "desired": "unchanged",
+      "status": "CODE_PRESENT"
+    },
+    {
+      "path": "/academy",
+      "now": "staff-center academy.html via ingress",
+      "desired": "unchanged",
+      "status": "CODE_PRESENT"
+    },
+    {
+      "path": "/academy/admin",
+      "now": "staff-center academy-admin.html via ingress",
+      "desired": "unchanged",
+      "status": "CODE_PRESENT"
+    },
+    {
+      "path": "/hq",
+      "now": "identity personnel HQ via ingress",
+      "desired": "unchanged",
+      "status": "VERIFIED_STATIC"
+    },
+    {
+      "path": "/hq/stores/layout",
+      "now": "ingress default POS fallback, no explicit safe mapping; identity personnel /hq overlaps old POS editor",
+      "desired": "map legacy HQ layout UI under dedicated verified auth and asset routes",
+      "status": "NOT_IMPLEMENTED"
+    },
+    {
+      "path": "/api/hq/*",
+      "now": "POS upstream but denied when V4 device_required / identity_required",
+      "desired": "POS map routes retained with live identity HQ layout authorization",
+      "status": "BLOCKED_V4"
+    },
+    {
+      "path": "/pos",
+      "now": "POS service /",
+      "desired": "unchanged",
+      "status": "CODE_PRESENT"
+    },
+    {
+      "path": "/menu",
+      "now": "legacy private V9 menu through POS",
+      "desired": "preserve original session restrictions",
+      "status": "CODE_PRESENT"
+    },
+    {
+      "path": "/cocktail/",
+      "now": "menu V13 modified by ingress internal_menu() with untrusted ?from=pos internal return link",
+      "desired": "anonymous public menu only; internal navigation verified by session",
+      "status": "UI_PRIVACY_FIX_REQUIRED"
+    },
+    {
+      "path": "/craft/",
+      "now": "ingress explicit 404 public craft",
+      "desired": "preserve public meaning",
+      "status": "CODE_PRESENT_404"
+    },
+    {
+      "path": "/work/craft",
+      "now": "not implemented; default would route to POS unmatched",
+      "desired": "future protected view over original POS guideOverlay/order/task",
+      "status": "FUTURE_C_BATCH"
+    },
+    {
+      "path": "/supply-ui/",
+      "now": "supply upstream via ingress",
+      "desired": "unchanged",
+      "status": "CODE_PRESENT"
+    },
+    {
+      "path": "/api/v1/*",
+      "now": "identity upstream by prefix; specific internal identity endpoints blocked by ingress",
+      "desired": "eventually explicit manifest, do not break existing API",
+      "status": "STATIC_CURRENT"
+    },
+    {
+      "path": "unknown-other",
+      "now": "default POS fallback, not an explicit 404",
+      "desired": "eventually explicit route deny-by-default after impact test",
+      "status": "FUTURE_CHANGE"
+    }
+  ],
+  "ownership_and_auth": [
+    {
+      "resource": "layout JSON/SVG revisions and seats",
+      "owner": "organization logical; existing POS SQLite sole layout writer",
+      "code": "services/api/bsv1/bsv_one.py",
+      "notes": "keep old layout writer and staff FK audit"
+    },
+    {
+      "resource": "old HQ auth",
+      "owner": "legacy SQLite local bsv_hq_roles; not authoritative in V4",
+      "code": "bsv_one.py.require_hq",
+      "notes": "V4 must not drop forced 403 without new A live authorization"
+    },
+    {
+      "resource": "group management authorization",
+      "owner": "identity_access and workforce",
+      "code": "domains/workforce/identity/core.py",
+      "notes": "new read/edit/publish/register actions proposed, not yet code"
+    },
+    {
+      "resource": "legacy HQ web CSRF",
+      "owner": "POS device/session",
+      "code": "apps/hq-console/bsv1/hq.js",
+      "notes": "calls /api/state, uses X-BSV-CSRF; incompatible with group admin session"
+    },
+    {
+      "resource": "new store registration side effect",
+      "owner": "legacy POS",
+      "code": "bsv_one.py.create_store",
+      "notes": "inserts staff_store_access, must not grant POS access to HQ actor in V4"
+    },
+    {
+      "resource": "POS visual craft",
+      "owner": "service_ops and commerce via POS SQLite",
+      "code": "apps/store-console/bsv1/app.js",
+      "notes": "original guideOverlay and task APIs exist; do not duplicate"
+    }
+  ],
+  "source_checked_store_maps": [
+    {
+      "store_id": "BSVM",
+      "seat_node_count": 13,
+      "unique_ids": true,
+      "neighbor_refs_valid": true
+    },
+    {
+      "store_id": "BSVS",
+      "seat_node_count": 13,
+      "unique_ids": true,
+      "neighbor_refs_valid": true
+    },
+    {
+      "store_id": "BSVT",
+      "seat_node_count": 17,
+      "unique_ids": true,
+      "neighbor_refs_valid": true
+    },
+    {
+      "store_id": "BSVF",
+      "seat_node_count": null,
+      "layout_file": null,
+      "unknown_real_layout": true
+    }
+  ],
+  "source_checks": {
+    "total_known_seat_nodes": 43,
+    "cross_store_duplicate_seat_ids": 0,
+    "verified_runtime": false,
+    "unit_tests_run": false,
+    "HTTP_tests_run": false,
+    "cloudbase_schema_checked": false
+  },
+  "implementation_caveats": [
+    "do not assign or guess fifth store_id",
+    "anonymous GET /cocktail/ return link bug is UI leak only, not proof of API elevation",
+    "CSRF checks must bind correct identity session and service authorization",
+    "code requires tests; static review is not a release approval",
+    "no new authoritative table/process for existing map/pos/recipe tasks"
+  ]
+}
