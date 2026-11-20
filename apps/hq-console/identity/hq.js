@@ -18,7 +18,37 @@ $('#qual-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{
 $('#stage-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{const f=e.target,tr=take(f,'tr').toUpperCase(),stage=take(f,'stage'),op=take(f,'operation');const body={...decision(take(f,'reason'))};if(op==='issue')body.request_id=take(f,'request_id');display(await send('/api/v1/identity/'+encodeURIComponent(tr)+'/'+stage+'/'+op,body));});});
 $('#grant-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{const f=e.target;display(await send('/api/v1/identity/grants',{tr_code:take(f,'tr').toUpperCase(),legal_entity_id:entity(),store_id:take(f,'store')||null,role:take(f,'role'),action:take(f,'action'),required_qualification:take(f,'qualification')||null,valid_from:iso(take(f,'start')),valid_to:iso(take(f,'end')),reason:take(f,'reason')}));});});
 $('#grant-review').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{const f=e.target;display(await send('/api/v1/identity/grants/'+encodeURIComponent(take(f,'id'))+'/'+take(f,'operation'),decision(take(f,'reason'))));});});
-$('#legacy-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{const rows=take(e.target,'rows').split('\n').filter(Boolean).map(line=>{const p=line.split(',');if(p.length!==3)throw new Error('每行必须恰好包含3个字段：来源,旧码,TR。');return {source_system:p[0].trim(),legacy_value:p[1].trim(),tr_code:p[2].trim().toUpperCase()};});const d=await send('/api/v1/identity/legacy-import/dry-run',{legal_entity_id:entity(),rows});lines($('#legacy-result'),d.records,x=>item(x.legacy_value+' → '+x.tr_code,x.status+' · '+(x.issues.join(',')||'无冲突')));notice('只读预检完成：写入0，冲突'+d.blocked+'条。');});});
+$('#legacy-form').addEventListener('submit',e=>{
+ e.preventDefault();
+ const output=$('#legacy-result');
+ const submit=e.target.querySelector('button[type="submit"],button:not([type])');
+ output.setAttribute('role','status');
+ output.setAttribute('aria-live','polite');
+ output.replaceChildren(node('p','正在执行只读预检…','small'));
+ if(submit)submit.disabled=true;
+ (async()=>{
+  try{
+   const rows=take(e.target,'rows').split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{
+    const p=line.split(',');
+    if(p.length!==3)throw new Error('每行必须恰好包含3个字段：来源,旧码,TR。');
+    return {source_system:p[0].trim(),legacy_value:p[1].trim(),tr_code:p[2].trim().toUpperCase()};
+   });
+   if(!rows.length)throw new Error('请至少输入一条旧码映射。');
+   const d=await send('/api/v1/identity/legacy-import/dry-run',{legal_entity_id:entity(),rows});
+   lines(output,d.records,x=>item(x.legacy_value+' → '+x.tr_code,x.status+' · '+(x.issues.join(',')||'无冲突')));
+   const message='只读预检完成：写入0，冲突'+d.blocked+'条。';
+   output.prepend(node('p',message,d.blocked?'error':'small'));
+   notice(message,!!d.blocked);
+  }catch(err){
+   const message='只读预检失败：'+err.message;
+   output.replaceChildren(node('p',message,'error'));
+   notice(message,true);
+  }finally{
+   if(submit)submit.disabled=false;
+   output.scrollIntoView({block:'nearest'});
+  }
+ })();
+});
 $('#people-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{const d=await request('/api/v1/identity/admin/people?legal_entity_id='+encodeURIComponent(entity())+'&q='+encodeURIComponent(take(e.target,'query')));lines($('#people-result'),d.people,x=>item(x.tr_code+' · '+(x.display_label||'已匿名化'),x.status));});});
 $('#history-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{const tr=take(e.target,'tr').toUpperCase();const d=await request('/api/v1/identity/'+encodeURIComponent(tr)+'/history?legal_entity_id='+encodeURIComponent(entity()));lines($('#audit-result'),d.events,x=>item(x.event_type,x.occurred_at));});});
 safe(head);
