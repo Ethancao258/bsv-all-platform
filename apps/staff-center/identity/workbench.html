@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BSV 工作台</title>
+<link rel="stylesheet" href="/assets/style.css">
+<script src="/assets/common.js" defer></script>
+<script src="/workbench.js" defer></script>
+</head>
+<body class="workbench">
+<a class="skip-link" href="#work">跳到今日工作</a>
+<header class="workbench-header">
+  <a class="workbench-brand" href="/">BAR ST. VINCENT</a>
+  <a href="/staff">个人中心</a>
+</header>
+<main id="work">
+  <section class="workbench-intro" aria-labelledby="title">
+    <div>
+      <p class="eyebrow">BSV · 内部演练</p>
+      <h1 id="title">BSV 工作台</h1>
+      <p class="lead">选择你今天要完成的工作。</p>
+      <p class="muted">请使用演练资料。本入口不连接正式经营数据，也不能收款。</p>
+    </div>
+    <div class="panel workbench-session">
+      <p class="eyebrow">当前身份</p>
+      <p id="session-summary" role="status" aria-live="polite">正在查看登录状态…</p>
+      <p id="store-summary" class="small"></p>
+      <a class="action-link" id="session-link" href="/staff">进入个人中心</a>
+    </div>
+  </section>
+  <section aria-labelledby="today">
+    <h2 id="today">今日工作</h2>
+    <div class="workbench-grid">
+      <article class="panel work-card" aria-labelledby="employee">
+        <h3 id="employee">员工</h3>
+        <p id="employee-status" class="work-state">正在查看</p>
+        <p id="employee-next">登录后查看编号、入职进度以及可用的门店权限。</p>
+        <a class="action-link" href="/staff">查看我的入职与权限</a>
+      </article>
+      <article class="panel work-card" aria-labelledby="shift">
+        <h3 id="shift">门店当班</h3>
+        <p id="pos-status" class="work-state">正在查看</p>
+        <p id="pos-next">先登录并确认门店权限，再到点单台核对员工码和 PIN。</p>
+        <a class="action-link" href="/pos">打开门店点单台</a>
+      </article>
+      <article class="panel work-card" aria-labelledby="headquarters">
+        <h3 id="headquarters">总部</h3>
+        <p id="hq-status" class="work-state">正在查看</p>
+        <p id="hq-next">登录后按授权范围查询人员、处理审核及核对旧员工码。</p>
+        <a class="action-link" href="/hq">打开总部审批</a>
+      </article>
+      <article class="panel work-card" aria-labelledby="inspect">
+        <h3 id="inspect">独立督查</h3>
+        <p id="inspection-status" class="work-state">正在查看</p>
+        <p id="inspection-next">先核对督查门店权限，再查看提交是否已开放。</p>
+        <a class="action-link" href="/supply-ui/inspector/supply">核对督查范围</a>
+      </article>
+    </div>
+  </section>
+  <section aria-labelledby="tools" class="workbench-tools">
+    <h2 id="tools">经营工具</h2>
+    <div class="workbench-grid">
+      <article class="panel work-card">
+        <h3>供货与库存</h3>
+        <p id="supply-status" class="work-state">正在查看</p>
+        <p id="supply-next">可核对本账号的供货权限与当前可用范围。</p>
+        <a class="action-link" href="/supply-ui/hq/supply">查看供货入口</a>
+      </article>
+      <article class="panel work-card">
+        <h3>鸡尾酒菜单</h3>
+        <p class="work-state" data-state="read">仅查看</p>
+        <p>查看随本次发布提供的鸡尾酒菜单。精酿菜单暂无演练入口。</p>
+        <a class="action-link" href="/cocktail/">查看菜单</a>
+      </article>
+    </div>
+  </section>
+</main>
+</body>
+</html>

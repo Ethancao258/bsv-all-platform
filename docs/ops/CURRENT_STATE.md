@@ -166,3 +166,23 @@
 - CONTRACT_CREATED_GITHUB · ChatGPT已直接提交 `docs/architecture/BSV_ALL_DELIVERY_CONTROL_PLANE_V1.md`、`config/change-routing.json`、`scripts/verify_change_routing.py`、`AGENTS.md`第15条和 `docs/ops/CODEX_WORKFLOW.md`V3，以及CI静态路由检查。GitHub Issue #9作为**V1→V2→V3同一整合任务**的唯一入口。用户明确尚未向Codex实际启动本轮开发，不能把Issue存在当作Codex运行中。
 - DELIVERY_NOT_CONNECTED · 当前ChatGPT已有GitHub读写连接，可更新Issue和源码；但尚无直接触发网页版Codex开发会话或从此会话直接SSH部署Lighthouse的获授权执行链。拟议 `bsvctl` 与自动发布控制器是设计，**NOT_IMPLEMENTED**。后续先由Codex实现并经本机实际验证，绝不声称已“一句话自动上线”。
 - OPERATING_PRODUCTION_NO_GO · 北京Lighthouse 4核约4GB、40GB现运行七个新旧单元的可用性与资源裕量须实测；真实CloudBase ACL/RLS、备份恢复、跨区域认证、实收支付及D/E库存/督查权威写入仍阻断正式生产。
+
+## 2026-11-20｜Issue #9 V3 唯一集成冲刺
+
+- 源码从 PR #8 的 `0836cca1bc6b829733c43637c622632aad909ac4` 继承，基线七项 CI 成功。V3 分支 `integration/sprint-v3` 保留既有修复和 14 个一级目录。实际候选 SHA 与 CI 以 [Issue #9](https://github.com/Ethancao258/bsv-all-platform/issues/9) 对应 PR 为准。
+- 工作包 A 负责身份、旧码和 POS API。旧码同向重试写入 0，反向关联冲突拒绝。隔离审批人和本人分离。批量 POS 验收用独立 run ID 记录订单并归档本次桌次，支付拒绝，跨店与撤权后拒绝。复用既有 TR/EMP/BM，第三位合成审批员仅用于测试批准。
+- 工作包 B 负责工作台、员工、总部、POS、供货及督查的中文界面。权限来源为已登录人员的有效授权。D/E 仍不可写，界面与 HTTP 保留明确阻断。工作包 C 负责主机预检、发布检查点和回切。主集成负责批量验收驱动、路由和发布控制器、CI、审查。
+- PASS_ISOLATED · 先前已提交的合成别名在真实隔离 PG17 与四个 HTTP 服务上通过两轮验收。同后缀、总部跨法人拒绝、岗位两人审批、POS 测试 PIN 二次认证、未付款下单、支付拒绝、供货/督查身份及 503 写入门槛、撤权和登出均由脚本验证。CloudBase 正式库和收款接口未连接。
+- HOST_NOT_RUN · V3 主机部署、批量验收和安全回退均未执行。实际已部署 SHA 最近由经营负责人提供，仍为 `13dad3df84eacd83ffd9ddc8112cbcee6c3256ec`，旧服务 8765/8767 的 active 也是该次主机报告。V3 的新主机结果必须以实际 `bsvctl.py` 和 `acceptance.py` 回执为准。
+- 手动交付控制器和注册表查询已实现。批准的 GitHub CI 导出由操作者核对，Lighthouse 仍只有只读拉取能力。对话自动启动 Codex、GitHub 自动触发主机、主机自动回写 GitHub 和生产迁移均为 NOT_CONNECTED。
+
+| 页面 | V3 主要文案与反馈 |
+|---|---|
+| `/` | 链接列表改为“BSV 工作台”，依据有效会话展示角色、门店和下一步。供货暂未启用，督查仅可核对范围。 |
+| `/staff` | 用“你的人员编号”、员工及管理身份状态解释同源编码。登录、申请和退出就地反馈，技术详情可展开。 |
+| `/hq` | 旧码预检显示正在核对、仅检查尚未保存或已关联无需重复提交。业务表单显示已确认编号及下一步，网络结果未知时先查记录。 |
+| `/pos` | 内部试单只允许记录未付款订单，页面显示“尚未收款”。 |
+| `/supply-ui/` | 中央账未连接时保留个人权限查看和两类工作入口，提交不可用。 |
+
+- PASS_ISOLATED · Chromium 在 375px 和 1440px 实际操作：匿名首页、员工登录与授权、督查只读提示、POS 二次核验和未付款提交、总部查人和已有别名预检。浏览器模拟请求中断验证“结果暂未确认”及保留表单输入，未执行该次写入。桌面、手机和总部截图由 CI 归档。
+- PASS_ISOLATED · 隔离 PG17 上实际完成加密备份、校验及恢复，合成 POS SQLite 实际完成一致性快照。发布与回切的模拟回归为 MOCK_ONLY。Lighthouse 新版本安装和回切仍为 HOST_NOT_RUN。按部署说明在主机查看发布清单与批量验收回执。

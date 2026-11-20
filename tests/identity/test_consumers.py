@@ -1,5 +1,6 @@
 """Exercise shared identity against the existing POS and supply HTTP handlers."""
 from dataclasses import replace
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 import http.client
 import importlib
@@ -10,12 +11,13 @@ import secrets
 import threading
 from uuid import uuid4
 
+import httpx
 import pytest
 import uvicorn
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from domains.workforce.identity.models import AuthLink, LegacyAlias, now
+from domains.workforce.identity.models import AuditEvent, AuthLink, LegacyAlias, now
 from services.api.identity import api
 from .conftest import admin_post, create_person, grant_action, onboard
 
@@ -183,3 +185,34 @@ def test_legacy_preflight_commit_and_isolated_rollback():
     assert admin_post(one,path+"dry-run",base).json()["records"][0]["issues"] == []
     with api.router.session() as db:
         assert db.scalar(select(AuthLink).where(AuthLink.tr_code==tr))
+
+
+
+def test_same_legacy_mapping_retries_and_conflicts_over_http(identity_http, monkeypatch):
+    _, one, two, tr, _ = create_person("legacyretry")
+    endpoint = identity_http + "/api/v1/identity/legacy-import/commit"
+    row = {"source_system": "bsv1_pos", "legacy_value": "SYNTH-STAGE-POS-01", "tr_code": tr}
+    base = {"legal_entity_id": "DEMO_LEGAL", "rows": [row],
+            "reason": "Retry the exact synthetic alias", "evidence_ref": "ISOLATED-REPLAY"}
+
+    def submit(reviewer, payload=base):
+        return httpx.post(endpoint, json=payload, cookies=dict(reviewer.cookies),
+                          headers={"X-CSRF-Token": reviewer.cookies["bsv_csrf"]}, timeout=10, trust_env=False)
+
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        outcomes = list(workers.map(submit, (one, two)))
+    assert [r.status_code for r in outcomes] == [200, 200]
+    created, unchanged = sorted([r.json() for r in outcomes], key=lambda result: -result["write_count"])
+    assert created["write_count"] == 1 and created["already_mapped_count"] == 0
+    assert unchanged["write_count"] == 0 and unchanged["already_mapped_count"] == 1
+    assert unchanged["created_alias_ids"] == []
+    assert unchanged["records"] == [{**row, "status": "reviewed", "issues": ["ALREADY_MAPPED"]}]
+    conflicts = [dict(row, tr_code="TRA0001"), dict(row, legacy_value="OTHER-SYNTH-ALIAS")]
+    assert submit(one, {**base, "rows": conflicts}).status_code == 409
+    with api.router.session() as db:
+        assert [(r.legacy_value, r.tr_code) for r in db.scalars(select(LegacyAlias))] == [(row["legacy_value"], tr)]
+        logged = db.scalars(select(AuditEvent).where(AuditEvent.event_type == "legacy.alias.committed")).all()
+        assert len(logged) == 1
+    monkeypatch.setattr(api, "settings", replace(api.settings, env="production"))
+    denied = submit(one)
+    assert denied.status_code == 403 and denied.json()["error"]["code"] == "MIGRATION_LOCKED"

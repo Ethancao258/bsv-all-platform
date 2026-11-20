@@ -1,21 +1,110 @@
 "use strict";
 window.BSV = (() => {
  const $ = (selector) => document.querySelector(selector);
- const notice = (message, bad=false) => {const x = $('#notice');if(!x)return;x.classList.remove('hidden');x.classList.toggle('error',bad);x.textContent=message;};
+ const node = (tag,text,cls) => {const el=document.createElement(tag);el.textContent=text;if(cls)el.className=cls;return el;};
+ const notice = (message, bad=false) => {const x=$('#notice');if(!x)return;x.classList.remove('hidden');x.classList.toggle('error',bad);x.textContent=message;};
  const cookie = (name) => document.cookie.split('; ').map(x=>x.split('=')).find(x=>x[0]===name)?.slice(1).join('=')||'';
+ const labels = {
+   'pos.order.read':'查看门店点单','pos.order.create':'录入门店点单','hq.people.read':'查询人员',
+   'grant.request':'发起岗位授权','grant.approve':'审批岗位授权','grant.revoke':'撤销岗位授权',
+   'supply.dispatch':'发货','supply.receive':'收货','quality.self_check':'门店自查',
+   'quality.independent.submit':'提交独立督查','quality.independent.review':'复核独立督查',
+   'legacy.preview':'核对旧员工码','legacy.commit':'保存旧员工码关联',
+   'EMP_ONBOARDING':'入职资格','BM_MANAGEMENT':'管理资格','POS_SERVICE':'点单上岗资格',
+   'SUPPLY_SAFETY':'供货安全资格','QUALITY_INSPECTOR':'独立督查资格','QUALITY_REVIEWER':'督查复核资格',
+   'staff':'员工','manager':'当班负责人','hq':'总部','DEMO_LEGAL':'内部演练公司',
+ };
+ const label = (key,fallback='查看详情') => labels[key]||fallback;
+ const statusText = (status) => ({
+   approved:'已批准',active:'有效',issued:'已发放',verified:'已核验',pending:'待审核',
+   needs_review:'需要补充核验',not_started:'尚未申请',rejected:'未通过',revoked:'已撤销',
+   suspended:'已停用',ended:'已结束',closed:'已结束',redacted:'已匿名化',
+ }[status]||'请查看明细');
+ const issues = {
+   BAD_CREDENTIALS:'用户名或密码不正确，请核对后再试。',
+   INVALID_CREDENTIALS:'用户名或密码不正确，请核对后再试。',
+   INVALID_PASSWORD:'密码不符合要求，请按输入框说明调整。',
+   DUPLICATE_USERNAME:'这个用户名已被使用，请换一个再试。',
+   BAD_ORIGIN:'当前页面不能发起这项请求。请从工作台重新进入。',
+   CSRF_REJECTED:'当前页面的登录状态已变化。请刷新页面后继续。',
+   SEPARATION_OF_DUTIES:'不能批准自己提出的申请，请交由另一位有权限的同事处理。',
+   SELF_APPROVAL:'不能批准自己提出的申请，请交由另一位有权限的同事处理。',
+   QUALIFICATION_REQUIRED:'所需资格尚未生效。请先核对资格记录，再继续审批。',
+   MAPPING_BUSY:'旧码正在核对。请先查询旧码关联结果，再决定是否重试。',
+   MIGRATION_PRECHECK_FAILED:'旧码仍有冲突，请先查看核对结果再处理。',
+ };
+ const requestError = ({code,status,write=false,login=false}) => {
+   const unknown = write && (status>=500||!status) && code!=='DB_UNAVAILABLE';
+   let message=issues[code];
+   if(!message && status===401)message=login?'用户名或密码不正确，请核对后再试。':'登录已过期，请重新登录后继续。';
+   if(!message && status===403)message='当前账号不能执行这项操作。请向总部申请相应门店权限。';
+   if(!message && status===404)message='找不到可查看的记录，请核对编号和授权范围。';
+   if(!message && status===409)message='当前记录状态与提交内容不一致。请先查看最新记录，再决定如何处理。';
+   if(!message && status===422)message='请核对表单内容和格式后再提交。';
+   if(!message && status===429)message='操作过于频繁。请稍等片刻再试。';
+   if(!message && code==='DB_UNAVAILABLE')message='服务暂时不可用。请稍后重新核对这条记录。';
+   if(!message)message=unknown?'结果暂未确认，请先查看记录再重试。':'暂时无法获取结果。请检查连接后刷新查询。';
+   return Object.assign(new Error(message),{code,status,unknown});
+ };
  const request = async (url,options={}) => {
-   const headers = {'Accept':'application/json', ...options.headers};
-   if(options.body){headers['Content-Type']='application/json';headers['X-CSRF-Token']=decodeURIComponent(cookie('bsv_csrf'));}
-   let response;try{response=await fetch(url,{credentials:'same-origin',...options,headers});}catch{throw new Error('无法连接服务；数据库A或服务器可能不可用，操作已中止。');}
-   const data=await response.json().catch(()=>({}));
-   if(!response.ok)throw new Error((data.error?.code||'HTTP_'+response.status)+'：'+(data.error?.message||'请求失败'));
+   const headers={'Accept':'application/json', ...options.headers};
+   const write=options.method==='POST'&&!url.endsWith('/dry-run');
+   const login=url.endsWith('/login');
+   if(options.body){headers['Content-Type']='application/json';headers['X-CSRF-Token']=cookie('bsv_csrf');}
+   let response;
+   try{
+     response=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(11000),...options,headers});
+   }catch(error){throw requestError({code:error.name==='TimeoutError'?'REQUEST_TIMEOUT':'NETWORK_ERROR',write,login});}
+   let data;
+   try{data=await response.json();}
+   catch{throw requestError({code:'RESPONSE_NOT_CONFIRMED',status:response.ok?undefined:response.status,write,login});}
+   if(!response.ok)throw requestError({code:data.error?.code||'HTTP_'+response.status,status:response.status,write,login});
    return data;
  };
  const send=(url,body)=>request(url,{method:'POST',body:JSON.stringify(body)});
- const node=(tag,text,cls)=>{const el=document.createElement(tag);el.textContent=text;if(cls)el.className=cls;return el;};
  const lines=(container,items,render)=>{container.replaceChildren();if(!items?.length){container.append(node('p','暂无记录','small'));return;}items.forEach(item=>container.append(render(item)));};
- const take = (form, key) => new FormData(form).get(key)?.toString().trim()||'';
+ const take = (form,key) => new FormData(form).get(key)?.toString().trim()||'';
  const iso=(text)=>{if(!text)return null;const normalized=text.length===16?text+':00+08:00':text;const d=new Date(normalized);return Number.isFinite(d.valueOf())?d.toISOString():null;};
  const safe=async fn=>{try{await fn();}catch(e){notice(e.message,true);}};
- return {$,notice,request,send,node,lines,take,iso,safe};
+ function technical(target,error){
+   if(!error.code)return;
+   const detail=node('details','');
+   detail.append(node('summary','查看问题编号'),node('p',error.code,'mono'));
+   target.append(detail);
+ }
+ function action(element, pending, fn){
+   const form=element.tagName==='FORM';
+   element.addEventListener(form?'submit':'click',async event=>{
+     event.preventDefault();
+     if(element.getAttribute('aria-busy')==='true')return;
+     const button=form?(event.submitter||element.querySelector('button')):element;
+     const original=button.textContent;
+     let result=document.getElementById(element.id+'-feedback');
+     if(!result){
+       result=node('div','','inline-feedback');
+       result.id=element.id+'-feedback';
+       result.setAttribute('role','status');
+       button.insertAdjacentElement('afterend',result);
+     }
+     element.setAttribute('aria-busy','true');
+     button.disabled=true;
+     button.textContent=pending;
+     result.dataset.state='pending';
+     result.textContent=pending;
+     try{
+       const outcome=await fn(element);
+       result.dataset.state='success';
+       result.textContent=outcome;
+     }catch(error){
+       result.dataset.state=error.unknown?'unknown':'error';
+       result.textContent=error.message;
+       technical(result,error);
+     }finally{
+       element.removeAttribute('aria-busy');
+       button.disabled=false;
+       button.textContent=original;
+     }
+   });
+ }
+ return {$,notice,request,send,node,lines,take,iso,safe,action,technical,label,statusText};
 })();

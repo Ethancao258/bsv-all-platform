@@ -4,10 +4,12 @@ from dataclasses import replace
 import json
 import os
 from pathlib import Path
+import runpy
 import socket
 import subprocess
 import sys
 import time
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -130,16 +132,38 @@ def exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant):
     state = browser.get("/api/state")
     assert state.status_code == 200, state.text
     headers = {"X-BSV-CSRF": state.json()["csrf"]}
-    opened = browser.post("/api/seats/open", json={"seat_id": "BSVT-SEAT-0001"}, headers=headers)
+    run_id = str(uuid4())
+    seat = {"seat_id": "BSVT-SEAT-0001", "acceptance_run": run_id}
+    opened = browser.post("/api/seats/open", json=seat, headers=headers)
     assert opened.status_code == 200, opened.text
     visit = opened.json()["visit_id"]
-    draft = browser.post("/api/drafts/add", json={"visit_id": visit, "product_id": "C000001"}, headers=headers)
+    visit_args = {"visit_id": visit, "acceptance_run": run_id}
+    assert browser.post("/api/seats/open", json=seat, headers=headers).json() == {"visit_id": visit, "new": False}
+    assert browser.post("/api/seats/open", json={**seat, "acceptance_run": str(uuid4())}, headers=headers).status_code == 409
+    assert browser.post("/api/drafts/add", json={"visit_id": visit, "product_id": "C000001"}, headers=headers).status_code == 403
+    draft = browser.post("/api/drafts/add", json={**visit_args, "product_id": "C000001"}, headers=headers)
     assert draft.status_code == 200, draft.text
-    assert browser.post("/api/orders/submit", json={"visit_id": visit, "pay_now": True},
+    assert browser.post("/api/orders/submit", json={**visit_args, "pay_now": True},
                         headers=headers).status_code == 403
-    submit = browser.post("/api/orders/submit", json={"visit_id": visit, "pay_now": False}, headers=headers)
+    submit = browser.post("/api/orders/submit", json={**visit_args, "pay_now": False}, headers=headers)
     assert submit.status_code == 200, submit.text
-    assert submit.json()["pay_now"] is False
+    assert submit.json()["pay_now"] is False and submit.json()["payment_verified"] is False
+    assert browser.post("/api/visits/cancel", json={**visit_args, "acceptance_run": str(uuid4())},
+                        headers=headers).status_code == 403
+    assert browser.post("/api/visits/cancel", json={"visit_id": visit}, headers=headers).status_code == 403
+    for _ in range(2):
+        archived = browser.post("/api/visits/cancel", json=visit_args, headers=headers)
+        assert archived.json() == {"ok": True, "archived": True, "visit_id": visit}
+    receipt = browser.get("/api/receipt", params={"visit_id": visit})
+    assert receipt.status_code == 200 and receipt.json()["visit"]["status"] == "CANCELLED"
+    assert len(receipt.json()["visit"]["lines"]) == 1
+    assert not receipt.json()["visit"]["checkouts"]
+    assert browser.post("/api/seats/open", json=seat, headers=headers).status_code == 409
+    next_seat = {**seat, "acceptance_run": str(uuid4())}
+    next_visit = browser.post("/api/seats/open", json=next_seat, headers=headers)
+    assert next_visit.json()["new"] is True
+    assert browser.post("/api/visits/cancel", json={"visit_id": next_visit.json()["visit_id"],
+                        "acceptance_run": next_seat["acceptance_run"]}, headers=headers).status_code == 200
 
     inspection = {"request_id": "2a898042-f13f-48aa-a89b-357c514dc39b", "store_id": "BSVT",
                   "kind": "independent", "results": {}}
@@ -151,6 +175,11 @@ def exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant):
                         headers=csrf).status_code == 403
     blocked = browser.post("/supply-ui/api/inspections", json=inspection, headers=csrf)
     assert blocked.status_code == 503 and "未提交且未排队" in blocked.text
+    if os.getenv("BSV_STAGE_BROWSER") == "1":
+        ui = runpy.run_path(str(ROOT / "tests/ui/stage_browser.py"))
+        ui["check"](str(browser.base_url), username="internal-stage-user",
+                    password="example-only-password-22222", expected_tr=tr)
+
     for grant in (supply_grant, inspection_grant, pos_grant):
         assert admin_post(first, f"/api/v1/identity/grants/{grant}/revoke",
                           {"legal_entity_id": "DEMO_LEGAL", "reason": "isolated staging revoke"}).status_code == 200

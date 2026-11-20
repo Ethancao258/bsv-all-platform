@@ -100,19 +100,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate HQ browser script syntax
-        run: node --check apps/hq-console/identity/hq.js
+      - name: Validate browser script syntax
+        run: |
+          for file in apps/hq-console/identity/hq.js apps/staff-center/identity/assets/*.js apps/staff-center/identity/workbench.js apps/hq-console/supply/app.js apps/store-console/bsv1/app.js; do
+            node --check "$file"
+          done
       - name: Build independent locked environments
         run: |
           python -m venv "$RUNNER_TEMP/bsv-identity"
           python -m venv "$RUNNER_TEMP/bsv-supply"
           "$RUNNER_TEMP/bsv-identity/bin/python" -m pip install -r services/api/identity/requirements.lock
           "$RUNNER_TEMP/bsv-supply/bin/python" -m pip install -r services/api/supply/requirements.lock
+          "$RUNNER_TEMP/bsv-identity/bin/python" -m pip install playwright==1.62.0
+          "$RUNNER_TEMP/bsv-identity/bin/python" -m playwright install --with-deps chromium
       - name: Run actual HTTP integration with isolated PostgreSQL
         run: |
           export PATH="$RUNNER_TEMP/bsv-identity/bin:$PATH"
           export BSV_STAGE_SUPPLY_PYTHON="$RUNNER_TEMP/bsv-supply/bin/python"
+          export BSV_STAGE_BROWSER=1
+          export BSV_STAGE_UI_ARTIFACTS="$RUNNER_TEMP/bsv-stage-ui"
           bash tests/identity/pg/check.sh --with-apps
           python tests/internal-stage/test_deploy.py
+          python tests/internal-stage/test_control.py
           python platform/lighthouse/internal-stage/stage.py --help
           bash -n platform/lighthouse/internal-stage/run.sh
+      - name: Upload isolated UI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolated-stage-ui
+          path: ${{ runner.temp }}/bsv-stage-ui
+          if-no-files-found: warn

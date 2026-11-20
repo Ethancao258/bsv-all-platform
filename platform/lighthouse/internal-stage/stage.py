@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Versioned deployment for the private internal stage on a systemd host."""
 import argparse
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
+from datetime import datetime, timezone
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,7 +13,8 @@ import re
 import secrets
 import shlex
 import shutil
-import socket
+import sqlite3
+import stat
 import subprocess
 import sys
 import time
@@ -26,6 +29,7 @@ UNIT = "bsv-all-internal-stage"
 UNIT_FILE = Path("/etc/systemd/system") / f"{UNIT}@.service"
 PORTS = {"ingress": 18760, "identity": 18761, "pos": 18762, "supply": 18763, "postgres": 18764}
 START_ORDER = ("postgres", "identity", "pos", "supply", "ingress")
+LEGACY_UNITS = {8765: "bsv1-preview.service", 8767: "bsv-all-bsv1-stage.service"}
 REPO = Path(__file__).resolve().parents[3]
 DB = "bsv_identity_isolated_internal"
 DB_USER = "bsv_internal_app"
@@ -44,8 +48,12 @@ def unit(name):
     return f"{UNIT}@{name}.service"
 
 
+def unit_active(name):
+    return subprocess.run(("systemctl", "is-active", "--quiet", name)).returncode == 0
+
+
 def active(name):
-    return subprocess.run(("systemctl", "is-active", "--quiet", unit(name))).returncode == 0
+    return unit_active(unit(name))
 
 
 def user(name):
@@ -71,11 +79,53 @@ def sha_at(path):
     return dest.name
 
 
+def sync_directory(path):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def link(name, sha):
     tmp = ROOT / ("." + name + ".next")
     tmp.unlink(missing_ok=True)
     tmp.symlink_to(ROOT / "releases" / sha)
     tmp.replace(ROOT / name)
+    sync_directory(ROOT)
+
+
+def listening_ports():
+    listeners = {port: [] for port in (*PORTS.values(), *LEGACY_UNITS)}
+    for line in output("ss", "-H", "-ltn").splitlines():
+        address, _, port = line.split()[3].rpartition(":")
+        if port.isdecimal() and int(port) in listeners:
+            listeners[int(port)].append(address.removeprefix("[").removesuffix("]"))
+    return listeners
+
+
+def host_evidence(require_all=True):
+    current = sha_at(ROOT / "current")
+    listeners = listening_ports()
+    legacy = {}
+    for port, name in LEGACY_UNITS.items():
+        if not unit_active(name) or not listeners[port]:
+            raise RuntimeError(f"Legacy service baseline missing: {name} on {port}")
+        legacy[str(port)] = {"unit": name, "state": "active"}
+
+    managed = {}
+    for name, port in PORTS.items():
+        addresses = listeners[port]
+        running = bool(current and active(name))
+        if addresses and any(address != "127.0.0.1" for address in addresses):
+            raise RuntimeError(f"Unexpected non-loopback listener on {port} ({name})")
+        if addresses and not running:
+            raise RuntimeError(f"Port {port} already in use outside managed service ({name})")
+        if require_all and not (addresses and running):
+            raise RuntimeError(f"Managed loopback service is not ready on {port} ({name})")
+        managed[str(port)] = {"unit": unit(name), "state": "active" if running else "inactive",
+                              "listen": addresses}
+    return {"deployed_sha": current, "legacy_services": legacy, "managed_services": managed}
 
 
 def preflight(sha):
@@ -89,7 +139,7 @@ def preflight(sha):
     run("/usr/bin/python3", "-c", "import ensurepip, venv")
     if not os.access("/usr/sbin/runuser", os.X_OK):
         raise RuntimeError("Missing host dependency: /usr/sbin/runuser")
-    for required in ("git", "tar", "useradd", "systemctl", "diff"):
+    for required in ("git", "tar", "useradd", "systemctl", "diff", "ss"):
         if not shutil.which(required):
             raise RuntimeError(f"Missing host dependency: {required}")
     for executable in ("postgres", "initdb", "psql", "pg_isready", "pg_dump", "pg_restore"):
@@ -97,15 +147,7 @@ def preflight(sha):
             raise RuntimeError(f"Install approved native PostgreSQL 17 binaries: missing {executable}")
     if "PostgreSQL) 17." not in output(PG / "postgres", "--version"):
         raise RuntimeError("Native PostgreSQL 17 is required")
-    current = sha_at(ROOT / "current")
-    for name, port in PORTS.items():
-        if current and active(name):
-            continue
-        with socket.socket() as listener:
-            try:
-                listener.bind(("127.0.0.1", port))
-            except OSError as exc:
-                raise RuntimeError(f"Port {port} already in use ({name})") from exc
+    host_evidence(require_all=False)
     if UNIT_FILE.exists() and UNIT_FILE.read_bytes() != (REPO / TOOL / UNIT_FILE.name).read_bytes():
         raise RuntimeError("Unexpected existing systemd template; inspect it manually")
     for path in (ROOT, DATA, ROOT / "config", ROOT / "releases"):
@@ -126,6 +168,9 @@ def write_secret(path, value, uid=0, gid=0):
     with os.fdopen(fd, "w") as stream:
         os.fchown(stream.fileno(), uid, gid)
         stream.write(value + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    sync_directory(path.parent)
     return value
 
 
@@ -274,17 +319,19 @@ REVOKE CONNECT ON DATABASE "{DB}" FROM PUBLIC;
 """, stdout=subprocess.DEVNULL)
 
 
-def identity_tool(dest, identity, *args):
+def identity_tool(dest, identity, *args, **kwargs):
     source = dest / "src"
     env = {"PATH": str(PG) + ":/usr/bin:/bin", "PYTHONPATH": str(source), "PYTHONDONTWRITEBYTECODE": "1"}
-    return as_user("identity", dest / "identity/bin/python", *args, env={**env, **identity}, cwd=source)
+    return as_user("identity", dest / "identity/bin/python", *args, env={**env, **identity}, cwd=source, **kwargs)
 
 
 def bootstrap(dest, identity, pos, pin):
     source = dest / "src"
     identity_tool(dest, identity, "-m", "alembic", "-c",
                   source / "platform/lighthouse/identity/alembic.ini", "upgrade", "head")
-    identity_tool(dest, identity, "-m", "services.api.identity.seed_isolated", "--i-understand-isolated")
+    reviewer3 = write_secret(ROOT / "config" / "reviewer3", secrets.token_urlsafe(36))
+    identity_tool(dest, {**identity, "BSV_DEMO_ADMIN_3_PASSWORD": reviewer3}, "-m",
+                  "services.api.identity.seed_isolated", "--i-understand-isolated")
     archive_key = DATA / "identity" / "archive.key"
     if not archive_key.exists():
         identity_tool(dest, identity, "-m", "services.api.identity.backup", "generate-key", "--path", archive_key)
@@ -293,23 +340,124 @@ def bootstrap(dest, identity, pos, pin):
             env={**child, **pos, "BSV_STAGE_POS_PIN": pin}, cwd=source)
 
 
-def backup():
-    current = sha_at(ROOT / "current")
-    if not current or not active("postgres"):
-        raise RuntimeError("Start the managed private stage before backing it up")
-    config = ROOT / "config" / "identity.env"
-    if config.is_symlink() or config.stat().st_uid != 0 or config.stat().st_mode & 0o077:
-        raise RuntimeError("Unsafe identity configuration")
-    identity = {}
+def private_file(path, owner):
+    st = path.lstat()
+    if not stat.S_ISREG(st.st_mode) or st.st_uid != owner or st.st_mode & 0o077:
+        raise RuntimeError(f"Unsafe recovery file: {path}")
+
+
+def file_sha256(path):
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def service_config(name):
+    config = ROOT / "config" / f"{name}.env"
+    private_file(config, 0)
+    parsed = {}
     for line in config.read_text().splitlines():
         key, value = line.split("=", 1)
-        identity[key], = shlex.split(value)
+        parsed[key], = shlex.split(value)
+    return parsed
+
+
+def postgres_snapshot(current):
+    if not active("postgres"):
+        raise RuntimeError("Start the managed private PostgreSQL service before backup")
+    identity = service_config("identity")
+    archive_dir = DATA / "identity" / "archives"
+    archive_key = DATA / "identity" / "archive.key"
     if not re.fullmatch(
         rf"postgresql\+psycopg://{DB_USER}:[A-Za-z0-9_-]+@127\.0\.0\.1:18764/{DB}",
         identity.get("BSV_DB_A_URL", ""),
-    ):
-        raise RuntimeError("Backup only allows the dedicated loopback PostgreSQL database")
-    identity_tool(ROOT / "releases" / current, identity, "-m", "services.api.identity.backup", "create")
+    ) or identity.get("BSV_APP_ENV") != "isolated" or identity.get("BSV_AUTH_PROVIDER") != "isolated":
+        raise RuntimeError("Backup requires the dedicated isolated loopback PostgreSQL database")
+    if (identity.get("BSV_LOCAL_ARCHIVE_DIR") != str(archive_dir)
+            or identity.get("BSV_BACKUP_KEY_FILE") != str(archive_key) or archive_dir.is_symlink()):
+        raise RuntimeError("Backup requires the managed identity archive location and key")
+    owner = pwd.getpwnam(user("identity")).pw_uid
+    private_file(archive_key, owner)
+    dest = ROOT / "releases" / current
+    module = ("-m", "services.api.identity.backup")
+    created = identity_tool(dest, identity, *module, "create", stdout=subprocess.PIPE, timeout=120)
+    report = json.loads(created.stdout)
+    archive = Path(report["archive"])
+    if archive.parent != archive_dir or not archive.name.startswith("identity-A-") or archive.suffix != ".bsvenc":
+        raise RuntimeError("Identity backup returned an unexpected archive")
+    private_file(archive, owner)
+    if report.get("encrypted") is not True or report.get("sha256") != file_sha256(archive):
+        raise RuntimeError("Identity backup checksum or encryption metadata mismatch")
+    checked = identity_tool(dest, identity, *module, "restore", "--archive", archive, stdout=subprocess.PIPE, timeout=120)
+    integrity = json.loads(checked.stdout)
+    if (integrity.get("integrity") != "AES_GCM_VERIFIED" or integrity.get("restore") != "DRY_RUN_NO_WRITE"
+            or integrity.get("meta", {}).get("type") != "postgresql"):
+        raise RuntimeError("Identity backup integrity check did not confirm PostgreSQL ciphertext")
+    sync_directory(archive_dir)
+    return {"archive": str(archive), "sha256": report["sha256"], "key_file": str(archive_key),
+            "integrity": "AES_GCM_VERIFIED", "restore_rehearsal": "HOST_NOT_RUN"}
+
+
+def sqlite_snapshot(current, destination):
+    pos = service_config("pos")
+    live = DATA / "pos" / "synthetic.sqlite3"
+    backups = DATA / "pos" / "backups"
+    st = live.lstat()
+    owner = pwd.getpwnam(user("pos")).pw_uid
+    if (pos.get("BSV_MODE") != "staging" or pos.get("BSV_POS_INTERNAL_STAGE") != "1"
+            or pos.get("BSV_DB_PATH") != str(live) or pos.get("BSV_BACKUP_DIR") != str(backups)
+            or not stat.S_ISREG(st.st_mode) or st.st_uid != owner or st.st_mode & 0o022
+            or live.parent.is_symlink() or backups.is_symlink()):
+        raise RuntimeError("POS backup requires the dedicated isolated SQLite database")
+    source_dir = ROOT / "releases" / current / "src"
+    env = {**pos, "PATH": "/usr/bin:/bin", "PYTHONDONTWRITEBYTECODE": "1"}
+    capture = as_user("pos", "/usr/bin/python3", source_dir / "services/api/bsv1/backup_db.py",
+                      env=env, cwd=source_dir, stdout=subprocess.PIPE, timeout=45)
+    line = capture.stdout.strip().split("\n")[-1]
+    prefix = "备份成功："
+    if not line.startswith(prefix):
+        raise RuntimeError("POS backup did not return an archive")
+    archive = Path(line.removeprefix(prefix).strip())
+    if archive.parent != backups or not re.fullmatch(r"synthetic_backup_[0-9TZ]+\.sqlite3", archive.name):
+        raise RuntimeError("POS backup returned an unexpected archive")
+    private_file(archive, owner)
+    fd = os.open(destination, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as target, archive.open("rb") as complete:
+            shutil.copyfileobj(complete, target)
+            target.flush()
+            os.fsync(target.fileno())
+        with closing(sqlite3.connect(destination.as_uri() + "?mode=ro", uri=True)) as snapshot:
+            if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                raise RuntimeError("POS SQLite snapshot failed integrity checking")
+    except BaseException:
+        destination.unlink(missing_ok=True)
+        raise
+    return {"archive": str(destination), "sha256": file_sha256(destination), "integrity": "QUICK_CHECK_OK"}
+
+
+def backup(current=None, purpose="manual"):
+    if DATA.is_symlink() or DATA.stat().st_uid != 0 or DATA.stat().st_mode & 0o022:
+        raise RuntimeError("Unsafe private data directory")
+    current = current or sha_at(ROOT / "current")
+    if not current:
+        raise RuntimeError("A managed private stage release is required before backup")
+    recovery = DATA / "recovery"
+    recovery.mkdir(mode=0o700, exist_ok=True)
+    if recovery.is_symlink() or recovery.stat().st_uid != 0 or recovery.stat().st_mode & 0o077:
+        raise RuntimeError("Unsafe private recovery directory")
+    stamp = datetime.now(timezone.utc)
+    dest = recovery / f"{stamp:%Y%m%dT%H%M%SZ}-{secrets.token_hex(5)}"
+    dest.mkdir(mode=0o700)
+    postgres = postgres_snapshot(current)
+    pos = sqlite_snapshot(current, dest / "pos.sqlite3")
+    receipt = dest / "receipt.json"
+    record = {"version": 1, "time": stamp.isoformat(), "mode": "isolated", "purpose": purpose,
+              "status": "CHECKPOINT_READY", "checkpoint": str(receipt), "release_sha": current,
+              "postgres": postgres, "pos_sqlite": pos}
+    write_secret(receipt, json.dumps(record, ensure_ascii=False))
+    sync_directory(recovery)
+    print(json.dumps(record, ensure_ascii=False), flush=True)
+    return record
 
 
 def http_check(path, expected):
@@ -328,15 +476,21 @@ def verify():
                 all(http_check(path, status) for path, status in (
                     ("/health/ready", 200), ("/api/health", 200), ("/staff", 200), ("/pos", 200),
                     ("/supply-ui/api/health", 200), ("/api/state", 401), ("/supply-ui/api/me", 401),
-                    ("/api/v1/identity/pos-session", 404), ("/cocktail/", 200), ("/craft/", 404)))):
+                    ("/api/v1/identity/pos-session", 404), ("/cocktail/", 200), ("/craft/", 404),
+                    ("/__bsv_unknown_release_route__", 404)))):
+            evidence = host_evidence()
+            print(json.dumps({"status": "RELEASE_HEALTH_OK", "mode": "isolated",
+                              "time": datetime.now(timezone.utc).isoformat(), **evidence}), flush=True)
             print("VERIFY_OK: loopback routing, health and anonymous access checks", flush=True)
-            return
+            return evidence
         time.sleep(1)
     raise RuntimeError("Private stage HTTP checks failed; examine dedicated systemd journal")
 
 
-def switch_services(start):
+def switch_services(start, *, keep_postgres=False):
     names = START_ORDER if start else tuple(reversed(START_ORDER))
+    if keep_postgres:
+        names = tuple(name for name in names if name != "postgres")
     for name in names:
         run("systemctl", "start" if start else "stop", unit(name))
 
@@ -369,6 +523,20 @@ def recover_pending():
     marker.unlink()
 
 
+def activation_checkpoint(current, purpose):
+    switch_services(False, keep_postgres=True)
+    if not active("postgres"):
+        run("systemctl", "start", unit("postgres"))
+    for _ in range(20):
+        probe = subprocess.run((PG / "pg_isready", "-h", "127.0.0.1", "-p", str(PORTS["postgres"]),
+                                "-t", "1", "-q"))
+        if probe.returncode == 0:
+            backup(current, purpose)
+            return
+        time.sleep(1)
+    raise RuntimeError("Private PostgreSQL is not accepting connections for backup")
+
+
 def deploy(sha):
     recover_pending()
     preflight(sha)
@@ -376,6 +544,9 @@ def deploy(sha):
     if previous and previous != sha:
         run("diff", "-qr", ROOT / "releases" / previous / "src/platform/lighthouse/identity/migrations",
             REPO / "platform/lighthouse/identity/migrations", stdout=subprocess.DEVNULL)
+    if not previous and ((DATA / "postgres" / "pg" / "PG_VERSION").exists()
+                         or (DATA / "pos" / "synthetic.sqlite3").exists()):
+        raise RuntimeError("Existing private data has no managed active release; investigate before deployment")
     identity, pos, dbpw, pin = prepare_config()
     dest = build(sha)
     if not UNIT_FILE.exists():
@@ -387,6 +558,8 @@ def deploy(sha):
     marker = ROOT / "activation.pending"
     write_secret(marker, previous or "")
     try:
+        if previous:
+            activation_checkpoint(previous, "pre_deploy")
         switch_services(False)
         link("current", sha)
         prepare_pg(dbpw)
@@ -407,24 +580,29 @@ def rollback():
         recover_pending()
         return
     current, previous = sha_at(ROOT / "current"), sha_at(ROOT / "previous")
-    switch_services(False)
     if not current:
-        return
-    if not previous:
-        (ROOT / "current").unlink()
-        print("Stopped first release. Private databases and files preserved.")
-        return
+        raise RuntimeError("No managed private stage release is active")
+    host_evidence(require_all=False)
+    marker = ROOT / "activation.pending"
+    write_secret(marker, current)
     try:
-        link("current", previous)
-        switch_services(True)
-        verify()
-    except (Exception, KeyboardInterrupt):
+        activation_checkpoint(current, "pre_rollback")
         switch_services(False)
-        link("current", current)
-        switch_services(True)
+        if previous:
+            link("current", previous)
+            switch_services(True)
+            verify()
+            link("previous", current)
+        else:
+            (ROOT / "current").unlink()
+    except (Exception, KeyboardInterrupt):
+        recover_pending()
         raise
-    link("previous", current)
-    print(f"ROLLED_BACK {previous}")
+    marker.unlink()
+    if previous:
+        print(f"ROLLED_BACK {previous}", flush=True)
+    else:
+        print("Stopped first release. Private databases and files preserved.", flush=True)
 
 
 def main():
@@ -455,5 +633,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (RuntimeError, OSError, subprocess.CalledProcessError) as error:
+    except (RuntimeError, OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
         sys.exit(f"Internal stage stopped: {error}")

@@ -2,6 +2,8 @@
 (() => {
 'use strict';
 const $=id=>document.getElementById(id);
+const internalStage=location.pathname==='/pos';
+if(internalStage)document.documentElement.classList.add('internal-stage-pos');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const yuan=c=>'¥'+(Number(c||0)/100).toFixed(2);
 const chinaTime=iso=>iso?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(iso)):'—';
@@ -48,10 +50,18 @@ function validateHistoryFilter(){
 }
 function taskSeverityClass(s){return s==='critical'?'critical':s==='warning'?'warning':s==='late'?'late':s==='late-soft'?'late-soft':'normal';}
 function healthTone(status){return status==='正常'?'ok':status==='警告'?'warn':'error';}
-function healthSummaryText(h){if(!h)return '本地系统：未检查';if(h.status!=='正常')return '本地系统：'+(h.status||'未检查');return Number(h.approved_quote_count||0)<1?'系统正常 · AJ售价待补齐':'本地系统：正常';}
+function healthSummaryText(h){if(internalStage)return h?.status==='正常'?'点单服务可联系':'暂时无法确认点单服务';if(!h)return '本地系统：未检查';if(h.status!=='正常')return '本地系统：'+(h.status||'未检查');return Number(h.approved_quote_count||0)<1?'系统正常 · AJ售价待补齐':'本地系统：正常';}
 function renderSystemHealth(){
  const login=$('loginSystemStatus'),badge=$('systemCheckBadge');
- if(login){login.className='login-system-status '+(systemHealth&&systemHealth.status==='正常'&&Number(systemHealth.approved_quote_count||0)<1?'warn':systemHealth?healthTone(systemHealth.status):'warn');login.innerHTML=systemHealth?`<strong>系统自检：${esc(systemHealth.status)}</strong><span>数据库：${systemHealth.db_exists?'已找到':'缺失'}；V9 Excel：${systemHealth.excel_exists?'已找到':'缺失'}；V9同步：${systemHealth.catalog_sync?.imported_at?chinaFull(systemHealth.catalog_sync.imported_at):'未同步'}</span><span>${Number(systemHealth.approved_quote_count||0)<1?'AJ售价无效，暂不可形成有效金额订单':'请按本店销售权限操作'}；真实支付尚未连接。</span>`:'<strong>系统自检</strong><span>尚未完成检查</span>';}
+ if(internalStage&&login){
+   login.replaceChildren();
+   const summary=document.createElement('strong');
+   summary.textContent=healthSummaryText(systemHealth);
+   const info=document.createElement('span');
+   info.textContent='请先在个人中心登录，再核对门店与员工 PIN。';
+   login.append(summary,info);
+ }
+ if(login&&!internalStage){login.className='login-system-status '+(systemHealth&&systemHealth.status==='正常'&&Number(systemHealth.approved_quote_count||0)<1?'warn':systemHealth?healthTone(systemHealth.status):'warn');login.innerHTML=systemHealth?`<strong>系统自检：${esc(systemHealth.status)}</strong><span>数据库：${systemHealth.db_exists?'已找到':'缺失'}；V9 Excel：${systemHealth.excel_exists?'已找到':'缺失'}；V9同步：${systemHealth.catalog_sync?.imported_at?chinaFull(systemHealth.catalog_sync.imported_at):'未同步'}</span><span>${Number(systemHealth.approved_quote_count||0)<1?'AJ售价无效，暂不可形成有效金额订单':'请按本店销售权限操作'}；真实支付尚未连接。</span>`:'<strong>系统自检</strong><span>尚未完成检查</span>';}
  if(badge){badge.className='system-pill '+(systemHealth&&systemHealth.status==='正常'&&Number(systemHealth.approved_quote_count||0)<1?'warn':systemHealth?healthTone(systemHealth.status):'warn');badge.textContent=healthSummaryText(systemHealth);}
 }
 async function loadHealth(silent=false){
@@ -103,21 +113,40 @@ function seatName(id){return getSeat(id)?.label||id;}
 function productionTask(lineId){return (data?.production_tasks||[]).find(t=>t.line_id===lineId);}
 function myTask(t){return t && t.assigned_staff_id===data?.staff?.id;}
 function lockedSeat(seatId){return (data?.seat_edit_locks||[]).find(l=>l.seat_id===seatId && l.staff_id!==data.staff.id);}
-async function heartbeat(){if(!data||busy)return;try{await send('/api/presence/heartbeat',{seat_id:activeVisitId?getVisit(activeVisitId)?.seat_id:null});await getState();render();}catch(e){if(!String(e.message).includes('正在处理另一项操作'))console.warn('presence heartbeat failed',e.message);}}
-async function releaseSeat(seatId){if(!seatId||!data)return;try{await send('/api/seats/release-edit',{seat_id:seatId});}catch(e){console.warn('release seat',e.message);}}
+async function heartbeat(){if(internalStage||!data||busy)return;try{await send('/api/presence/heartbeat',{seat_id:activeVisitId?getVisit(activeVisitId)?.seat_id:null});await getState();render();}catch(e){if(!String(e.message).includes('正在处理另一项操作'))console.warn('presence heartbeat failed',e.message);}}
+async function releaseSeat(seatId){if(internalStage||!seatId||!data)return;try{await send('/api/seats/release-edit',{seat_id:seatId});}catch(e){console.warn('release seat',e.message);}}
 function pinyinMatch(p,query){const q=query.trim().toLowerCase();if(!q)return true;return String(p.initials||'').toLowerCase().startsWith(q)||[p.name,p.id,p.series,p.readable_sku].some(v=>String(v||'').toLowerCase().includes(q));}
 function allPending(){return (data?.visits||[]).flatMap(v=>v.lines.filter(l=>l.status==='PENDING').map(l=>({...l,visit_id:v.id,seat_id:v.seat_id,guests:v.guests}))).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));}
 async function getJson(path){
- let r;try{r=await fetch(path,{credentials:'same-origin',cache:'no-store'});}catch{throw new Error('服务器暂时无法连接，请检查后台服务并刷新页面');}
- let j;try{j=await r.json();}catch{throw new Error('服务器返回数据异常，请检查后端程序日志');}
+ let r;try{r=await fetch(path,{credentials:'same-origin',cache:'no-store'});}catch{throw new Error('暂时无法获取结果。请检查连接后刷新页面。');}
+ let j;try{j=await r.json();}catch{throw new Error('暂时无法读取页面资料。请刷新页面后再试。');}
  if(!r.ok){if(r.status===401)showLogin();throw new Error(j.error||'读取失败');}return j;
 }
 async function getState(){const s=await getJson('/api/state');serverOffset=s.server_time_ms-Date.now();data=s;return s;}
-async function send(path,params={}){if(busy)throw new Error('当前正在处理另一项操作');busy=true;
- try{const id=globalThis.crypto?.randomUUID?.()||('bsv-'+Date.now()+'-'+Math.random().toString(36).slice(2));
- const r=await fetch(path,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-BSV-CSRF':data?.csrf||''},body:JSON.stringify({...params,_action_id:id})});
- const j=await r.json();if(!r.ok){if(r.status===401)showLogin();throw new Error(j.error||'操作失败');}return j;
- }finally{busy=false;}}
+async function send(path,params={}){
+ if(busy)throw new Error('当前正在处理另一项操作');
+ busy=true;
+ try{
+   const id=globalThis.crypto?.randomUUID?.()||('bsv-'+Date.now()+'-'+Math.random().toString(36).slice(2));
+   if(internalStage)flash('正在处理…',false,true);
+   let response,j;
+   try{
+     response=await fetch(path,{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(11000),headers:{'Content-Type':'application/json','X-BSV-CSRF':data?.csrf||''},body:JSON.stringify({...params,_action_id:id})});
+     j=await response.json();
+   }catch{throw new Error('结果暂未确认，请先刷新并查看这条记录再重试。');}
+   if(!response.ok){
+     if(response.status===401){
+       showLogin();
+       throw new Error('登录已过期，请重新登录后继续。');
+     }
+     if(response.status>=500)throw new Error('结果暂未确认，请先查看记录再重试。');
+     if(response.status===403&&j.error==='集团身份未授权此操作')throw new Error('当前账号不能执行这项操作。请联系总部核对门店权限。');
+     throw new Error(j.error||'操作失败，请核对记录后再试。');
+   }
+   if(internalStage)$('toast').classList.add('hidden');
+   return j;
+ }finally{busy=false;}
+}
 async function refresh(preserve=false){if(preserve && ['memberLast4'].includes(document.activeElement?.id))return;
  const oldScroll=document.querySelector('#orderPanel .order-content')?.scrollTop||0;
  const quickBefore=$('quickProductSearch'),searchText=quickBefore?.value||'',searchFocused=document.activeElement===quickBefore;
@@ -132,12 +161,31 @@ function showApp(){$('loginPage').classList.add('hidden');$('appPage').classList
 function closeDialog(){ $('modal').classList.add('hidden');$('seatOuterNav').classList.add('hidden');modalConfirm=null;modalCancel=null; }
 function dialog({eyebrow='BSV1 · 请确认',title='请确认',body='',confirmText='确认',cancelText='返回',danger=false,onConfirm,onCancel}){
  clearTimeout(toastTimer);$('toast').classList.add('hidden');
+ $('modalResult').textContent='';
  $('modalEyebrow').textContent=eyebrow;$('modalTitle').textContent=title;$('modalBody').innerHTML=body;
  $('modalConfirm').textContent=confirmText;$('modalCancel').textContent=cancelText;
  $('modalConfirm').className=danger?'danger-button':'primary';modalConfirm=onConfirm;modalCancel=onCancel;
  $('modal').classList.remove('hidden');$('modalConfirm').focus();
 }
-$('modalConfirm').addEventListener('click',async()=>{if(busy)return;const fn=modalConfirm;try{if(fn)await fn();closeDialog();showPendingCritical();}catch(e){flash(e.message,true);try{if(data)await refresh();}catch{}}});
+$('modalConfirm').addEventListener('click',async()=>{
+ if(busy||$('modalConfirm').disabled)return;
+ const fn=modalConfirm;
+ const button=$('modalConfirm'),original=button.textContent;
+ button.disabled=true;
+ $('modalCancel').disabled=true;
+ $('modalResult').textContent='正在处理…';
+ button.textContent='正在处理…';
+ try{if(fn)await fn();closeDialog();showPendingCritical();}
+ catch(error){
+   $('modalResult').textContent=error.message;
+   if(document.activeElement===button||!document.activeElement)$('modalResult').focus();
+   try{if(data)await refresh();}catch{ /* The local feedback remains visible when refreshing fails. */ }
+ }finally{
+   button.disabled=false;
+   $('modalCancel').disabled=false;
+   button.textContent=original;
+ }
+});
 $('modalCancel').addEventListener('click',()=>{const fn=modalCancel;closeDialog();if(fn)fn();});
 function wireLocation(){const ds=[...new Set(allStores.map(x=>x.district))];$('loginDistrict').innerHTML='<option value="">请选择地区</option>'+ds.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');}
 function storesForDistrict(d){return allStores.filter(s=>s.district===d);}
@@ -151,8 +199,17 @@ $('loginForm').addEventListener('submit',e=>{e.preventDefault();const s=allStore
  dialog({eyebrow:'防误登录 · 二次核对',title:'你确认正在这家店工作吗？',
  body:`<div class="confirm-store"><span>北京市 · ${esc(s.district.replace('北京市',''))}</span><strong>${esc(s.name)}</strong><span>${esc(s.business_type)} · ${esc(s.id)}</span></div><p class="modal-caption">登录后本会话只允许访问这一家门店。若选错，请返回修改，不能跨店操作。</p>`,
  confirmText:'确认门店，登录',cancelText:'返回修改',onConfirm:async()=>{
- const r=await fetch('/api/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({store_id:s.id,confirmed_store_id:s.id,staff_code:code,pin})});const j=await r.json();
- if(!r.ok)throw new Error(j.error||'登录失败');$('staffPin').value='';await getState();showApp();render();flash('已核验门店：'+s.name);
+ let response,result;
+ try{
+   response=await fetch('/api/login',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(11000),headers:{'Content-Type':'application/json'},body:JSON.stringify({store_id:s.id,confirmed_store_id:s.id,staff_code:code,pin})});
+   result=await response.json();
+ }catch{throw new Error('暂时无法确认登录结果。请刷新页面核对。');}
+ if(response.status===403)throw new Error('请先在个人中心登录，再向总部核对这家店的点单权限。');
+ if(response.status>=500)throw new Error('暂时无法确认登录结果。请刷新页面核对。');
+ if(!response.ok)throw new Error(result.error||'登录失败，请核对门店、员工码和 PIN。');
+ $('staffPin').value='';
+ try{await getState();}catch{throw new Error('门店已通过核验，工作清单暂未载入。请刷新页面。');}
+ showApp();render();flash('已进入 '+s.name+'。请选择要点单的座位。');
  }});
 });
 function renderCatalogSummary(){
@@ -284,14 +341,16 @@ function renderSeats(){const layer=$('seatLayer');layer.replaceChildren();
    pin.onclick=()=>setPage('clean');bathLayer.appendChild(pin);}
 }
 function clickSeat(id){const seat=getSeat(id);const editing=lockedSeat(id);if(editing){flash({title:'该桌正在点单中',subject:seat.label+' · '+editing.staff_code,detail:'请等对方完成或等待90秒锁超时'},true);return;}if(!seat?.enabled){flash('当前座位不可独立使用',true);return;}
- if(seat.cleaning_state==='DIRTY'&&!visitAt(id)){confirmSeatClean(seat);return;}
+ if(seat.cleaning_state==='DIRTY'&&!visitAt(id)){if(internalStage)flash('此座位暂不可用。请选择其他空桌。',true);else confirmSeatClean(seat);return;}
  focusedSeat=id;renderSeats();renderSeatNav();
  const s=seat,v=visitAt(id),n=seatNavigation();
  dialog({eyebrow:v?'座位确认 · 继续管理':'座位确认 · 新客入座',title:s.label,
   body:`<div class="modal-action-heading">请确认客人所在位置</div><div class="modal-caption">${v?'此座位有客人在店 · 进入后继续管理该桌订单':'此座位当前空闲 · 确认后建立新桌次'}</div>`,
   confirmText:v?'继续管理 '+s.label:'确认 '+s.label+'，开始点单',onConfirm:async()=>{
     if(s.cleaning_state==='DIRTY'&&!v)throw new Error('请先清桌');
-    const lock=await send('/api/seats/claim-edit',{seat_id:s.id});if(!lock.ok)throw new Error('该桌正在由 '+lock.editor+' 点单，请勿重复下单');
+    if(!internalStage){
+      const lock=await send('/api/seats/claim-edit',{seat_id:s.id});if(!lock.ok)throw new Error('该桌正在由 '+lock.editor+' 点单，请勿重复下单');
+    }
     const prior=activeVisitId?getVisit(activeVisitId)?.seat_id:null;if(prior&&prior!==s.id)await releaseSeat(prior);
     const r=await send('/api/seats/open',{seat_id:s.id});activeVisitId=r.visit_id;page='map';await refresh();
     flash({title:r.new?'已安排客人到 '+s.label:'已回到 '+s.label,subject:r.new?'请为 '+s.label+' 开始点单':'继续管理 '+s.label+'，处理本桌订单'});}});
@@ -336,12 +395,12 @@ function renderOrderPanel(){const panel=$('orderPanel'),v=getVisit(activeVisitId
  <div class="member-area"><div class="section-label">会员识别｜输入手机后四位</div><div class="member-row"><input id="memberLast4" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="输入4位尾号"/><button id="memberSearchBtn" class="outline">查询会员</button></div>
  <p class="member-note">${memberTxt} ${v.member?'<button id="memberRemove" class="inline-link">移除关联</button>':''}</p></div>
  <div class="section-label">添加商品 · 搜索中文或拼音首字母</div><input id="quickProductSearch" class="quick-product-search" type="search" autocomplete="off" placeholder="输入商品名称 / 拼音首字母，如 yl、mjt"/><div id="quickSearchResults" class="quick-search-results"></div>
- <div class="catalog-status-mini">已上架 ${catalogCount} 种现场成品；其中 ${readyCount} 款有AJ统一售价可下单，其余请在Excel补价。正式支付仍未接入，结账登记不代表真实到账。</div>
+ <div class="catalog-status-mini">${internalStage?`有 ${readyCount} 种演练商品可以点单。点击商品后先核对，再提交未付款订单。`:`已上架 ${catalogCount} 种现场成品；其中 ${readyCount} 款有AJ统一售价可下单，其余请在Excel补价。正式支付仍未接入，结账登记不代表真实到账。`}</div>
 
  <div class="draft-panel"><div class="section-label">？ 待下单商品 <b>${v.drafts.length}</b> 项 · 切桌/刷新后保留</div>
  ${draftItems||'<p class="small-muted">点击商品开始点单，确认下单后进入制作队列。</p>'}
  <div class="draft-total">待下单预计应收：<b>${yuan(dNet)}</b>${previewDiscount?`<small>含银卡优惠 −${yuan(previewDiscount)}</small>`:''}</div></div>
- <div class="section-label">已正式下单 ${v.lines.filter(l=>l.status!=='CANCELLED').length} 项 · 待出品 ${pending.length}</div>
+ <div class="section-label">${internalStage?'已提交测试订单':'已正式下单'} ${v.lines.filter(l=>l.status!=='CANCELLED').length} 项 · 待出品 ${pending.length}</div>
  <div class="work-items">${items||'<p class="small-muted">尚无正式下单项目</p>'}</div>
  <div class="section-label">已完成的历史分次结账</div><div class="settlement-history">${history||'<p class="small-muted">暂无记录</p>'}</div>
  <div class="section-label">临时加菜 · 演练项</div><div class="product-buttons compact-training-products">${productBtns||''}</div><button type="button" id="catalogInline" class="catalog-inline-link">查看全部 V9 商品资料 ↗</button>
@@ -388,7 +447,20 @@ async function searchMember(v){const last4=$('memberLast4').value.trim();if(!/^\
  const choices=obj.matches.map((m,i)=>`<label class="member-option"><input type="radio" name="memberCandidate" value="${esc(m.id)}" ${obj.matches.length===1?'checked':''}/><strong>${esc(m.surname)} · ${esc(m.masked_phone)}</strong><small>银卡 · 9折</small></label>`).join('');
  dialog({eyebrow:'会员实名核对 · 仅本店已授权员工可见',title:obj.ambiguity?'尾号重复，请核对会员':'请核对会员身份',body:`<p>尾号 ${esc(last4)} 对应 ${obj.matches.length} 位会员，请确认姓氏和脱敏电话：</p><div class="member-choices">${choices}</div>`,confirmText:'确认绑定会员',onConfirm:async()=>{const id=document.querySelector('input[name="memberCandidate"]:checked')?.value;if(!id)throw new Error('请先选一位正确的会员');await send('/api/members/assign',{visit_id:v.id,member_id:id});await refresh();flash('已关联银卡会员：符合条件的未下单商品9折');}});
 }
-function confirmSubmit(v,estimate){dialog({eyebrow:'正式下单 · 请确认操作',title:'请选择本次操作',
+function confirmSubmit(v,estimate){
+ if(internalStage){
+   dialog({eyebrow:'仅供内部演练',title:'提交未付款测试订单',
+           body:`<div class="submit-choice-intro">${esc(seatName(v.seat_id))} · ${v.drafts.length} 项 · ${yuan(estimate)}</div><p>确认后保存本桌的演练点单。此操作不会收款。</p>`,
+           confirmText:'确认提交测试订单',cancelText:'返回核对',
+           onConfirm:async()=>{
+             const result=await send('/api/orders/submit',{visit_id:v.id,pay_now:false});
+             let next='可在当前桌查看已提交商品。';
+             try{await refresh();}catch{next='订单已保存。页面未更新时，请刷新查看。';}
+             flash({title:'已记录测试订单，尚未收款。',amount:'本次 '+yuan(result.amount_cents),detail:next});
+           }});
+   return;
+ }
+ dialog({eyebrow:'正式下单 · 请确认操作',title:'请选择本次操作',
  body:`<div class="submit-choice-intro">${esc(seatName(v.seat_id))} · ${v.drafts.length}项 · 预计 ${yuan(estimate)}</div>
  <div class="submit-option-grid"><button type="button" id="modeOrderOnly" class="submit-option"><b>① 下单</b><span>通知调酒师制作，客人尚未结账</span></button>
  <button type="button" id="modeOrderPay" class="submit-option"><b>② 下单并结账</b><span>现在结算本次商品；客人仍在店，不生成离店结账单</span></button></div>
@@ -437,7 +509,7 @@ function renderVisits(){const box=$('ordersList');if(!data.visits.length){box.in
  box.innerHTML=data.visits.map(v=>`<div class="visit-row"><div><div class="visit-seat">${esc(seatName(v.seat_id))} · ${v.guests}人</div>
  <div class="visit-caption">到店 ${chinaTime(v.created_at)} · 待制作 ${v.lines.filter(l=>l.status==='PENDING').length} 项 · 累计 ${yuan(v.total_cents)} · 新增待结 ${yuan(v.unsettled_cents)}</div></div>
  <button class="outline" data-visit="${esc(v.id)}">进入点单</button></div>`).join('');
- box.querySelectorAll('[data-visit]').forEach(b=>b.onclick=safe(async()=>{const target=getVisit(b.dataset.visit);if(!target)return;const locked=await send('/api/seats/claim-edit',{seat_id:target.seat_id});if(!locked.ok)throw new Error('该桌正在由 '+locked.editor+' 点单，请勿重复下单');const prior=activeVisitId?getVisit(activeVisitId)?.seat_id:null;if(prior&&prior!==target.seat_id)await releaseSeat(prior);activeVisitId=b.dataset.visit;focusedSeat=target.seat_id;page='map';render();}));}
+ box.querySelectorAll('[data-visit]').forEach(b=>b.onclick=safe(async()=>{const target=getVisit(b.dataset.visit);if(!target)return;if(!internalStage){const locked=await send('/api/seats/claim-edit',{seat_id:target.seat_id});if(!locked.ok)throw new Error('该桌正在由 '+locked.editor+' 点单，请勿重复下单');}const prior=activeVisitId?getVisit(activeVisitId)?.seat_id:null;if(prior&&prior!==target.seat_id)await releaseSeat(prior);activeVisitId=b.dataset.visit;focusedSeat=target.seat_id;page='map';render();}));}
 function renderQueue(){const lines=(data.production_tasks||[]),online=data.online_staff_count||0;
  const my=lines.filter(t=>myTask(t)),others=lines.filter(t=>!myTask(t));
  $('queueList').innerHTML=`<div class="dispatch-banner"><strong>当前在线调酒师：${online} 人</strong><span>我的任务 ${my.length} 项 · 待制作/上桌 ${lines.length} 项</span><small>制作完成不等于上桌；已领取任务不会在断线时自动重新分配</small></div>`+
@@ -691,7 +763,7 @@ setInterval(()=>{if(data&&!busy&&!transfer&&$('modal').classList.contains('hidde
  }},9000);
 $('offlineRetry').onclick=safe(async()=>{await refresh();await loadHealth(true);syncFailures=0;$('syncOffline').classList.add('hidden');flash({title:'数据连接已恢复',detail:'请核实当前门店订单与清洁状态'});});
 async function init(){try{const init=await getJson('/api/bootstrap');allStores=init.stores;wireLocation();await loadHealth(true);
- try{await getState();showApp();render();showPendingCritical();}catch{showLogin();renderSystemHealth();}}catch(e){$('loginError').textContent='服务器未初始化：'+e.message;showLogin();renderSystemHealth();}}
+ try{await getState();showApp();render();showPendingCritical();}catch{showLogin();renderSystemHealth();}}catch(e){$('loginError').textContent='暂时无法打开点单台。'+e.message;showLogin();renderSystemHealth();}}
 setInterval(()=>{if(document.visibilityState==='visible')loadHealth(true);},30000);
 init();
 })();

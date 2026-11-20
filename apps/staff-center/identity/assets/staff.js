@@ -1,30 +1,79 @@
 "use strict";
-const {$,notice,request,send,node,lines,take,safe} = BSV;
+const {$,request,send,node,lines,safe,action,label,statusText}=BSV;
 let currentTr=null;
-async function refresh(){
- const session=await request('/api/v1/auth/session');
- $('#auth-area').classList.add('hidden');$('#member-area').classList.remove('hidden');
- const me=await request('/api/v1/identity/me');currentTr=me.tr_code;
- $('#tr-view').textContent=me.tr_code||'核验中';
- $('#register-panel').classList.toggle('hidden',!!me.tr_code);
- $('#registration-state').textContent=me.registration_status||'';
- const stages=$('#stage-view');stages.replaceChildren();
- stages.append(node('p','EMP：'+(me.emp_code||'未颁发')));
- stages.append(node('p','BM：'+(me.bm_code||'未颁发')));
- if(me.bm_code)stages.append(node('p',me.bm_active_entities?.length?'管理任命有效法人：'+me.bm_active_entities.join('、'):'BM编码已发，但当前无有效管理任命','small'));
- lines($('#grants-view'),me.grants, (g)=>{const d=node('div',g.action,'item');d.append(node('p','岗位：'+g.role+' · 门店：'+(g.store_id||'法人范围'),'meta'));return d;});
- lines($('#qual-view'),me.qualifications,(q)=>{const d=node('div',q.code,'item');d.append(node('p','来源：'+q.credential_id,'meta'));return d;});
+let registrationKey;
+function renderHistoryEvent(ev){
+ const list=node('div','身份记录已更新','item');
+ list.append(node('p',new Date(ev.occurred_at).toLocaleString('zh-CN'),'meta'));
+ const detail=node('details','');
+ detail.append(node('summary','查看事件编号'),node('p',ev.event_type,'mono'));
+ list.append(detail);
+ return list;
 }
-$('#login-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{await send('/api/v1/auth/isolated/login',{username:$('#login-user').value,password:$('#login-pass').value});notice('登录成功。');await refresh();});});
-$('#signup-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{await send('/api/v1/auth/isolated/signup',{username:$('#signup-user').value,password:$('#signup-pass').value});notice('隔离测试账号已创建。');await refresh();});});
-$('#register-form').addEventListener('submit',e=>{e.preventDefault();safe(async()=>{
- if(!$('#consent').checked)throw new Error('必须同意当前登记说明。');
- let key=sessionStorage.getItem('bsv-tr-register-key');if(!key){key=crypto.randomUUID();sessionStorage.setItem('bsv-tr-register-key',key);}
- const result=await send('/api/v1/identity/registrations',{legal_entity_id:$('#reg-entity').value,idempotency_key:key,display_label:$('#display-label').value,proof_hint:$('#proof-hint').value||null,consent_version:'2026-11-18'});
- notice('申请已保存。申请ID：'+result.registration_id+'，状态：'+result.status+'。需要不同管理员核验和审批。');await refresh();
-});});
-$('#logout').addEventListener('click',()=>safe(async()=>{await send('/api/v1/auth/logout',{});location.reload();}));
-$('#history').addEventListener('click',()=>safe(async()=>{if(!currentTr)throw new Error('需先获得TR。');const history=await request('/api/v1/identity/'+encodeURIComponent(currentTr)+'/history');lines($('#history-view'),history.events, (ev)=>{const d=node('div',ev.event_type,'item');d.append(node('p',ev.occurred_at,'meta'));return d;});}));
-safe(async()=>{const conf=await request('/api/v1/identity/public-config');
- const s=$('#reg-entity');for(const entity of conf.registration_entities){const op=node('option',entity);op.value=entity;s.append(op);}
- try{await refresh();}catch(e){if(e.message.startsWith('UNAUTHENTICATED'))return;throw e;}});
+async function refresh(){
+ const me=await request('/api/v1/identity/me');
+ currentTr=me.tr_code;
+ $('#auth-area').classList.add('hidden');
+ $('#member-area').classList.remove('hidden');
+ $('#tr-view').textContent=me.tr_code||'尚未领取';
+ $('#register-panel').classList.toggle('hidden',!!me.tr_code);
+ $('#registration-state').textContent=statusText(me.registration_status);
+ const empActive=!!(me.emp_code&&me.active_legal_entities?.length&&me.active);
+ const bmActive=!!(me.bm_code&&me.bm_active_entities?.length&&me.active);
+ $('#stage-view').replaceChildren(
+   node('p','员工身份：'+(empActive?'已生效':me.emp_code?'当前未生效':'尚未发放')),
+   node('p','管理身份：'+(bmActive?'已生效':me.bm_code?'当前未生效':'尚未发放')));
+ $('#code-details').textContent='人员：'+(me.tr_code||'未领取')+' · 员工：'+(me.emp_code||'未发放')+' · 管理：'+(me.bm_code||'未发放')+'。三个编号跟随同一人。';
+ lines($('#grants-view'),me.grants,g=>{
+   const d=node('div',label(g.action,'已授权的工作'),'item');
+   d.append(node('p','岗位：'+label(g.role,'已授权岗位')+' · 范围：'+(g.store_id||label(g.legal_entity_id,'所属公司')),'meta'));
+   return d;
+ });
+ lines($('#qual-view'),me.qualifications,q=>node('div',label(q.code,'已核实工作资格'),'item'));
+}
+async function signIn(endpoint,user,pass){
+ const form=user.closest('form');
+ await send(endpoint,{username:user.value,password:pass.value});
+ pass.value='';
+ registrationKey=undefined;
+ try{await refresh();}
+ catch{return '账号操作已确认。资料暂未加载，请刷新个人中心。';}
+ $('#notice').textContent='已登录。请查看下方的入职进度与权限。';
+ $('#notice').classList.remove('hidden','error');
+ $('#notice').focus();
+ return form.id==='signup-form'?'演练账号已创建。请查看入职申请。':'已登录。';
+}
+action($('#login-form'),'正在登录…',()=>signIn('/api/v1/auth/isolated/login',$('#login-user'),$('#login-pass')));
+action($('#signup-form'),'正在创建账号…',()=>signIn('/api/v1/auth/isolated/signup',$('#signup-user'),$('#signup-pass')));
+action($('#register-form'),'正在提交入职核验…',async()=>{
+ if(!$('#consent').checked)throw new Error('请先勾选登记和审核说明。');
+ registrationKey=registrationKey||crypto.randomUUID();
+ const result=await send('/api/v1/identity/registrations',{legal_entity_id:$('#reg-entity').value,idempotency_key:registrationKey,display_label:$('#display-label').value,proof_hint:$('#proof-hint').value||null,consent_version:'2026-11-18'});
+ try{await refresh();}catch{ /* The request returned a confirmed record even when its follow-up read is unavailable. */ }
+ return '申请已保存，编号 '+result.registration_id+'。请等待两位审核同事处理。';
+});
+action($('#logout'),'正在退出…',async()=>{
+ await send('/api/v1/auth/logout',{});
+ $('#member-area').classList.add('hidden');
+ $('#auth-area').classList.remove('hidden');
+ $('#notice').textContent='已退出。';
+ $('#notice').classList.remove('hidden','error');
+ $('#login-user').focus();
+ registrationKey=undefined;
+ return '已退出。';
+});
+action($('#history'),'正在查看最近变更…',async()=>{
+ if(!currentTr)throw new Error('请先完成入职核验，领取人员编号后再查看。');
+ const history=await request('/api/v1/identity/'+encodeURIComponent(currentTr)+'/history');
+ lines($('#history-view'),history.events,renderHistoryEvent);
+ return history.events.length?'已载入最近变更。':'暂无变更记录。';
+});
+safe(async()=>{
+ const conf=await request('/api/v1/identity/public-config');
+ for(const entity of conf.registration_entities){
+   const option=node('option',label(entity,entity));
+   option.value=entity;
+   $('#reg-entity').append(option);
+ }
+ try{await refresh();}catch(error){if(error.status!==401)throw error;}
+});

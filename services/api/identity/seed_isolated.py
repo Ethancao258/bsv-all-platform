@@ -1,4 +1,4 @@
-"""Explicit, isolated-only synthetic dual administrators for end-to-end workflows.
+"""Explicit, isolated-only synthetic reviewers for end-to-end workflows.
 
 NEVER use synthetic fixture identities on CloudBase or a production system.
 """
@@ -9,7 +9,7 @@ from sqlalchemy import select
 from domains.workforce.identity.models import (Person, StageIssuance, AuthLink, IsolatedUser, Engagement,
                      ManagementAppointment, StageRequest, Qualification, Grant,
                      CodeAllocator, now, AuditEvent)
-from domains.workforce.identity.core import encode_index, MANAGEMENT_ACTIONS, stage_code
+from domains.workforce.identity.core import encode_index, MANAGEMENT_ACTIONS
 from .config import load_settings
 from .database import SourceRouter
 from .cli import isolated_guard
@@ -25,17 +25,22 @@ def seed():
     if "prod" in url or "cloudbase" in url:
         raise RuntimeError("Refusing to seed possible live database")
     secrets=[]
-    for i in (1,2):
+    for i in (1, 2, 3):
         u=os.getenv(f"BSV_DEMO_ADMIN_{i}_USERNAME",f"reviewer{i}")
         p=os.getenv(f"BSV_DEMO_ADMIN_{i}_PASSWORD","")
+        if i == 3 and not p:
+            continue
         if len(p)<14:raise RuntimeError(f"Set BSV_DEMO_ADMIN_{i}_PASSWORD with >=14 chars")
-        secrets.append((u,p))
+        actions = MANAGEMENT_ACTIONS if i < 3 else {"grant.approve"}
+        secrets.append((u, p, actions))
+    if len({username for username, _, _ in secrets}) != len(secrets):
+        raise RuntimeError("Use distinct synthetic reviewer usernames")
     legal=os.getenv("BSV_DEMO_LEGAL_ENTITY", "DEMO_LEGAL")
     d=SourceRouter(s)
     with d.session(write=True) as db:
-        allocation=db.get(CodeAllocator,1)
+        allocation = db.get(CodeAllocator, 1, with_for_update=True)
         if not allocation:raise RuntimeError("Initialize schema first")
-        for username,password in secrets:
+        for username, password, actions in secrets:
             found=db.scalar(select(IsolatedUser).where(IsolatedUser.username==username))
             if found:
                 print("EXISTING_DEMO_ADMIN",username)
@@ -63,7 +68,7 @@ def seed():
             db.add(stage_req);db.flush()
             db.add(ManagementAppointment(tr_code=tr,legal_entity_id=legal,stage_request_id=stage_req.id,
                                          valid_from=now()-timedelta(days=1),issued_by="system:isolated_seed"))
-            for action in sorted(MANAGEMENT_ACTIONS):
+            for action in sorted(actions):
                 db.add(Grant(tr_code=tr,legal_entity_id=legal,role="hq",action=action,
                              valid_from=now()-timedelta(days=1),status="active",
                              requested_by="system:isolated_seed",approved_by="system:isolated_seed",
