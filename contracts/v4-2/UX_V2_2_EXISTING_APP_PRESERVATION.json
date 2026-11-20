@@ -1,5 +1,5 @@
 {
-  "schema_version": "ux-v2.2-preservation-contract-1",
+  "schema_version": "ux-v2.2-preservation-contract-2",
   "design_status": "CORRECTED_UX_SPEC_ONLY_NO_CODE_OR_HOST_CHANGES",
   "base_v41_commit": "c51b58d67dabae53afcdf9851a80cdc93d4200f6",
   "base_r32_design_commit": "75bbc7bd171567afff35b68a236d17dc51951ad2",
@@ -159,7 +159,33 @@
     "ordersList",
     "criticalOverlay",
     "criticalGo",
-    "systemCheckBadge"
+    "systemCheckBadge",
+    "groupControls",
+    "bathroomLayer",
+    "transferBanner",
+    "historyExport",
+    "historyChart",
+    "historyReport",
+    "historyList",
+    "historyClosures",
+    "auditList",
+    "guideOverlay",
+    "guideTimer",
+    "guideFinish",
+    "guideDeliver",
+    "guideTaskList",
+    "guideMaterialsImg",
+    "guideInfoPop",
+    "manualModal",
+    "receiptModal",
+    "printReceiptBtn",
+    "modal",
+    "seatOuterNav",
+    "modalOuterLeft",
+    "modalOuterRight",
+    "catalogList",
+    "sourceImageBtn",
+    "detailSheet"
   ],
   "critical_existing_pos_functions": [
     "renderFloor",
@@ -171,7 +197,33 @@
     "renderQueue",
     "renderCleaning",
     "renderAlerts",
-    "setPage"
+    "setPage",
+    "renderGroups",
+    "toggleGroup",
+    "renderVisits",
+    "seatNavigation",
+    "renderTransferBanner",
+    "confirmSubmit",
+    "confirmRound",
+    "confirmDepart",
+    "confirmCancel",
+    "beginTransfer",
+    "handleTransferSeat",
+    "searchMember",
+    "renderCatalogList",
+    "showQuickResults",
+    "guideStartTimer",
+    "guideUpdateTimer",
+    "guideSetImage",
+    "guideFinishConfirm",
+    "guideDeliverConfirm",
+    "openRecipeGuide",
+    "guideTaskList",
+    "guideImageZoom",
+    "loadHealth",
+    "showPendingCritical",
+    "displayCritical",
+    "renderHistory"
   ],
   "critical_existing_pos_nav": [
     "map",
@@ -197,7 +249,11 @@
     "guest_menu": "NO_PUBLIC_MENU_REDESIGN",
     "screens": "INCREMENTAL_IN_EXISTING_APP",
     "cross_program_return": "LINK_ONLY_AND_SAFE_RETURN",
-    "alert": "REUSE_CRITICAL_OVERLAY_AND_ALERTSTRIP"
+    "alert": "REUSE_CRITICAL_OVERLAY_AND_ALERTSTRIP",
+    "hq_floor_editor": "PRESERVE_WITH_SAFE_SEPARATE_ROUTING_NOT_OVERWRITE_HQ_PERSONNEL",
+    "pos_embedded_recipe_guide": "REUSE_AND_PRESERVE_EXISTING_GUIDE_WORKFLOW_NOT_REBUILD_A_SECOND_ENGINE",
+    "internal_menu_preview": "PRESERVE_LEGACY_/menu_AND_PUBLIC_/cocktail_SEPARATELY",
+    "platform_runtime": "NO_CODE_CHANGE_IN_THIS_AUDIT"
   },
   "verification_requirements": [
     {
@@ -247,8 +303,270 @@
     {
       "test_id": "UX-P12",
       "gate": "all modified existing DOM IDs/routes/API calls and seat files pass unchanged tests"
+    },
+    {
+      "test_id": "UX-P13",
+      "gate": "HQ legacy floor editor drag/add/import/upload/draft/publish/restore/export kept with unique authorized route; /hq personnel and layout editor both reachable under stage after integration"
+    },
+    {
+      "test_id": "UX-P14",
+      "gate": "original embedded recipe guide: materials/finished-photo/zoom/visual timer/finish separate from deliver and explicit return to real store map all retained"
+    },
+    {
+      "test_id": "UX-P15",
+      "gate": "three-stage transfer, group split/merge, member last4, original price/quick search, draft vs submit vs settle vs depart and cancellation constraints retain"
+    },
+    {
+      "test_id": "UX-P16",
+      "gate": "bathroom clean timer, seat clean after departure, 3-level alerts, incident audit, date-range history/CSV/report/chart retained"
+    },
+    {
+      "test_id": "UX-P17",
+      "gate": "V13 search/language/theme/selection/guide and independent V9 internal preview remain functionally and visually distinct"
+    },
+    {
+      "test_id": "UX-P18",
+      "gate": "identity double approvals and TR permanence, academy courses/exams/practical/shifts/registered POS devices, supply inspection/scanner/data sources remain intact under role permissions"
+    },
+    {
+      "test_id": "UX-P19",
+      "gate": "original V2.8 offline Windows package and QR card format are not assumed checked; check source if future migration proposed, never replace or wipe data without opt-in/backup"
+    },
+    {
+      "test_id": "UX-P20",
+      "gate": "PR includes only approved UX design/document changes before Codex; any later functional diff must enumerate altered existing functionality with pre/post integration tests"
     }
   ],
   "release_gate": "NO UX implementation until user approves updated design; G0 evidence plus CODEx controlled batch; no auto merge, production deploy or database writes",
-  "caveat": "This JSON is a proposed PR review guardrail; no CI guard/test runner or application changes have been implemented."
+  "caveat": "This JSON is a proposed PR review guardrail; no CI guard/test runner or application changes have been implemented.",
+  "audit_latest": "2026-11-21",
+  "audit_scope": "GitHub read-only static code/manifest/CI evidence; does not execute browser/POS/production or verify unattached Windows V2.8 ZIP",
+  "immutable_source_evidence": {
+    "git_v3_baseline": "0e8b3c00544ccd533eebd1258598f2622c5b0984",
+    "git_v41_baseline": "c51b58d67dabae53afcdf9851a80cdc93d4200f6",
+    "v41_PR12_changed_files": 63,
+    "v41_PR12_removed_or_renamed_files": 0,
+    "r32_PR15_changed_files": 3,
+    "UX_PR16_changed_files": 2,
+    "source_map_and_hq_editor_files_git_blob_equal_v3_to_v41": true,
+    "v41_checks_observed": "GitHub check-runs on V4.1 SHA include success for lighthouse-internal-stage, db-contract-preflight, menu-v13-1, identity-r2, supply-v2, v4-1-integration, architecture, bsv1; no runtime tests run in this audit",
+    "caution": "Original PR12 modified POS app.js/app.py and identity login semantics despite no removed files; file-level survival alone cannot prove full behavioural equivalence."
+  },
+  "additional_existing_app_routes": [
+    {
+      "app": "hq-floor-editor",
+      "legacy_route": "/hq",
+      "code": "apps/hq-console/bsv1/hq.html",
+      "stage_route_conflict": "V4.1 stage ingress routes /hq to identity HQ, old POS HQ editor remains in repo but may be unreachable via stage URL",
+      "required": "keep separate floor editor and identity HQ; implement reviewed alias such as /hq/stores/layout with verified store/HQ auth; preserve draft/publish/history and no-open-visits constraint"
+    },
+    {
+      "app": "internal-menu-preview",
+      "route": "/menu",
+      "code": "apps/guest-web/bsv1/menu.html",
+      "required": "retain isolated V9 C-AJ store-specific price/filter preview, separate from public /cocktail/ V13"
+    },
+    {
+      "app": "embedded-pos-craft",
+      "route": "/pos guideOverlay",
+      "code": "apps/store-console/bsv1/app.js",
+      "required": "existing visual bartender guide already implemented; new future /work/craft must reuse current task/recipe/photo/timer/workflow rather than replace or duplicate"
+    }
+  ],
+  "existing_verified_code_features": [
+    {
+      "id": "POS-01",
+      "feature": "per-store independent map with SVG, seat IDs, neighbors, orientation, groups and restrooms",
+      "owner": "services/api/bsv1/bsv_layouts.py; apps/store-console/bsv1/app.js",
+      "state": "CODE_PRESENT+V41_CI_PASS"
+    },
+    {
+      "id": "POS-02",
+      "feature": "per-store floor edit via independent HQ drag-and-drop, add/remove seat, upload image, import/export JSON, draft/publish/restore/revision checks",
+      "owner": "apps/hq-console/bsv1/hq.html/js; services/api/bsv1/bsv_one.py",
+      "state": "CODE_PRESENT+V41_CI_PASS; STAGE_ROUTE_CONFLICT"
+    },
+    {
+      "id": "POS-03",
+      "feature": "store-specific district/store selection, staff PIN, registered device, authenticated POS terminal, session/logout",
+      "owner": "apps/store-console/bsv1/index.html; services/api/bsv1/bsv_device_pos.py",
+      "state": "CODE_PRESENT+V41_CI_PASS"
+    },
+    {
+      "id": "POS-04",
+      "feature": "tap seat, explicit confirm seat, next/previous based on seat adjacency, concurrency seat edit locks",
+      "owner": "apps/store-console/bsv1/app.js",
+      "state": "CODE_PRESENT"
+    },
+    {
+      "id": "POS-05",
+      "feature": "grouped seats split/merge and seat-specific bathroom map pins",
+      "owner": "apps/store-console/bsv1/app.js",
+      "state": "CODE_PRESENT"
+    },
+    {
+      "id": "POS-06",
+      "feature": "guest counter, anonymous or last-four-digits member lookup, member association",
+      "owner": "apps/store-console/bsv1/app.js",
+      "state": "CODE_PRESENT; NOT_SELF_OWNED_WALLET"
+    },
+    {
+      "id": "POS-07",
+      "feature": "product catalogue with search Chinese/pinyin initials, approved source/version price and per-store price checks",
+      "owner": "apps/store-console/bsv1/app.js; services/api/bsv1/app.py",
+      "state": "CODE_PRESENT; REAL_PRICE_APPROVAL_GATED"
+    },
+    {
+      "id": "POS-08",
+      "feature": "order drafts vs formal order, order-only vs order+settlement, per-round checkout vs final departure",
+      "owner": "apps/store-console/bsv1/app.js; services/api/bsv1/app.py",
+      "state": "CODE_PRESENT; REAL_PAYMENTS_NOT_VERIFIED"
+    },
+    {
+      "id": "POS-09",
+      "feature": "3-stage table transfer preserving order/history/member, old table returns dirty; guarded cancellation",
+      "owner": "apps/store-console/bsv1/app.js",
+      "state": "CODE_PRESENT"
+    },
+    {
+      "id": "POS-10",
+      "feature": "visual craft guide already embedded in POS: recipe/photo/materials/zoom/visual timer/task selection/claim/finish vs deliver, no audio",
+      "owner": "apps/store-console/bsv1/index.html/app.js",
+      "state": "CODE_PRESENT; new standalone route NOT_IMPLEMENTED"
+    },
+    {
+      "id": "POS-11",
+      "feature": "production and delivery queues separated, operator actor recorded; clean/bathroom review with timers and escalating warnings",
+      "owner": "apps/store-console/bsv1/app.js",
+      "state": "CODE_PRESENT"
+    },
+    {
+      "id": "POS-12",
+      "feature": "history by date, CSV export, daily trends, daily summaries, closure records and audit/category/time filter",
+      "owner": "apps/store-console/bsv1/index.html/app.js",
+      "state": "CODE_PRESENT; PAYMENTS_NOT_VERIFIED"
+    },
+    {
+      "id": "POS-13",
+      "feature": "print/preview receipts, system status, offline/error indicators and retry, audit and important alert overlay",
+      "owner": "apps/store-console/bsv1/index.html/app.js",
+      "state": "CODE_PRESENT; offline cloud write NOT_APPROVED"
+    },
+    {
+      "id": "POS-14",
+      "feature": "idempotent commands, uncertain results, SQLite backup/restore and single canonical IDs",
+      "owner": "services/api/bsv1/app.py; tests/bsv1/test_backup_restore.py; tests/bsv1/test_final_contract.py",
+      "state": "CODE_PRESENT+CI_PASS"
+    },
+    {
+      "id": "STAFF-01",
+      "feature": "TR permanent, EMP/BM same suffix and no new natural person number; two approvals, scope/expiry/revoke/recovery",
+      "owner": "services/api/identity/api.py; domains/workforce/identity; tests/identity/test_hardening.py",
+      "state": "CODE_PRESENT+CI_PASS_IN_ISOLATED"
+    },
+    {
+      "id": "STAFF-02",
+      "feature": "academy versioned course/theory/practical, store-specific qualification, scheduled shift and POS device authorization",
+      "owner": "services/api/identity/academy_api.py; apps/staff-center/identity/academy*.html",
+      "state": "CODE_PRESENT+CI_PASS; NOT_ALL_STORES_ENABLED"
+    },
+    {
+      "id": "MENU-01",
+      "feature": "V13 customer menu category selector, store selector, language switch, day/night theme, cart/selection, search, guide, single scroll and bottom navigation",
+      "owner": "apps/guest-web/bsv1/site/cocktail/index.html",
+      "state": "CODE_PRESENT+CI_PASS"
+    },
+    {
+      "id": "MENU-02",
+      "feature": "internal V9 store-only menu preview with C catalogue and AJ price source; separate from published V13 public menu",
+      "owner": "apps/guest-web/bsv1/menu.html; services/api/bsv1/app.py",
+      "state": "CODE_PRESENT; NOT_PUBLIC"
+    },
+    {
+      "id": "SUPPLY-01",
+      "feature": "existing supply standalone UI with tasks, create draft, stock, six-point inspection, data-source register, camera barcode scan and backup contracts",
+      "owner": "apps/hq-console/supply/index.html/app.js; services/api/supply",
+      "state": "CODE_PRESENT; D/E PRODUCTION_WRITE_BLOCKED"
+    },
+    {
+      "id": "ORG-01",
+      "feature": "store creation and versioned layout publication, with stop if store has an open visit, no automatic acceptance of AI drawings",
+      "owner": "services/api/bsv1/bsv_one.py; tests/bsv1/test_one_foundation.py",
+      "state": "CODE_PRESENT+CI_PASS; STAGE_ROUTE_CONFLICT"
+    }
+  ],
+  "past_requirements_without_complete_v41_proof": [
+    {
+      "id": "LEGACY-WIN-V28",
+      "requirement": "Original Windows local V2.8 integrated POS+independent store map deliverable and historical data migration must not be deleted or replaced by empty cloud database",
+      "verified": "NOT_DIRECTLY_INSPECTED_IN_THIS_TURN; old ZIP is not current GitHub source, compare when available"
+    },
+    {
+      "id": "QR-EMP-FORMAT",
+      "requirement": "historically agreed employee QR string 'Bsv|CN|身份代码|编号|姓名' if that employee identity QR workflow is migrated",
+      "verified": "USER_PREVIOUS_REQUIREMENT; not confirmed as production code in V4.1"
+    },
+    {
+      "id": "MAP-ADJUSTMENT",
+      "requirement": "HQ drag/drop map editor must remain reachable via explicit role-authorized URL, future new stores should be editable without changing POS source",
+      "verified": "BACKEND+OLD_PAGE_PRESENT; staging /hq shadow routing needs fix"
+    },
+    {
+      "id": "CLOUD-UNIFIED-CUSTOMER",
+      "requirement": "one person auth core, separate staff TR and customer ID, cross-store membership, wallet, notices and receipt emails",
+      "verified": "R3 REQUIREMENTS APPROVED; NOT_IMPLEMENTED_OR_PRODUCTION_VERIFIED"
+    },
+    {
+      "id": "OFFLINE-NEXT-PHASE",
+      "requirement": "offline POS with locally downloaded store data is separately planned; current all-online edition cannot claim offline writes",
+      "verified": "FUTURE_SCOPE_NOT_V41_LIVE"
+    }
+  ],
+  "pos_dynamic_dom_created_by_js": [
+    "quickProductSearch",
+    "memberLast4",
+    "submitOrder",
+    "modeOrderOnly",
+    "modeOrderPay",
+    "memberRemove",
+    "catalogInline"
+  ],
+  "protected_hq_floor_editor_dom": [
+    "store",
+    "canvas",
+    "mapArt",
+    "seatLayer",
+    "addSeat",
+    "uploadImage",
+    "floorImageInput",
+    "save",
+    "publish",
+    "newStore",
+    "editor",
+    "seatId",
+    "left",
+    "right",
+    "import",
+    "export",
+    "history"
+  ],
+  "protected_menu_dom": [
+    "lang",
+    "theme",
+    "cartTrigger",
+    "categories",
+    "content",
+    "menuBtn",
+    "guideBtn",
+    "searchBubble",
+    "store"
+  ],
+  "additional_blockers_before_codex": [
+    "G0 must resolve route namespace conflict /hq: identity HQ is stage target, POS layout editor also uses /hq; preserve BOTH apps with strict permission and explicit distinct URLs",
+    "G0 must document existing embedded /pos craft guide, avoid creating duplicate recipe guides/production task fact tables for future /work/craft",
+    "G0 must preserve internal /menu V9 preview separate from public /cocktail V13 with language/search/cart/theme",
+    "all UX changes must be tested per independent BSVM/BSVS/BSVT map and map editor publish/revision rollbacks, not one generic floor plan",
+    "V4.1 PR12 code changes had removals within files but CI pass; full human baseline equivalence still requires old vs new functional black-box regression",
+    "unattached historical Windows V2.8 ZIP and standalone Android QR resources require comparison if they will be migrated; cannot assert byte-identical preservation from GitHub alone"
+  ]
 }
