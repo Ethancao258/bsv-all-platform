@@ -125,7 +125,7 @@
      $('#session-summary').textContent=signedOut?'尚未登录':'暂时无法确认登录状态';
      $('#session-link').textContent=signedOut?'登录或申请入职':'前往个人中心';
      card('employee','read',signedOut?'可登录':'请检查连接','进入个人中心后查看入职进度和可用权限。');
-     card('pos','blocked','待核验','先登录，再核对可点单门店和员工 PIN。');
+     card('pos','blocked','待核验','先登录，再核对门店和登录条件。');
      card('hq','blocked','待核验','请用已获总部授权的账号登录。');
      unavailable(signedOut?'登录后可核对待办、班次和权限。':'暂时不能获取工作数据，请检查连接后重试。');
      setPriority(signedOut?'登录后查看今天在哪家店、接下来做什么。':'请核对连接后重新查看工作。','/staff','打开个人中心');
@@ -146,7 +146,7 @@
    $('#store-summary').textContent=stores.length?'可核对的门店：'+stores.join('、'):'当前没有门店授权';
    card('employee','ready','可操作',me.tr_code?'查看人员编号、已生效的任职和个人资格。':'在个人中心提交申请，或查看审核进度。');
    card('pos',orderStores.length?'ready':'blocked',orderStores.length?'可进行门店核验':'暂未授权',
-        orderStores.length?'已获点单权限：'+orderStores.join('、')+'。进入点单台核对员工码和 PIN。'
+        orderStores.length?'已获点单权限：'+orderStores.join('、')+'。进入点单台核对本店登录条件。'
                           :'如果今天需要点单，请向总部申请当班门店权限。');
    card('hq',hq?'ready':'blocked',hq?'可操作':'暂未授权',
         hq?'按已授权的所属公司查询人员和处理待审事项。':'切换到拥有总部权限的账号后继续。');

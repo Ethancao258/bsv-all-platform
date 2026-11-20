@@ -70,7 +70,7 @@ def check(base_url, *, username, password, expected_tr):
             desktop.locator("#loginStore").select_option("BSVT")
             desktop.locator("#staffCode").fill("STAGEPOS01")
             desktop.locator("#staffPin").fill("81351593300")
-            desktop.locator("#loginForm button").click()
+            desktop.get_by_role("button", name="确认门店并登录", exact=True).click()
             desktop.locator("#modalConfirm").click()
             expect(desktop.locator("#appPage")).to_be_visible()
             # Use the already opened disposable test desk. Unlike the old UI,
