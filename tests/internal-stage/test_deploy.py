@@ -72,5 +72,29 @@ class ReleaseTest(unittest.TestCase):
             self.assertEqual([call.args for call in services.call_args_list], [(False,), (True,)])
 
 
+    def test_systemd_runner_targets_release_src(self):
+        repo = Path(__file__).resolve().parents[2]
+        template = (repo / "platform/lighthouse/internal-stage/bsv-all-internal-stage@.service").read_text()
+        self.assertTrue((repo / "platform/lighthouse/internal-stage/run.sh").is_file())
+        self.assertIn("WorkingDirectory=/opt/bsv-all-internal-stage/current/src", template)
+        self.assertIn(
+            "ExecStart=/bin/bash /opt/bsv-all-internal-stage/current/src/platform/lighthouse/internal-stage/run.sh %i",
+            template,
+        )
+        self.assertNotIn(
+            "ExecStart=/bin/bash /opt/bsv-all-internal-stage/current/platform/",
+            template,
+        )
+
+    def test_runuser_absolute_with_restricted_environment(self):
+        restricted_env = {"PATH": "/usr/bin:/bin"}
+        with patch.object(stage, "run") as mock_run:
+            stage.as_user("identity", "/bin/true", env=restricted_env)
+        mock_run.assert_called_once_with(
+            "/usr/sbin/runuser", "-u", "bsvint-identity", "--", "/bin/true",
+            env=restricted_env,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
