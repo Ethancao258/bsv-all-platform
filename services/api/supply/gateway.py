@@ -27,7 +27,7 @@ class Gateway:
         for label,base in attempts:
             if not base:continue
             try:
-                with httpx.Client(timeout=self.settings.timeout_seconds,follow_redirects=False) as client:
+                with httpx.Client(timeout=self.settings.timeout_seconds,follow_redirects=False,trust_env=False) as client:
                     r=client.get(self._url(base,path),params=params,headers=auth_header(src,user_token))
                 if r.status_code in (401,403):raise HTTPException(r.status_code,'上游拒绝授权')
                 if 400<=r.status_code<500:raise HTTPException(r.status_code,'上游请求失败: '+str(r.status_code))
@@ -46,7 +46,7 @@ class Gateway:
         if key not in ('D','E') or src.read_only:raise ValueError('只读数据源拒绝写入')
         if not src.primary:raise Unreachable('上游写入地址未配置')
         try:
-            with httpx.Client(timeout=self.settings.timeout_seconds,follow_redirects=False) as client:
+            with httpx.Client(timeout=self.settings.timeout_seconds,follow_redirects=False,trust_env=False) as client:
                 r=client.post(self._url(src.primary,path),json=payload,headers=auth_header(src,user_token))
             if r.status_code>=400 and r.status_code<500:
                 try:detail=r.json()

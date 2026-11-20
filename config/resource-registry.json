@@ -6,21 +6,41 @@
       "provider": "Tencent Cloud CloudBase",
       "reported_environment_id": "inadequate-marten-d1dn9lb5fce2c0",
       "reported_region": "ap-shanghai",
-      "reported_resource": "PostgreSQL 17.11; 10 existing product tables",
-      "status": "REPORTED_NOT_LIVE_VERIFIED",
+      "reported_resource": "PostgreSQL 17.11; 36 total tables (user-reported), 10 public BSV tables; RLS/GRANT findings block production",
+      "status": "USER_READONLY_AUDIT_PARTIAL_G0_NO_PROD_WRITE",
       "authority": "business_master_data",
       "code_path": "cloudbase/migrations",
-      "deployment_path": "cloud-managed"
+      "deployment_path": "cloud-managed",
+      "last_user_evidence_date": "2026-11-20",
+      "production_gate": "BLOCKED_RLS_ACL_BACKUP_RESTORE_JWT_MIGRATION"
     },
     {
       "id": "lighthouse-beijing",
       "provider": "Tencent Cloud Lighthouse",
       "reported_region": "ap-beijing",
-      "reported_resource": "Ubuntu 24.04 4 vCPU 4GB RAM 40GB disk",
-      "status": "REPORTED_NOT_LIVE_VERIFIED",
+      "reported_resource": "Ubuntu 24.04, 4 vCPU ~4GB RAM/40GB; PG 17.12 isolated, existing 8765/8767 active and new 18760-18764 active by user terminal evidence",
+      "status": "USER_TERMINAL_AND_BROWSER_OBSERVED_NOT_DIRECT_SSH",
       "authority": "app_runtime_and_local_cache",
       "code_path": "platform/lighthouse",
-      "deployment_path": "/srv/bsv/{core,stores,public,services,data,incoming,ops}"
+      "deployment_path": "/srv/bsv/{core,stores,public,services,data,incoming,ops}",
+      "last_user_evidence_date": "2026-11-20",
+      "observed_internal_stage": {
+        "deployed_sha": "13dad3df84eacd83ffd9ddc8112cbcee6c3256ec",
+        "data_classification": "ISOLATED_SYNTHETIC_ONLY",
+        "local_ports": {
+          "ingress": 18760,
+          "identity": 18761,
+          "pos": 18762,
+          "supply": 18763,
+          "postgresql": 18764
+        },
+        "legacy_ports_preserved": [
+          8765,
+          8767
+        ],
+        "verified_by": "USER_TERMINAL_AND_BROWSER_REPORT",
+        "alias_commit": "SYNTH-STAGE-POS-01 -> TRA0001; ISOLATED_ALIAS_COMMIT_OK and MAPPING_VERIFIED"
+      }
     },
     {
       "id": "edgeone-menu",
@@ -36,10 +56,11 @@
       "id": "github-repo",
       "provider": "GitHub",
       "reported_name": "Ethancao258/bsv-all-platform",
-      "status": "DESIRED_NOT_CREATED_BY_THIS_PACKAGE",
+      "status": "CONNECTED_GITHUB_TOOL_VERIFIED",
       "authority": "code_and_architecture_versions",
       "code_path": "/",
-      "deployment_path": "private repository; main branch"
+      "deployment_path": "private repository; main branch",
+      "reported_resource": "Existing private repo Ethancao258/bsv-all-platform; PR #8 remains open, Issue #9 is Codex V3 single-task plan"
     },
     {
       "id": "local-pos",
@@ -60,5 +81,5 @@
       "deployment_path": "store device"
     }
   ],
-  "note": "Current resource metadata are reported, not live verified; deploy paths are candidates, not proofs of actual filesystem"
+  "note": "Statuses explicitly distinguish user-shared running-host evidence, live GitHub connector verification, and CloudBase production still awaiting security gates. This registry never contains credentials."
 }

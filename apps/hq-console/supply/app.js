@@ -3,14 +3,19 @@ const $ = id=>document.getElementById(id);
 const state={me:null,stores:[],items:[],shipment:null,scanned:new Set(),camStream:null,camTimer:null,tab:'tasks',mode:'demo'};
 const zhState={DRAFT:'草稿',READY:'待发货',DISPATCHED:'在途',PARTIAL_RECEIVED:'部分收货',RECEIVED:'已收齐',DISPUTED:'有差异',CLOSED:'已结案'};
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const workspace=location.pathname.startsWith('/inspector/')?'inspector':location.pathname.startsWith('/store/')?'store':'hq';
+const internal=location.pathname.startsWith('/supply-ui/');
+const workspace=location.pathname.includes('/inspector/')?'inspector':location.pathname.includes('/store/')?'store':'hq';
 const uid=()=>crypto.randomUUID();
 function message(s,bad=false){let d=$('feedback');d.className='show '+(bad?'bad':'good');d.textContent=s;window.scrollTo({top:0,behavior:'smooth'});}
 async function req(path,opts={}){
  let headers={...opts.headers};if(opts.body&&! (opts.body instanceof FormData))headers['Content-Type']='application/json';
  if(state.mode==='remote'&&state.token)headers.Authorization='Bearer '+state.token;
  if(state.mode==='demo'&&(state.demoActor||(workspace==='inspector'?'DEMO-E03':workspace==='store'?'DEMO-E02':null)))headers['X-Demo-Actor']=(state.demoActor||(workspace==='inspector'?'DEMO-E03':workspace==='store'?'DEMO-E02':null));
- let r=await fetch('/api'+path,{...opts,headers});let j=await r.json().catch(()=>({detail:'非JSON响应'}));
+ if(internal&&opts.method&&opts.method!=='GET'){
+  const csrf=document.cookie.split('; ').find(x=>x.startsWith('bsv_csrf='));
+  if(csrf)headers['X-CSRF-Token']=csrf.slice('bsv_csrf='.length);
+ }
+ let r=await fetch((internal?'/supply-ui':'')+'/api'+path,{...opts,headers});let j=await r.json().catch(()=>({detail:'非JSON响应'}));
  if(!r.ok&&r.status!==202)throw Error(typeof j.detail==='string'?j.detail:JSON.stringify(j.detail||j));
  if(r.status===202)message('⚠ 已离线暂存，但尚未写入公司正式库存。必须在网络恢复后同步确认。',true);
  return j.state==='COMMITTED'&&j.data?j.data:j;
@@ -18,7 +23,7 @@ async function req(path,opts={}){
 function on(id,evt,fn){$(id).addEventListener(evt,fn);}
 function tab(k){state.tab=k;document.querySelectorAll('.panel').forEach(x=>x.classList.add('hidden'));$('panel-'+k).classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===k));if(k==='stock')loadInventory();if(k==='sources')loadSources();if(k==='inspect')loadInspections();}
 function opts(items,placeholder){return `${placeholder?'<option value="">'+placeholder+'</option>':''}${items.map(x=>`<option value="${escapeHtml(x.store_id)}">${escapeHtml(x.name_zh)} (${escapeHtml(x.store_id)})</option>`).join('')}`;}
-async function boot(){try{let h=await req('/health');state.mode=h.mode;$('mode').textContent=h.mode==='demo'?'独立演示 · 非生产':'公司中央 API 模式';if(state.mode==='remote'){let t=prompt('请输入公司统一身份令牌（仅本次页面内存持有，不保存至浏览器）');if(!t)return message('未登录：生产模式需要统一身份令牌。',true);state.token=t;}state.me=await req('/me');configureWorkspace();let [a,b]=await Promise.all([req('/stores'),req('/items')]);state.stores=a.data||[];state.items=b.data||[];let o=opts(state.stores);['filter-store','stock-store'].forEach(id=>$(id).innerHTML='<option value="">全部授权网点</option>'+o);['source-store','dest-store','inspect-store','count-store'].forEach(id=>$(id).innerHTML=o);$('count-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)}</option>`).join('');$('create-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)} · ${escapeHtml(x.item_id)}</option>`).join('');if(workspace==='inspector')tab('inspect');else loadShipments();}catch(e){message(e.message,true);}}
+async function boot(){try{let h=await req('/health');state.mode=h.mode;$('mode').textContent=h.mode==='demo'?'独立演示 · 非生产':'公司中央 API 模式';if(state.mode==='remote'){let t=prompt('请输入公司统一身份令牌（仅本次页面内存持有，不保存至浏览器）');if(!t)return message('未登录：生产模式需要统一身份令牌。',true);state.token=t;}state.me=await req('/me');configureWorkspace();if(state.mode==='internal-stage'){$('mode').textContent='隔离测试 · 集团身份已验证';return message('中央目录、账本与独立督查写入尚未接入。',true);}let [a,b]=await Promise.all([req('/stores'),req('/items')]);state.stores=a.data||[];state.items=b.data||[];let o=opts(state.stores);['filter-store','stock-store'].forEach(id=>$(id).innerHTML='<option value="">全部授权网点</option>'+o);['source-store','dest-store','inspect-store','count-store'].forEach(id=>$(id).innerHTML=o);$('count-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)}</option>`).join('');$('create-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)} · ${escapeHtml(x.item_id)}</option>`).join('');if(workspace==='inspector')tab('inspect');else loadShipments();}catch(e){message(e.message,true);}}
 function configureWorkspace(){
  const roles=state.me.roles||[];
  const sections=workspace==='inspector'?['inspect','sources']:

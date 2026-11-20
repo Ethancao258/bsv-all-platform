@@ -671,6 +671,9 @@ def supply_identity(request: Request):
         session = bearer_session(request, db)
         person = person_for_subject(db, session.subject)
         department = departments.get(person.tr_code) if person else None
+        if (person and not department and settings.env == "isolated"
+                and legal == "DEMO_LEGAL" and conf.get("isolated_test_department") == "SYNTH-STAGE"):
+            department = "SYNTH-STAGE"
         if not legal or not department:
             raise DomainError("Organization reference unavailable", 403, "FORBIDDEN")
         role_stores = {

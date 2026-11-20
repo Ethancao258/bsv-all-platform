@@ -103,3 +103,66 @@
 - PG17 隔离预检复用身份原迁移和真实加密恢复，POS 身份 HTTP 使用 PG A，POS 订单仍由 SQLite 承接。供货 API 对接写入 PG 候选表的 D/E 测试替身，发 10 收 9、幂等、权限、恢复后重放及观察不改账通过。菜单保持冻结公开投影。
 - 发现供货 UI 的 id/code 别名无法读取中央候选 shipment_id/package_id。接口层做显式映射，拒绝 ID 冲突及把库位误当门店。没有改历史标识或生产接口。
 - 仍受阻：CloudBase G0/G1、全域实际 PK/FK/RLS/GRANT/迁移/备份、生产 POS 上传消费与支付、真实 D/E 权限/事务、配方版本、门店/库位及旧人员 ID 权威映射。关闭未合并 PR 可撤回；隔离库自动销毁，生产回滚从已验恢复点执行。
+
+## 2026-11-20 Lighthouse 私有集成测试版
+
+- 远端 PR #7 基线已核对为 `97d2c7c884e60b72327c89b7057e5cf50082e59d`。本批代码使用 `integration/lighthouse-internal-stage`，以 PR #7 分支为 base，完整 SHA 见本节提交及对应 PR。保留 14 个根目录与既有 ID 归属。
+- USER_REPORTED · 经营负责人终端显示 Lighthouse 北京 Ubuntu 24.04.4，`bsv1-preview.service`/8765 和 `bsv-all-bsv1-stage.service`/8767 均 active。后者有健康响应及独立 `STAGEADMIN01`，主仓库只读 Deploy Key 和 PR #7 checkout 已配置。Codex 未直连该主机，状态可能变化。
+- USER_REPORTED · 经营负责人在 CloudBase 上海目标环境的只读 SQL 取证记录 PostgreSQL 17.11、36 张表、public 中 10 张 BSV 表及其字段、主外键和约束。10 张表均未启用 RLS，anon 全部有 SELECT，authenticated 和 service_role 有广泛权限。bsv_products 的有效 ACL 经数据库函数核实。此证据更新此前 UNKNOWN_G0 的对应项。真实数据 API 可达性、JWT/JWKS、迁移账本和备份恢复仍未知，Codex 凭据未连接生产。 [Issue #3 权限证据](https://github.com/Ethancao258/bsv-all-platform/issues/3#issuecomment-6981854517)
+- PASS_ISOLATED · 真实 PG17 候选迁移和回退、120 并发发码、重试/事务/约束、撤权、加密 dump 与空目标恢复通过。隔离 HTTP 以独立 venv 运行身份、供货、POS 和统一入口，测试 BM/EMP 派生、临时别名、真实登录和未付款订单、门店隔离、供货/督查同 Cookie 认证、跨站拒绝和撤权。POS 仍有独立 PIN 步骤。
+- MOCK_ONLY · 版本符号链接回切及失败恢复已模拟。PG17 供货及督查合同替身验证 10 发 9 收的守恒、收货幂等、断连和禁止自审。BLOCKED · D/E 没有运行中的权威事实 API。测试入口只接 B 身份源，不返回中央成功。A/C 目录仍未提供，CloudBase 生产迁移为无。
+- NOT_RUN · Lighthouse 新单元安装、实际端口与主机 systemd 回切。隔离环境无运行中的 systemd PID 1。新部署操作和合成数据边界见 `platform/lighthouse/internal-stage/`。本批无云端写入、部署或生产配置修改。
+
+
+## 2026-11-20 Lighthouse 首次实机验收（USER_REPORTED）
+
+证据来源：经营负责人粘贴的北京 Lighthouse Ubuntu 终端输出；仓库维护者未直接登录服务器。本节只记录可从该输出确认的状态，不等同于生产可用或全链路真实业务验收。
+
+- PASS · 依赖条件：PGDG PostgreSQL 17.12、Python 3.12 venv 已安装，旧服务 `bsv1-preview.service`/8765 和 `bsv-all-bsv1-stage.service`/8767 保持 active。此前 PR #8 的 8ff2e62 部署在系统服务中出现 `current/platform/...` 找不到启动脚本；下次部署又因受限子进程 PATH 无法解析 `runuser` 停止。
+- FIX_COMMITTED · PR #8 的 `ceb0de0` 修复 `/usr/sbin/runuser` 绝对路径，`13dad3d` 修复 systemd 指向 `current/src/platform/...`；`ba970d6` 增加两项路径与受限 PATH 回归断言。上述 GitHub 修改均尚未合并 main；验收部署的代码 SHA 为 `13dad3df84eacd83ffd9ddc8112cbcee6c3256ec`。
+- PASS_HOST · 经营负责人提供的实机输出显示 `PREFLIGHT_OK`、`VERIFY_OK: loopback routing, health and anonymous access checks`、`DEPLOYED_INTERNAL_STAGE 13dad3df84eacd83ffd9ddc8112cbcee6c3256ec`，最终 `BSV_ALL_DEPLOYMENT_ACCEPTED`。五个新 `bsv-all-internal-stage@{postgres,identity,pos,supply,ingress}.service` 均 active，对应端口 18764/18761/18762/18763/18760；两个原服务均 active。属于启动与匿名访问就绪验收，**尚未在操作员自己的 Windows 浏览器完成 SSH 隧道、人工登录和真实操作验收**。
+- ISOLATED_ONLY · 合成管理员 `reviewer1`/`reviewer2` 生成 `TRA0001`/`TRA0002`；这些仅为隔离数据，不得迁入正式终身主码空间；POS 使用测试 V9 和 SQLite。CloudBase 生产库、正式收款、中央库存 D/E 权威账本和独立督查实际复核写入尚未接通，生产 GO 为否。
+- NEXT_GATE · 在操作员本地以 SSH 转发 18760，验证 `/staff`、`/pos`、`/hq`、供货/督查读界面、登录/撤权、明确 503 写入拒绝；另做 Lighthouse 真正故障回切、PG17 加密备份-恢复、跨服务审计及安全门禁。密钥、PIN、数据库密码禁止写入 GitHub 或日志报告。GitHub 文档变更比现网运行 SHA 更新时，必须分别记录代码头版本与已部署版本，不得视为自动热更新。
+
+
+## 2026-11-20 Windows 实机浏览器入口验收（USER_SCREENSHOT）
+
+- PASS_BROWSER_UI · 经营负责人提供的 Windows Chrome 截图显示浏览器已成功呈现 `http://127.0.0.1:18760/` 的“BSV ALL 内部测试”主页，并列出员工登录与个人中心、总部身份管理、门店 POS、供货与库存、独立督查、电子菜单六个链接。由截图可确认浏览器到本机 18760 的页面可用，尚不能单凭截图确认各子模块的登录、业务调用及权限正确。
+- OBSERVATION · 同一截图的 PowerShell 会话显示 SSH 认证密码提示，当前这一个终端会话是否已完成认证不能由截图判定；实际浏览器页面可通过已有有效隧道或独立会话提供。该截图不附带到仓库，不存储服务器公网 IP 与凭据。
+- NEXT_GATE · 以本机私有 SSH 隧道登录 `/staff`，用仅在隔离环境生成的 `reviewer1` 凭据验证身份页面；再进入 `/hq` 并在后续单独执行 POS 与供货/督查跨模块验收。禁止真实客户、员工和收款数据进入测试环境。
+
+
+## 2026-11-20 Windows 身份中心登录验收（USER_SCREENSHOT）
+
+- PASS_BROWSER_LOGIN · 经营负责人在Windows浏览器经SSH隧道打开统一入口 `/staff` 并使用隔离测试身份成功登录；页面明确显示“登录成功”“已登录”。
+- PASS_ISOLATED_IDENTITY_DISPLAY · UI展示单一自然人测试主码 `TRA0001`、派生 `EMPA0001` 和 `BMA0001`，后缀一致。有效法人范围 `DEMO_LEGAL`；测试资格 `BM_MANAGEMENT`，来源 `SYNTHETIC-BM-TRA0001`，并列出 HQ 审计、人员、资格、任命和授权操作列表。截图证明页面会话和身份读取渲染成功，不单凭UI断言服务端所有授权及撤权已实机覆盖。
+- DATA_BOUNDARY · 该人员是隔离环境合成管理员，不代表真实人员或正式终身编号分配。用户截图不包含明文测试密码；绝不将私有凭据写入工程档案。
+- NEXT_GATE · 浏览器沿用当前会话访问 `/hq`，核验总部后台授权读取与界面；确认后再执行双管理员审批及POS/供货的跨模块实机授权测试。测试库与CloudBase保持隔离。
+
+
+## 2026-11-20 Windows 总部后台登录与只读展示验收（USER_PASTE）
+
+- PASS_BROWSER_HQ_VIEW · 用户从同一Windows浏览器隔离测试会话进入 `/hq`，看到“人员身份与授权管理”、`DEMO_LEGAL` 法人范围及HQ管理权限列表；网页已显示“我的操作权限”对应的十六项权限及管理限制“不能批准自己提出的申请，不可自行提升 BM”。来源为用户提供的浏览器页面复制文本，未直接证明每项授权写入服务端执行。
+- PASS_BROWSER_CAPACITY_VIEW · 隔离PG数据库页面显示人员编号配额“已使用 2 / 总容量 239,976 / 剩余 239,974”；与上一步独立测试生成两个合成管理员一致，但不能外推为正式生产号码池的唯一分配结果。
+- UI_READY_NOT_WORKFLOW_VERIFIED · 注册与发码、任职与资格、EMP/BM、跨店授权、旧码预检、账号安全、人员查询入口可见；本轮没有提交审核、发码、任职、授权、撤销或其他写操作。
+- NEXT_GATE · 使用“人员查询”中的“TR码或名字”只读查询 `TRA0002`，确认 `DEMO_LEGAL` 合成第二管理员可检索。之后再按最小变更原则测试双人审批、POS、供货/督查权限及撤销。原有8765/8767、CloudBase正式库不变。
+
+
+## 2026-11-20 浏览器总部人员精确查询验收（USER_SCREENSHOT）
+
+- PASS_BROWSER_HQ_LOOKUP · 操作员在Windows的 `/hq` 人员查询以 `TRA0002` 搜索，截图显示 `TRA0002 · ISOLATED TEST OPERATOR reviewer2`、状态 `active`。证明既有HQ会话在 `DEMO_LEGAL` 范围可调用只读人员检索并获得合成PG身份记录；不代表跨法人限制或审批写入已经实机验收。
+- NEXT_GATE · 使用HQ旧码预检执行 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001` 的仅预览核对（写入0），确认隔离POS的本地人员别名指向同一合成TR后，再通过独立批准的映射提交/岗位权限安排进行POS联调。严禁将该合成关联应用到正式人事数据。
+
+
+## 2026-11-20 旧POS码只读映射预检（USER_SCREENSHOT）
+
+- PASS_BROWSER_DRY_RUN · 经营负责人Windows浏览器截图显示总部 `/hq`“旧码迁移预检”输入 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001`，页面返回 `SYNTH-STAGE-POS-01 → TRA0001`、`reviewed · 无冲突`。这是隔离合成POS旧码绑定到合成 `TRA0001` 的预检，未证明创建任何正式或测试别名数据。源码规定 dry-run 写入为0。
+- GATE · 接下来使用受控隔离后台身份API，在再次验证 `mode=isolated`、`blocked=0`、`issues=[]` 后才允许创建单条合成LegacyAlias。完成后需测试该TR的POS资格和门店岗位授权，再进行BSVT未付款订单验收。真实员工/客户和CloudBase生产数据库禁止参与。
+
+
+## 2026-11-20 隔离POS身份别名正式提交与V3交付控制面
+
+- PASS_ISOLATED_HOST_REPORTED · 操作员在Lighthouse上通过隔离身份API `/api/v1/identity/legacy-import/commit` 将 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001` 写入**独立测试PG**，原始终端输出依次为 `ISOLATED_MODE_OK`、`ADMIN_IDENTITY_OK`、`PREVIEW_OK`、`ISOLATED_ALIAS_COMMIT_OK`、`MAPPING_VERIFIED`。再次预检返回`ALREADY_MAPPED`。这是唯一一个合成别名，不代表POS角色授权或真实人员迁移。无需重复写入。CloudBase正式库本次未触碰。
+- CONTRACT_CREATED_GITHUB · ChatGPT已直接提交 `docs/architecture/BSV_ALL_DELIVERY_CONTROL_PLANE_V1.md`、`config/change-routing.json`、`scripts/verify_change_routing.py`、`AGENTS.md`第15条和 `docs/ops/CODEX_WORKFLOW.md`V3，以及CI静态路由检查。GitHub Issue #9作为**V1→V2→V3同一整合任务**的唯一入口。用户明确尚未向Codex实际启动本轮开发，不能把Issue存在当作Codex运行中。
+- DELIVERY_NOT_CONNECTED · 当前ChatGPT已有GitHub读写连接，可更新Issue和源码；但尚无直接触发网页版Codex开发会话或从此会话直接SSH部署Lighthouse的获授权执行链。拟议 `bsvctl` 与自动发布控制器是设计，**NOT_IMPLEMENTED**。后续先由Codex实现并经本机实际验证，绝不声称已“一句话自动上线”。
+- OPERATING_PRODUCTION_NO_GO · 北京Lighthouse 4核约4GB、40GB现运行七个新旧单元的可用性与资源裕量须实测；真实CloudBase ACL/RLS、备份恢复、跨区域认证、实收支付及D/E库存/督查权威写入仍阻断正式生产。

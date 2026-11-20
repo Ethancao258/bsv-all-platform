@@ -698,6 +698,8 @@ def handle_action(path,data,staff):
         if path=='/api/orders/submit':
             vid=required(data,'visit_id');pay_now=data.get('pay_now')
             if type(pay_now)!=bool:raise UserError('请选择下单或下单并结账')
+            if pay_now and os.environ.get('BSV_POS_INTERNAL_STAGE') == '1':
+                raise UserError('内部集成测试只允许提交未付款测试订单',403)
             live_visit(db,store_id,vid);o=order_for(db,vid)
             try:collab.assert_editable(db,vid,store_id,sid)
             except ValueError as e:raise UserError(str(e),409)
