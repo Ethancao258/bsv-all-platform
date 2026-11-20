@@ -7,7 +7,10 @@
   "counts": {
     "use_cases": 32,
     "domain_registry": 20,
-    "manifest_rows": 32
+    "manifest_rows": 32,
+    "r3_capabilities": 13,
+    "r3_architecture_addenda": 6,
+    "integration_edges": 17
   },
   "design_new_keys": [
     {
@@ -635,6 +638,380 @@
       "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
       "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
       "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    }
+  ],
+  "r3_capabilities": [
+    {
+      "feature_id": "R3-01",
+      "name": "unified_management_operator_notes",
+      "primary_owner": "event_audit",
+      "stage": [
+        "A"
+      ],
+      "depends_on": [
+        "workforce",
+        "catalog",
+        "commerce",
+        "inventory",
+        "payments",
+        "quality"
+      ],
+      "acceptance": "all BM operations permit optional note; mandatory reason for emergency, immutable audit",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-02",
+      "name": "emergency_permission_suspend",
+      "primary_owner": "identity_access",
+      "stage": [
+        "B"
+      ],
+      "depends_on": [
+        "workforce",
+        "event_audit"
+      ],
+      "acceptance": "single authorized BM may suspend, all relevant BM informed, independent restore",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-03",
+      "name": "shared_tablet_user_switch",
+      "primary_owner": "identity_access",
+      "stage": [
+        "A",
+        "C"
+      ],
+      "depends_on": [
+        "commerce",
+        "workforce"
+      ],
+      "acceptance": "current operator distinct from device_id; reauthentication and inactivity lock",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-04",
+      "name": "end_of_shift_handoff",
+      "primary_owner": "service_ops",
+      "stage": [
+        "B",
+        "C"
+      ],
+      "depends_on": [
+        "workforce",
+        "commerce",
+        "learning"
+      ],
+      "acceptance": "shift schedule locks not actual clock out; qualified successor handoff",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-05",
+      "name": "companywide_incident_tasks",
+      "primary_owner": "service_ops",
+      "stage": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "depends_on": [
+        "quality",
+        "inventory",
+        "payments",
+        "workforce"
+      ],
+      "acceptance": "one incident ID; consistent escalation and independent closure",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-06",
+      "name": "prepublication_impact_preview",
+      "primary_owner": "service_ops",
+      "stage": [
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "depends_on": [
+        "catalog",
+        "knowledge",
+        "learning",
+        "organization",
+        "customer"
+      ],
+      "acceptance": "projections only; no cross-domain writes",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-07",
+      "name": "location_inventory_reconciliation",
+      "primary_owner": "organization",
+      "stage": [
+        "C",
+        "D"
+      ],
+      "depends_on": [
+        "inventory",
+        "catalog"
+      ],
+      "acceptance": "physical slot owner organization; stock movement owner inventory",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-08",
+      "name": "batch_emergency_quarantine",
+      "primary_owner": "quality",
+      "stage": [
+        "D"
+      ],
+      "depends_on": [
+        "production",
+        "inventory",
+        "commerce",
+        "knowledge"
+      ],
+      "acceptance": "quarantine immediately blocks unsafe batch usage; restoration independently approved",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-09",
+      "name": "staff_assisted_wallet_topup",
+      "primary_owner": "payments",
+      "stage": [
+        "E",
+        "F"
+      ],
+      "depends_on": [
+        "customer",
+        "identity_access",
+        "event_audit"
+      ],
+      "acceptance": "dual evidence and verified money; production topup blocked",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-10",
+      "name": "customer_wallet_custody_disputes",
+      "primary_owner": "service_ops",
+      "stage": [
+        "E",
+        "F"
+      ],
+      "depends_on": [
+        "customer",
+        "payments",
+        "inventory"
+      ],
+      "acceptance": "incident case; correcting entries not overwritten balances",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-11",
+      "name": "admin_step_up_authentication",
+      "primary_owner": "identity_access",
+      "stage": [
+        "A",
+        "B",
+        "F"
+      ],
+      "depends_on": [
+        "payments",
+        "workforce"
+      ],
+      "acceptance": "high-risk operations require strong reauthentication/mock in staging",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-12",
+      "name": "business_journey_health_probes",
+      "primary_owner": "event_audit",
+      "stage": [
+        "G"
+      ],
+      "depends_on": [
+        "commerce",
+        "identity_access",
+        "learning",
+        "payments",
+        "production"
+      ],
+      "acceptance": "external read/synthetic checks; no real money/sms",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-13",
+      "name": "announcements_dynamic_store_audience",
+      "primary_owner": "knowledge",
+      "stage": [
+        "A",
+        "B",
+        "F"
+      ],
+      "depends_on": [
+        "organization",
+        "workforce",
+        "learning",
+        "identity_access",
+        "event_audit"
+      ],
+      "acceptance": "store-based recipient preview, dedupe, snapshots and authorization on read",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    }
+  ],
+  "r3_architecture_addenda": [
+    {
+      "feature_id": "ADD-01",
+      "name": "food_safety_daily_weekly_monthly",
+      "primary_owner": "quality",
+      "stage": "D",
+      "design_rule": "reuse safety inspection and production batch records; legal applicability gate",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-02",
+      "name": "delegated_management_approval",
+      "primary_owner": "identity_access",
+      "stage": "B",
+      "design_rule": "temporary scoped delegation cannot self-approve or bypass separation of duties",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-03",
+      "name": "single_cross_module_incident",
+      "primary_owner": "service_ops",
+      "stage": "B-G",
+      "design_rule": "same incident_id used across modules; not duplicate incident master",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-04",
+      "name": "reversible_policy_change_preview",
+      "primary_owner": "service_ops",
+      "stage": "B-E",
+      "design_rule": "impact projection, policy version, no rollback by deleting historical transaction",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-05",
+      "name": "prepaid_regulatory_data",
+      "primary_owner": "payments",
+      "stage": "F",
+      "design_rule": "issuer and entity, liability, customer refund, legally approved real use only",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-06",
+      "name": "machine_readable_delivery_status",
+      "primary_owner": "event_audit",
+      "stage": "G0-G",
+      "design_rule": "per-usecase code/CI/host/data fields with verified sources",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    }
+  ],
+  "integration_edges": [
+    {
+      "from": "organization",
+      "to": "workforce",
+      "payload": "store_id legal_entity_id",
+      "kind": "reference"
+    },
+    {
+      "from": "workforce",
+      "to": "learning",
+      "payload": "tr_code employee_id active_engagement",
+      "kind": "reference"
+    },
+    {
+      "from": "learning",
+      "to": "identity_access",
+      "payload": "credential_id qualification_projection",
+      "kind": "derived_read"
+    },
+    {
+      "from": "identity_access",
+      "to": "commerce",
+      "payload": "authorize_order_with_store_shift_device",
+      "kind": "authenticated_sync_read"
+    },
+    {
+      "from": "catalog",
+      "to": "commerce",
+      "payload": "product_id bundle_id recipe_version price_snapshot",
+      "kind": "approved_query"
+    },
+    {
+      "from": "commerce",
+      "to": "service_ops",
+      "payload": "order_submitted -> production_task",
+      "kind": "idempotent_event"
+    },
+    {
+      "from": "service_ops",
+      "to": "inventory",
+      "payload": "finished_item_usage -> inventory_movement",
+      "kind": "idempotent_event"
+    },
+    {
+      "from": "production",
+      "to": "inventory",
+      "payload": "shipment_dispatched -> receive_batch_stock",
+      "kind": "idempotent_event"
+    },
+    {
+      "from": "inventory",
+      "to": "quality",
+      "payload": "quarantine trace provenance",
+      "kind": "read_reference"
+    },
+    {
+      "from": "workforce",
+      "to": "knowledge",
+      "payload": "primary_support_scheduled_actual relations -> notice_audience",
+      "kind": "read_projection"
+    },
+    {
+      "from": "learning",
+      "to": "knowledge",
+      "payload": "qualified_staff impact -> notice_audience",
+      "kind": "read_projection"
+    },
+    {
+      "from": "knowledge",
+      "to": "event_audit",
+      "payload": "announcement_published -> notification_delivery",
+      "kind": "local_outbox_event"
+    },
+    {
+      "from": "payments",
+      "to": "commerce",
+      "payload": "verified_payment -> settlement_projection",
+      "kind": "compensated_cross_db"
+    },
+    {
+      "from": "payments",
+      "to": "event_audit",
+      "payload": "wallet_txn_posted -> customer_receipt_delivery",
+      "kind": "local_outbox_event"
+    },
+    {
+      "from": "customer",
+      "to": "payments",
+      "payload": "customer_id issuer_scoped_wallet",
+      "kind": "reference"
+    },
+    {
+      "from": "commerce",
+      "to": "operating_finance",
+      "payload": "accepted_order_and_paid_event",
+      "kind": "verified_projection"
+    },
+    {
+      "from": "quality",
+      "to": "service_ops",
+      "payload": "inspection_finding -> incident task",
+      "kind": "idempotent_event"
     }
   ]
 }
