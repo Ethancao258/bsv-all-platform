@@ -96,5 +96,18 @@ class ReleaseTest(unittest.TestCase):
         )
 
 
+    def test_legacy_preview_feedback_is_inline(self):
+        repo = Path(__file__).resolve().parents[2]
+        script = (repo / "apps/hq-console/identity/hq.js").read_text(encoding="utf-8")
+        handler = script.split("$('#legacy-form').addEventListener", 1)[1].split(
+            "$('#people-form').addEventListener", 1)[0]
+        self.assertIn("正在执行只读预检", handler)
+        self.assertIn("只读预检失败", handler)
+        self.assertIn("output.prepend", handler)
+        self.assertIn("output.scrollIntoView", handler)
+        self.assertIn("submit.disabled=false", handler)
+
+
+
 if __name__ == "__main__":
     unittest.main()
