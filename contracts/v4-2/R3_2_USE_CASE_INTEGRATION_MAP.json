@@ -1,0 +1,1017 @@
+{
+  "schema_version": "v4.2-r3.2-architecture-mapping-proposal-1",
+  "status": "PROPOSED_G0_NOT_RUNTIME_FACT",
+  "based_on_commit": "c51b58d67dabae53afcdf9851a80cdc93d4200f6",
+  "input_registry_sha": "e82f35842241195fd08bad83f718ac10f977c370",
+  "rule": "Canonical ownership is only config/data-ownership.json and domain-registry.json. This matrix is a generated candidate crosswalk, not an alternate authority. No new database tables or services created.",
+  "counts": {
+    "use_cases": 32,
+    "domain_registry": 20,
+    "manifest_rows": 32,
+    "r3_capabilities": 13,
+    "r3_architecture_addenda": 6,
+    "integration_edges": 17
+  },
+  "design_new_keys": [
+    {
+      "key": "person_id",
+      "proposed_owner": "identity_access",
+      "reason": "stable pseudonymous shared authentication registry, distinct from workforce.TR and customer.customer_id",
+      "g0_state": "VERIFY_EXISTING_SCHEMA_BEFORE_ASSIGN"
+    },
+    {
+      "key": "seat_id",
+      "proposed_owner": "organization",
+      "reason": "store physical seat identity, preserve legacy POS layout identifiers",
+      "g0_state": "VERIFY_EXISTING_LAYOUT_IDS"
+    },
+    {
+      "key": "clock_receipt_id",
+      "proposed_owner": "workforce",
+      "reason": "clock event receipt distinct from procurement.receipt_id",
+      "g0_state": "VERIFY_EXISTING_SCHEMA_BEFORE_ASSIGN"
+    },
+    {
+      "key": "announcement_id",
+      "proposed_owner": "knowledge",
+      "reason": "notice content/version with dynamic recipient projection",
+      "g0_state": "VERIFY_EXISTING_DOCUMENT_SYSTEM"
+    },
+    {
+      "key": "custody_item_id",
+      "proposed_owner": "customer",
+      "reason": "legal customer custody entitlement; inventory references physical movement separately",
+      "g0_state": "VERIFY_EXISTING_SCHEMA"
+    },
+    {
+      "key": "wallet_id",
+      "proposed_owner": "payments",
+      "reason": "money liability and immutable ledger",
+      "g0_state": "VERIFY_EXISTING_SCHEMA"
+    },
+    {
+      "key": "notification_delivery_id",
+      "proposed_owner": "event_audit",
+      "reason": "transport receipt, NOT business announcement or payment fact",
+      "g0_state": "VERIFY_EXISTING_OUTBOX_PROTOCOL"
+    }
+  ],
+  "fixed_existing_owner_samples": {
+    "store_id": "organization",
+    "tr_code": "workforce",
+    "employee_id": "workforce",
+    "auth_subject_id": "identity_access",
+    "grant_id": "identity_access",
+    "credential_id": "learning",
+    "product_id": "catalog",
+    "recipe_version": "catalog",
+    "order_id": "commerce",
+    "payment_event_id": "payments",
+    "customer_id": "customer",
+    "document_id": "knowledge",
+    "receipt_id": "procurement",
+    "batch_id": "production",
+    "stock_movement_id": "inventory",
+    "incident_id": "service_ops",
+    "audit_event_id": "event_audit"
+  },
+  "integration_invariants": [
+    "single writer per business fact; domain != process != database",
+    "TR/EMP/BM suffix unchanged; customer_id separate; phone not permanent key",
+    "store/seat/product/order/item/batch have no duplicate canonical roots",
+    "new private craft route distinct from public /craft/ and /cocktail/",
+    "operation returns UNKNOWN when outcome cannot be proven; never invent success",
+    "local transactional outbox per writer DB; common event envelope and consumer dedup",
+    "cross-db transitions are asynchronous or compensated, never falsely single ACID",
+    "simulated payment cannot create real financial liability",
+    "cash/creditcard top-up requires verified reconciliation and legal gates",
+    "emergency revoke audit and broadcast; actual clock-out always recordable",
+    "cloudbase production G0/backup/RLS not verified, cannot migrate",
+    "all unknown fifth store IDs must remain UNKNOWN until actual organization verified",
+    "legacy 8765/8767 services and stage release remain untouched"
+  ],
+  "use_cases": [
+    {
+      "use_case_id": "bsv1.product.design",
+      "business_circle": "BSV1",
+      "owner_domain": "catalog",
+      "writer_domain": "catalog",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": "services/api/bsv1/bsv_v9_import.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.product.publish",
+      "business_circle": "BSV1",
+      "owner_domain": "catalog",
+      "writer_domain": "catalog",
+      "ui_app": [
+        "hq-console",
+        "guest-web"
+      ],
+      "existing_file_hint": "services/api/bsv1/public_menu_projection.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.store.floor",
+      "business_circle": "BSV1",
+      "owner_domain": "organization",
+      "writer_domain": "organization",
+      "ui_app": [
+        "store-console"
+      ],
+      "existing_file_hint": "services/api/bsv1/bsv_layouts.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.store.order",
+      "business_circle": "BSV1",
+      "owner_domain": "commerce",
+      "writer_domain": "commerce",
+      "ui_app": [
+        "store-console"
+      ],
+      "existing_file_hint": "services/api/bsv1/app.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.store.payment",
+      "business_circle": "BSV1",
+      "owner_domain": "payments",
+      "writer_domain": "payments",
+      "ui_app": [
+        "store-console"
+      ],
+      "existing_file_hint": "services/api/bsv1/bsv_ledger.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.store.bartending",
+      "business_circle": "BSV1",
+      "owner_domain": "service_ops",
+      "writer_domain": "service_ops",
+      "ui_app": [
+        "store-console"
+      ],
+      "existing_file_hint": "services/api/bsv1/app.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.store.fulfillment",
+      "business_circle": "BSV1",
+      "owner_domain": "service_ops",
+      "writer_domain": "service_ops",
+      "ui_app": [
+        "store-console"
+      ],
+      "existing_file_hint": "services/api/bsv1/app.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.store.open_close",
+      "business_circle": "BSV1",
+      "owner_domain": "service_ops",
+      "writer_domain": "service_ops",
+      "ui_app": [
+        "store-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.store.local_procure",
+      "business_circle": "BSV1",
+      "owner_domain": "procurement",
+      "writer_domain": "procurement",
+      "ui_app": [
+        "store-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.people.onboarding",
+      "business_circle": "BSV1",
+      "owner_domain": "workforce",
+      "writer_domain": "workforce",
+      "ui_app": [
+        "staff-center",
+        "hq-console"
+      ],
+      "existing_file_hint": "services/api/identity/api.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.people.schedule",
+      "business_circle": "BSV1",
+      "owner_domain": "workforce",
+      "writer_domain": "workforce",
+      "ui_app": [
+        "staff-center"
+      ],
+      "existing_file_hint": "services/api/identity/academy_api.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.people.attendance",
+      "business_circle": "BSV1",
+      "owner_domain": "workforce",
+      "writer_domain": "workforce",
+      "ui_app": [
+        "staff-center"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.learning.courses",
+      "business_circle": "BSV1",
+      "owner_domain": "learning",
+      "writer_domain": "learning",
+      "ui_app": [
+        "staff-center"
+      ],
+      "existing_file_hint": "services/api/identity/academy_api.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.learning.exams",
+      "business_circle": "BSV1",
+      "owner_domain": "learning",
+      "writer_domain": "learning",
+      "ui_app": [
+        "staff-center"
+      ],
+      "existing_file_hint": "services/api/identity/academy_api.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.identity.grants",
+      "business_circle": "BSV1",
+      "owner_domain": "identity_access",
+      "writer_domain": "identity_access",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": "services/api/identity/api.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.customer.menu",
+      "business_circle": "BSV1",
+      "owner_domain": "catalog",
+      "writer_domain": "catalog",
+      "ui_app": [
+        "guest-web"
+      ],
+      "existing_file_hint": "apps/guest-web/bsv1/site/cocktail/index.html",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.customer.member",
+      "business_circle": "BSV1",
+      "owner_domain": "customer",
+      "writer_domain": "customer",
+      "ui_app": [
+        "guest-web"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.customer.booking",
+      "business_circle": "BSV1",
+      "owner_domain": "commerce",
+      "writer_domain": "commerce",
+      "ui_app": [
+        "guest-web"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.customer.online_order",
+      "business_circle": "BSV1",
+      "owner_domain": "commerce",
+      "writer_domain": "commerce",
+      "ui_app": [
+        "guest-web"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.finance.daily",
+      "business_circle": "BSV1",
+      "owner_domain": "operating_finance",
+      "writer_domain": "operating_finance",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": "services/api/bsv1/bsv_ledger.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.continuity.sync",
+      "business_circle": "BSV1",
+      "owner_domain": "event_audit",
+      "writer_domain": "event_audit",
+      "ui_app": [
+        "store-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv1.marketing.basic_tasks",
+      "business_circle": "BSV1",
+      "owner_domain": "marketing",
+      "writer_domain": "marketing",
+      "ui_app": [
+        "staff-center"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv2.growth.campaign",
+      "business_circle": "BSV2",
+      "owner_domain": "marketing",
+      "writer_domain": "marketing",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv2.supply.central",
+      "business_circle": "BSV2",
+      "owner_domain": "production",
+      "writer_domain": "production",
+      "ui_app": [
+        "hq-console",
+        "store-console"
+      ],
+      "existing_file_hint": "services/api/supply/domain.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv2.supply.audit_sheet",
+      "business_circle": "BSV2",
+      "owner_domain": "inventory",
+      "writer_domain": "inventory",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": "services/api/supply/domain.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv2.quality.independent",
+      "business_circle": "BSV2",
+      "owner_domain": "quality",
+      "writer_domain": "quality",
+      "ui_app": [
+        "inspector-console"
+      ],
+      "existing_file_hint": "services/api/supply/domain.py",
+      "observed_source_file": "CODE_FILE_PRESENT_NOT_FULL_FEATURE_PROOF",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv2.partnership.manage",
+      "business_circle": "BSV2",
+      "owner_domain": "partnership",
+      "writer_domain": "partnership",
+      "ui_app": [
+        "partner-portal",
+        "hq-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv2.system.licensing",
+      "business_circle": "BSV2",
+      "owner_domain": "partnership",
+      "writer_domain": "partnership",
+      "ui_app": [
+        "partner-portal"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv3.capital.budget",
+      "business_circle": "BSV3",
+      "owner_domain": "capital",
+      "writer_domain": "capital",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv3.capital.investment",
+      "business_circle": "BSV3",
+      "owner_domain": "capital",
+      "writer_domain": "capital",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv3.capital.funding",
+      "business_circle": "BSV3",
+      "owner_domain": "capital",
+      "writer_domain": "capital",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    },
+    {
+      "use_case_id": "bsv3.capital.regulated",
+      "business_circle": "BSV3",
+      "owner_domain": "capital",
+      "writer_domain": "capital",
+      "ui_app": [
+        "hq-console"
+      ],
+      "existing_file_hint": null,
+      "observed_source_file": "NO_RELEVANT_CODE_FILE_CONFIRMED",
+      "registry_baseline_status": "DESIGN_ONLY",
+      "v42_r32_target": "ISOLATED_INTEGRATED",
+      "production_status": "NO_GO_UNTIL_APPROVED",
+      "database_authority": "G0_REAL_SCHEMA_MAPPING_REQUIRED",
+      "permission_model": "SERVER_VERIFIED_SUBJECT_ACTION_RESOURCE_SCOPE",
+      "contract_status": "G0_OWNER_API_EVENT_SCHEMA_MAPPING_REQUIRED"
+    }
+  ],
+  "r3_capabilities": [
+    {
+      "feature_id": "R3-01",
+      "name": "unified_management_operator_notes",
+      "primary_owner": "event_audit",
+      "stage": [
+        "A"
+      ],
+      "depends_on": [
+        "workforce",
+        "catalog",
+        "commerce",
+        "inventory",
+        "payments",
+        "quality"
+      ],
+      "acceptance": "all BM operations permit optional note; mandatory reason for emergency, immutable audit",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-02",
+      "name": "emergency_permission_suspend",
+      "primary_owner": "identity_access",
+      "stage": [
+        "B"
+      ],
+      "depends_on": [
+        "workforce",
+        "event_audit"
+      ],
+      "acceptance": "single authorized BM may suspend, all relevant BM informed, independent restore",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-03",
+      "name": "shared_tablet_user_switch",
+      "primary_owner": "identity_access",
+      "stage": [
+        "A",
+        "C"
+      ],
+      "depends_on": [
+        "commerce",
+        "workforce"
+      ],
+      "acceptance": "current operator distinct from device_id; reauthentication and inactivity lock",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-04",
+      "name": "end_of_shift_handoff",
+      "primary_owner": "service_ops",
+      "stage": [
+        "B",
+        "C"
+      ],
+      "depends_on": [
+        "workforce",
+        "commerce",
+        "learning"
+      ],
+      "acceptance": "shift schedule locks not actual clock out; qualified successor handoff",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-05",
+      "name": "companywide_incident_tasks",
+      "primary_owner": "service_ops",
+      "stage": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "depends_on": [
+        "quality",
+        "inventory",
+        "payments",
+        "workforce"
+      ],
+      "acceptance": "one incident ID; consistent escalation and independent closure",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-06",
+      "name": "prepublication_impact_preview",
+      "primary_owner": "service_ops",
+      "stage": [
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "depends_on": [
+        "catalog",
+        "knowledge",
+        "learning",
+        "organization",
+        "customer"
+      ],
+      "acceptance": "projections only; no cross-domain writes",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-07",
+      "name": "location_inventory_reconciliation",
+      "primary_owner": "organization",
+      "stage": [
+        "C",
+        "D"
+      ],
+      "depends_on": [
+        "inventory",
+        "catalog"
+      ],
+      "acceptance": "physical slot owner organization; stock movement owner inventory",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-08",
+      "name": "batch_emergency_quarantine",
+      "primary_owner": "quality",
+      "stage": [
+        "D"
+      ],
+      "depends_on": [
+        "production",
+        "inventory",
+        "commerce",
+        "knowledge"
+      ],
+      "acceptance": "quarantine immediately blocks unsafe batch usage; restoration independently approved",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-09",
+      "name": "staff_assisted_wallet_topup",
+      "primary_owner": "payments",
+      "stage": [
+        "E",
+        "F"
+      ],
+      "depends_on": [
+        "customer",
+        "identity_access",
+        "event_audit"
+      ],
+      "acceptance": "dual evidence and verified money; production topup blocked",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-10",
+      "name": "customer_wallet_custody_disputes",
+      "primary_owner": "service_ops",
+      "stage": [
+        "E",
+        "F"
+      ],
+      "depends_on": [
+        "customer",
+        "payments",
+        "inventory"
+      ],
+      "acceptance": "incident case; correcting entries not overwritten balances",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-11",
+      "name": "admin_step_up_authentication",
+      "primary_owner": "identity_access",
+      "stage": [
+        "A",
+        "B",
+        "F"
+      ],
+      "depends_on": [
+        "payments",
+        "workforce"
+      ],
+      "acceptance": "high-risk operations require strong reauthentication/mock in staging",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-12",
+      "name": "business_journey_health_probes",
+      "primary_owner": "event_audit",
+      "stage": [
+        "G"
+      ],
+      "depends_on": [
+        "commerce",
+        "identity_access",
+        "learning",
+        "payments",
+        "production"
+      ],
+      "acceptance": "external read/synthetic checks; no real money/sms",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    },
+    {
+      "feature_id": "R3-13",
+      "name": "announcements_dynamic_store_audience",
+      "primary_owner": "knowledge",
+      "stage": [
+        "A",
+        "B",
+        "F"
+      ],
+      "depends_on": [
+        "organization",
+        "workforce",
+        "learning",
+        "identity_access",
+        "event_audit"
+      ],
+      "acceptance": "store-based recipient preview, dedupe, snapshots and authorization on read",
+      "design_status": "APPROVED_REQUIREMENT_NOT_IMPLEMENTED"
+    }
+  ],
+  "r3_architecture_addenda": [
+    {
+      "feature_id": "ADD-01",
+      "name": "food_safety_daily_weekly_monthly",
+      "primary_owner": "quality",
+      "stage": "D",
+      "design_rule": "reuse safety inspection and production batch records; legal applicability gate",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-02",
+      "name": "delegated_management_approval",
+      "primary_owner": "identity_access",
+      "stage": "B",
+      "design_rule": "temporary scoped delegation cannot self-approve or bypass separation of duties",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-03",
+      "name": "single_cross_module_incident",
+      "primary_owner": "service_ops",
+      "stage": "B-G",
+      "design_rule": "same incident_id used across modules; not duplicate incident master",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-04",
+      "name": "reversible_policy_change_preview",
+      "primary_owner": "service_ops",
+      "stage": "B-E",
+      "design_rule": "impact projection, policy version, no rollback by deleting historical transaction",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-05",
+      "name": "prepaid_regulatory_data",
+      "primary_owner": "payments",
+      "stage": "F",
+      "design_rule": "issuer and entity, liability, customer refund, legally approved real use only",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    },
+    {
+      "feature_id": "ADD-06",
+      "name": "machine_readable_delivery_status",
+      "primary_owner": "event_audit",
+      "stage": "G0-G",
+      "design_rule": "per-usecase code/CI/host/data fields with verified sources",
+      "status": "DESIGN_EXTENSION_NOT_CODE"
+    }
+  ],
+  "integration_edges": [
+    {
+      "from": "organization",
+      "to": "workforce",
+      "payload": "store_id legal_entity_id",
+      "kind": "reference"
+    },
+    {
+      "from": "workforce",
+      "to": "learning",
+      "payload": "tr_code employee_id active_engagement",
+      "kind": "reference"
+    },
+    {
+      "from": "learning",
+      "to": "identity_access",
+      "payload": "credential_id qualification_projection",
+      "kind": "derived_read"
+    },
+    {
+      "from": "identity_access",
+      "to": "commerce",
+      "payload": "authorize_order_with_store_shift_device",
+      "kind": "authenticated_sync_read"
+    },
+    {
+      "from": "catalog",
+      "to": "commerce",
+      "payload": "product_id bundle_id recipe_version price_snapshot",
+      "kind": "approved_query"
+    },
+    {
+      "from": "commerce",
+      "to": "service_ops",
+      "payload": "order_submitted -> production_task",
+      "kind": "idempotent_event"
+    },
+    {
+      "from": "service_ops",
+      "to": "inventory",
+      "payload": "finished_item_usage -> inventory_movement",
+      "kind": "idempotent_event"
+    },
+    {
+      "from": "production",
+      "to": "inventory",
+      "payload": "shipment_dispatched -> receive_batch_stock",
+      "kind": "idempotent_event"
+    },
+    {
+      "from": "inventory",
+      "to": "quality",
+      "payload": "quarantine trace provenance",
+      "kind": "read_reference"
+    },
+    {
+      "from": "workforce",
+      "to": "knowledge",
+      "payload": "primary_support_scheduled_actual relations -> notice_audience",
+      "kind": "read_projection"
+    },
+    {
+      "from": "learning",
+      "to": "knowledge",
+      "payload": "qualified_staff impact -> notice_audience",
+      "kind": "read_projection"
+    },
+    {
+      "from": "knowledge",
+      "to": "event_audit",
+      "payload": "announcement_published -> notification_delivery",
+      "kind": "local_outbox_event"
+    },
+    {
+      "from": "payments",
+      "to": "commerce",
+      "payload": "verified_payment -> settlement_projection",
+      "kind": "compensated_cross_db"
+    },
+    {
+      "from": "payments",
+      "to": "event_audit",
+      "payload": "wallet_txn_posted -> customer_receipt_delivery",
+      "kind": "local_outbox_event"
+    },
+    {
+      "from": "customer",
+      "to": "payments",
+      "payload": "customer_id issuer_scoped_wallet",
+      "kind": "reference"
+    },
+    {
+      "from": "commerce",
+      "to": "operating_finance",
+      "payload": "accepted_order_and_paid_event",
+      "kind": "verified_projection"
+    },
+    {
+      "from": "quality",
+      "to": "service_ops",
+      "payload": "inspection_finding -> incident task",
+      "kind": "idempotent_event"
+    }
+  ]
+}
