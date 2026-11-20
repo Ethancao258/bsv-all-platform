@@ -158,3 +158,11 @@
 
 - PASS_BROWSER_DRY_RUN · 经营负责人Windows浏览器截图显示总部 `/hq`“旧码迁移预检”输入 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001`，页面返回 `SYNTH-STAGE-POS-01 → TRA0001`、`reviewed · 无冲突`。这是隔离合成POS旧码绑定到合成 `TRA0001` 的预检，未证明创建任何正式或测试别名数据。源码规定 dry-run 写入为0。
 - GATE · 接下来使用受控隔离后台身份API，在再次验证 `mode=isolated`、`blocked=0`、`issues=[]` 后才允许创建单条合成LegacyAlias。完成后需测试该TR的POS资格和门店岗位授权，再进行BSVT未付款订单验收。真实员工/客户和CloudBase生产数据库禁止参与。
+
+
+## 2026-11-20 隔离POS身份别名正式提交与V3交付控制面
+
+- PASS_ISOLATED_HOST_REPORTED · 操作员在Lighthouse上通过隔离身份API `/api/v1/identity/legacy-import/commit` 将 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001` 写入**独立测试PG**，原始终端输出依次为 `ISOLATED_MODE_OK`、`ADMIN_IDENTITY_OK`、`PREVIEW_OK`、`ISOLATED_ALIAS_COMMIT_OK`、`MAPPING_VERIFIED`。再次预检返回`ALREADY_MAPPED`。这是唯一一个合成别名，不代表POS角色授权或真实人员迁移。无需重复写入。CloudBase正式库本次未触碰。
+- CONTRACT_CREATED_GITHUB · ChatGPT已直接提交 `docs/architecture/BSV_ALL_DELIVERY_CONTROL_PLANE_V1.md`、`config/change-routing.json`、`scripts/verify_change_routing.py`、`AGENTS.md`第15条和 `docs/ops/CODEX_WORKFLOW.md`V3，以及CI静态路由检查。GitHub Issue #9作为**V1→V2→V3同一整合任务**的唯一入口。用户明确尚未向Codex实际启动本轮开发，不能把Issue存在当作Codex运行中。
+- DELIVERY_NOT_CONNECTED · 当前ChatGPT已有GitHub读写连接，可更新Issue和源码；但尚无直接触发网页版Codex开发会话或从此会话直接SSH部署Lighthouse的获授权执行链。拟议 `bsvctl` 与自动发布控制器是设计，**NOT_IMPLEMENTED**。后续先由Codex实现并经本机实际验证，绝不声称已“一句话自动上线”。
+- OPERATING_PRODUCTION_NO_GO · 北京Lighthouse 4核约4GB、40GB现运行七个新旧单元的可用性与资源裕量须实测；真实CloudBase ACL/RLS、备份恢复、跨区域认证、实收支付及D/E库存/督查权威写入仍阻断正式生产。
