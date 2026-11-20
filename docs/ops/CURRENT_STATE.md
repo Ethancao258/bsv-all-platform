@@ -146,3 +146,9 @@
 - PASS_BROWSER_CAPACITY_VIEW · 隔离PG数据库页面显示人员编号配额“已使用 2 / 总容量 239,976 / 剩余 239,974”；与上一步独立测试生成两个合成管理员一致，但不能外推为正式生产号码池的唯一分配结果。
 - UI_READY_NOT_WORKFLOW_VERIFIED · 注册与发码、任职与资格、EMP/BM、跨店授权、旧码预检、账号安全、人员查询入口可见；本轮没有提交审核、发码、任职、授权、撤销或其他写操作。
 - NEXT_GATE · 使用“人员查询”中的“TR码或名字”只读查询 `TRA0002`，确认 `DEMO_LEGAL` 合成第二管理员可检索。之后再按最小变更原则测试双人审批、POS、供货/督查权限及撤销。原有8765/8767、CloudBase正式库不变。
+
+
+## 2026-11-20 浏览器总部人员精确查询验收（USER_SCREENSHOT）
+
+- PASS_BROWSER_HQ_LOOKUP · 操作员在Windows的 `/hq` 人员查询以 `TRA0002` 搜索，截图显示 `TRA0002 · ISOLATED TEST OPERATOR reviewer2`、状态 `active`。证明既有HQ会话在 `DEMO_LEGAL` 范围可调用只读人员检索并获得合成PG身份记录；不代表跨法人限制或审批写入已经实机验收。
+- NEXT_GATE · 使用HQ旧码预检执行 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001` 的仅预览核对（写入0），确认隔离POS的本地人员别名指向同一合成TR后，再通过独立批准的映射提交/岗位权限安排进行POS联调。严禁将该合成关联应用到正式人事数据。
