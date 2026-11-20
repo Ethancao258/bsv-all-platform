@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>总部权限管理 · BSV ALL</title><link rel="stylesheet" href="/assets/style.css"></head><body>
-<header><div class="brand"><a href="/">BAR ST. VINCENT <small>BSV · 总部工作</small></a></div><nav><a href="/staff">个人中心</a><a href="/hq">权限管理</a></nav></header>
+<header><div class="brand"><a href="/">BAR ST. VINCENT <small>BSV · 总部工作</small></a></div><nav aria-label="返回"><a href="/">返回工作台</a><a href="/staff">个人中心</a><a href="/academy/admin">培训与门店管理</a></nav></header>
 <main><h1>人员身份与授权管理</h1><p class="lead">先查看待办。核验和批准应由两位不同的授权同事完成。</p><p class="call">仅供内部演练。请勿录入真实员工资料。</p><div id="notice" class="notice hidden" role="status" aria-live="polite"></div>
 <div class="panel flex"><div><label for="entity">当前所属公司</label><input id="entity" value="DEMO_LEGAL" maxlength="80" aria-label="法人ID"><p class="small">使用总部提供的公司编号。只显示当前账号有权查看的记录。</p></div><div><button id="refresh">刷新待审队列</button><button class="secondary" id="logout">退出登录</button></div></div>
 <div class="grid"><section class="panel"><h2>我的操作权限</h2><div id="actor-view" class="stack"></div><p class="small">不能批准自己提出的申请，不可自行提升管理权限。</p></section><section class="panel"><h2>新人员编号余量</h2><div id="capacity" class="kpi"><span>正在查看编号余量…</span></div></section></div>

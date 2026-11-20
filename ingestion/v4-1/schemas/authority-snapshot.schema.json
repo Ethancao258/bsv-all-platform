@@ -1,0 +1,490 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BSV ALL V4.1 approved read-only metadata snapshot",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "1.0"
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "synthetic",
+        "review_only"
+      ]
+    },
+    "legal_entity_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+    },
+    "authorization_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+    },
+    "approved_by_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+    },
+    "valid_until": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "records": {
+      "type": "object",
+      "properties": {
+        "companies": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "authority_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              }
+            },
+            "required": [
+              "legal_entity_id",
+              "authority_ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "stores": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "store_id": {
+                "type": "string",
+                "pattern": "^BSV[A-Z0-9]{1,12}$"
+              },
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "direct",
+                  "partner"
+                ]
+              },
+              "authority_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              }
+            },
+            "required": [
+              "store_id",
+              "legal_entity_id",
+              "kind",
+              "authority_ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "people": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "tr_code": {
+                "type": "string",
+                "pattern": "^TR[A-Z][0-9]{4}$"
+              },
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "auth_subject_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              },
+              "verification_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              }
+            },
+            "required": [
+              "tr_code",
+              "legal_entity_id",
+              "auth_subject_id",
+              "verification_ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "pos_aliases": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "source_system": {
+                "type": "string",
+                "enum": [
+                  "bsv1_pos"
+                ]
+              },
+              "legacy_code": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "tr_code": {
+                "type": "string",
+                "pattern": "^TR[A-Z][0-9]{4}$"
+              },
+              "verification_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              }
+            },
+            "required": [
+              "legal_entity_id",
+              "source_system",
+              "legacy_code",
+              "tr_code",
+              "verification_ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "engagements": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "employment_id": {
+                "type": "string",
+                "pattern": "^(?:[A-Za-z][A-Za-z0-9_-]{2,63}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
+              },
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "tr_code": {
+                "type": "string",
+                "pattern": "^TR[A-Z][0-9]{4}$"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "employee",
+                  "part_time",
+                  "contractor",
+                  "partner"
+                ]
+              },
+              "starts_at": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+              },
+              "ends_at": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+              },
+              "approval_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              }
+            },
+            "required": [
+              "employment_id",
+              "legal_entity_id",
+              "tr_code",
+              "kind",
+              "starts_at",
+              "ends_at",
+              "approval_ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "courses": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "course_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,8}$"
+              },
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "store_id": {
+                "type": "string",
+                "pattern": "^(?:BSV[A-Z0-9]{1,12})?$"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "bartender"
+                ]
+              },
+              "source_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              }
+            },
+            "required": [
+              "course_id",
+              "version",
+              "legal_entity_id",
+              "store_id",
+              "role",
+              "source_ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "media_assets": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "asset_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              },
+              "course_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "course_version": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,8}$"
+              },
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "size_bytes": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,11}$"
+              },
+              "mime_type": {
+                "type": "string",
+                "enum": [
+                  "video/mp4",
+                  "video/webm",
+                  "application/pdf",
+                  "image/png",
+                  "image/jpeg"
+                ]
+              },
+              "rights_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              },
+              "scan_evidence_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              },
+              "rights_expires_at": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+              }
+            },
+            "required": [
+              "asset_ref",
+              "course_id",
+              "course_version",
+              "legal_entity_id",
+              "sha256",
+              "size_bytes",
+              "mime_type",
+              "rights_ref",
+              "scan_evidence_ref",
+              "rights_expires_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "qualifications": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "credential_id": {
+                "type": "string",
+                "pattern": "^(?:[A-Za-z][A-Za-z0-9_-]{2,63}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
+              },
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "tr_code": {
+                "type": "string",
+                "pattern": "^TR[A-Z][0-9]{4}$"
+              },
+              "store_id": {
+                "type": "string",
+                "pattern": "^BSV[A-Z0-9]{1,12}$"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "bartender"
+                ]
+              },
+              "course_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "course_version": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,8}$"
+              },
+              "verified_by_tr": {
+                "type": "string",
+                "pattern": "^TR[A-Z][0-9]{4}$"
+              },
+              "theory_evidence_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              },
+              "practical_evidence_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              },
+              "issued_at": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+              },
+              "expires_at": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+              }
+            },
+            "required": [
+              "credential_id",
+              "legal_entity_id",
+              "tr_code",
+              "store_id",
+              "role",
+              "course_id",
+              "course_version",
+              "verified_by_tr",
+              "theory_evidence_ref",
+              "practical_evidence_ref",
+              "issued_at",
+              "expires_at"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "shifts": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "type": "object",
+            "properties": {
+              "shift_id": {
+                "type": "string",
+                "pattern": "^(?:[A-Za-z][A-Za-z0-9_-]{2,63}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
+              },
+              "legal_entity_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$"
+              },
+              "store_id": {
+                "type": "string",
+                "pattern": "^BSV[A-Z0-9]{1,12}$"
+              },
+              "tr_code": {
+                "type": "string",
+                "pattern": "^TR[A-Z][0-9]{4}$"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "bartender"
+                ]
+              },
+              "starts_at": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+              },
+              "ends_at": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,6})?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+              },
+              "timezone": {
+                "type": "string",
+                "enum": [
+                  "Asia/Shanghai"
+                ]
+              },
+              "approval_ref": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{5,99}$"
+              }
+            },
+            "required": [
+              "shift_id",
+              "legal_entity_id",
+              "store_id",
+              "tr_code",
+              "role",
+              "starts_at",
+              "ends_at",
+              "timezone",
+              "approval_ref"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "companies",
+        "stores",
+        "people",
+        "pos_aliases",
+        "engagements",
+        "courses",
+        "media_assets",
+        "qualifications",
+        "shifts"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "mode",
+    "legal_entity_id",
+    "authorization_ref",
+    "approved_by_ref",
+    "valid_until",
+    "records"
+  ],
+  "additionalProperties": false
+}

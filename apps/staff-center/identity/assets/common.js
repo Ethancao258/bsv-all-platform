@@ -33,9 +33,28 @@ window.BSV = (() => {
    MAPPING_BUSY:'旧码正在核对。请先查询旧码关联结果，再决定是否重试。',
    MIGRATION_PRECHECK_FAILED:'旧码仍有冲突，请先查看核对结果再处理。',
  };
+ const academyReasons={
+   ENGAGEMENT_INACTIVE:'任职未生效。请联系总部核对入职或任职记录。',
+   COMMON_TRAINING_REQUIRED:'基础培训未通过。请完成学院的基础课程和考核。',
+   STORE_TRAINING_REQUIRED:'本店培训未通过。请完成店级课程和理论考核。',
+   PRACTICAL_REQUIRED:'本店实操未通过。请联系有权限的培训官核验。',
+   CREDENTIAL_INACTIVE:'本店资格已过期、撤销或需复训。请核对课程版本。',
+   POS_GRANT_REQUIRED:'当前岗位未获得本店点单权限。请向负责人核对岗位授权。',
+   SHIFT_UNCONFIRMED:'班次尚未确认。请打开学院与排班查看待办。',
+   SHIFT_INACTIVE:'现在没有可用的本店班次。请核对安排和当班时间。',
+   DEVICE_UNVERIFIED:'这台设备未获得本店授权。请联系负责人核验或更换已登记设备。',
+   STORE_UNAUTHORIZED:'当前账号不能进入这家店。请核对门店和所属公司。',
+   IDENTITY_UNAVAILABLE:'暂时无法核对权限。请恢复连接后重试。',
+ };
+ const academyReason=code=>academyReasons[code]||'当前权限需核对。请查看本人资格或联系负责人。';
+ const shiftLabel=state=>({requested:'待审批',proposed:'待审批',pending:'待审批',approved:'待你确认',confirmed:'已确认',
+   needs_reassignment:'需重新安排',NEEDS_REASSIGNMENT:'需重新安排',cancelled:'已取消',completed:'已结束'}[state]||'待查看');
+ const shiftClock=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',dateStyle:'short',timeStyle:'short'});
+ const formatShift=s=>{const start=new Date(s.start),end=new Date(s.end);
+   return s.store_id+(Number.isFinite(+start)&&Number.isFinite(+end)?' · '+shiftClock.format(start)+' 至 '+shiftClock.format(end)+'（北京时间）':'');};
  const requestError = ({code,status,write=false,login=false}) => {
    const unknown = write && (status>=500||!status) && code!=='DB_UNAVAILABLE';
-   let message=issues[code];
+   let message=issues[code]||academyReasons[code];
    if(!message && status===401)message=login?'用户名或密码不正确，请核对后再试。':'登录已过期，请重新登录后继续。';
    if(!message && status===403)message='当前账号不能执行这项操作。请向总部申请相应门店权限。';
    if(!message && status===404)message='找不到可查看的记录，请核对编号和授权范围。';
@@ -58,13 +77,18 @@ window.BSV = (() => {
    let data;
    try{data=await response.json();}
    catch{throw requestError({code:'RESPONSE_NOT_CONFIRMED',status:response.ok?undefined:response.status,write,login});}
-   if(!response.ok)throw requestError({code:data.error?.code||'HTTP_'+response.status,status:response.status,write,login});
+   if(!response.ok)throw requestError({code:data.error?.code||data.detail?.code||data.code||'HTTP_'+response.status,status:response.status,write,login});
    return data;
  };
  const send=(url,body)=>request(url,{method:'POST',body:JSON.stringify(body)});
  const lines=(container,items,render)=>{container.replaceChildren();if(!items?.length){container.append(node('p','暂无记录','small'));return;}items.forEach(item=>container.append(render(item)));};
  const take = (form,key) => new FormData(form).get(key)?.toString().trim()||'';
- const iso=(text)=>{if(!text)return null;const normalized=text.length===16?text+':00+08:00':text;const d=new Date(normalized);return Number.isFinite(d.valueOf())?d.toISOString():null;};
+ const iso=text=>{
+   if(!text)return null;
+   const local=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/.test(text);
+   const date=new Date(local?text+'+08:00':text);
+   return Number.isFinite(date.valueOf())?date.toISOString():null;
+ };
  const safe=async fn=>{try{await fn();}catch(e){notice(e.message,true);}};
  function technical(target,error){
    if(!error.code)return;
@@ -106,5 +130,5 @@ window.BSV = (() => {
      }
    });
  }
- return {$,notice,request,send,node,lines,take,iso,safe,action,technical,label,statusText};
+ return {$,notice,request,send,node,lines,take,iso,safe,action,technical,label,statusText,academyReason,shiftLabel,formatShift};
 })();

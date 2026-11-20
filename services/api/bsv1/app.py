@@ -22,6 +22,7 @@ import bsv_collab as collab
 from bsv_ledger import checkout_report, checkout_csv_bytes
 import bsv_layouts
 import bsv_one
+import bsv_device_pos as device_pos
 DB_PATH = get_database_path(ROOT)
 # Cloud preview is exclusively behind a local-loopback reverse proxy with HTTPS + access gate.
 MODE = os.environ.get('BSV_MODE', 'local').strip().lower()
@@ -31,6 +32,24 @@ HOST = '127.0.0.1'  # NEVER expose Python HTTP server directly to the Internet.
 PORT = int(os.environ.get('BSV_PORT', '8767'))
 APP_VERSION = '3.1.0-canonical-handoff-preview'
 SCHEMA_VERSION = 28
+
+
+def device_required():
+    return os.environ.get("BSV_POS_DEVICE_REQUIRED") == "1"
+
+
+def application_version():
+    return "4.1-isolated-device" if device_required() else APP_VERSION
+
+
+def identity_client():
+    # POS is also started directly by the legacy standalone launcher.
+    import sys
+    repo = str(ROOT.parents[2])
+    if repo not in sys.path:
+        sys.path.append(repo)
+    from integrations.auth import identity_client as client
+    return client
 
 SESSION_SECONDS = 8 * 3600
 DEFAULT_WARN_SECONDS = 8 * 60    # DEMO PARAMETER, not empirically validated
@@ -251,6 +270,8 @@ def init_db():
     with db_read() as db:
         collab.schema(db)
         bsv_one.schema(db)
+        if device_required():
+            device_pos.schema(db)
     with tx() as db:
         # 仅新建的规范数据库可在本程序内迭代；拒绝迁移旧V2.x测试库。
         bsv_layouts.apply_data(db, configs,force=previous_db_version<SCHEMA_VERSION)
@@ -305,7 +326,11 @@ def catalog_for_store(db,store_id):
     return items
 
 class UserError(Exception):
-    def __init__(self,message,status=400): super().__init__(message);self.message=message;self.status=status
+    def __init__(self,message,status=400,code=None):
+        super().__init__(message)
+        self.message=message
+        self.status=status
+        self.code=code
 
 def required(d,key,maxlen=80):
     v=d.get(key)
@@ -329,7 +354,7 @@ def health_snapshot():
         if s.get('layout_file'):
             asset_files.append(bsv_layouts.MAP_DIR/'art'/(s['store_id']+'.svg'))
     result = {
-        'service':'BSV1-multi-store','version':APP_VERSION,'mode':MODE,'payments':False,
+        'service':'BSV1-multi-store','version':application_version(),'mode':MODE,'payments':False,
         'server_time': now(),
         'db_path': str(DB_PATH), 'db_exists': DB_PATH.exists(),
         'excel_path': str(excel_path), 'excel_exists': Path(excel_path).exists() and not excel_error,
@@ -386,8 +411,13 @@ def health_snapshot():
     return result
 
 def record(db,staff,action,target,detail=None):
+    detail = dict(detail or {})
+    if staff.get("authority"):
+        detail["authority"] = staff["authority"]
+        if staff.get("request_id"):
+            detail["request_id"] = staff["request_id"]
     db.execute('INSERT INTO audit_events(store_id,staff_id,action,target_id,detail_json,created_at) VALUES (?,?,?,?,?,?)',
-               (staff['session_store_id'],staff['id'],action,target,json.dumps(detail or {},ensure_ascii=False),now()))
+               (staff['session_store_id'],staff['id'],action,target,json.dumps(detail,ensure_ascii=False),now()))
 
 def visible(db,store_id,seat_id):
     r=db.execute('''SELECT s.id,s.is_secondary,g.mode FROM seats s
@@ -508,7 +538,8 @@ def state(db,staff):
        'service_late':DEFAULT_LATE_SECONDS,'service_critical':DEFAULT_CRITICAL_SECONDS,
        'bathroom_warn_before':BATHROOM_WARNING_SECONDS,'bathroom_critical_after':BATHROOM_CRITICAL_SECONDS,
        'seat_warning':SEAT_WARNING_SECONDS,'seat_late':SEAT_LATE_SECONDS,'seat_critical':SEAT_CRITICAL_SECONDS},
-       'staff':{'id':staff['id'],'code':staff['staff_code'],'role':staff['role'],'can_manage_hq':bsv_one.is_hq(db,staff)},
+       'staff':{'id':staff['id'],'code':staff['staff_code'],'role':staff['role'],'can_manage_hq':bsv_one.is_hq(db,staff),
+                **({"shift": staff["authority"]} if staff.get("authority") else {})},
        'store':store,'seats':seats,'visits':visits,'groups':groups,'bathrooms':bathrooms,
        'documents':docs,'layout':bsv_layouts.runtime_layout(db,store_id),
        'products':[dict(x) for x in db.execute('''SELECT * FROM bsv_products WHERE
@@ -520,7 +551,7 @@ def state(db,staff):
             'summary':json.loads(r['summary_json'])} if r else None)(db.execute('SELECT * FROM bsv_v9_sync WHERE one=1').fetchone()),
        'audit':audit,'csrf':staff.get('csrf'),'server_time_ms':timestamp()*1000,
        'service_warn_seconds':DEFAULT_WARN_SECONDS,'service_late_seconds':DEFAULT_LATE_SECONDS,
-       'payments_enabled':False,'prototype':True,'mode':MODE,'version':APP_VERSION}
+       'payments_enabled':False,'prototype':True,'mode':MODE,'version':application_version()}
 
 def receipt(db,staff,vid):
     store_id=staff['session_store_id']
@@ -564,7 +595,8 @@ def acceptance_run_for(path, data, staff):
         return None
     if (MODE != "staging" or os.environ.get("BSV_POS_INTERNAL_STAGE") != "1"
             or os.environ.get("BSV_POS_IDENTITY_REQUIRED") != "1"
-            or staff["id"] != "SYNTH-STAGE-POS-01" or staff["session_store_id"] != "BSVT"
+            or not (staff["id"] == "SYNTH-STAGE-POS-01" or staff.get("authority", {}).get("tr_code") == "TRA0001")
+            or staff["session_store_id"] != "BSVT"
             or path not in ACCEPTANCE_ORDER_PATHS | {ACCEPTANCE_CANCEL_PATH}):
         raise UserError("仅隔离验收账号可标记本次测试订单", 403)
     value = data["acceptance_run"]
@@ -588,6 +620,12 @@ def handle_action(path,data,staff):
     run_id = acceptance_run_for(path, data, staff)
     internal_stage = os.environ.get("BSV_POS_INTERNAL_STAGE") == "1"
     with tx() as db:
+        if staff.get("authority") and not db.execute(
+            """SELECT 1 FROM sessions s JOIN bsv_pos_device_sessions d ON s.token_digest=d.session_digest
+               WHERE s.token_digest=? AND s.expires_at>? AND s.staff_id=? AND s.store_id=?""",
+            (staff["local_session_digest"],timestamp(),sid,store_id),
+        ).fetchone():
+            raise UserError("本机已锁定或已切换员工。请重新核验。", 401, "AUTH_REQUIRED")
         store=store_info(db,store_id)
         visit_id = data.get("visit_id")
         marker = acceptance_marker(db, store_id, visit_id) if internal_stage and isinstance(visit_id, str) else None
@@ -597,16 +635,35 @@ def handle_action(path,data,staff):
         elif run_id and path != "/api/seats/open":
             raise UserError("仅可操作本次验收新开的测试桌", 403)
 
-        # Optional idempotency key. Browser always sends one for every mutation.
-        aid=data.get('_action_id') if path in MUTATING and not run_id else None
-        if aid is not None:
-            if not isinstance(aid,str) or not re.fullmatch('[A-Za-z0-9-]{8,90}',aid):raise UserError('操作令牌无效')
+        # V4 commands are replayable only with the same authorized actor and exact payload.
+        authority = staff.get("authority")
+        aid = data.get("_action_id") if authority or (path in MUTATING and not run_id) else None
+        if authority or aid is not None:
+            if not isinstance(aid,str) or not re.fullmatch('[A-Za-z0-9-]{8,90}',aid):
+                raise UserError('请刷新页面后重试，操作编号无效', 400, "ACTION_ID_REQUIRED")
+        if authority:
+            staff["request_id"] = aid
+            expected = device_pos.fingerprint(path, data, authority)
+            previous = db.execute("SELECT fingerprint,response_json FROM bsv_pos_device_commands WHERE action_id=?",
+                                  (aid,)).fetchone()
+            if previous:
+                if not hmac.compare_digest(previous["fingerprint"], expected):
+                    raise UserError("这项操作编号已用于其他请求。请先核对记录。", 409, "ACTION_ID_CONFLICT")
+                return json.loads(previous["response_json"])
+        elif aid:
             old=db.execute('SELECT response_json,store_id FROM command_dedup WHERE action_id=?',(aid,)).fetchone()
             if old:
                 if old['store_id']!=store_id:raise UserError('操作令牌门店不匹配',403)
                 return json.loads(old['response_json'])
+
         def done(result):
-            if aid:db.execute('INSERT INTO command_dedup VALUES (?,?,?,?)',(aid,store_id,json.dumps(result),now()))
+            if authority:
+                result = {**result, "request_id": aid}
+                db.execute("""INSERT INTO bsv_pos_device_commands
+                              (action_id,fingerprint,scope_digest,response_json,created_at) VALUES (?,?,?,?,?)""",
+                           (aid,expected,device_pos.scope_digest(authority),json.dumps(result),now()))
+            elif aid:
+                db.execute('INSERT INTO command_dedup VALUES (?,?,?,?)',(aid,store_id,json.dumps(result),now()))
             return result
         if path=='/api/presence/heartbeat':
             seat=data.get('seat_id')
@@ -695,8 +752,9 @@ def handle_action(path,data,staff):
             if run_id:
                 prior = db.execute(
                     "SELECT v.id,v.seat_id,v.status FROM audit_events a JOIN visits v ON v.id=a.target_id "
-                    "WHERE a.store_id=? AND a.staff_id=? AND a.action='ACCEPTANCE_OPEN_VISIT' AND a.detail_json=?",
-                    (store_id, sid, json.dumps({"acceptance_run": run_id}, ensure_ascii=False)),
+                    "WHERE a.store_id=? AND a.staff_id=? AND a.action='ACCEPTANCE_OPEN_VISIT' "
+                    "AND json_extract(a.detail_json,'$.acceptance_run')=?",
+                    (store_id, sid, run_id),
                 ).fetchone()
                 if prior:
                     if prior["seat_id"] != seat or prior["status"] != "OPEN":
@@ -750,7 +808,7 @@ def handle_action(path,data,staff):
         if path=='/api/orders/submit':
             vid=required(data,'visit_id');pay_now=data.get('pay_now')
             if type(pay_now)!=bool:raise UserError('请选择下单或下单并结账')
-            if pay_now and os.environ.get('BSV_POS_INTERNAL_STAGE') == '1':
+            if pay_now and (device_required() or os.environ.get('BSV_POS_INTERNAL_STAGE') == '1'):
                 raise UserError('内部集成测试只允许提交未付款测试订单',403)
             live_visit(db,store_id,vid);o=order_for(db,vid)
             try:collab.assert_editable(db,vid,store_id,sid)
@@ -791,9 +849,11 @@ def handle_action(path,data,staff):
                 db.executemany('UPDATE order_lines SET checkout_id=? WHERE id=?',[(checkout_id,lid) for lid in inserted_line_ids])
             record(db,staff,'SUBMIT_ORDER_TEST' if not pay_now else 'SUBMIT_AND_TEST_CHECKOUT',vid,
                    {'lines':len(drafts),'amount_cents':total,'discount_cents':discount_total,
-                    'pay_now':pay_now,'payment_verified':False})
+                    'pay_now':pay_now,'payment_verified':False,
+                    **({"order_id": o["id"]} if staff.get("authority") else {})})
             return done({'ok':True,'amount_cents':total,'discount_cents':discount_total,'pay_now':pay_now,
-                         'payment_verified':False,'checkout_id':checkout_id})
+                         'payment_verified':False,'checkout_id':checkout_id,
+                         **({"order_id": o["id"]} if staff.get("authority") else {})})
         if path=='/api/members/assign':
             vid=required(data,'visit_id');live_visit(db,store_id,vid)
             mid=data.get('member_id')
@@ -971,7 +1031,8 @@ RATE_LIMIT={}
 class Handler(BaseHTTPRequestHandler):
     server_version='BSV1/2.9.0'
     def log_message(self,fmt,*args):print('%s %s'%(self.address_string(),fmt%args))
-    def send_json(self,data,status=200,set_cookie=None,delete_cookie=False):
+    def send_json(self,data,status=200,set_cookie=None,delete_cookie=False, *,
+                  new_device=None, forget_device=False, clear_identity=False):
         payload=json.dumps(data,ensure_ascii=False,separators=(',',':')).encode()
         self.send_response(status)
         self.send_header('Content-Type','application/json; charset=utf-8')
@@ -986,43 +1047,189 @@ class Handler(BaseHTTPRequestHandler):
         tunneled = (os.environ.get('BSV_PRIVATE_SSH_TUNNEL','') == '1'
                     and MODE == 'staging' and HOST == '127.0.0.1')
         secure_cookie='; Secure' if MODE=='staging' and not tunneled else ''
-        if set_cookie:self.send_header('Set-Cookie',f'bsv_session={set_cookie}; HttpOnly; SameSite=Strict; Path=/; Max-Age={SESSION_SECONDS}'+secure_cookie)
-        if delete_cookie:self.send_header('Set-Cookie','bsv_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+secure_cookie)
+        def set_header(name, value, path, expiry, strict=True):
+            flags = "; HttpOnly" if strict else ""
+            self.send_header("Set-Cookie", f"{name}={value}{flags}; SameSite=Strict; Path={path}; Max-Age={expiry}" + secure_cookie)
+
+        session_cookie = self.pos_cookie_name()
+        if set_cookie:
+            set_header(session_cookie, set_cookie, "/", device_pos.DEVICE_SESSION_SECONDS if device_required() else SESSION_SECONDS)
+        if delete_cookie:
+            set_header(session_cookie, "", "/", 0)
+        if new_device:
+            set_header(device_pos.DEVICE_COOKIE, ".".join(new_device), "/api", device_pos.DEVICE_COOKIE_SECONDS)
+        if forget_device:
+            set_header(device_pos.DEVICE_COOKIE, "", "/api", 0)
+        if clear_identity:
+            set_header("bsv_identity_session", "", "/", 0)
+            set_header("bsv_csrf", "", "/", 0, strict=False)
         self.send_header('Content-Length',str(len(payload)));self.end_headers();self.wfile.write(payload)
-    def group_identity(self, staff_id, store_id, action):
-        if os.environ.get("BSV_POS_IDENTITY_REQUIRED") != "1":
-            return True
+    def cookie(self, name):
         jar = cookies.SimpleCookie()
         try:
             jar.load(self.headers.get("Cookie", ""))
         except cookies.CookieError:
-            return False
-        session = jar.get("bsv_identity_session")
-        if session is None:
-            return False
-        import sys
-        repo = str(ROOT.parents[2])
-        if repo not in sys.path:
-            sys.path.append(repo)
-        from integrations.auth.identity_client import authorize_pos
-        return authorize_pos(session.value, staff_id, store_id, action)
+            return ""
+        entry = jar.get(name)
+        return entry.value if entry and len(entry.value) <= 300 else ""
 
-    def resolve_auth(self):
-        jar=cookies.SimpleCookie()
-        try:jar.load(self.headers.get('Cookie',''))
-        except cookies.CookieError:return None
-        x=jar.get('bsv_session')
-        if not x or len(x.value)>150:return None
+    def pos_cookie_name(self):
+        # Cookies are scoped to the host, not the listener port. Never overwrite V3 or legacy POS sessions.
+        return device_pos.SESSION_COOKIE if device_required() else "bsv_session"
+
+    def group_identity(self, staff_id, store_id, action):
+        if os.environ.get("BSV_POS_IDENTITY_REQUIRED") != "1":
+            return True
+        session = self.cookie("bsv_identity_session")
+        return bool(session and identity_client().authorize_pos(session, staff_id, store_id, action))
+
+    def require_loopback_origin(self):
+        authority = self.headers.get("Host", "")
+        origin = self.headers.get("Origin", "")
+        # Only the SSH tunnel or loopback origin runs this isolated mode.
+        if (not re.fullmatch(r"(?:127\.0\.0\.1|localhost)(?::[0-9]{1,5})?", authority)
+                or origin != "http://" + authority):
+            raise UserError("请从内部工作台重新打开点单台。", 403, "BAD_ORIGIN")
+
+    def identity_csrf(self):
+        expected = self.cookie("bsv_csrf")
+        supplied = self.headers.get("X-CSRF-Token", "")
+        return bool(expected and supplied and hmac.compare_digest(expected.encode(), supplied.encode()))
+
+    def local_session(self, session):
         with db_read() as db:
-            r=db.execute('''SELECT s.*,ss.csrf,ss.store_id AS session_store_id
+            return db.execute("""SELECT s.*,ss.csrf,ss.store_id AS session_store_id
                 FROM sessions ss JOIN staff s ON s.id=ss.staff_id
                 JOIN staff_store_access a ON a.staff_id=ss.staff_id AND a.store_id=ss.store_id
-                WHERE ss.token_digest=? AND ss.expires_at>? AND ss.store_id IS NOT NULL AND s.enabled=1''',
-                (hashlib.sha256(x.value.encode()).hexdigest(),timestamp())).fetchone()
-            staff = dict(r) if r else None
-        if staff and not self.group_identity(staff['id'], staff['session_store_id'], 'pos.order.read'):
+                WHERE ss.token_digest=? AND ss.expires_at>? AND ss.store_id IS NOT NULL AND s.enabled=1""",
+                (device_pos.digest(session), timestamp())).fetchone()
+
+    def device_error(self, reason):
+        code = reason if isinstance(reason, str) and reason in device_pos.FAIL_REASONS else "IDENTITY_UNAVAILABLE"
+        message, status = device_pos.FAIL_REASONS[code]
+        return UserError(message, status, code)
+
+    def authorize_device_context(self, store_id, device, action):
+        session = self.cookie("bsv_identity_session")
+        if not session:
+            raise self.device_error("AUTH_REQUIRED")
+        if not device:
+            raise self.device_error("DEVICE_UNVERIFIED")
+        authority = identity_client().authorize_device(session, store_id, *device, action)
+        if authority.get("allowed") is not True:
+            raise self.device_error(authority.get("reason"))
+        return authority
+
+    def resolve_auth(self):
+        session = self.cookie(self.pos_cookie_name())
+        self.auth_error = None
+        if not session or len(session) > 150:
             return None
+        row = self.local_session(session)
+        if not row:
+            return None
+        staff = dict(row)
+        if not device_required():
+            if self.group_identity(staff["id"], staff["session_store_id"], "pos.order.read"):
+                return staff
+            return None
+        device = device_pos.parse_device_cookie(self.cookie(device_pos.DEVICE_COOKIE))
+        with db_read() as db:
+            attached = db.execute("SELECT * FROM bsv_pos_device_sessions WHERE session_digest=?",
+                                  (device_pos.digest(session),)).fetchone()
+        try:
+            if not device_pos.same_binding(attached, self.cookie("bsv_identity_session"), device):
+                reason = "AUTH_REQUIRED" if not self.cookie("bsv_identity_session") else "POS_SESSION_CHANGED"
+                raise self.device_error(reason)
+            authority = self.authorize_device_context(staff["session_store_id"], device, "pos.order.read")
+            if not device_pos.same_authority(attached, authority):
+                raise self.device_error("POS_SESSION_CHANGED")
+        except UserError as error:
+            self.auth_error = error
+            return None
+        staff["authority"] = device_pos.scope_from(authority)
+        staff["local_session_digest"] = device_pos.digest(session)
+        staff["staff_code"] = authority["tr_code"]
+        # Local STAFF/MANAGER flags do not confer any V4 action permissions.
+        staff["role"] = "STAFF"
         return staff
+
+    def fail_auth(self, default):
+        error = getattr(self, "auth_error", None) or UserError(default, 401)
+        self.send_error_json(error)
+
+    def send_error_json(self, error):
+        self.send_json({"error": error.message, **({"code": error.code} if error.code else {})}, error.status)
+
+    def device_login(self, data):
+        if not device_required():
+            raise UserError("终端统一登录尚未开放。", 404, "DEVICE_MODE_DISABLED")
+        self.require_loopback_origin()
+        if not self.cookie("bsv_identity_session"):
+            raise self.device_error("AUTH_REQUIRED")
+        if not self.identity_csrf():
+            raise UserError("员工会话校验失败。请刷新页面再试。", 403, "BAD_CSRF")
+        store_id = required(data, "store_id")
+        if data.get("confirmed_store_id") != store_id:
+            raise UserError("请确认当前所在门店。", 400, "STORE_CONFIRMATION_REQUIRED")
+        if set(data) - {"store_id", "confirmed_store_id", "device_id", "device_token"}:
+            raise UserError("终端登录参数无效。", 400, "INVALID_LOGIN")
+        registering = "device_id" in data or "device_token" in data
+        if registering:
+            device = device_pos.credentials(data.get("device_id"), data.get("device_token"))
+        else:
+            device = device_pos.parse_device_cookie(self.cookie(device_pos.DEVICE_COOKIE))
+        if not device:
+            raise self.device_error("DEVICE_UNVERIFIED")
+        upstream = self.cookie("bsv_identity_session")
+        if not device_pos.login_allowed(device[0], upstream):
+            raise UserError("终端核验过于频繁。请稍后再试或联系负责人。", 429, "DEVICE_RATE_LIMIT")
+        authority = self.authorize_device_context(store_id, device, "pos.order.read")
+        if device_pos.scope_from(self.authorize_device_context(store_id, device, "pos.order.create")) != device_pos.scope_from(authority):
+            raise self.device_error("POS_SESSION_CHANGED")
+        with tx() as db:
+            if not db.execute("SELECT 1 FROM stores WHERE id=?", (store_id,)).fetchone():
+                raise UserError("门店未在本地点单台登记。请联系负责人。", 403, "STORE_NOT_READY")
+            staff = device_pos.bind_actor(db, authority, store_id)
+            if not staff:
+                raise self.device_error("POS_SESSION_CHANGED")
+            token = secrets.token_urlsafe(36)
+            token_digest = device_pos.digest(token)
+            csrf = secrets.token_urlsafe(24)
+            db.execute("DELETE FROM sessions WHERE expires_at<=?", (timestamp(),))
+            # A new employee on the same terminal must not inherit the prior local session.
+            db.execute("""DELETE FROM sessions WHERE token_digest IN
+                          (SELECT session_digest FROM bsv_pos_device_sessions WHERE device_id=?)
+                          OR (staff_id=? AND store_id<>?)""", (device[0], staff["id"], store_id))
+            prior = self.cookie(self.pos_cookie_name())
+            if prior:
+                db.execute("DELETE FROM sessions WHERE token_digest=?", (device_pos.digest(prior),))
+            db.execute("INSERT INTO sessions(token_digest,staff_id,csrf,expires_at,store_id) VALUES (?,?,?,?,?)",
+                       (token_digest, staff["id"], csrf, timestamp()+device_pos.DEVICE_SESSION_SECONDS, store_id))
+            scope = device_pos.scope_from(authority)
+            device_pos.remember(db, token_digest, upstream, device[1], scope)
+            record(db, dict(staff, session_store_id=store_id, authority=scope), "DEVICE_LOGIN", staff["id"])
+        self.send_json({"ok": True, "scope": scope}, set_cookie=token, new_device=device if registering else None)
+
+    def device_logout(self, *, forget=False):
+        self.require_loopback_origin()
+        session = self.cookie(self.pos_cookie_name())
+        local = self.local_session(session) if session else None
+        supplied = self.headers.get("X-BSV-CSRF", "")
+        browser_session = self.cookie("bsv_identity_session")
+        anonymous_forget = forget and not session and not browser_session
+        if not (anonymous_forget or self.identity_csrf() or (local and supplied
+                and hmac.compare_digest(local["csrf"].encode(), supplied.encode()))):
+            raise UserError("页面会话校验失败。请刷新后继续。", 403, "BAD_CSRF")
+        if session:
+            with tx() as db:
+                db.execute("DELETE FROM sessions WHERE token_digest=?", (device_pos.digest(session),))
+        revoked = not browser_session or identity_client().revoke_browser_session(browser_session, self.cookie("bsv_csrf"))
+        response = {"ok": True, "identity_session_revoked": revoked}
+        if not revoked:
+            response["message"] = "已锁定本机点单，统一会话的远端退出结果尚未确认。"
+        self.send_json(response, delete_cookie=True, clear_identity=True, forget_device=forget)
+
     def read_body(self):
         try:n=int(self.headers.get('Content-Length','0'))
         except ValueError:raise UserError('无效请求长度')
@@ -1038,15 +1245,41 @@ class Handler(BaseHTTPRequestHandler):
         if path=='/api/bootstrap':
             with db_read() as db:
                 stores=[dict(x) for x in db.execute('SELECT id,name,district,business_type,layout_ready FROM stores ORDER BY district,id')]
-            self.send_json({'province':'北京市','stores':stores,'prototype':True,'version':APP_VERSION,'mode':MODE});return
+            capability = ({"device_required": True,
+                           "device_remembered": bool(device_pos.parse_device_cookie(self.cookie(device_pos.DEVICE_COOKIE)))}
+                          if device_required() else {})
+            self.send_json({'province':'北京市','stores':stores,'prototype':True,'version':application_version(),'mode':MODE,
+                            **capability});return
         if path=='/api/health':self.send_json(health_snapshot());return
+        if device_required() and path.startswith("/api/pos/commands/"):
+            request_id = path.removeprefix("/api/pos/commands/")
+            if not re.fullmatch(r"[A-Za-z0-9-]{8,90}", request_id):
+                self.send_json({"error": "操作编号无效。", "code": "ACTION_ID_REQUIRED"}, 400)
+                return
+            staff = self.resolve_auth()
+            if not staff:
+                self.fail_auth("请先重新核验门店。")
+                return
+            with db_read() as db:
+                row = db.execute("""SELECT response_json FROM bsv_pos_device_commands
+                                    WHERE action_id=? AND scope_digest=?""",
+                                 (request_id, device_pos.scope_digest(staff["authority"]))).fetchone()
+            if not row:
+                self.send_json({"status": "NOT_CONFIRMED", "request_id": request_id}, 404)
+            else:
+                self.send_json({"status": "CONFIRMED", "request_id": request_id,
+                                "result": json.loads(row["response_json"])})
+            return
+        if device_required() and (path.startswith("/api/members/") or path == "/api/history"):
+            self.send_json({"error":"内部演练不开放会员或结账历史。","code":"POS_ACTION_DISABLED"},403)
+            return
         # Headquarters API: authenticated + separately granted HQ role.
-        if os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1" and path.startswith(('/api/hq/','/hq','/api/reports/','/api/audit')):
+        if (device_required() or os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1") and path.startswith(('/api/hq/','/hq','/api/reports/','/api/audit')):
             self.send_json({'error':'此读操作尚未接入集团授权'},403)
             return
         if path in ('/api/hq/status','/api/hq/stores','/api/hq/layout','/api/hq/art','/api/hq/image','/api/hq/modules'):
             staff=self.resolve_auth()
-            if not staff:self.send_json({'error':'请先从点单页登录'},401);return
+            if not staff:self.fail_auth('请先从点单页登录');return
             with db_read() as db:
                 if not bsv_one.is_hq(db,staff):self.send_json({'error':'仅总部授权账号可访问'},403);return
                 q=parse_qs(urlparse(self.path).query)
@@ -1073,7 +1306,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_header('Content-Length',str(len(binary)));self.end_headers();self.wfile.write(binary);return
         if path=='/api/menu-preview':
             staff=self.resolve_auth()
-            if not staff:self.send_json({'error':'请先登录'},401);return
+            if not staff:self.fail_auth('请先登录');return
             q=parse_qs(urlparse(self.path).query)
             sid=q.get('store_id',[staff['session_store_id']])[0]
             with db_read() as db:
@@ -1087,7 +1320,7 @@ class Handler(BaseHTTPRequestHandler):
               'payments_enabled':False});return
         if path=='/api/document':
             staff=self.resolve_auth()
-            if not staff:self.send_json({'error':'请先登录并确认门店'},401);return
+            if not staff:self.fail_auth('请先登录并确认门店');return
             docid=parse_qs(urlparse(self.path).query).get('doc_id',[''])[0]
             with db_read() as db:
                 doc=db.execute('SELECT * FROM store_documents WHERE id=? AND store_id=? AND available=1',
@@ -1109,7 +1342,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers();self.wfile.write(content);return
         if path=='/api/store-layout-art':
             staff=self.resolve_auth()
-            if not staff:self.send_json({'error':'请先登录并确认门店'},401);return
+            if not staff:self.fail_auth('请先登录并确认门店');return
             requested_store=parse_qs(urlparse(self.path).query).get('store_id',[staff['session_store_id']])[0]
             if requested_store!=staff['session_store_id']:
                 self.send_json({'error':'底图门店与登录门店不一致，请刷新页面'},403);return
@@ -1125,12 +1358,12 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers();self.wfile.write(content);return
         if path=='/api/reports/checkout-csv':
             staff=self.resolve_auth()
-            if not staff:self.send_json({'error':'请先登录并确认门店'},401);return
+            if not staff:self.fail_auth('请先登录并确认门店');return
             q=parse_qs(urlparse(self.path).query)
             try:
                 start=bsv_day_filter(q.get('from',[''])[0]);end=bsv_day_filter(q.get('to',[''])[0],True)
                 if start and end and start>=end:raise UserError('结束日期不能早于开始日期')
-            except UserError as e:self.send_json({'error':e.message},e.status);return
+            except UserError as e:self.send_error_json(e);return
             with db_read() as db:
                 payload=checkout_csv_bytes(db,staff['session_store_id'],start,end)
             self.send_response(200)
@@ -1142,7 +1375,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers();self.wfile.write(payload);return
         if path=='/api/production/photo':
             staff=self.resolve_auth()
-            if not staff:self.send_json({'error':'请先登录并确认门店'},401);return
+            if not staff:self.fail_auth('请先登录并确认门店');return
             q=parse_qs(urlparse(self.path).query)
             lid=q.get('line_id',[''])[0];kind=q.get('kind',[''])[0]
             if kind not in ('materials','final'):self.send_json({'error':'图片类型不支持'},400);return
@@ -1164,8 +1397,8 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers();self.wfile.write(payload);return
         if path in ('/api/state','/api/receipt','/api/history','/api/audit','/api/members/search','/api/catalog/item','/api/production/recipe'):
             staff=self.resolve_auth()
-            if not staff:self.send_json({'error':'请先登录并确认门店'},401);return
-            if path=='/api/state':report_escalations(staff['session_store_id'])
+            if not staff:self.fail_auth('请先登录并确认门店');return
+            if path=='/api/state' and not device_required():report_escalations(staff['session_store_id'])
             q=parse_qs(urlparse(self.path).query)
             with db_read() as db:
                 if path=='/api/state':data=state(db,staff)
@@ -1197,7 +1430,7 @@ class Handler(BaseHTTPRequestHandler):
                         'ambiguity':len(matches)>1}
                 elif path=='/api/audit':
                     try:start=bsv_day_filter(q.get('from',[''])[0]);end=bsv_day_filter(q.get('to',[''])[0],True)
-                    except UserError as e:self.send_json({'error':e.message},e.status);return
+                    except UserError as e:self.send_error_json(e);return
                     cat=q.get('category',['ALL'])[0]
                     categories={'ALL':None,'ORDERS':['OPEN_VISIT','OPEN_EXISTING','ADD_DRAFT','REMOVE_DRAFT','SUBMIT_ORDER_TEST','SUBMIT_AND_TEST_CHECKOUT','ADD_DEMO_ITEM','CANCEL_ITEM','CANCEL_VISIT','SERVED','CLAIM_PRODUCTION','FINISHED_PRODUCTION','MANUAL_REASSIGN_PRODUCTION'],
                      'PAYMENTS':['TEST_SETTLE_ROUND','SUBMIT_AND_TEST_CHECKOUT','DEPART_DEMO'],
@@ -1227,7 +1460,7 @@ class Handler(BaseHTTPRequestHandler):
                         offset_str=q.get('offset',['0'])[0]
                         if not re.fullmatch(r'\d{1,8}',offset_str):raise UserError('分页参数无效')
                         offset=int(offset_str)
-                    except UserError as e:self.send_json({'error':e.message},e.status);return
+                    except UserError as e:self.send_error_json(e);return
                     data=checkout_report(db,staff['session_store_id'],start,end,offset,100)
                     # A closed visit is different from a checkout. Preserve this
                     # secondary list for staff who need the complete order receipt.
@@ -1242,11 +1475,11 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     vid=parse_qs(urlparse(self.path).query).get('visit_id',[''])[0]
                     try:data=receipt(db,staff,vid)
-                    except UserError as e:self.send_json({'error':e.message},e.status);return
+                    except UserError as e:self.send_error_json(e);return
             self.send_json(data);return
         if path in ('/hq','/hq.html','/hq.js','/hq.css','/menu','/menu.html','/menu.js','/menu.css'):
             staff=self.resolve_auth()
-            if not staff:self.send_json({'error':'请先登录 BSV1'},401);return
+            if not staff:self.fail_auth('请先登录 BSV1');return
             if path.startswith('/hq'):
                 with db_read() as db:
                     if not bsv_one.is_hq(db,staff):self.send_json({'error':'需要总部管理员权限'},403);return
@@ -1272,7 +1505,13 @@ class Handler(BaseHTTPRequestHandler):
         path=urlparse(self.path).path
         try:
             data=self.read_body()
+            if path == "/api/pos/device-login":
+                self.device_login(data);return
+            if device_required() and path in {"/api/logout", "/api/pos/device-forget"}:
+                self.device_logout(forget=path.endswith("device-forget"));return
             if path=='/api/login':
+                if device_required():
+                    raise UserError("请先登录员工中心，再核验此点单终端。", 403, "DEVICE_MODE_REQUIRED")
                 store_id=required(data,'store_id');code=required(data,'staff_code',48);pin=required(data,'pin',100)
                 t=time.monotonic()
                 # Reverse proxy peers share localhost; limits apply per staff/store, not all staff.
@@ -1303,9 +1542,9 @@ class Handler(BaseHTTPRequestHandler):
                     record(db,dict(staff,session_store_id=store_id),'LOGIN',staff['id'],{'confirmed_store':store_id})
                 self.send_json({'ok':True},set_cookie=token);return
             staff=self.resolve_auth()
-            if not staff:raise UserError('登录失效，请重新选择门店',401)
+            if not staff:raise self.auth_error or UserError('登录失效，请重新选择门店',401)
             if self.headers.get('X-BSV-CSRF','')!=staff['csrf']:raise UserError('页面会话校验失败，请刷新',403)
-            if os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1" and path.startswith('/api/hq/'):
+            if (device_required() or os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1") and path.startswith('/api/hq/'):
                 raise UserError('此操作尚未接入集团授权',403)
             if path in ('/api/hq/stores/create','/api/hq/layout/draft','/api/hq/layout/publish','/api/hq/layout/restore','/api/hq/image/upload'):
                 try:
@@ -1334,27 +1573,38 @@ class Handler(BaseHTTPRequestHandler):
                     with tx() as db:db.execute('DELETE FROM sessions WHERE token_digest=?',
                           (hashlib.sha256(jar['bsv_session'].value.encode()).hexdigest(),))
                 self.send_json({'ok':True},delete_cookie=True);return
-            if os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1":
+            if device_required() or os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1":
                 acceptance_cancel = path == ACCEPTANCE_CANCEL_PATH and "acceptance_run" in data
-                if (path not in ACCEPTANCE_ORDER_PATHS and not acceptance_cancel) or not self.group_identity(
-                        staff['id'],staff['session_store_id'],'pos.order.create'):
+                if path not in ACCEPTANCE_ORDER_PATHS and not acceptance_cancel:
+                    raise UserError('该项操作尚未开放，请核对工作台可用功能。',403,"POS_ACTION_DISABLED")
+                if device_required():
+                    self.require_loopback_origin()
+                    device = device_pos.parse_device_cookie(self.cookie(device_pos.DEVICE_COOKIE))
+                    authority = self.authorize_device_context(staff['session_store_id'], device, "pos.order.create")
+                    if device_pos.scope_from(authority) != staff.get("authority"):
+                        raise self.device_error("POS_SESSION_CHANGED")
+                elif not self.group_identity(staff['id'],staff['session_store_id'],'pos.order.create'):
                     raise UserError('集团身份未授权此操作',403)
             self.send_json(handle_action(path,data,staff));return
-        except UserError as e:self.send_json({'error':e.message},e.status)
+        except UserError as e:self.send_error_json(e)
         except sqlite3.IntegrityError as e:
             print('DB integrity error:',e);self.send_json({'error':'记录已经变更，请刷新后重新确认'},409)
         except Exception as e:
             print('Server error:',repr(e));self.send_json({'error':'服务器错误，请联系管理员'},500)
 
 def main():
+    if device_required() and (MODE != "staging" or os.environ.get("BSV_POS_IDENTITY_REQUIRED") != "1"
+                              or os.environ.get("BSV_POS_INTERNAL_STAGE") != "1"
+                              or os.environ.get("BSV_PRIVATE_SSH_TUNNEL") != "1"):
+        raise RuntimeError("Unified device authorization is limited to the isolated SSH-tunneled stage")
     init_db()
-    if MODE=='staging':
+    if MODE=='staging' and not device_required():
         with db_read() as db:
             enabled=db.execute('''SELECT COUNT(*) FROM staff s JOIN staff_store_access a ON a.staff_id=s.id
                    WHERE s.enabled=1 ''').fetchone()[0]
         if enabled==0:
             raise RuntimeError('云端验收模式未配置正式测试员工，请先通过 manage_staff.py 添加账号；不得启用默认演示PIN')
-    print(f'BSV1 {APP_VERSION} 多门店独立地图 | http://{HOST}:{PORT} | mode={MODE} | 未接真实支付')
+    print(f'BSV1 {application_version()} 多门店独立地图 | http://{HOST}:{PORT} | mode={MODE} | 未接真实支付')
     if MODE=='local': print('仅本地演练；使用 manage_staff.py 交互创建测试账号')
     else: print('云端验收：固定演示账号已禁用，必须通过 HTTPS 反向代理和额外访问门禁访问')
     ThreadingHTTPServer((HOST,PORT),Handler).serve_forever()

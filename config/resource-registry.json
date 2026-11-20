@@ -40,7 +40,10 @@
         ],
         "verified_by": "USER_TERMINAL_AND_BROWSER_REPORT",
         "alias_commit": "SYNTH-STAGE-POS-01 -> TRA0001; ISOLATED_ALIAS_COMMIT_OK and MAPPING_VERIFIED"
-      }
+      },
+      "user_reported_deployed_sha": "0e8b3c00544ccd533eebd1258598f2622c5b0984",
+      "user_reported_v3_result": "STAGING_ACCEPTED",
+      "v4_1_host_result": "HOST_NOT_RUN"
     },
     {
       "id": "edgeone-menu",
@@ -60,7 +63,7 @@
       "authority": "code_and_architecture_versions",
       "code_path": "/",
       "deployment_path": "private repository; main branch",
-      "reported_resource": "Existing private repo Ethancao258/bsv-all-platform; PR #8 remains open, Issue #9 is Codex V3 single-task plan"
+      "reported_resource": "Existing private repo Ethancao258/bsv-all-platform; PR #10 is the deployed V3 baseline, Issue #11 is the V4.1 integration contract"
     },
     {
       "id": "local-pos",

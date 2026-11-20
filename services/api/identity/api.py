@@ -177,7 +177,7 @@ async def secure_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Cache-Control"] = "no-store"
-    response.headers["Content-Security-Policy"] = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+    response.headers["Content-Security-Policy"] = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
     if settings.cookie_secure:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
@@ -523,7 +523,17 @@ def grant_approve(grant_id: str, body: Decision, request: Request):
         g = db.get(Grant, grant_id)
         if not g or g.legal_entity_id != body.legal_entity_id:
             raise DomainError("Grant not found in scope", 404, "NOT_FOUND")
-        approve_grant(db, grant_id, actor, body.reason)
+        # The isolated V4 path accepts a verified, current store-specific Academy
+        # qualification in place of the legacy generic POS_SERVICE requirement.
+        academy_pos = False
+        if (settings.env == "isolated" and g.store_id and g.legal_entity_id == "DEMO_LEGAL"
+                and g.action in {"pos.order.read", "pos.order.create"}
+                and not active_qualification(db, g.tr_code, "POS_SERVICE")):
+            from .academy_policy import training_reason
+            from sqlalchemy import inspect
+            if inspect(db.connection()).has_table("bsv_learning_courses"):
+                academy_pos = training_reason(db, db.get(Person, g.tr_code), g.store_id) == "OK"
+        approve_grant(db, grant_id, actor, body.reason, academy_pos=academy_pos)
         return {"grant_id": grant_id, "status": "active"}
 
 
@@ -778,3 +788,9 @@ def legacy_rollback(body: LegacyRollback, request: Request):
                 alias_id=alias.id, source_system=alias.source_system, legal_entity_id=body.legal_entity_id)
             db.delete(alias)
         return {"removed":len(rows),"identities_changed":False}
+
+
+# Route registration after the existing identity guards are defined.
+from .academy_api import academy_router  # noqa: E402
+
+app.include_router(academy_router)

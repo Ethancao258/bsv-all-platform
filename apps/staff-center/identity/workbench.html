@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>BSV 工作台</title>
 <link rel="stylesheet" href="/assets/style.css">
 <script src="/assets/common.js" defer></script>
@@ -14,7 +14,16 @@
   <a class="workbench-brand" href="/">BAR ST. VINCENT</a>
   <a href="/staff">个人中心</a>
 </header>
-<main id="work">
+<div class="workbench-shell">
+<nav class="workbench-nav" aria-label="工作台导航">
+  <a href="#today" aria-current="page"><span aria-hidden="true">⌂</span>工作台</a>
+  <a href="#tasks"><span aria-hidden="true">✓</span>待办</a>
+  <a href="#business"><span aria-hidden="true">▦</span>业务</a>
+  <a href="#access"><span aria-hidden="true">◇</span>权限</a>
+  <a href="#status"><span aria-hidden="true">◉</span>状态</a>
+</nav>
+<main id="work" tabindex="-1">
+  <section id="today" aria-labelledby="title" data-workbench-view>
   <section class="workbench-intro" aria-labelledby="title">
     <div>
       <p class="eyebrow">BSV · 内部演练</p>
@@ -29,8 +38,21 @@
       <a class="action-link" id="session-link" href="/staff">进入个人中心</a>
     </div>
   </section>
-  <section aria-labelledby="today">
-    <h2 id="today">今日工作</h2>
+    <div class="panel" aria-labelledby="priority-heading">
+      <h2 id="priority-heading">下一步</h2>
+      <p id="priority-copy" role="status">正在查看今天的工作。</p>
+      <a id="priority-link" class="action-link" href="/staff">登录查看</a>
+    </div>
+    <div class="workbench-sidebar panel"><h2>当前班次</h2><div id="current-shift" role="status">正在核对…</div></div>
+  </section>
+  <section id="tasks" data-workbench-view aria-labelledby="tasks-title">
+    <h1 id="tasks-title">我的待办</h1>
+    <p class="lead">查看需要你确认的班次和培训任务。</p>
+    <div id="task-list" class="stack" aria-live="polite">正在核对…</div>
+  </section>
+  <section id="business" data-workbench-view aria-labelledby="business-title">
+    <h1 id="business-title">业务入口</h1>
+    <p class="lead">请选择与你的岗位有关的工作。进入模块后，服务端仍会逐项核验权限。</p>
     <div class="workbench-grid">
       <article class="panel work-card" aria-labelledby="employee">
         <h3 id="employee">员工</h3>
@@ -57,10 +79,11 @@
         <a class="action-link" href="/supply-ui/inspector/supply">核对督查范围</a>
       </article>
     </div>
-  </section>
-  <section aria-labelledby="tools" class="workbench-tools">
+    <div class="workbench-tools">
     <h2 id="tools">经营工具</h2>
     <div class="workbench-grid">
+      <article class="panel work-card"><h3>文森特学院与排班</h3><p>查看课程、完成考核和确认本人的班次安排。</p><a class="action-link" href="/academy">打开学院与排班</a></article>
+      <article class="panel work-card"><h3>培训与门店管理</h3><p>按授权创建课程、检查实操证据、安排班次和登记设备。</p><a class="action-link" href="/academy/admin">查看培训与门店管理</a></article>
       <article class="panel work-card">
         <h3>供货与库存</h3>
         <p id="supply-status" class="work-state">正在查看</p>
@@ -74,7 +97,20 @@
         <a class="action-link" href="/cocktail/">查看菜单</a>
       </article>
     </div>
+    </div>
+  </section>
+  <section id="access" data-workbench-view aria-labelledby="access-title">
+    <h1 id="access-title">我的权限</h1>
+    <p class="lead">逐店查看培训、排班和现在能否点单。选择门店不会改变权限。</p>
+    <div id="access-list" class="stack" aria-live="polite">正在核对…</div>
+  </section>
+  <section id="status" data-workbench-view aria-labelledby="status-title">
+    <h1 id="status-title">服务状态</h1>
+    <p class="lead">核对服务是否可用、数据查看时间和提交结果。</p>
+    <div class="panel"><h2>最近查看</h2><p id="work-status" role="status">正在核对…</p><p>提交结果不明确时，请在对应业务页查看记录再重试。</p>
+    <button type="button" id="refresh-workbench">重新核对</button></div>
   </section>
 </main>
+</div>
 </body>
 </html>

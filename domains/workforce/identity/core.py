@@ -146,7 +146,7 @@ def active_bm(db, tr, legal_entity_id, clock=None):
     ))
 
 
-def has_action(db, subject, action, store_id=None, legal_entity_id=None, clock=None):
+def has_action(db, subject, action, store_id=None, legal_entity_id=None, clock=None, *, academy_pos=False):
     """Always authoritative A-read; fail closed if DB is down. No role encoded in token."""
     clock = clock or now()
     if action not in ALLOWED_ACTIONS or not legal_entity_id:
@@ -169,10 +169,13 @@ def has_action(db, subject, action, store_id=None, legal_entity_id=None, clock=N
         if not store_id and grant.store_id is not None:
             continue
         mandatory = ACTION_QUALIFICATIONS.get(action)
-        if mandatory and not active_qualification(db, person.tr_code, mandatory, clock):
+        # The V4 caller independently proves current store evidence. V3 still uses POS_SERVICE.
+        covered = academy_pos and action in {"pos.order.read", "pos.order.create"} and mandatory == "POS_SERVICE"
+        if mandatory and not covered and not active_qualification(db, person.tr_code, mandatory, clock):
             continue
-        if grant.required_qualification and not active_qualification(db, person.tr_code,
-                                                                      grant.required_qualification, clock):
+        if (grant.required_qualification and not (covered and grant.required_qualification == mandatory)
+                and not active_qualification(db, person.tr_code,
+                                             grant.required_qualification, clock)):
             continue
         if grant.role in {"manager", "hq"} or action in MANAGEMENT_ACTIONS:
             if not active_bm(db, person.tr_code, legal_entity_id, clock):
@@ -472,7 +475,7 @@ def request_grant(db, tr, legal_entity_id, store_id, action, role, qualification
     return obj
 
 
-def approve_grant(db, grant_id, actor, reason):
+def approve_grant(db, grant_id, actor, reason, *, academy_pos=False):
     obj = db.scalar(select(Grant).where(Grant.id == grant_id).with_for_update())
     if not obj or obj.status != "pending":
         raise DomainError("No pending grant", 409, "INVALID_TRANSITION")
@@ -483,7 +486,9 @@ def approve_grant(db, grant_id, actor, reason):
         raise DomainError("Active EMP relationship required", 409, "ENGAGEMENT_REQUIRED")
     if obj.role in {"manager", "hq"} and not active_bm(db, obj.tr_code, obj.legal_entity_id):
         raise DomainError("Active BM appointment required", 409, "BM_REQUIRED")
-    if obj.required_qualification and not active_qualification(db, obj.tr_code, obj.required_qualification):
+    covered = (academy_pos and obj.action in {"pos.order.read", "pos.order.create"}
+               and obj.required_qualification == "POS_SERVICE")
+    if obj.required_qualification and not covered and not active_qualification(db, obj.tr_code, obj.required_qualification):
         raise DomainError("Required qualification missing", 409, "QUALIFICATION_REQUIRED")
     if obj.role in {"manager", "hq"} and not active_qualification(db, obj.tr_code, "BM_MANAGEMENT"):
         raise DomainError("Management qualification expired or missing", 409, "QUALIFICATION_REQUIRED")

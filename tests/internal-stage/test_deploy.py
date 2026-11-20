@@ -1,5 +1,6 @@
 """Exercise release switching and failure handling without systemd or host mutations."""
 import importlib.util
+import json
 from pathlib import Path
 import os
 import sqlite3
@@ -38,10 +39,15 @@ class ReleaseTest(unittest.TestCase):
             preserved = stage.ROOT / "orders.sqlite3"
             preserved.write_bytes(b"existing")
             stage.link("current", OLD)
-            stage.deploy(NEW)
-            self.assertEqual(stage.sha_at(stage.ROOT / "current"), NEW)
-            self.assertEqual(stage.sha_at(stage.ROOT / "previous"), OLD)
-            stage.rollback()
+            with patch.object(stage, "migration_compatibility") as compatibility:
+                stage.deploy(NEW)
+                self.assertEqual(stage.sha_at(stage.ROOT / "current"), NEW)
+                self.assertEqual(stage.sha_at(stage.ROOT / "previous"), OLD)
+                stage.rollback()
+            compatibility.assert_has_calls([
+                call(stage.ROOT / "releases" / OLD / "src", stage.REPO),
+                call(stage.ROOT / "releases" / OLD / "src", stage.ROOT / "releases" / NEW / "src"),
+            ])
             self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
             self.assertEqual(preserved.read_bytes(), b"existing")
             self.assertEqual([entry.args for entry in services.call_args_list], [(False,), (True,)] * 2)
@@ -52,6 +58,7 @@ class ReleaseTest(unittest.TestCase):
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
                 patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
+                patch.object(stage, "migration_compatibility"), \
                 patch.object(stage, "activation_checkpoint") as checkpoint, patch.object(stage, "host_evidence"), \
                 patch.object(stage, "switch_services") as services, \
                 patch.object(stage, "verify", side_effect=[RuntimeError("intentionally failed"), None]):
@@ -84,6 +91,7 @@ class ReleaseTest(unittest.TestCase):
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
                 patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg") as prepare_pg, \
+                patch.object(stage, "migration_compatibility"), \
                 patch.object(stage, "activation_checkpoint", side_effect=RuntimeError("backup failed")), \
                 patch.object(stage, "switch_services") as services, patch.object(stage, "verify"):
             for sha in (OLD, NEW):
@@ -95,6 +103,79 @@ class ReleaseTest(unittest.TestCase):
             self.assertFalse((stage.ROOT / "activation.pending").exists())
             prepare_pg.assert_not_called()
             self.assertEqual(services.call_args_list, [call(False), call(True)])
+
+    def test_upgrade_only_permits_known_additive_revision(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            v3, v4 = Path(tmp) / "v3", Path(tmp) / "v4"
+            for repo in (v3, v4):
+                (repo / stage.MIGRATIONS / "versions").mkdir(parents=True)
+                (repo / stage.MIGRATIONS / "env.py").write_text("existing config")
+                (repo / stage.MIGRATIONS / "versions/prior.py").write_text("existing schema")
+            new = v4 / stage.MIGRATIONS / stage.ACADEMY_MIGRATION
+            new.write_text("additive V4.1 schema")
+            stage.migration_compatibility(v3, v4)
+            self.assertEqual(stage.migration_revisions(v4), [stage.IDENTITY_REVISION, stage.ACADEMY_REVISION])
+            with self.assertRaisesRegex(RuntimeError, "differ outside"):
+                stage.migration_compatibility(v4, v3)
+            (v4 / stage.MIGRATIONS / "versions/prior.py").write_text("replacement")
+            with self.assertRaisesRegex(RuntimeError, "differ outside"):
+                stage.migration_compatibility(v3, v4)
+            (v4 / stage.MIGRATIONS / "versions/prior.py").write_text("existing schema")
+            (v4 / stage.MIGRATIONS / "versions/unapproved.py").touch()
+            with self.assertRaisesRegex(RuntimeError, "differ outside"):
+                stage.migration_compatibility(v3, v4)
+
+    def test_private_academy_checkpoint_copies_immutable_media_only(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "DATA", Path(tmp)), \
+                patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())):
+            media = stage.DATA / "identity" / "academy-media"
+            media.mkdir(parents=True, mode=0o700)
+            valid = media / "12345678-1234-1234-1234-123456789abc.bin"
+            valid.touch(mode=0o600)
+            valid.write_bytes(b"synthetic Academy lesson")
+            (media / ".scan-live").touch(mode=0o600)
+            recovered = Path(tmp) / "recovered"
+            result = stage.academy_media_snapshot(recovered)
+            self.assertEqual(result, [{"name": valid.name, "filesize": valid.stat().st_size,
+                                       "sha256": stage.file_sha256(valid)}])
+            self.assertEqual((recovered / valid.name).stat().st_mode & 0o777, 0o600)
+            self.assertEqual((recovered / valid.name).read_bytes(), valid.read_bytes())
+            (media / "22345678-1234-1234-1234-123456789abc.bin").symlink_to(valid)
+            with self.assertRaises(OSError):
+                stage.academy_media_snapshot(Path(tmp) / "blocked")
+
+    def test_recovery_check_rejects_altered_checkpoint_without_restoring(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "DATA", Path(tmp)), \
+                patch.object(stage, "sha_at", return_value=OLD), \
+                patch.object(stage, "private_directory"), patch.object(stage, "private_file"), \
+                patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())):
+            checkpoint = Path(tmp) / "recovery" / "20261120T080000Z-abc1234abc"
+            checkpoint.mkdir(parents=True)
+            pos = checkpoint / "pos.sqlite3"
+            with sqlite3.connect(pos) as db:
+                db.execute("CREATE TABLE orders(id INTEGER PRIMARY KEY)")
+                db.execute("INSERT INTO orders DEFAULT VALUES")
+            archives = Path(tmp) / "identity" / "archives"
+            archives.mkdir(parents=True)
+            archive = archives / "identity-A-20261120T080000Z-aabbcc.bsvenc"
+            archive.write_bytes(b"synthetic digest fixture")
+            receipt = checkpoint / "receipt.json"
+            receipt.write_text(json.dumps({
+                "version": 2, "mode": "isolated", "status": "CHECKPOINT_READY", "checkpoint": str(receipt),
+                "postgres": {"archive": str(archive), "sha256": stage.file_sha256(archive)},
+                "pos_sqlite": {"sha256": stage.file_sha256(pos)},
+            }))
+            config = {"BSV_APP_ENV": "isolated", "BSV_LOCAL_ARCHIVE_DIR": str(archives),
+                      "BSV_BACKUP_KEY_FILE": str(archives.parent / "archive.key")}
+            pg = CompletedProcess([], 0, stdout=json.dumps({"integrity": "AES_GCM_VERIFIED",
+                                  "restore": "DRY_RUN_NO_WRITE", "meta": {"type": "postgresql"}}))
+            with patch.object(stage, "service_config", return_value=config), \
+                    patch.object(stage, "identity_tool", return_value=pg) as identity:
+                stage.recovery_check(receipt)
+                self.assertNotIn("--apply-isolated", identity.call_args.args)
+                pos.write_bytes(b"tampered")
+                with self.assertRaisesRegex(RuntimeError, "POS checkpoint checksum mismatch"):
+                    stage.recovery_check(receipt)
 
     def test_activation_quiesces_isolated_writers_before_checkpoint(self):
         with patch.object(stage, "switch_services") as services, patch.object(stage, "active", return_value=True), \

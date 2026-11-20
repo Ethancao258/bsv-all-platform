@@ -50,6 +50,7 @@ def check(base_url, *, username, password, expected_tr):
             if screenshots:
                 desktop.screenshot(path=screenshots / "workbench-desktop.png", full_page=True)
 
+            desktop.get_by_role("navigation", name="工作台导航").get_by_role("link", name="业务").click()
             desktop.get_by_role("link", name="核对督查范围").click()
             expect(desktop.get_by_role("heading", name="独立督查")).to_be_visible()
             expect(desktop.locator("#stage-availability")).to_contain_text("暂不能提交或复核")
@@ -69,7 +70,7 @@ def check(base_url, *, username, password, expected_tr):
             desktop.locator("#loginStore").select_option("BSVT")
             desktop.locator("#staffCode").fill("STAGEPOS01")
             desktop.locator("#staffPin").fill("81351593300")
-            desktop.locator("#loginForm button").click()
+            desktop.get_by_role("button", name="确认门店并登录", exact=True).click()
             desktop.locator("#modalConfirm").click()
             expect(desktop.locator("#appPage")).to_be_visible()
             # Use the already opened disposable test desk. Unlike the old UI,

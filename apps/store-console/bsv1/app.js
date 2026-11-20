@@ -9,6 +9,25 @@ const yuan=c=>'¥'+(Number(c||0)/100).toFixed(2);
 const chinaTime=iso=>iso?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(iso)):'—';
 const chinaFull=iso=>iso?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(iso)):'—';
 let allStores=[], data=null, activeVisitId=null, page='map', transfer=null;
+let deviceRequired=false, deviceRemembered=false, modalReturn=null;
+const unresolvedActions=new Map();
+const identityCsrf=()=>document.cookie.split('; ').find(x=>x.startsWith('bsv_csrf='))?.slice(9)||'';
+const errorCopy={
+  AUTH_REQUIRED:'请先在个人中心登录，再打开门店点单台。',
+  ENGAGEMENT_INACTIVE:'任职尚未生效。请联系总部核对任职记录。',
+  COMMON_TRAINING_REQUIRED:'基础培训尚未通过。请打开文森特学院完成课程和考试。',
+  STORE_TRAINING_REQUIRED:'本门店的培训尚未通过。请完成该店课程和理论考试。',
+  PRACTICAL_REQUIRED:'本门店的实操尚未通过。请联系培训官核验。',
+  CREDENTIAL_INACTIVE:'本店资格已过期、撤销或需要复训。请查看学院权限。',
+  POS_GRANT_REQUIRED:'尚未获得本店点单岗位权限。请向负责人核对授权。',
+  SHIFT_UNCONFIRMED:'班次尚未确认。请打开学院与排班确认班次。',
+  SHIFT_INACTIVE:'现在没有可用的本店班次。请核对排班和上班时间。',
+  DEVICE_UNVERIFIED:'本机未登记、门店不匹配或已停用。请联系负责人核对设备。',
+  STORE_UNAUTHORIZED:'当前账号不能进入这家店。请核对门店归属和权限。',
+  IDENTITY_UNAVAILABLE:'暂时无法核对你的岗位和班次。请恢复连接后再试。',
+};
+const classified=(payload,status,fallback)=>Object.assign(new Error(errorCopy[payload.code]||payload.error||fallback),
+                                                          {code:payload.code,status});
 let focusedSeat=null, modalConfirm=null, modalCancel=null, busy=false, toastTimer, serverOffset=0, ageBucket='';
 let criticalAcknowledged=new Set(),historyRange='today',auditRange='today',auditCategory='ALL',syncFailures=0,systemHealth=null,historyOffset=0;
 // 纯数据驱动：邻接规则来自当前门店的 SQLite 地图快照。
@@ -58,7 +77,7 @@ function renderSystemHealth(){
    const summary=document.createElement('strong');
    summary.textContent=healthSummaryText(systemHealth);
    const info=document.createElement('span');
-   info.textContent='请先在个人中心登录，再核对门店与员工 PIN。';
+   info.textContent=deviceRequired?'请先在个人中心登录，再核对已登记设备、门店与班次。':'请先在个人中心登录，再核对门店与员工 PIN。';
    login.append(summary,info);
  }
  if(login&&!internalStage){login.className='login-system-status '+(systemHealth&&systemHealth.status==='正常'&&Number(systemHealth.approved_quote_count||0)<1?'warn':systemHealth?healthTone(systemHealth.status):'warn');login.innerHTML=systemHealth?`<strong>系统自检：${esc(systemHealth.status)}</strong><span>数据库：${systemHealth.db_exists?'已找到':'缺失'}；V9 Excel：${systemHealth.excel_exists?'已找到':'缺失'}；V9同步：${systemHealth.catalog_sync?.imported_at?chinaFull(systemHealth.catalog_sync.imported_at):'未同步'}</span><span>${Number(systemHealth.approved_quote_count||0)<1?'AJ售价无效，暂不可形成有效金额订单':'请按本店销售权限操作'}；真实支付尚未连接。</span>`:'<strong>系统自检</strong><span>尚未完成检查</span>';}
@@ -120,28 +139,73 @@ function allPending(){return (data?.visits||[]).flatMap(v=>v.lines.filter(l=>l.s
 async function getJson(path){
  let r;try{r=await fetch(path,{credentials:'same-origin',cache:'no-store'});}catch{throw new Error('暂时无法获取结果。请检查连接后刷新页面。');}
  let j;try{j=await r.json();}catch{throw new Error('暂时无法读取页面资料。请刷新页面后再试。');}
- if(!r.ok){if(r.status===401)showLogin();throw new Error(j.error||'读取失败');}return j;
+ if(!r.ok){
+   if(r.status===401||(deviceRequired&&path==='/api/state'&&[403,503].includes(r.status))){
+     showLogin();
+     if(deviceRequired&&j.code)$('loginError').textContent=classified(j,r.status,'请重新核验本店权限。').message;
+   }
+   throw classified(j,r.status,'暂时无法读取资料，请核对后再试。');
+ }return j;
 }
 async function getState(){const s=await getJson('/api/state');serverOffset=s.server_time_ms-Date.now();data=s;return s;}
+function uncertain(id){
+ if(deviceRequired){
+   const details=$('pos-command-review');
+   details.open=true;
+   $('pos-command-id').value=id;
+   $('pos-command-result').textContent='结果暂未确认。请先查询记录，避免重复提交。';
+ }
+ return new Error('结果暂未确认，请先查看提交编号 '+id+' 再重试。');
+}
+$('pos-command-form').onsubmit=async event=>{
+ event.preventDefault();
+ const button=event.submitter,result=$('pos-command-result'),id=$('pos-command-id').value.trim();
+ button.disabled=true;result.textContent='正在核对提交记录…';
+ try{
+   const response=await fetch('/api/pos/commands/'+encodeURIComponent(id),
+     {credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(11000)});
+   const body=await response.json();
+   if(response.ok&&body.status==='CONFIRMED'){
+     for(const [intent,key] of unresolvedActions)if(key===id)unresolvedActions.delete(intent);
+     result.textContent='这次提交已确认，请重新查看当前记录。';
+   }else if(response.status===404&&body.status==='NOT_CONFIRMED'){
+     result.textContent='暂未找到确认记录。请核对编号和当前门店，再决定是否重试。';
+   }else result.textContent='暂时无法核对这次提交，请确认登录状态后再试。';
+ }catch{result.textContent='暂时无法核对这次提交，请检查连接后再试。';}
+ finally{button.disabled=false;}
+};
 async function send(path,params={}){
  if(busy)throw new Error('当前正在处理另一项操作');
  busy=true;
  try{
-   const id=globalThis.crypto?.randomUUID?.()||('bsv-'+Date.now()+'-'+Math.random().toString(36).slice(2));
+   const intent=JSON.stringify([path,params]);
+   const id=unresolvedActions.get(intent)||(globalThis.crypto?.randomUUID?.()||('bsv-'+Date.now()+'-'+Math.random().toString(36).slice(2)));
+   if(unresolvedActions.size>=32&&!unresolvedActions.has(intent))unresolvedActions.delete(unresolvedActions.keys().next().value);
+   unresolvedActions.set(intent,id);
    if(internalStage)flash('正在处理…',false,true);
    let response,j;
    try{
      response=await fetch(path,{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(11000),headers:{'Content-Type':'application/json','X-BSV-CSRF':data?.csrf||''},body:JSON.stringify({...params,_action_id:id})});
      j=await response.json();
-   }catch{throw new Error('结果暂未确认，请先刷新并查看这条记录再重试。');}
+   }catch{throw uncertain(id);}
+   if(response.status<500)unresolvedActions.delete(intent);
    if(!response.ok){
      if(response.status===401){
        showLogin();
        throw new Error('登录已过期，请重新登录后继续。');
      }
-     if(response.status>=500)throw new Error('结果暂未确认，请先查看记录再重试。');
+     if(response.status>=500){
+       if(j.code==='IDENTITY_UNAVAILABLE'){
+         if(deviceRequired)showLogin();
+         throw classified(j,response.status,'身份核对暂不可用。');
+       }
+       throw uncertain(id);
+     }
      if(response.status===403&&j.error==='集团身份未授权此操作')throw new Error('当前账号不能执行这项操作。请联系总部核对门店权限。');
-     throw new Error(j.error||'操作失败，请核对记录后再试。');
+     if(deviceRequired&&response.status===403&&errorCopy[j.code]){
+       showLogin();$('loginError').textContent=errorCopy[j.code];
+     }
+     throw classified(j,response.status,'操作失败，请核对记录后再试。');
    }
    if(internalStage)$('toast').classList.add('hidden');
    return j;
@@ -156,16 +220,29 @@ async function refresh(preserve=false){if(preserve && ['memberLast4'].includes(d
  showPendingCritical();
 }
 function safe(fn){return async(...args)=>{try{await fn(...args);}catch(e){flash(e.message,true);}};}
-function showLogin(){if(guideShown())guideClose();document.documentElement.classList.remove('bsv-logged-in');data=null;activeVisitId=null;focusedSeat=null;transfer=null;$('appPage').classList.add('hidden');$('loginPage').classList.remove('hidden');}
+function showLogin(){if(data)unresolvedActions.clear();if(guideShown())guideClose();document.documentElement.classList.remove('bsv-logged-in');data=null;activeVisitId=null;focusedSeat=null;transfer=null;$('appPage').classList.add('hidden');$('loginPage').classList.remove('hidden');}
 function showApp(){$('loginPage').classList.add('hidden');$('appPage').classList.remove('hidden');document.documentElement.classList.add('bsv-logged-in');}
-function closeDialog(){ $('modal').classList.add('hidden');$('seatOuterNav').classList.add('hidden');modalConfirm=null;modalCancel=null; }
-function dialog({eyebrow='BSV1 · 请确认',title='请确认',body='',confirmText='确认',cancelText='返回',danger=false,onConfirm,onCancel}){
+function closeDialog(){
+ $('modal').classList.add('hidden');$('seatOuterNav').classList.add('hidden');
+ document.documentElement.classList.remove('pos-modal-open');
+ $('loginPage').inert=false;$('appPage').inert=false;
+ const restore=modalReturn;modalReturn=null;
+ if(restore?.isConnected&&restore.getClientRects().length&&!restore.disabled)restore.focus({preventScroll:true});
+ else if(!$('loginPage').classList.contains('hidden'))$('loginDistrict').focus({preventScroll:true});
+ else $('refreshBtn').focus({preventScroll:true});
+ modalConfirm=null;modalCancel=null;
+}
+function dialog({eyebrow='BSV1 · 请确认',title='请确认',body='',confirmText='确认',cancelText='返回',danger=false,kind='',onConfirm,onCancel}){
  clearTimeout(toastTimer);$('toast').classList.add('hidden');
  $('modalResult').textContent='';
  $('modalEyebrow').textContent=eyebrow;$('modalTitle').textContent=title;$('modalBody').innerHTML=body;
  $('modalConfirm').textContent=confirmText;$('modalCancel').textContent=cancelText;
  $('modalConfirm').className=danger?'danger-button':'primary';modalConfirm=onConfirm;modalCancel=onCancel;
- $('modal').classList.remove('hidden');$('modalConfirm').focus();
+ if($('modal').classList.contains('hidden'))modalReturn=document.activeElement;
+ $('modal').dataset.kind=kind;
+ document.documentElement.classList.add('pos-modal-open');
+ $('loginPage').inert=true;$('appPage').inert=true;
+ $('modal').classList.remove('hidden');$('modalConfirm').focus({preventScroll:true});
 }
 $('modalConfirm').addEventListener('click',async()=>{
  if(busy||$('modalConfirm').disabled)return;
@@ -178,6 +255,10 @@ $('modalConfirm').addEventListener('click',async()=>{
  try{if(fn)await fn();closeDialog();showPendingCritical();}
  catch(error){
    $('modalResult').textContent=error.message;
+   if(error.code){
+     const details=document.createElement('details'),summary=document.createElement('summary'),code=document.createElement('p');
+     summary.textContent='查看问题编号';code.textContent=error.code;details.append(summary,code);$('modalResult').append(details);
+   }
    if(document.activeElement===button||!document.activeElement)$('modalResult').focus();
    try{if(data)await refresh();}catch{ /* The local feedback remains visible when refreshing fails. */ }
  }finally{
@@ -189,27 +270,79 @@ $('modalConfirm').addEventListener('click',async()=>{
 $('modalCancel').addEventListener('click',()=>{const fn=modalCancel;closeDialog();if(fn)fn();});
 function wireLocation(){const ds=[...new Set(allStores.map(x=>x.district))];$('loginDistrict').innerHTML='<option value="">请选择地区</option>'+ds.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');}
 function storesForDistrict(d){return allStores.filter(s=>s.district===d);}
+function selectRequestedStore(){
+ if(!deviceRequired)return;
+ const selected=new URLSearchParams(location.search).get('store');
+ const shop=allStores.find(s=>s.id===selected);
+ if(!shop)return;
+ const district=$('loginDistrict'),store=$('loginStore');
+ district.value=shop.district;district.dispatchEvent(new Event('change'));
+ store.value=shop.id;store.dispatchEvent(new Event('change'));
+}
 $('loginDistrict').addEventListener('change',()=>{const v=$('loginDistrict').value;const s=storesForDistrict(v);
  $('loginStore').disabled=!v;$('loginStore').innerHTML='<option value="">请选择具体门店</option>'+s.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}（${esc(x.business_type)}）</option>`).join('');$('loginStorePreview').textContent=v?'请进一步选择具体门店':'尚未选择门店';});
 $('loginStore').addEventListener('change',()=>{const s=allStores.find(x=>x.id===$('loginStore').value);
  $('loginStorePreview').innerHTML=s?`<strong>${esc(s.district)} · ${esc(s.name)}</strong><span>${esc(s.business_type)} · ${esc(s.id)} · ${s.layout_ready?'已有座位图':'图纸待导入'}</span>`:'尚未选择门店';});
-$('loginForm').addEventListener('submit',e=>{e.preventDefault();const s=allStores.find(x=>x.id===$('loginStore').value),code=$('staffCode').value.trim(),pin=$('staffPin').value;
+function applyDeviceSettings(config){
+ deviceRequired=internalStage&&config.device_required===true;
+ deviceRemembered=deviceRequired&&config.device_remembered===true;
+ const needsDevice=deviceRequired&&!deviceRemembered;
+ $('device-entry').classList.toggle('hidden',!deviceRequired);
+ $('pos-command-review').classList.toggle('hidden',!deviceRequired);
+ $('device-credentials').classList.toggle('hidden',!needsDevice);
+ $('device-forget').classList.toggle('hidden',!deviceRemembered);
+ $('device-caption').textContent=deviceRemembered?'本机已有登记记录。登录时仍会实时核验。':'首次使用这台设备，请输入负责人提供的编号和设备口令。';
+ for(const [input,label] of [['staffCode','legacy-code-label'],['staffPin','legacy-pin-label']]){
+   $(label).classList.toggle('hidden',deviceRequired);
+   $(input).disabled=deviceRequired;
+   $(input).required=!deviceRequired;
+ }
+ for(const id of ['device-id','device-token']){
+   $(id).disabled=!needsDevice;
+   $(id).required=needsDevice;
+ }
+ if(deviceRequired){
+   const note=$('loginPage').querySelector('.stage-pos-note');
+   note.replaceChildren(document.createTextNode('仅供内部演练。先在 '));
+   const personal=document.createElement('a');personal.href='/staff';personal.textContent='个人中心';
+   const workbench=document.createElement('a');workbench.href='/';workbench.textContent='返回工作台';
+   const menu=document.createElement('a');menu.href='/cocktail/?from=pos';menu.textContent='鸡尾酒菜单';
+   note.append(personal,' 登录，再核对门店、班次和设备。 ',workbench,' · ',menu);
+   $('logoutBtn').textContent='锁定 / 换员工';
+ }
+}
+$('device-forget').onclick=safe(async()=>{
+ const response=await fetch('/api/pos/device-forget',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(11000),
+  headers:{'Content-Type':'application/json','X-CSRF-Token':identityCsrf()},body:'{}'});
+ if(!response.ok)throw classified(await response.json(),response.status,'暂时无法确认设备登记已清除。');
+ applyDeviceSettings(await getJson('/api/bootstrap'));flash('已清除本机登记。遗失设备须由负责人撤销设备权限。');
+});
+$('loginForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const s=allStores.find(x=>x.id===$('loginStore').value),code=$('staffCode').value.trim(),pin=$('staffPin').value;
  if(!s||s.district!==$('loginDistrict').value){$('loginError').textContent='请先完整选择地区和具体门店';return;}
- if(!code||!pin){$('loginError').textContent='请输入员工代码和PIN';return;}
- dialog({eyebrow:'防误登录 · 二次核对',title:'你确认正在这家店工作吗？',
- body:`<div class="confirm-store"><span>北京市 · ${esc(s.district.replace('北京市',''))}</span><strong>${esc(s.name)}</strong><span>${esc(s.business_type)} · ${esc(s.id)}</span></div><p class="modal-caption">登录后本会话只允许访问这一家门店。若选错，请返回修改，不能跨店操作。</p>`,
- confirmText:'确认门店，登录',cancelText:'返回修改',onConfirm:async()=>{
- let response,result;
- try{
-   response=await fetch('/api/login',{method:'POST',credentials:'same-origin',signal:AbortSignal.timeout(11000),headers:{'Content-Type':'application/json'},body:JSON.stringify({store_id:s.id,confirmed_store_id:s.id,staff_code:code,pin})});
-   result=await response.json();
- }catch{throw new Error('暂时无法确认登录结果。请刷新页面核对。');}
- if(response.status===403)throw new Error('请先在个人中心登录，再向总部核对这家店的点单权限。');
- if(response.status>=500)throw new Error('暂时无法确认登录结果。请刷新页面核对。');
- if(!response.ok)throw new Error(result.error||'登录失败，请核对门店、员工码和 PIN。');
- $('staffPin').value='';
- try{await getState();}catch{throw new Error('门店已通过核验，工作清单暂未载入。请刷新页面。');}
- showApp();render();flash('已进入 '+s.name+'。请选择要点单的座位。');
+ if(!deviceRequired&&(!code||!pin)){$('loginError').textContent='请输入员工代码和 PIN';return;}
+ const payload={store_id:s.id,confirmed_store_id:s.id};
+ if(!deviceRequired){payload.staff_code=code;payload.pin=pin;}
+ else if(!deviceRemembered){payload.device_id=$('device-id').value.trim();payload.device_token=$('device-token').value;}
+ $('loginError').textContent='';
+ dialog({kind:'store-login',eyebrow:'门店核对',title:'你确认正在这家店工作吗？',
+ body:`<div class="confirm-store"><strong>${esc(s.name)}</strong><span>${esc(s.district)} · ${esc(s.id)}</span></div><p class="modal-caption">本次只能进入这家店。选错可返回修改。</p>`,
+ confirmText:'确认门店并登录',cancelText:'返回修改',onConfirm:async()=>{
+   let response,result;
+   try{
+     response=await fetch(deviceRequired?'/api/pos/device-login':'/api/login',{method:'POST',credentials:'same-origin',
+       signal:AbortSignal.timeout(11000),headers:{'Content-Type':'application/json','X-CSRF-Token':identityCsrf()},body:JSON.stringify(payload)});
+     result=await response.json();
+   }catch{throw new Error('暂时无法确认登录结果。请刷新页面核对。');}
+   if(!response.ok){
+     if(response.status===403&&!deviceRequired)throw new Error('请先在个人中心登录，再向总部核对这家店的点单权限。');
+     throw classified(result,response.status,'暂时无法确认登录，请检查权限与连接。');
+   }
+   $('staffPin').value='';$('device-token').value='';
+   try{await getState();}catch{throw new Error('门店已通过核验，工作清单暂未载入。请刷新页面。');}
+   if(deviceRequired)deviceRemembered=true;
+   showApp();render();flash('已进入 '+s.name+'。请选择要点单的座位。');
  }});
 });
 function renderCatalogSummary(){
@@ -726,7 +859,11 @@ document.querySelectorAll('.nav-button').forEach(b=>b.onclick=()=>setPage(b.data
    (scope==='audit'?loadAudit():renderHistory()).catch(e=>flash(e.message,true));
  });});
 
-async function logoutCurrent(){await send('/api/logout');showLogin();flash('已退出当前门店，请重新选择地区和具体门店');}
+async function logoutCurrent(){
+ await send('/api/logout');showLogin();unresolvedActions.clear();
+ if(deviceRequired)location.assign('/staff');
+ else flash('已退出当前门店，请重新选择地区和具体门店');
+}
 $('logoutBtn').onclick=safe(logoutCurrent);
 $('switchStoreBtn').onclick=()=>dialog({eyebrow:'防误操作 · 门店切换',title:'退出当前门店并重新选择？',
  body:`<p>当前为 <b>${esc(data.store.name)}</b>。切换门店必须重新选择地区、具体门店，并以授权员工代码重新登录。</p>`,
@@ -748,11 +885,41 @@ $('printReceiptBtn').onclick=()=>window.print();$('receiptModal').onclick=e=>{if
 $('detailSheet').addEventListener('click',e=>{if(e.target===$('detailSheet'))setPage('map');});
 $('detailDismiss').onclick=()=>setPage('map');
 $('modal').addEventListener('click',e=>{if(e.target===$('modal'))$('modalCancel').click();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){
+document.addEventListener('keydown',e=>{
+ if(!$('modal').classList.contains('hidden')){
+   if(e.key==='Escape'){e.preventDefault();$('modalCancel').click();return;}
+   if(e.key==='Tab'){
+     const actions=[...$('modal').querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), summary')]
+       .filter(element=>element.getClientRects().length);
+     const first=actions[0],last=actions.at(-1),current=document.activeElement;
+     if(!first||(e.shiftKey?(current===first||!actions.includes(current)):(current===last||!actions.includes(current)))){
+       e.preventDefault();
+       (e.shiftKey?last:first)?.focus();
+     }
+   }
+   return;
+ }
+ if(e.key==='Escape'){
  if(guideShown()){if(!$('guideInfoPop').classList.contains('hidden'))guideCloseInfo();else guideClose();return;}
  if(!$('modal').classList.contains('hidden'))$('modalCancel').click();
  $('manualModal').classList.add('hidden');$('receiptModal').classList.add('hidden');$('catalogDetailModal').classList.add('hidden');if(page!=='map')setPage('map');}});
 window.addEventListener('resize',()=>{document.documentElement.style.setProperty('--app-height',window.innerHeight+'px');});document.documentElement.style.setProperty('--app-height',window.innerHeight+'px');
+if(internalStage){
+ const link=$('menuEntry');link.href='/cocktail/?from=pos';
+ const back=document.createElement('a');back.href='/';back.textContent='返回工作台';back.className='outline';
+ link.after(back);
+}
+if(window.visualViewport){
+ const viewport=window.visualViewport;
+ const fit=()=>{
+   const root=document.documentElement.style;
+   root.setProperty('--pos-vv-height',Math.round(viewport.height)+'px');
+   root.setProperty('--pos-vv-top',Math.round(viewport.offsetTop)+'px');
+   root.setProperty('--pos-vv-left',Math.round(viewport.offsetLeft)+'px');
+   root.setProperty('--pos-vv-right',Math.round(Math.max(0,window.innerWidth-viewport.width-viewport.offsetLeft))+'px');
+ };
+ viewport.addEventListener('resize',fit);viewport.addEventListener('scroll',fit);fit();
+}
 setInterval(updateClockUI,1000);
 setInterval(()=>{if(data&&document.visibilityState==='visible'&&!busy)heartbeat();},20000);
 setInterval(()=>{if(data&&!busy&&!transfer&&$('modal').classList.contains('hidden')&&document.visibilityState==='visible'){
@@ -762,7 +929,7 @@ setInterval(()=>{if(data&&!busy&&!transfer&&$('modal').classList.contains('hidde
  });
  }},9000);
 $('offlineRetry').onclick=safe(async()=>{await refresh();await loadHealth(true);syncFailures=0;$('syncOffline').classList.add('hidden');flash({title:'数据连接已恢复',detail:'请核实当前门店订单与清洁状态'});});
-async function init(){try{const init=await getJson('/api/bootstrap');allStores=init.stores;wireLocation();await loadHealth(true);
+async function init(){try{const init=await getJson('/api/bootstrap');allStores=init.stores;applyDeviceSettings(init);wireLocation();selectRequestedStore();await loadHealth(true);
  try{await getState();showApp();render();showPendingCritical();}catch{showLogin();renderSystemHealth();}}catch(e){$('loginError').textContent='暂时无法打开点单台。'+e.message;showLogin();renderSystemHealth();}}
 setInterval(()=>{if(document.visibilityState==='visible')loadHealth(true);},30000);
 init();

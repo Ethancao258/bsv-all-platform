@@ -3,10 +3,11 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "scripts"), str(ROOT / "platform/lighthouse/internal-stage")]
-from bsvctl import JOBS, validate_ci
+from bsvctl import CI_FIELDS, JOBS, REPO_NAME, export_ci, stage, validate_ci
 from route_change import route
 
 
@@ -36,6 +37,23 @@ class ControlTests(unittest.TestCase):
             validate_ci(dict(proof, jobs=proof["jobs"][:-1]), sha)
         with self.assertRaises(ValueError):
             validate_ci(dict(proof, url="https://github.com/else/repo/actions/runs/42"), sha)
+
+    def test_export_fetches_genuine_run_and_minimizes_job_fields(self):
+        sha = "a" * 40
+        proof = {"url": f"https://github.com/{REPO_NAME}/actions/runs/42",
+                 "headSha": sha, "conclusion": "success", "status": "completed", "event": "pull_request",
+                 "workflowName": "validate-architecture",
+                 "jobs": [{"name": name, "conclusion": "success", "status": "completed", "steps": []}
+                          for name in JOBS]}
+        with patch.object(stage, "output", return_value=json.dumps(proof)) as remote:
+            exported = export_ci(sha, "42")
+            remote.assert_called_once_with("gh", "run", "view", "42", "-R", REPO_NAME,
+                                           "--json", ",".join(CI_FIELDS))
+            self.assertTrue(all("steps" not in row for row in exported["jobs"]))
+            with self.assertRaisesRegex(ValueError, "unexpected run"):
+                export_ci(sha, "43")
+            with self.assertRaisesRegex(ValueError, "complete approved SHA"):
+                export_ci(sha, "42 --attempt")
 
 
 if __name__ == "__main__":
