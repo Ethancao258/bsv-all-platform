@@ -123,3 +123,10 @@
 - PASS_HOST · 经营负责人提供的实机输出显示 `PREFLIGHT_OK`、`VERIFY_OK: loopback routing, health and anonymous access checks`、`DEPLOYED_INTERNAL_STAGE 13dad3df84eacd83ffd9ddc8112cbcee6c3256ec`，最终 `BSV_ALL_DEPLOYMENT_ACCEPTED`。五个新 `bsv-all-internal-stage@{postgres,identity,pos,supply,ingress}.service` 均 active，对应端口 18764/18761/18762/18763/18760；两个原服务均 active。属于启动与匿名访问就绪验收，**尚未在操作员自己的 Windows 浏览器完成 SSH 隧道、人工登录和真实操作验收**。
 - ISOLATED_ONLY · 合成管理员 `reviewer1`/`reviewer2` 生成 `TRA0001`/`TRA0002`；这些仅为隔离数据，不得迁入正式终身主码空间；POS 使用测试 V9 和 SQLite。CloudBase 生产库、正式收款、中央库存 D/E 权威账本和独立督查实际复核写入尚未接通，生产 GO 为否。
 - NEXT_GATE · 在操作员本地以 SSH 转发 18760，验证 `/staff`、`/pos`、`/hq`、供货/督查读界面、登录/撤权、明确 503 写入拒绝；另做 Lighthouse 真正故障回切、PG17 加密备份-恢复、跨服务审计及安全门禁。密钥、PIN、数据库密码禁止写入 GitHub 或日志报告。GitHub 文档变更比现网运行 SHA 更新时，必须分别记录代码头版本与已部署版本，不得视为自动热更新。
+
+
+## 2026-11-20 Windows 实机浏览器入口验收（USER_SCREENSHOT）
+
+- PASS_BROWSER_UI · 经营负责人提供的 Windows Chrome 截图显示浏览器已成功呈现 `http://127.0.0.1:18760/` 的“BSV ALL 内部测试”主页，并列出员工登录与个人中心、总部身份管理、门店 POS、供货与库存、独立督查、电子菜单六个链接。由截图可确认浏览器到本机 18760 的页面可用，尚不能单凭截图确认各子模块的登录、业务调用及权限正确。
+- OBSERVATION · 同一截图的 PowerShell 会话显示 SSH 认证密码提示，当前这一个终端会话是否已完成认证不能由截图判定；实际浏览器页面可通过已有有效隧道或独立会话提供。该截图不附带到仓库，不存储服务器公网 IP 与凭据。
+- NEXT_GATE · 以本机私有 SSH 隧道登录 `/staff`，用仅在隔离环境生成的 `reviewer1` 凭据验证身份页面；再进入 `/hq` 并在后续单独执行 POS 与供货/督查跨模块验收。禁止真实客户、员工和收款数据进入测试环境。
