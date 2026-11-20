@@ -20,9 +20,11 @@
 
 准确指定工作源：`design/v4-2-r3-2-ux-v2-2`设计分支的最终HEAD；从这个已提交SHA创建**独立实施分支** `feature/v4-2-g0-hq-layout-bridge`，严禁在PR #15/#16设计分支直接写生产程序。核对Git HEAD与GitHub PR来源；如缺文件、branch SHA变化、设计合约冲突，STOP并提交清晰阻断记录，不能自行改方案。
 
-## 1. G0：先保存源代码保护证据（不得跳过）
+## 1. G0：采用ChatGPT已经完成的静态证据，只补真实运行/改动前必要核验（不得跳过）
 
-在合成环境读取并计算：
+**已由ChatGPT直接查GitHub并执行静态断言**：`docs/ops/CHATGPT_G0_STATIC_PREFLIGHT_R3_2.md`与`contracts/v4-2/G0_EXISTING_ROUTE_FACTS.json`，含三店43个地图节点/座位ID/邻接通过、既有调酒/地图函数存在、路由冲突及旧权限阻断、新店自动POS授权副作用的源证据。**Codex不要重新逐文件生成一份相同报告**；只对实施涉及代码核对当前SHA/路径，补尚未完成的隔离身份/HTTP/DB测试。
+
+尚须检查或留下新的运行证据：
 - 对照V4.1 `c51b58d67dabae53afcdf9851a80cdc93d4200f6`的340个原跟踪文件，生成路径→git blob SHA表及差异报告；当前设计分支只加设计文件且不得改原地图。
 - ``services/api/bsv1/store_layouts/stores.json`、BSVM/BSVS/BSVT JSON/SVG快照校验哈希、seat_id/邻接、三店13/13/17个节点、富民街BSVF layout_file=null；保留这些文件内容原样。
 - 梳理所有原地图API及HTTP methods、旧HQ页面的CSS/JS、旧POS `#guideOverlay`、`openRecipeGuide/guideFinishConfirm/guideDeliverConfirm`、旧V9内部菜单和V13客户菜单；写出机器可读route-map并确认无冲突。
@@ -30,7 +32,7 @@
 - 32业务用例状态记录证据类型`CODE_PRESENT/CI_PASS/HOST_VERIFIED/MOCK_ONLY/BLOCKED/NOT_IMPLEMENTED`及SHA/来源日期；不得把代码存在等同正式上线。
 - **任何真正要修改的核心文件路径列入allowlist；本任务不允许删除任何既有程序、地图、菜单与测试。**
 
-G0产物：`docs/ops/RETAINED_FUNCTIONS_V4_2_G0_REPORT.md`、`contracts/v4-2/G0_EXISTING_ROUTE_FACTS.json`（仅机器事实，不是第二数据owner注册表）；更新`CURRENT_STATE.md`只用实际可验证证据，不能虚报现场结果。
+G0产物：复用已提交的ChatGPT静态报告与`contracts/v4-2/G0_EXISTING_ROUTE_FACTS.json`（不再生成第二份）；只在`docs/ops/RETAINED_FUNCTIONS_V4_2_G0_REPORT.md`追加**实际运行时新增的**缺口、阻断和测试结果。更新`CURRENT_STATE.md`只用真实证据，不能虚报现场结果。
 
 ## 2. Phase HQ-1：恢复旧地图独立路由，不能降低安全
 
