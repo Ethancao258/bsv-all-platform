@@ -1,0 +1,402 @@
+{
+  "schema_version": "1.0",
+  "specification": "docs/architecture/BSV_ALL_DELIVERY_CONTROL_PLANE_V1.md",
+  "classification": "CHANGE_ROUTING_INDEX_NOT_RUNTIME_SECRETS",
+  "default_environment": "isolated",
+  "notes": [
+    "Module owners and code-path hints for ChatGPT/Codex; authoritative identities remain in config/data-ownership.json.",
+    "Datasource aliases MUST be namespace-qualified; identity.A is not supply.A.",
+    "Status values are current isolated-stage evidence or planned capabilities, not production availability.",
+    "Never store endpoints, tokens, PII or production credentials in this file."
+  ],
+  "data_source_namespaces": {
+    "identity.A": {
+      "purpose": "唯一人员身份可写事实",
+      "config": "config/modules/identity-data-sources.json",
+      "runtime_env": "BSV_DB_A_URL",
+      "allow_use": "isolated_current; production_blocked"
+    },
+    "identity.B": {
+      "purpose": "可选非敏感只读参考",
+      "config": "config/modules/identity-data-sources.json",
+      "runtime_env": "BSV_DB_B_READONLY_URL",
+      "allow_use": "READ_ONLY_OPTIONAL"
+    },
+    "identity.LOCAL": {
+      "purpose": "加密身份灾备；不能代替实时鉴权",
+      "config": "config/modules/identity-data-sources.json",
+      "runtime_env": "BSV_LOCAL_ARCHIVE_DIR",
+      "allow_use": "BACKUP_ONLY"
+    },
+    "supply.A": {
+      "purpose": "产品与物料主数据",
+      "config": "config/modules/supply-sources.example.json",
+      "allow_use": "BLOCKED_NOT_INTEGRATED"
+    },
+    "supply.B": {
+      "purpose": "统一身份与权限只读API",
+      "config": "config/modules/supply-sources.example.json",
+      "allow_use": "READ_ONLY_ISOLATED"
+    },
+    "supply.C": {
+      "purpose": "门店与库位主数据",
+      "config": "config/modules/supply-sources.example.json",
+      "allow_use": "BLOCKED_NOT_INTEGRATED"
+    },
+    "supply.D": {
+      "purpose": "唯一中央库存/配送事实账本",
+      "config": "config/modules/supply-sources.example.json",
+      "allow_use": "BLOCKED_NOT_INTEGRATED"
+    },
+    "supply.E": {
+      "purpose": "独立督查权威事件",
+      "config": "config/modules/supply-sources.example.json",
+      "allow_use": "BLOCKED_NOT_INTEGRATED"
+    },
+    "supply.F": {
+      "purpose": "可选视觉候选",
+      "config": "config/modules/supply-sources.example.json",
+      "allow_use": "OPTIONAL_NOT_INTEGRATED"
+    },
+    "supply.G": {
+      "purpose": "事件通知",
+      "config": "config/modules/supply-sources.example.json",
+      "allow_use": "OPTIONAL_NOT_INTEGRATED"
+    }
+  },
+  "modules": [
+    {
+      "module_id": "identity-api",
+      "examples": [
+        "人员主码",
+        "TR",
+        "EMP",
+        "BM",
+        "任职审批",
+        "双人审核",
+        "资格",
+        "撤权"
+      ],
+      "primary_domain": "workforce",
+      "code_paths": [
+        "services/api/identity",
+        "domains/workforce/identity",
+        "domains/identity_access",
+        "config/modules/identity-data-sources.json"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@identity.service"
+      ],
+      "data_sources": [
+        "identity.A",
+        "identity.B"
+      ],
+      "test_paths": [
+        "tests/identity"
+      ],
+      "risk": "HIGH_SECURITY",
+      "stage": "ISOLATED_RUNNING"
+    },
+    {
+      "module_id": "identity-hq-ui",
+      "examples": [
+        "总部人员管理",
+        "授权页面",
+        "员工登录",
+        "审核文案",
+        "旧码预检"
+      ],
+      "primary_domain": "identity_access",
+      "code_paths": [
+        "apps/staff-center/identity",
+        "apps/hq-console/identity"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@identity.service"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "test_paths": [
+        "tests/internal-stage"
+      ],
+      "risk": "UI_CHANGE_OR_HIGH_IF_AUTH",
+      "stage": "ISOLATED_RUNNING"
+    },
+    {
+      "module_id": "store-pos",
+      "examples": [
+        "开桌",
+        "加单",
+        "收银",
+        "POS权限",
+        "门店地图",
+        "测试PIN"
+      ],
+      "primary_domain": "commerce",
+      "code_paths": [
+        "services/api/bsv1",
+        "apps/store-console/bsv1",
+        "integrations/auth/identity_client.py"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@pos.service"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "test_paths": [
+        "tests/bsv1",
+        "tests/internal-stage"
+      ],
+      "risk": "HIGH_FINANCIAL",
+      "stage": "ISOLATED_UNPAID_ONLY"
+    },
+    {
+      "module_id": "supply-api",
+      "examples": [
+        "进货",
+        "中央配送",
+        "库存",
+        "收货",
+        "供货服务",
+        "更换供货数据库"
+      ],
+      "primary_domain": "production",
+      "code_paths": [
+        "services/api/supply",
+        "apps/hq-console/supply",
+        "apps/store-console/supply"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@supply.service"
+      ],
+      "data_sources": [
+        "supply.A",
+        "supply.B",
+        "supply.C",
+        "supply.D"
+      ],
+      "test_paths": [
+        "tests/supply",
+        "tests/internal-stage"
+      ],
+      "risk": "HIGH_INVENTORY",
+      "stage": "READ_ONLY_ISOLATED_D_BLOCKED"
+    },
+    {
+      "module_id": "quality-inspection",
+      "examples": [
+        "独立督查",
+        "整改复核",
+        "自审",
+        "质量检查"
+      ],
+      "primary_domain": "quality",
+      "code_paths": [
+        "services/api/supply",
+        "apps/inspector-console"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@supply.service"
+      ],
+      "data_sources": [
+        "supply.B",
+        "supply.E"
+      ],
+      "test_paths": [
+        "tests/supply",
+        "tests/internal-stage"
+      ],
+      "risk": "HIGH_AUDIT",
+      "stage": "READ_ONLY_ISOLATED_E_BLOCKED"
+    },
+    {
+      "module_id": "guest-menu",
+      "examples": [
+        "电子菜单",
+        "调酒文案",
+        "/cocktail",
+        "/craft",
+        "菜单域名"
+      ],
+      "primary_domain": "catalog",
+      "code_paths": [
+        "apps/guest-web",
+        "platform/lighthouse/internal-stage/ingress.py"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@ingress.service"
+      ],
+      "data_sources": [
+        "supply.A"
+      ],
+      "test_paths": [
+        "tests/internal-stage"
+      ],
+      "risk": "PUBLIC_CONTENT_RELEASE",
+      "stage": "COCKTAIL_PREVIEW_ONLY"
+    },
+    {
+      "module_id": "deployment-config",
+      "examples": [
+        "一键上云",
+        "发布",
+        "回退",
+        "改数据库地址",
+        "环境变量",
+        "备份",
+        "服务器故障"
+      ],
+      "primary_domain": "platform",
+      "code_paths": [
+        "platform/lighthouse/internal-stage",
+        "docs/ops",
+        "config/change-routing.json"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@postgres.service",
+        "bsv-all-internal-stage@identity.service",
+        "bsv-all-internal-stage@pos.service",
+        "bsv-all-internal-stage@supply.service",
+        "bsv-all-internal-stage@ingress.service"
+      ],
+      "data_sources": [
+        "identity.A",
+        "supply.B"
+      ],
+      "test_paths": [
+        "tests/internal-stage"
+      ],
+      "risk": "HIGH_RELEASE",
+      "stage": "VERSIONED_STAGING_NO_CONTROL_PLANE_YET"
+    },
+    {
+      "module_id": "device-label",
+      "examples": [
+        "打印标签",
+        "HPRT",
+        "标签纸",
+        "标签尺寸",
+        "扫描"
+      ],
+      "primary_domain": "production",
+      "code_paths": [
+        "integrations/devices"
+      ],
+      "runtime_units": [],
+      "data_sources": [
+        "supply.A",
+        "supply.D"
+      ],
+      "test_paths": [],
+      "risk": "DEVICE_AND_LABEL_SAFETY",
+      "stage": "DESIGN_NOT_DEPLOYED"
+    }
+  ],
+  "change_type_rules": {
+    "UI_COPY": {
+      "deploy": "isolated_after_ci",
+      "must_not_change": [
+        "auth_grants",
+        "database_schema",
+        "payments"
+      ],
+      "required_tests": [
+        "render",
+        "business_copy",
+        "existing_auth_rejection"
+      ]
+    },
+    "UI_FLOW": {
+      "deploy": "isolated_after_ci",
+      "required_tests": [
+        "browser_e2e",
+        "keyboard",
+        "error_feedback",
+        "role_rejection"
+      ]
+    },
+    "API_LOGIC": {
+      "deploy": "isolated_after_ci_and_review",
+      "required_tests": [
+        "positive",
+        "negative",
+        "idempotency",
+        "cross_store",
+        "integration"
+      ]
+    },
+    "SECURITY_GRANT": {
+      "deploy": "separate_security_approval",
+      "required_tests": [
+        "least_privilege",
+        "revocation",
+        "two_person",
+        "audit"
+      ]
+    },
+    "SOURCE_ENDPOINT": {
+      "deploy": "review_connection_and_rollback",
+      "required_tests": [
+        "endpoint_contract",
+        "tls",
+        "minimum_permissions",
+        "schema_compatibility",
+        "read_fallback_only"
+      ]
+    },
+    "SCHEMA_MIGRATION": {
+      "deploy": "no_production_without_g0_g1_and_restore",
+      "required_tests": [
+        "up_down",
+        "restore",
+        "integrity",
+        "ownership",
+        "rollback"
+      ]
+    },
+    "OPERATIONS": {
+      "deploy": "approved_sha_only",
+      "required_tests": [
+        "preflight",
+        "backup",
+        "loopback",
+        "old_services",
+        "rollback"
+      ]
+    },
+    "HARDWARE": {
+      "deploy": "device_lab_then_store_approval",
+      "required_tests": [
+        "print_accuracy",
+        "offline_behavior",
+        "physical_safety"
+      ]
+    }
+  },
+  "release_gates": [
+    "approved_SHA",
+    "CI_success",
+    "preflight",
+    "backup_check",
+    "new_ports_loopback",
+    "old_services_stay_active",
+    "batch_acceptance",
+    "rollback_available"
+  ],
+  "never_auto_approve": [
+    "production_cloudbase_write",
+    "payment_activation",
+    "live_identity_migration",
+    "authoritative_database_switchover",
+    "public_internet_exposure"
+  ],
+  "suggested_control_cli": [
+    "bsvctl status",
+    "bsvctl deploy --env isolated --sha <40-char-sha>",
+    "bsvctl verify --env isolated",
+    "bsvctl rollback --env isolated"
+  ],
+  "control_cli_status": "PROPOSED_NOT_IMPLEMENTED"
+}
