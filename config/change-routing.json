@@ -104,7 +104,9 @@
         "授权页面",
         "员工登录",
         "审核文案",
-        "旧码预检"
+        "旧码预检",
+        "统一工作台",
+        "我的工作"
       ],
       "primary_domain": "identity_access",
       "code_paths": [
@@ -118,7 +120,8 @@
         "identity.A"
       ],
       "test_paths": [
-        "tests/internal-stage"
+        "tests/internal-stage",
+        "tests/ui/stage_browser.py"
       ],
       "risk": "UI_CHANGE_OR_HIGH_IF_AUTH",
       "stage": "ISOLATED_RUNNING"
@@ -252,7 +255,9 @@
       "code_paths": [
         "platform/lighthouse/internal-stage",
         "docs/ops",
-        "config/change-routing.json"
+        "config/change-routing.json",
+        "scripts/route_change.py",
+        "scripts/verify_change_routing.py"
       ],
       "runtime_units": [
         "bsv-all-internal-stage@postgres.service",
@@ -266,10 +271,13 @@
         "supply.B"
       ],
       "test_paths": [
-        "tests/internal-stage"
+        "tests/internal-stage",
+        "tests/internal-stage/test_control.py",
+        "tests/identity/test_acceptance_v3.py",
+        "tests/ui"
       ],
       "risk": "HIGH_RELEASE",
-      "stage": "VERSIONED_STAGING_NO_CONTROL_PLANE_YET"
+      "stage": "MANUAL_CONTROLLER_IMPLEMENTED_HOST_NOT_RUN"
     },
     {
       "module_id": "device-label",
@@ -393,10 +401,11 @@
     "public_internet_exposure"
   ],
   "suggested_control_cli": [
-    "bsvctl status",
-    "bsvctl deploy --env isolated --sha <40-char-sha>",
-    "bsvctl verify --env isolated",
-    "bsvctl rollback --env isolated"
+    "bsvctl.py status",
+    "bsvctl.py deploy --sha <40位SHA> --ci-proof <GitHub导出> --approve-isolated --request-id <编号> --module <模块>",
+    "bsvctl.py verify",
+    "bsvctl.py rollback",
+    "acceptance.py --expected-sha <40位SHA> --execute-isolated"
   ],
-  "control_cli_status": "PROPOSED_NOT_IMPLEMENTED"
+  "control_cli_status": "ISOLATED_MANUAL_IMPLEMENTED_HOST_NOT_RUN"
 }

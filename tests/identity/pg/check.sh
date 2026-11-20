@@ -45,7 +45,7 @@ if [[ "${1:-}" == --with-apps ]]; then
     BSV_DB_A_URL="$BSV_DB_PREFLIGHT_CLIENT_URL" python -m alembic -c platform/lighthouse/identity/alembic.ini upgrade head
     python -m pytest -q -p no:cacheprovider tests/identity/test_consumers.py
     if [[ -n "${BSV_STAGE_SUPPLY_PYTHON:-}" ]]; then
-        python -m pytest -q -p no:cacheprovider tests/identity/test_internal_stage.py
+        python -m pytest -q -p no:cacheprovider tests/identity/test_internal_stage.py tests/identity/test_acceptance_v3.py
     fi
     python -m pytest -q -p no:cacheprovider tests/db_preflight
     if [[ "${2:-}" == --update ]]; then

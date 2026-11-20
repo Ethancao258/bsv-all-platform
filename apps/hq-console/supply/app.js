@@ -6,7 +6,7 @@ const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;'
 const internal=location.pathname.startsWith('/supply-ui/');
 const workspace=location.pathname.includes('/inspector/')?'inspector':location.pathname.includes('/store/')?'store':'hq';
 const uid=()=>crypto.randomUUID();
-function message(s,bad=false){let d=$('feedback');d.className='show '+(bad?'bad':'good');d.textContent=s;window.scrollTo({top:0,behavior:'smooth'});}
+function message(s,bad=false){let d=$('feedback');d.className='show '+(bad?'bad':'good');d.textContent=s;}
 async function req(path,opts={}){
  let headers={...opts.headers};if(opts.body&&! (opts.body instanceof FormData))headers['Content-Type']='application/json';
  if(state.mode==='remote'&&state.token)headers.Authorization='Bearer '+state.token;
@@ -15,15 +15,84 @@ async function req(path,opts={}){
   const csrf=document.cookie.split('; ').find(x=>x.startsWith('bsv_csrf='));
   if(csrf)headers['X-CSRF-Token']=csrf.slice('bsv_csrf='.length);
  }
- let r=await fetch((internal?'/supply-ui':'')+'/api'+path,{...opts,headers});let j=await r.json().catch(()=>({detail:'非JSON响应'}));
- if(!r.ok&&r.status!==202)throw Error(typeof j.detail==='string'?j.detail:JSON.stringify(j.detail||j));
+ const writing=opts.method&&opts.method!=='GET';
+ let r;
+ try{r=await fetch((internal?'/supply-ui':'')+'/api'+path,{signal:AbortSignal.timeout(11000),...opts,headers});}
+ catch{throw Error(writing?'结果暂未确认。请先查看记录，再决定是否重试。':'暂时无法获取结果。请检查连接后重试。');}
+ const j=await r.json().catch(()=>null);
+ if(!r.ok||!j){
+   let detail='暂时无法获取结果。请稍后重试。';
+   if(r.status===401)detail='登录已过期，请重新登录后继续。';
+   else if(r.status===403)detail='当前账号不能执行这项操作。请向总部核对相应门店权限。';
+   else if(j?.detail==='中央 D/E 权威服务未接入，未提交且未排队')detail='暂不能提交：中央台账尚未连接，本次未写入记录。';
+   else if(writing&&(r.status>=500||!j))detail='结果暂未确认。请先查看记录，再决定是否重试。';
+   else if(r.status===422)detail='请核对所填门店、数量和记录内容后再提交。';
+   else if(r.status===409)detail='记录已变化。请查看最新记录，再继续。';
+   throw Object.assign(Error(detail),{status:r.status});
+ }
  if(r.status===202)message('⚠ 已离线暂存，但尚未写入公司正式库存。必须在网络恢复后同步确认。',true);
  return j.state==='COMMITTED'&&j.data?j.data:j;
 }
 function on(id,evt,fn){$(id).addEventListener(evt,fn);}
 function tab(k){state.tab=k;document.querySelectorAll('.panel').forEach(x=>x.classList.add('hidden'));$('panel-'+k).classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===k));if(k==='stock')loadInventory();if(k==='sources')loadSources();if(k==='inspect')loadInspections();}
 function opts(items,placeholder){return `${placeholder?'<option value="">'+placeholder+'</option>':''}${items.map(x=>`<option value="${escapeHtml(x.store_id)}">${escapeHtml(x.name_zh)} (${escapeHtml(x.store_id)})</option>`).join('')}`;}
-async function boot(){try{let h=await req('/health');state.mode=h.mode;$('mode').textContent=h.mode==='demo'?'独立演示 · 非生产':'公司中央 API 模式';if(state.mode==='remote'){let t=prompt('请输入公司统一身份令牌（仅本次页面内存持有，不保存至浏览器）');if(!t)return message('未登录：生产模式需要统一身份令牌。',true);state.token=t;}state.me=await req('/me');configureWorkspace();if(state.mode==='internal-stage'){$('mode').textContent='隔离测试 · 集团身份已验证';return message('中央目录、账本与独立督查写入尚未接入。',true);}let [a,b]=await Promise.all([req('/stores'),req('/items')]);state.stores=a.data||[];state.items=b.data||[];let o=opts(state.stores);['filter-store','stock-store'].forEach(id=>$(id).innerHTML='<option value="">全部授权网点</option>'+o);['source-store','dest-store','inspect-store','count-store'].forEach(id=>$(id).innerHTML=o);$('count-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)}</option>`).join('');$('create-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)} · ${escapeHtml(x.item_id)}</option>`).join('');if(workspace==='inspector')tab('inspect');else loadShipments();}catch(e){message(e.message,true);}}
+async function boot(){if(internal)return internalReadOnly();try{let h=await req('/health');state.mode=h.mode;$('mode').textContent=h.mode==='demo'?'独立演示 · 非生产':'公司中央 API 模式';if(state.mode==='remote'){let t=prompt('请输入公司统一身份令牌（仅本次页面内存持有，不保存至浏览器）');if(!t)return message('未登录：生产模式需要统一身份令牌。',true);state.token=t;}state.me=await req('/me');configureWorkspace();let [a,b]=await Promise.all([req('/stores'),req('/items')]);state.stores=a.data||[];state.items=b.data||[];let o=opts(state.stores);['filter-store','stock-store'].forEach(id=>$(id).innerHTML='<option value="">全部授权网点</option>'+o);['source-store','dest-store','inspect-store','count-store'].forEach(id=>$(id).innerHTML=o);$('count-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)}</option>`).join('');$('create-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)} · ${escapeHtml(x.item_id)}</option>`).join('');if(workspace==='inspector')tab('inspect');else loadShipments();}catch(e){message(e.message,true);}}
+async function internalReadOnly(){
+ const inspector=workspace==='inspector';
+ const title=inspector?'独立督查':'供货与库存';
+ document.body.classList.add('internal-stage');
+ $('mode').textContent='内部演练';
+ document.querySelectorAll('main .panel').forEach(panel=>panel.classList.add('hidden'));
+ $('stage-limits').classList.remove('hidden');
+ $('stage-title').textContent=title;
+ document.querySelector('.brand strong').textContent=title;
+ document.querySelector('.brand small').textContent='BSV · 内部工作';
+ const button=$('stage-refresh'),availability=$('stage-availability'),scope=$('stage-authorization');
+ if(button.disabled)return;
+ const buttonText=button.textContent;
+ button.disabled=true;
+ button.textContent='正在核对…';
+ availability.textContent='正在核对服务与权限…';
+ scope.replaceChildren();
+ try{
+   const health=await req('/health');
+   if(health.mode!=='internal-stage')throw Error('暂时无法确认演练模式。请从工作台重新进入。');
+   state.mode=health.mode;
+   availability.textContent=inspector?'仅查看。正式检查台账尚未连接，暂不能提交或复核督查记录。':'暂未启用。中央台账尚未连接，暂不能创建配送单、收货或登记盘点。';
+   const me=await req('/me');
+   const keys=inspector?['inspect_independent','review_independent']:['dispatch','receive','inspect'];
+   const actions={inspect_independent:'独立督查',review_independent:'复核督查',dispatch:'发货',receive:'收货',inspect:'门店自查'};
+   const list=document.createElement('ul');
+   for(const key of keys){
+     const stores=me.role_stores?.[key];
+     if(stores?.length){
+       const row=document.createElement('li');
+       row.textContent=actions[key]+' · '+stores.join('、');
+       list.append(row);
+     }
+   }
+   const heading=document.createElement('h2');
+   heading.textContent='你的门店权限';
+   scope.append(heading);
+   if(list.children.length)scope.append(list);
+   else{
+     const unavailable=document.createElement('p');
+     unavailable.textContent='当前没有这项工作的门店权限。需要时请联系总部。';
+     scope.append(unavailable);
+   }
+ }catch(error){
+   if(error.status===401||error.status===403){
+     scope.textContent=error.status===401?'请先进入个人中心登录，再回来核对权限。':'当前账号没有这项工作的门店权限。需要时请联系总部。';
+   }else{
+     if(availability.textContent==='正在核对服务与权限…')availability.textContent='暂时无法确认服务状态。请检查连接后重新核对。';
+     scope.textContent='暂时无法读取门店权限。请稍后重试。';
+   }
+ }finally{
+   button.disabled=false;
+   button.textContent=buttonText;
+ }
+}
+$('stage-refresh').onclick=internalReadOnly;
 function configureWorkspace(){
  const roles=state.me.roles||[];
  const sections=workspace==='inspector'?['inspect','sources']:

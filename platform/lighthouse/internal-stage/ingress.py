@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, Response
+from starlette.responses import FileResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
@@ -32,14 +32,18 @@ async def proxy(request: Request):
     path = request.url.path
     if path in {"/api/v1/identity/authorize", "/api/v1/identity/pos-session", "/api/v1/auth/me"}:
         return Response(status_code=404)
+    if path in {"/", "/workbench.js"} and request.method in {"GET", "HEAD"}:
+        asset = "workbench.html" if path == "/" else "workbench.js"
+        return FileResponse(ROOT / "apps/staff-center/identity" / asset, headers={
+            "cache-control": "no-store",
+            "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'self'; "
+                                       "connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+            "x-content-type-options": "nosniff",
+        })
     if path == "/":
-        return HTMLResponse("""<!doctype html><meta charset=utf-8><title>BSV ALL 内部测试</title>
-<h1>BSV ALL 内部测试</h1><p>隔离测试数据 · SSH 隧道入口</p>
-<ul><li><a href="/staff">员工登录与个人中心</a><li><a href="/hq">总部身份管理</a>
-<li><a href="/pos">门店 POS</a><li><a href="/supply-ui/hq/supply">供货与库存</a>
-<li><a href="/supply-ui/inspector/supply">独立督查</a><li><a href="/cocktail/">电子菜单</a></ul>""")
+        return Response(status_code=405)
     if path == "/craft" or path.startswith("/craft/"):
-        return Response("Craft menu unavailable", status_code=404)
+        return Response("精酿菜单暂时未提供演练入口。", status_code=404)
     # Reject paths that could normalize to a different upstream route.
     if any(part in {".", ".."} for part in path.split("/")) or any(c in path for c in ("%", "\\", "//")):
         return Response(status_code=400)

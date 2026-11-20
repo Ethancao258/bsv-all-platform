@@ -10,26 +10,50 @@
 | 供货和督查 | 18763，`services.api.supply.main:app` | 另一套锁定 venv。仅接 B 身份源。A/C 目录及 D/E 事实服务当前未接，写入返回 503。 |
 | 私有入口 | 18760，`ingress:app` | 同源转发 POS、`/staff`、`/hq`、`/supply-ui/hq/supply`、`/supply-ui/inspector/supply`。`/cocktail/` 提供已有菜单文件。`/craft/` 返回 404。 |
 
-## 执行
+## 前台发布与验收
 
-前置条件为已批准提交、Ubuntu 24.04、sudo、系统 Python 3.12 的 `python3.12-venv` 软件包及位于 `/usr/lib/postgresql/17/bin` 的 PostgreSQL 17 原生服务器和客户端。Ubuntu 24.04 默认 PostgreSQL 主版本为 16。由主机管理员从已批准的软件源准备 PG17，确认安装不会启动或改动既有数据库服务。部署脚本只检测系统依赖。身份和供货的 pip 均由 venv 提供。无需 Docker。构建需要能读取包索引。
+Ubuntu 24.04 需具备 `sudo`、`python3.12-venv`、`ss` 和 `/usr/lib/postgresql/17/bin` 的 PG17 客户端及服务端。发布不安装系统包。请用现有私有仓库 Deploy Key 拉取代码，使用已批准的完整 SHA 创建独立工作树。两个旧服务及其端口必须在发布前处于运行状态。`18760–18764` 只允许受管理实例绑定 `127.0.0.1`。
 
-从与批准 SHA 一致的干净 checkout 执行，任一步失败即停止：
+使用有私有仓库读取权限的 GitHub 客户端导出已成功的 PR 运行证据。把 `ci-proof.json` 传到主机受控路径，核对其链接、工作流和批准的不可变 SHA。主机无需 GitHub 写入令牌。`bsvctl.py` 校验证据的结构和内容，由经营负责人核验证据来源和批准发布。
 
 ```bash
-set -e
-script=platform/lighthouse/internal-stage/stage.py
-python3 "$script" --preflight --sha "$(git rev-parse HEAD)"
-sudo python3 "$script" --deploy --sha "$(git rev-parse HEAD)"
-python3 "$script" --verify
+# 从能够读取此私有仓库的客户端执行，再通过安全渠道传输 ci-proof.json
+# CI_RUN_ID 取最终 PR 的成功 pull_request 运行编号
+gh run view "$CI_RUN_ID" -R Ethancao258/bsv-all-platform \
+  --json url,headSha,event,status,conclusion,workflowName,jobs > ci-proof.json
 ```
 
-成功应出现 `PREFLIGHT_OK`、`DEPLOYED_INTERNAL_STAGE` 和 `VERIFY_OK`。首次失败会停止新单元并保留测试数据。更新失败会切回上版并复核。手动执行 `sudo python3 "$script" --rollback` 可回切，首个版本则停止新服务。版本回切保留两版源码、PG 数据和 SQLite。迁移目录变化会阻止滚动升级。用 `journalctl -u 'bsv-all-internal-stage@*.service'` 检查新服务日志。
+```bash
+# 在 Lighthouse 上从批准 SHA 对应的干净工作树执行
+ctl=platform/lighthouse/internal-stage/bsvctl.py
+python3 "$ctl" status
+sudo python3 "$ctl" deploy --sha "$APPROVED_SHA" --approve-isolated \
+  --ci-proof "$HOME/ci-proof.json" --request-id ISSUE-9 \
+  --module identity-api --module identity-hq-ui --module store-pos --module deployment-config
+python3 "$ctl" verify
+```
 
-在自己的电脑执行 `ssh -N -L 18760:127.0.0.1:18760 ubuntu@<现有主机>`，打开 `http://127.0.0.1:18760/`。从管理终端私下读取 `/opt/bsv-all-internal-stage/config/` 中属于本测试人员的凭据（`reviewer1`、`reviewer2` 或 `pos-pin`）。审核人员登录 `/hq`，对合成申请走注册、任职、EMP、资格和门店岗位审批。用旧码预检确认 `bsv1_pos,SYNTH-STAGE-POS-01,<合成TR码>` 后再提交映射。POS 先登录 `/staff`，再用 `STAGEPOS01` 和测试 PIN 进入 BSVT（需要二次认证）。供货与督查沿用员工 Cookie，无需向前端交付服务令牌。
+发布命令只调用本地受控部署代码。发生变更时先暂停五个隔离单元中的应用写入，保留隔离 PG17 连接，创建加密 PG 与一致性 POS 备份，再切换版本。验证失败会恢复原版本并重新检查其路由与端口。已有库和服务配置继续保留。迁移目录变化会阻止本路径升级。
 
-## 恢复与验收范围
+`verify` 检查两个旧服务、五个隔离监听、本地 HTTP 路由、健康及匿名拒绝，成功显示 `RELEASE_HEALTH_OK` 和 `VERIFY_OK`。业务验收另行执行一次，明确批准通过真实 HTTP 写入临时合成授权及未付款测试记录。
 
-`sudo python3 "$script" --backup` 创建真实 PG17 加密归档。保留对应密钥和归档的独立受控副本。恢复演练用 `tests/identity/pg/check.sh` 在一次性 PG17 中创建空目标、解密恢复并验证数据；生产迁移及生产恢复均不在此入口。SQLite 的既有一致性备份工具和验证见 `../bsv1/`。
+```bash
+stage=/opt/bsv-all-internal-stage/current
+sudo "$stage/identity/bin/python" "$stage/src/platform/lighthouse/internal-stage/acceptance.py" \
+  --expected-sha "$APPROVED_SHA" --execute-isolated
+```
 
-CI 的真实 HTTP 试验涵盖登入、开桌、加单、提交未付款订单、跨店拒绝、供货及督查授权、撤权和中央写入阻断。PG17 候选收货守恒与独立复核由预检测试替身执行。完整中央接口落地和 Lighthouse 实机回切另行验收。
+`STAGING_ACCEPTED` 是本次内部隔离验收结果。中央 D/E 写入仍标为 `BLOCKED`。仅供登录人员的浏览器可在已有 SSH 隧道下打开 `http://127.0.0.1:18760/`。测试身份与 POS PIN 由验收脚本在主机读取，输出不含凭据。旧码 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001` 的已有精确映射按幂等结果处理。
+
+## 安全回切与检查点
+
+```bash
+# 在原本用于批准发布的干净工作树中执行
+sudo python3 platform/lighthouse/internal-stage/bsvctl.py rollback
+```
+
+回切前同样生成检查点，只更改这五个隔离测试单元。原版本存在时启动并核查其健康，无原版本时停止测试服务并保留数据。代码回切沿用已有隔离库，快照不自动写回。若半途退出，激活日志保留原版本，下一次受控操作会恢复原先状态。若缺少受管活动版本但存在旧库文件，先由操作者核对状态，部署会停止。用 `journalctl -u 'bsv-all-internal-stage@*.service'` 查阅隔离服务的启动日志。
+
+`sudo python3 platform/lighthouse/internal-stage/stage.py --backup` 生成独立手动检查点，带 `CHECKPOINT_READY` 和根账户只读的 `recovery/<时间>-<标识>/receipt.json` 路径。PG17 归档使用 AES-GCM，检查点复核加密完整性和 SHA-256；SQLite 采用在线备份 API，并核验快照 `PRAGMA quick_check` 和 SHA-256。按受控流程分别保存归档和密钥。部署前检查点暂停隔离应用写入，手动检查点只保证两个单独数据库各自一致。`tests/identity/pg/check.sh` 在真正的临时 PG17 目标中完成解密恢复与合成数据校验。生产级恢复演练与 Lighthouse 实机回切仍为 `HOST_NOT_RUN`，需以本机证据更新记录。
+
+一句话自动启动 Codex、从 GitHub 自动触发主机和生产数据迁移为 `NOT_CONNECTED`。`bsvctl.py` 只提供已经实现的人工批准入口。

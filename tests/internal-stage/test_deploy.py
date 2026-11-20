@@ -2,9 +2,12 @@
 import importlib.util
 from pathlib import Path
 import os
+import sqlite3
+from subprocess import CompletedProcess
+from types import SimpleNamespace
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 path = Path(__file__).resolve().parents[2] / "platform/lighthouse/internal-stage/stage.py"
 spec = importlib.util.spec_from_file_location("internal_stage", path)
@@ -28,6 +31,7 @@ class ReleaseTest(unittest.TestCase):
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
                 patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
+                patch.object(stage, "activation_checkpoint") as checkpoint, patch.object(stage, "host_evidence"), \
                 patch.object(stage, "switch_services") as services, patch.object(stage, "verify"):
             for sha in (OLD, NEW):
                 (stage.ROOT / "releases" / sha).mkdir(parents=True)
@@ -40,13 +44,15 @@ class ReleaseTest(unittest.TestCase):
             stage.rollback()
             self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
             self.assertEqual(preserved.read_bytes(), b"existing")
-            self.assertEqual([call.args for call in services.call_args_list], [(False,), (True,)] * 2)
+            self.assertEqual([entry.args for entry in services.call_args_list], [(False,), (True,)] * 2)
+            self.assertEqual(checkpoint.call_args_list, [call(OLD, "pre_deploy"), call(NEW, "pre_rollback")])
 
     def test_failed_verification_recovers_previous_release(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
                 patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
+                patch.object(stage, "activation_checkpoint") as checkpoint, patch.object(stage, "host_evidence"), \
                 patch.object(stage, "switch_services") as services, \
                 patch.object(stage, "verify", side_effect=[RuntimeError("intentionally failed"), None]):
             for sha in (OLD, NEW):
@@ -56,7 +62,8 @@ class ReleaseTest(unittest.TestCase):
                 stage.deploy(NEW)
             self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
             self.assertIsNone(stage.sha_at(stage.ROOT / "previous"))
-            self.assertEqual([call.args for call in services.call_args_list], [(False,), (True,)] * 2)
+            self.assertEqual([entry.args for entry in services.call_args_list], [(False,), (True,)] * 2)
+            self.assertEqual(checkpoint.call_args_list, [call(OLD, "pre_deploy")])
 
     def test_interrupted_activation_recovers_previous_version(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
@@ -70,6 +77,71 @@ class ReleaseTest(unittest.TestCase):
             self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
             self.assertFalse(marker.exists())
             self.assertEqual([call.args for call in services.call_args_list], [(False,), (True,)])
+
+
+    def test_backup_failure_keeps_current_release(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
+                patch.object(stage, "build"), patch.object(stage, "prepare_pg") as prepare_pg, \
+                patch.object(stage, "activation_checkpoint", side_effect=RuntimeError("backup failed")), \
+                patch.object(stage, "switch_services") as services, patch.object(stage, "verify"):
+            for sha in (OLD, NEW):
+                (stage.ROOT / "releases" / sha).mkdir(parents=True)
+            stage.link("current", OLD)
+            with self.assertRaisesRegex(RuntimeError, "backup failed"):
+                stage.deploy(NEW)
+            self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
+            self.assertFalse((stage.ROOT / "activation.pending").exists())
+            prepare_pg.assert_not_called()
+            self.assertEqual(services.call_args_list, [call(False), call(True)])
+
+    def test_activation_quiesces_isolated_writers_before_checkpoint(self):
+        with patch.object(stage, "switch_services") as services, patch.object(stage, "active", return_value=True), \
+                patch.object(stage.subprocess, "run", return_value=CompletedProcess([], 0)), \
+                patch.object(stage, "backup") as backup:
+            stage.activation_checkpoint(OLD, "pre_deploy")
+            services.assert_called_once_with(False, keep_postgres=True)
+            backup.assert_called_once_with(OLD, "pre_deploy")
+
+    def test_sqlite_checkpoint_permits_existing_private_app_file_mode(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "DATA", Path(tmp)):
+            pos_dir = Path(tmp) / "pos"
+            backups = pos_dir / "backups"
+            backups.mkdir(parents=True)
+            live = pos_dir / "synthetic.sqlite3"
+            live.touch(mode=0o644)
+            saved = backups / "synthetic_backup_20261120T080000123456Z.sqlite3"
+            with sqlite3.connect(saved) as db:
+                db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY)")
+                db.execute("INSERT INTO orders DEFAULT VALUES")
+            saved.chmod(0o600)
+            destination = Path(tmp) / "snapshot.sqlite3"
+            configuration = {"BSV_DB_PATH": str(live), "BSV_BACKUP_DIR": str(backups), "BSV_MODE": "staging",
+                             "BSV_POS_INTERNAL_STAGE": "1"}
+            result = CompletedProcess([], 0, stdout=f"备份成功： {saved}\n")
+            with patch.object(stage, "service_config", return_value=configuration), \
+                    patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())), \
+                    patch.object(stage, "as_user", return_value=result):
+                verification = stage.sqlite_snapshot(OLD, destination)
+            self.assertEqual(verification["integrity"], "QUICK_CHECK_OK")
+            self.assertEqual(destination.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(verification["sha256"], stage.file_sha256(saved))
+            with sqlite3.connect(destination) as db:
+                self.assertEqual(db.execute("SELECT * FROM orders").fetchall(), [(1,)])
+
+    def test_health_evidence_rejects_public_or_unmanaged_listeners(self):
+        reported = {port: ["127.0.0.1"] for port in (*stage.PORTS.values(), *stage.LEGACY_UNITS)}
+        with patch.object(stage, "listening_ports", return_value=reported), \
+                patch.object(stage, "sha_at", return_value=OLD), patch.object(stage, "unit_active", return_value=True):
+            self.assertEqual(stage.host_evidence()["deployed_sha"], OLD)
+            reported[18764].append("0.0.0.0")
+            with self.assertRaisesRegex(RuntimeError, "non-loopback listener"):
+                stage.host_evidence()
+            reported[18764].remove("0.0.0.0")
+            with patch.object(stage, "active", return_value=False):
+                with self.assertRaisesRegex(RuntimeError, "outside managed service"):
+                    stage.host_evidence(require_all=False)
 
 
     def test_systemd_runner_targets_release_src(self):
@@ -100,9 +172,9 @@ class ReleaseTest(unittest.TestCase):
         repo = Path(__file__).resolve().parents[2]
         script = (repo / "apps/hq-console/identity/hq.js").read_text(encoding="utf-8")
         handler = script.split("$('#legacy-form').addEventListener", 1)[1].split(
-            "$('#people-form').addEventListener", 1)[0]
-        self.assertIn("正在执行只读预检", handler)
-        self.assertIn("只读预检失败", handler)
+            "$('#people-form')", 1)[0]
+        self.assertIn("正在核对编码", handler)
+        self.assertIn("此次核对未取得结果", handler)
         self.assertIn("output.prepend", handler)
         self.assertIn("output.scrollIntoView", handler)
         self.assertIn("submit.disabled=false", handler)

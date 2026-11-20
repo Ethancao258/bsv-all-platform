@@ -15,6 +15,7 @@
      <p class="eyebrow">BAR ST. VINCENT · BSV1</p>
      <h1>门店座位工作台</h1>
      <p class="muted">先选择所在地区与实际门店，核实后登录</p>
+     <p class="stage-pos-note">仅供内部演练。先在 <a href="/staff">个人中心</a> 登录，再核对门店和员工 PIN。<a href="/">返回工作台</a></p>
      <form id="loginForm" autocomplete="off">
        <label>① 所在地区<select id="loginDistrict" required><option value="">请选择地区</option></select></label>
        <label>② 当前工作门店<select id="loginStore" required disabled><option value="">请先选择地区</option></select></label>
@@ -120,7 +121,7 @@
  </div>
  <div id="modal" class="modal-root hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
    <div id="seatOuterNav" class="seat-outer-nav hidden"><button id="modalOuterLeft" type="button" class="outer-seat-button left"></button><button id="modalOuterRight" type="button" class="outer-seat-button right"></button></div>
-   <div class="modal-card"><div id="modalEyebrow" class="eyebrow"></div><h2 id="modalTitle"></h2><div id="modalBody" class="modal-body"></div><div class="modal-actions"><button id="modalCancel" class="outline">取消</button><button id="modalConfirm" class="primary">确认</button></div></div>
+   <div class="modal-card"><div id="modalEyebrow" class="eyebrow"></div><h2 id="modalTitle"></h2><div id="modalBody" class="modal-body"></div><p id="modalResult" class="form-error" role="status" aria-live="polite" tabindex="-1"></p><div class="modal-actions"><button id="modalCancel" class="outline">取消</button><button id="modalConfirm" class="primary">确认</button></div></div>
  </div>
  <div id="catalogDetailModal" class="image-root hidden" role="dialog" aria-modal="true" aria-label="商品详细信息"><div class="catalog-detail-card"><button id="closeCatalogDetail" class="outline" type="button">关闭 ×</button><div id="catalogDetailBody"></div></div></div>
  <div id="manualModal" class="image-root hidden" role="dialog" aria-modal="true"><div class="manual-dialog"><button id="closeManual" class="outline image-close">关闭资料 ✕</button><div id="manualContent"></div></div></div>

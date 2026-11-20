@@ -10,6 +10,8 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from .config import load_settings
 from domains.workforce.identity.core import SUPPLY_ROLE_ACTIONS
@@ -716,25 +718,41 @@ def legacy_dry_run(body: LegacyPreview, request: Request):
 @app.post("/api/v1/identity/legacy-import/commit")
 def legacy_commit(body: LegacyCommit, request: Request):
     # Strictly isolated-only until existing POS/operator references are mapped and G0/G1 migration signed off.
-    if settings.env != "isolated":
+    if settings.env != "isolated" or settings.auth_provider != "isolated":
         raise DomainError("Legacy commit disabled until approved CloudBase G0/G1 mapping", 403, "MIGRATION_LOCKED")
     with router.session(write=True) as db:
         actor = grant_guard(request, db, "legacy.commit", body.legal_entity_id)
         preview = legacy_preview(db, [row.model_dump() for row in body.rows], body.legal_entity_id)
-        if preview["blocked"] or any(r["issues"] for r in preview["records"]):
+        if preview["blocked"]:
             raise DomainError("Resolve all mapping conflicts first", 409, "MIGRATION_PRECHECK_FAILED")
-        inserted = []
-        for row in preview["records"]:
-            alias = LegacyAlias(legal_entity_id=body.legal_entity_id,
-                               source_system=row["source_system"], legacy_value=row["legacy_value"],
-                               tr_code=row["tr_code"], approved_by=actor, evidence_ref=body.evidence_ref)
-            db.add(alias)
-            inserted.append(alias)
+        inserted = {}
+        records = preview["records"]
+        insert = pg_insert if db.bind.dialect.name == "postgresql" else sqlite_insert
+        # Acquire overlapping keys in a consistent order. A concurrent writer can
+        # win after the preview, so compare the actual row on every insert conflict.
+        for row in sorted(records, key=lambda item: (item["source_system"], item["legacy_value"])):
+            key = {"legal_entity_id": body.legal_entity_id, "source_system": row["source_system"],
+                   "legacy_value": row["legacy_value"]}
+            alias_id = None
+            if not row["issues"]:
+                statement = insert(LegacyAlias).values(
+                    **key, tr_code=row["tr_code"], approved_by=actor, evidence_ref=body.evidence_ref,
+                ).on_conflict_do_nothing(index_elements=list(key)).returning(LegacyAlias.id)
+                alias_id = db.scalar(statement)
+            if alias_id is None:
+                existing = db.scalar(select(LegacyAlias.tr_code).filter_by(**key).with_for_update())
+                if existing != row["tr_code"]:
+                    raise DomainError("Resolve all mapping conflicts first", 409, "MIGRATION_PRECHECK_FAILED")
+                row["issues"] = ["ALREADY_MAPPED"]
+                continue
+            row["status"] = "committed"
+            inserted[row["source_system"], row["legacy_value"]] = alias_id
             log(db, "legacy.alias.committed", row["tr_code"], actor, body.reason,
                 source_system=row["source_system"], legal_entity_id=body.legal_entity_id)
-        db.flush()
-        return {"write_count": len(body.rows), "status": "committed_isolated_only",
-                "created_alias_ids": [alias.id for alias in inserted]}
+        created_ids = [inserted[row["source_system"], row["legacy_value"]] for row in records if not row["issues"]]
+        return {"write_count": len(created_ids), "status": "committed_isolated_only",
+                "already_mapped_count": len(records) - len(created_ids),
+                "created_alias_ids": created_ids, "records": records}
 
 
 class LegacyRollback(StrictModel):

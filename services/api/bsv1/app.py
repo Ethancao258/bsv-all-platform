@@ -555,12 +555,50 @@ MUTATING={
  '/api/production/claim','/api/production/serve','/api/production/reassign','/api/seats/claim-edit',
  '/api/seats/release-edit'}
 
+ACCEPTANCE_ORDER_PATHS = {"/api/seats/open", "/api/drafts/add", "/api/drafts/remove", "/api/orders/submit"}
+ACCEPTANCE_CANCEL_PATH = "/api/visits/cancel"
+
+
+def acceptance_run_for(path, data, staff):
+    if "acceptance_run" not in data:
+        return None
+    if (MODE != "staging" or os.environ.get("BSV_POS_INTERNAL_STAGE") != "1"
+            or os.environ.get("BSV_POS_IDENTITY_REQUIRED") != "1"
+            or staff["id"] != "SYNTH-STAGE-POS-01" or staff["session_store_id"] != "BSVT"
+            or path not in ACCEPTANCE_ORDER_PATHS | {ACCEPTANCE_CANCEL_PATH}):
+        raise UserError("仅隔离验收账号可标记本次测试订单", 403)
+    value = data["acceptance_run"]
+    try:
+        if not isinstance(value, str) or str(uuid.UUID(value, version=4)) != value:
+            raise ValueError
+    except ValueError:
+        raise UserError("本次验收编号无效", 400)
+    return value
+
+
+def acceptance_marker(db, store_id, visit_id):
+    return db.execute(
+        "SELECT staff_id,detail_json FROM audit_events WHERE store_id=? AND target_id=? "
+        "AND action='ACCEPTANCE_OPEN_VISIT'", (store_id, visit_id),
+    ).fetchone()
+
+
 def handle_action(path,data,staff):
     store_id=staff['session_store_id'];sid=staff['id']
+    run_id = acceptance_run_for(path, data, staff)
+    internal_stage = os.environ.get("BSV_POS_INTERNAL_STAGE") == "1"
     with tx() as db:
         store=store_info(db,store_id)
+        visit_id = data.get("visit_id")
+        marker = acceptance_marker(db, store_id, visit_id) if internal_stage and isinstance(visit_id, str) else None
+        if marker is not None:
+            if marker["staff_id"] != sid or json.loads(marker["detail_json"])["acceptance_run"] != run_id:
+                raise UserError("这张测试桌属于另一批验收", 403)
+        elif run_id and path != "/api/seats/open":
+            raise UserError("仅可操作本次验收新开的测试桌", 403)
+
         # Optional idempotency key. Browser always sends one for every mutation.
-        aid=data.get('_action_id') if path in MUTATING else None
+        aid=data.get('_action_id') if path in MUTATING and not run_id else None
         if aid is not None:
             if not isinstance(aid,str) or not re.fullmatch('[A-Za-z0-9-]{8,90}',aid):raise UserError('操作令牌无效')
             old=db.execute('SELECT response_json,store_id FROM command_dedup WHERE action_id=?',(aid,)).fetchone()
@@ -654,8 +692,20 @@ def handle_action(path,data,staff):
             lock=db.execute('SELECT staff_id,expires_at FROM seat_edit_locks WHERE seat_id=?',(seat,)).fetchone()
             if lock and lock['expires_at']>timestamp() and lock['staff_id']!=sid:raise UserError('其他员工正在处理该桌，请勿重复下单',409)
             if not visible(db,store_id,seat):raise UserError('此座位不属于本店或当前不可单独使用',409)
+            if run_id:
+                prior = db.execute(
+                    "SELECT v.id,v.seat_id,v.status FROM audit_events a JOIN visits v ON v.id=a.target_id "
+                    "WHERE a.store_id=? AND a.staff_id=? AND a.action='ACCEPTANCE_OPEN_VISIT' AND a.detail_json=?",
+                    (store_id, sid, json.dumps({"acceptance_run": run_id}, ensure_ascii=False)),
+                ).fetchone()
+                if prior:
+                    if prior["seat_id"] != seat or prior["status"] != "OPEN":
+                        raise UserError("本次验收编号已用于另一张桌或已归档", 409)
+                    return done({"visit_id": prior["id"], "new": False})
             found=db.execute("SELECT id FROM visits WHERE seat_id=? AND store_id=? AND status='OPEN'",(seat,store_id)).fetchone()
             if found:
+                if run_id or (internal_stage and acceptance_marker(db, store_id, found["id"])):
+                    raise UserError("该桌已被使用，请选择另一张空桌", 409)
                 record(db,staff,'OPEN_EXISTING',found['id'],{'seat':seat})
                 return done({'visit_id':found['id'],'new':False})
             if not seat_clean(db,store_id,seat):raise UserError('此座位尚未清桌，请先完成清桌确认',409)
@@ -668,6 +718,8 @@ def handle_action(path,data,staff):
             db.execute('INSERT INTO orders VALUES (?,?,?,?)',(oid,vid,'OPEN',now_))
             db.execute('INSERT INTO visit_seat_events VALUES (?,?,?,?,?,?)',(uid(),vid,None,seat,sid,now_))
             record(db,staff,'OPEN_VISIT',vid,{'seat':seat})
+            if run_id:
+                record(db, staff, "ACCEPTANCE_OPEN_VISIT", vid, {"acceptance_run": run_id})
             return done({'visit_id':vid,'new':True})
         if path=='/api/drafts/add':
             vid=required(data,'visit_id');pid=required(data,'product_id')
@@ -853,22 +905,32 @@ def handle_action(path,data,staff):
             record(db,staff,'DEPART_DEMO',vid,{'seat':v['seat_id'],'paper':pref,'payment_verified':False})
             return done({'ok':True,'visit_id':vid,'receipt_path':'/api/receipt?visit_id='+vid,'payment_verified':False,'print_preference':pref})
         if path=='/api/visits/cancel':
-            vid=required(data,'visit_id');v=live_visit(db,store_id,vid)
+            vid = required(data, "visit_id")
+            if run_id and db.execute(
+                    "SELECT 1 FROM visits WHERE id=? AND store_id=? AND status='CANCELLED'",
+                    (vid, store_id)).fetchone():
+                return done({"ok": True, "archived": True, "visit_id": vid})
+            v = live_visit(db, store_id, vid)
             if db.execute('SELECT 1 FROM demo_checkouts WHERE visit_id=?',(vid,)).fetchone():
                 raise UserError('存在已记录结算批次，禁止整桌撤单；应走退款/冲正流程（尚未开发）',409)
             o=order_for(db,vid)
             if db.execute("SELECT 1 FROM order_lines WHERE order_id=? AND status='SERVED'",(o['id'],)).fetchone():
                 raise UserError('已有商品送达，禁止直接撤单；需先由管理员处理异常',409)
+            if run_id and db.execute("SELECT 1 FROM production_finishes WHERE visit_id=?", (vid,)).fetchone():
+                raise UserError("这张桌已有制作记录，需人工核对后处理", 409)
             draft_count=db.execute('SELECT COUNT(*) FROM order_drafts WHERE visit_id=?',(vid,)).fetchone()[0]
             db.execute('DELETE FROM order_drafts WHERE visit_id=?',(vid,))
             db.execute("UPDATE visits SET status='CANCELLED',closed_at=? WHERE id=?",(now(),vid))
             db.execute("UPDATE orders SET status='CANCELLED' WHERE visit_id=?",(vid,))
-            if db.execute('SELECT 1 FROM order_lines WHERE order_id=?',(o['id'],)).fetchone():
+            if not run_id and db.execute('SELECT 1 FROM order_lines WHERE order_id=?',(o['id'],)).fetchone():
                 db.execute("UPDATE seat_cleaning SET state='DIRTY',dirty_at=? WHERE seat_id=?",(now(),v['seat_id']))
             db.execute('DELETE FROM seat_edit_locks WHERE seat_id=? AND store_id=?',(v['seat_id'],store_id))
             db.execute('''UPDATE production_tasks SET state='CANCELLED' WHERE visit_id=? AND state IN ('PENDING','CLAIMED')''',(vid,))
-            record(db,staff,'CANCEL_VISIT',vid,{'seat':v['seat_id'],'removed_draft_count':draft_count})
-            return done({'ok':True})
+            detail = {"seat": v["seat_id"], "removed_draft_count": draft_count}
+            if run_id:
+                detail["acceptance_run"] = run_id
+            record(db, staff, "CANCEL_VISIT", vid, detail)
+            return done({"ok": True, "archived": True, "visit_id": vid} if run_id else {"ok": True})
         if path=='/api/housekeeping/clean-seat':
             seat=required(data,'seat_id');confirmation=data.get('confirmed')
             if confirmation is not True:raise UserError('必须确认桌面已清洁并恢复摆设')
@@ -1273,8 +1335,8 @@ class Handler(BaseHTTPRequestHandler):
                           (hashlib.sha256(jar['bsv_session'].value.encode()).hexdigest(),))
                 self.send_json({'ok':True},delete_cookie=True);return
             if os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1":
-                order_paths = {'/api/seats/open','/api/drafts/add','/api/drafts/remove','/api/orders/submit'}
-                if path not in order_paths or not self.group_identity(
+                acceptance_cancel = path == ACCEPTANCE_CANCEL_PATH and "acceptance_run" in data
+                if (path not in ACCEPTANCE_ORDER_PATHS and not acceptance_cancel) or not self.group_identity(
                         staff['id'],staff['session_store_id'],'pos.order.create'):
                     raise UserError('集团身份未授权此操作',403)
             self.send_json(handle_action(path,data,staff));return

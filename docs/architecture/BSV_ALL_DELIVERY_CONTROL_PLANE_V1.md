@@ -1,5 +1,5 @@
 # BSV ALL｜跨AI协作、变更路由与持续交付控制面 V1.0（设计契约）
-> 创建于2026-11-20。状态：**DESIGN_APPROVED_FOR_IMPLEMENTATION / NOT_YET_DEPLOYED**。本文件是Codex的可执行工程规格，不声称以下拟议控制器、命令、自动触发器已部署。沿用 `AGENTS.md`、14根目录冻结、`config/data-ownership.json`、`config/resource-registry.json`、`docs/architecture/DEPLOYMENT_BOUNDARY.md`。工程任务：Issue #9。任何生产发布仍需独立风险审批。
+> 创建于2026-11-20。状态：**MANUAL_ISOLATED_CONTROLLER_IMPLEMENTED / HOST_NOT_RUN**。本文件是Codex的可执行工程规格，不声称以下拟议控制器、命令、自动触发器已部署。沿用 `AGENTS.md`、14根目录冻结、`config/data-ownership.json`、`config/resource-registry.json`、`docs/architecture/DEPLOYMENT_BOUNDARY.md`。工程任务：Issue #9。任何生产发布仍需独立风险审批。
 
 ## 0. 统一目标、已知事实与实施边界
 经营负责人希望只用一句自然语言描述需求，系统能找到唯一负责模块，向Codex下发精确变更，在GitHub审查并测试，部署到已有腾讯云北京Lighthouse，验收后返回一个固定的网址和结果；之后可以随时改页面、业务规则或数据源位置，而无需重新解释整个系统。
@@ -17,7 +17,7 @@
 | 凭据/实际端点/高风险URL | **Lighthouse受限配置或授权密钥服务（不得提交Git）** | 运行服务 |
 | 源码与可审计历史 | GitHub私有仓库、PR、review、CI、不可变commit SHA | Codex与部署器 |
 | 当前主机/数据库/发布证据 | `docs/ops/CURRENT_STATE.md` + 服务器本地只读验收报告 | ChatGPT/Codex/负责人 |
-| 发布候选审批与回退依据 | 拟议 `release-manifest.json` + 本机被授权的批准记录（尚待实现） | Lighthouse部署器 |
+| 发布候选审批与回退依据 | 本机 `control/` 中按 SHA 存储的版本化发布清单和批准记录 | Lighthouse部署器 |
 
 不要把ChatGPT对话、Codex的临时工作目录、运行中的systemd文件或源代码主分支视作另一份相互冲突的事实源。要区分 `repo_head_sha`、`approved_release_sha`、`deployed_sha`、`database_schema_revision`、`config_revision`。
 
@@ -59,10 +59,10 @@
 `ChatGPT从变更路由生成Issue/PR要求 → 用户在Codex会话发出指令（当前无已授权Codex直调工具）→ Codex提交GitHub PR+CI → ChatGPT审查+负责人批准不可变SHA → Lighthouse一条本地前台部署命令 → 批量E2E → 输出服务器及PR的版本信息`。
 这是一条**一次命令部署链**，但并非“单句无人值守发布”。在现有工具授权下，ChatGPT可以直接更新GitHub，尚不能直接SSH控制Lighthouse或从此处自动开启Codex会话；不能声称后两项已链接。
 
-**中期（独立实现并经过许可后）：**
-创建最小权限受控“部署控制器”（拟议`platform/lighthouse/internal-stage/bsvctl.py`），在本机根据批准的40位commit SHA从只读Deploy Key拉取特定代码，核对源SHA、已批准CI和release manifest，再运行 `stage.py` 的预检、备份、原子版本切换、真实健康+业务验收和回退，生成带SHA的结果。首次配置/安装仍需负责人授权。
-推荐命令接口（**建议接口，当前未实现**）：
-`bsvctl status`、`bsvctl deploy --env isolated --sha <40位SHA>`、`bsvctl verify --env isolated`、`bsvctl rollback --env isolated`。
+**本机控制器（V3 已实现，主机未执行）：**
+最小权限受控部署入口 `platform/lighthouse/internal-stage/bsvctl.py`，在本机用只读 Deploy Key 拉取后，根据批准的40位commit SHA 核验已检出的特定代码，核对源SHA、已批准CI和release manifest，再运行 `stage.py` 的预检、备份、原子版本切换、真实健康+业务验收和回退，生成带SHA的结果。首次配置/安装仍需负责人授权。
+隔离环境的实际命令见部署 README。
+`bsvctl.py status`、`bsvctl.py deploy --sha <40位SHA>` 配合人工批准与 GitHub 运行 JSON、`bsvctl.py verify`、`bsvctl.py rollback`。
 不能执行任意Github Issue文本、任意Shell或未批准PR代码；仅已通过受控审批的SHA可部署。长耗时可交systemd瞬态任务并回报任务ID，普通操作前台可见。
 
 **长期（只有连接器和服务器控制面真实授权后）：**

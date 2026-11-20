@@ -19,8 +19,8 @@ def validate(index: dict) -> list[str]:
     errors: list[str] = []
     if index.get("default_environment") != "isolated":
         errors.append("Default environment must be isolated")
-    if index.get("control_cli_status") != "PROPOSED_NOT_IMPLEMENTED":
-        errors.append("Cannot claim proposed control CLI is deployed")
+    if index.get("control_cli_status") != "ISOLATED_MANUAL_IMPLEMENTED_HOST_NOT_RUN":
+        errors.append("Expected manual isolated controller without verified host rollout")
     if index.get("classification") != "CHANGE_ROUTING_INDEX_NOT_RUNTIME_SECRETS":
         errors.append("Unexpected source classification")
     namespaces = index.get("data_source_namespaces", {})
