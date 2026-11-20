@@ -152,3 +152,9 @@
 
 - PASS_BROWSER_HQ_LOOKUP · 操作员在Windows的 `/hq` 人员查询以 `TRA0002` 搜索，截图显示 `TRA0002 · ISOLATED TEST OPERATOR reviewer2`、状态 `active`。证明既有HQ会话在 `DEMO_LEGAL` 范围可调用只读人员检索并获得合成PG身份记录；不代表跨法人限制或审批写入已经实机验收。
 - NEXT_GATE · 使用HQ旧码预检执行 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001` 的仅预览核对（写入0），确认隔离POS的本地人员别名指向同一合成TR后，再通过独立批准的映射提交/岗位权限安排进行POS联调。严禁将该合成关联应用到正式人事数据。
+
+
+## 2026-11-20 旧POS码只读映射预检（USER_SCREENSHOT）
+
+- PASS_BROWSER_DRY_RUN · 经营负责人Windows浏览器截图显示总部 `/hq`“旧码迁移预检”输入 `bsv1_pos,SYNTH-STAGE-POS-01,TRA0001`，页面返回 `SYNTH-STAGE-POS-01 → TRA0001`、`reviewed · 无冲突`。这是隔离合成POS旧码绑定到合成 `TRA0001` 的预检，未证明创建任何正式或测试别名数据。源码规定 dry-run 写入为0。
+- GATE · 接下来使用受控隔离后台身份API，在再次验证 `mode=isolated`、`blocked=0`、`issues=[]` 后才允许创建单条合成LegacyAlias。完成后需测试该TR的POS资格和门店岗位授权，再进行BSVT未付款订单验收。真实员工/客户和CloudBase生产数据库禁止参与。
