@@ -112,3 +112,14 @@
 - PASS_ISOLATED · 真实 PG17 候选迁移和回退、120 并发发码、重试/事务/约束、撤权、加密 dump 与空目标恢复通过。隔离 HTTP 以独立 venv 运行身份、供货、POS 和统一入口，测试 BM/EMP 派生、临时别名、真实登录和未付款订单、门店隔离、供货/督查同 Cookie 认证、跨站拒绝和撤权。POS 仍有独立 PIN 步骤。
 - MOCK_ONLY · 版本符号链接回切及失败恢复已模拟。PG17 供货及督查合同替身验证 10 发 9 收的守恒、收货幂等、断连和禁止自审。BLOCKED · D/E 没有运行中的权威事实 API。测试入口只接 B 身份源，不返回中央成功。A/C 目录仍未提供，CloudBase 生产迁移为无。
 - NOT_RUN · Lighthouse 新单元安装、实际端口与主机 systemd 回切。隔离环境无运行中的 systemd PID 1。新部署操作和合成数据边界见 `platform/lighthouse/internal-stage/`。本批无云端写入、部署或生产配置修改。
+
+
+## 2026-11-20 Lighthouse 首次实机验收（USER_REPORTED）
+
+证据来源：经营负责人粘贴的北京 Lighthouse Ubuntu 终端输出；仓库维护者未直接登录服务器。本节只记录可从该输出确认的状态，不等同于生产可用或全链路真实业务验收。
+
+- PASS · 依赖条件：PGDG PostgreSQL 17.12、Python 3.12 venv 已安装，旧服务 `bsv1-preview.service`/8765 和 `bsv-all-bsv1-stage.service`/8767 保持 active。此前 PR #8 的 8ff2e62 部署在系统服务中出现 `current/platform/...` 找不到启动脚本；下次部署又因受限子进程 PATH 无法解析 `runuser` 停止。
+- FIX_COMMITTED · PR #8 的 `ceb0de0` 修复 `/usr/sbin/runuser` 绝对路径，`13dad3d` 修复 systemd 指向 `current/src/platform/...`；`ba970d6` 增加两项路径与受限 PATH 回归断言。上述 GitHub 修改均尚未合并 main；验收部署的代码 SHA 为 `13dad3df84eacd83ffd9ddc8112cbcee6c3256ec`。
+- PASS_HOST · 经营负责人提供的实机输出显示 `PREFLIGHT_OK`、`VERIFY_OK: loopback routing, health and anonymous access checks`、`DEPLOYED_INTERNAL_STAGE 13dad3df84eacd83ffd9ddc8112cbcee6c3256ec`，最终 `BSV_ALL_DEPLOYMENT_ACCEPTED`。五个新 `bsv-all-internal-stage@{postgres,identity,pos,supply,ingress}.service` 均 active，对应端口 18764/18761/18762/18763/18760；两个原服务均 active。属于启动与匿名访问就绪验收，**尚未在操作员自己的 Windows 浏览器完成 SSH 隧道、人工登录和真实操作验收**。
+- ISOLATED_ONLY · 合成管理员 `reviewer1`/`reviewer2` 生成 `TRA0001`/`TRA0002`；这些仅为隔离数据，不得迁入正式终身主码空间；POS 使用测试 V9 和 SQLite。CloudBase 生产库、正式收款、中央库存 D/E 权威账本和独立督查实际复核写入尚未接通，生产 GO 为否。
+- NEXT_GATE · 在操作员本地以 SSH 转发 18760，验证 `/staff`、`/pos`、`/hq`、供货/督查读界面、登录/撤权、明确 503 写入拒绝；另做 Lighthouse 真正故障回切、PG17 加密备份-恢复、跨服务审计及安全门禁。密钥、PIN、数据库密码禁止写入 GitHub 或日志报告。GitHub 文档变更比现网运行 SHA 更新时，必须分别记录代码头版本与已部署版本，不得视为自动热更新。
