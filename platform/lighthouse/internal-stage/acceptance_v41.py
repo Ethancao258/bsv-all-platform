@@ -297,10 +297,14 @@ def growth_pos_flow(employee, flow):
             call(employee,"GET","/api/visits/customer-context?visit_id="+visit,404)
             call(employee,"POST","/api/visits/customer-link",403,
                  {"visit_id":visit,"proof":wrong_token},headers)
-            call(employee,"POST","/api/visits/customer-link",200,
-                 {"visit_id":visit,"proof":valid["token"]},headers)
+            action_id=str(uuid4())
+            link_request={"visit_id":visit,"proof":valid["token"],"_action_id":action_id}
+            first=call(employee,"POST","/api/visits/customer-link",200,link_request,headers)
+            require(first["linked"] is True,"Customer proof was not bound to this visit")
+            retry=call(employee,"POST","/api/visits/customer-link",200,link_request,headers)
+            require(retry.get("duplicate") is True,"Lost response retry was not idempotent")
             call(employee,"POST","/api/visits/customer-link",409,
-                 {"visit_id":visit,"proof":valid["token"]},headers)
+                 {**link_request,"_action_id":str(uuid4())},headers)
             linked=call(employee,"GET","/api/state",200)
             visit_row=next(v for v in linked["visits"] if v["id"]==visit)
             require(visit_row["canonical_customer_linked"] is True and visit_row["member"] is None,
