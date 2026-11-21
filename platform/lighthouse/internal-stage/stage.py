@@ -234,27 +234,57 @@ def environment(name, values):
     return values
 
 
-def upgrade_blank_ingress_environment(values):
-    path = ROOT / "config" / "ingress.env"
-    payload = "\n".join(f"{key}={shlex.quote(str(value))}" for key, value in sorted(values.items()))
+def upgrade_managed_environment(name, values, allowed_additions, *, allow_blank=False):
+    """Atomic, strictly additive upgrade of a 0600 root-owned managed env.
+
+    Do not rewrite arbitrary existing values: previous release configurations
+    are already managed, and their secrets must remain stable across rollouts.
+    """
+    path = ROOT / "config" / f"{name}.env"
     if not path.exists():
-        environment("ingress", values)
-        return
+        environment(name, values)
+        return values
     private_file(path, 0)
-    old = path.read_text().strip()
-    if old == payload:
-        return
-    if old:
-        raise RuntimeError("Unexpected existing ingress.env; refuse automatic rewrite")
-    temp = path.with_name("ingress.env.next")
-    if temp.exists() or temp.is_symlink():
-        raise RuntimeError("Unexpected ingress environment upgrade marker")
+    raw = path.read_text().strip()
+    parsed = {}
+    for line in raw.splitlines():
+        if "=" not in line:
+            raise RuntimeError("Managed environment has invalid line")
+        key, value = line.split("=", 1)
+        if key in parsed or key not in values:
+            raise RuntimeError("Unexpected managed environment key")
+        tokens = shlex.split(value)
+        if len(tokens) != 1:
+            raise RuntimeError("Invalid managed environment quoting")
+        parsed[key] = tokens[0]
+    if not raw and not allow_blank:
+        raise RuntimeError("Unexpected empty managed environment")
+    if any(parsed[key] != str(values[key]) for key in parsed):
+        raise RuntimeError("Existing managed environment has changed; refuse overwrite")
+    if raw and set(values) - set(parsed) - set(allowed_additions):
+        raise RuntimeError("Unapproved environment keys requested")
+    payload = "\n".join(f"{key}={shlex.quote(str(value))}" for key, value in sorted(values.items()))
+    if raw == payload:
+        return values
+    tmp = path.with_name(path.name + ".next")
+    if tmp.exists() or tmp.is_symlink():
+        raise RuntimeError("Unreviewed config migration marker")
     try:
-        write_secret(temp, payload)
-        temp.replace(path)
+        write_secret(tmp, payload)
+        tmp.replace(path)
         sync_directory(path.parent)
     finally:
-        temp.unlink(missing_ok=True)
+        tmp.unlink(missing_ok=True)
+    return values
+
+
+def upgrade_blank_ingress_environment(values):
+    """Backwards-compatible caller for the original V4.3 blank ingress upgrade."""
+    return upgrade_managed_environment(
+        "ingress", values,
+        {"BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_LINK_KEY",
+         "BSV_GROWTH_POS_VERIFY_TOKEN", "BSV_GROWTH_POS_VERIFY_URL"},
+        allow_blank=True)
 
 
 def prepare_config():
@@ -282,6 +312,11 @@ def prepare_config():
         write_secret(config / key, secrets.token_urlsafe(36)) for key in
         ("pg-password", "pos-token", "layout-token", "supply-token", "session-key", "privacy-pepper", "reviewer1", "reviewer2")]
     pin = write_secret(config / "pos-pin", str(10**10 + secrets.randbelow(9 * 10**10)))
+    # Three distinct secrets: guest authorization, POS visit context and the
+    # private POS-to-growth verification channel. Never share payment secrets.
+    growth_link = write_secret(config / "growth-link-key", secrets.token_urlsafe(48))
+    growth_context = write_secret(config / "growth-pos-context-key", secrets.token_urlsafe(48))
+    growth_verify = write_secret(config / "growth-pos-verify-token", secrets.token_urlsafe(48))
     store_map = {"BSVT": "DEMO_LEGAL"}
     token_map = {
         "pos": {"token": pos_token, "actions": ["pos.order.read", "pos.order.create"],
@@ -303,7 +338,7 @@ def prepare_config():
         "BSV_DEMO_ADMIN_1_PASSWORD": reviewer1, "BSV_DEMO_ADMIN_2_PASSWORD": reviewer2,
         "BSV_SERVICE_TOKENS_JSON": json.dumps(token_map, separators=(",", ":")),
     })
-    pos = environment("pos", {
+    pos = upgrade_managed_environment("pos", {
         "BSV_MODE": "staging", "BSV_PORT": "18762", "BSV_PRIVATE_SSH_TUNNEL": "1",
         "BSV_DB_PATH": str(DATA / "pos" / "synthetic.sqlite3"),
         "BSV_V9_XLSX": str(DATA / "pos" / "synthetic-v9.xlsx"),
@@ -313,7 +348,12 @@ def prepare_config():
         "BSV_POS_STORE_LEGAL_JSON": json.dumps(store_map, separators=(",", ":")),
         "BSV_POS_LAYOUT_SERVICE_TOKEN": layout_token, "BSV_POS_LAYOUT_SCOPE_MODE": "isolated-synthetic",
         "BSV_APP_ENV": "isolated",
-    })
+        "BSV_POS_GROWTH_INTEGRATION": "1",
+        "BSV_GROWTH_LINK_KEY": growth_link,
+        "BSV_GROWTH_POS_CONTEXT_KEY": growth_context,
+        "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
+    }, {"BSV_POS_GROWTH_INTEGRATION", "BSV_GROWTH_LINK_KEY",
+        "BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_POS_VERIFY_TOKEN"})
     environment("postgres", {"BSV_STAGE_COMPONENT_DATA": str(DATA / "postgres")})
     # Isolated, synthetic candidate only; no additional public service or authority.
     # The original ingress.env is an empty, root-owned environment file on older
@@ -328,6 +368,10 @@ def prepare_config():
         "BSV_GROWTH_IDENTITY_ME_URL": "http://127.0.0.1:18761/api/v1/identity/me",
         "BSV_GROWTH_SIGNING_KEY": growth_signing,
         "BSV_GROWTH_SIGNATURE_KEY": growth_signature,
+        "BSV_GROWTH_LINK_KEY": growth_link,
+        "BSV_GROWTH_POS_CONTEXT_KEY": growth_context,
+        "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
+        "BSV_GROWTH_POS_VERIFY_URL": "http://127.0.0.1:18762/api/v1/visits/customer-context/verify",
         "BSV_GROWTH_LEGAL_ENTITY_ID": "DEMO_LEGAL",
         "BSV_GROWTH_STORE_IDS": "BSVT",
         "BSV_GROWTH_PUBLIC_BASE_URL": "http://127.0.0.1:18760",
