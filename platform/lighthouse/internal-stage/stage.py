@@ -586,8 +586,36 @@ def verify_source_tree(source, manifest):
         raise RuntimeError("Release source is incomplete for the immutable Git tree")
 
 
-def _allowed_venv_symlink(path, target):
-    relative = path.relative_to(ROOT / "releases").as_posix()
+def _managed_release_directory(dest):
+    """Return the resolved, SHA-named direct child of the managed releases directory."""
+    releases = ROOT / "releases"
+    try:
+        if (releases.is_symlink() or not releases.is_dir()
+                or dest.parent != releases
+                or not re.fullmatch(r"[a-f0-9]{40}", dest.name)
+                or dest.is_symlink() or not dest.is_dir()):
+            return None
+        releases_real = releases.resolve(strict=True)
+        dest_real = dest.resolve(strict=True)
+        if releases_real != releases or dest_real.parent != releases_real or dest_real != dest:
+            return None
+        return dest_real
+    except (OSError, RuntimeError):
+        return None
+
+
+def _allowed_venv_symlink(dest, path, target):
+    release = _managed_release_directory(dest)
+    if release is None:
+        return False
+    try:
+        relative = path.relative_to(dest).as_posix()
+        parent = path.parent.resolve(strict=True)
+        parent.relative_to(release)
+        if not path.is_symlink():
+            return False
+    except (OSError, RuntimeError, ValueError):
+        return False
     if relative in {"identity/lib64", "supply/lib64"}:
         return target == "lib"
     if relative in {"identity/bin/python", "supply/bin/python"}:
@@ -606,7 +634,7 @@ def normalize_release_permissions(dest, manifest=None):
     ROOT/config and DATA contain private credentials and are never traversed.
     This also repairs a completed release built under a root systemd umask 077.
     """
-    if dest.parent != ROOT / "releases" or dest.is_symlink() or not dest.is_dir():
+    if _managed_release_directory(dest) is None:
         raise RuntimeError("Unexpected managed release directory")
     source = dest / "src"
     source_directories = {path for path, entry in (manifest or {}).get("entries", {}).items()
@@ -635,7 +663,7 @@ def normalize_release_permissions(dest, manifest=None):
                 if stat.S_ISDIR(child.st_mode):
                     stack.append(path)
                 elif stat.S_ISLNK(child.st_mode):
-                    if not _allowed_venv_symlink(path, os.readlink(path)):
+                    if not _allowed_venv_symlink(dest, path, os.readlink(path)):
                         raise RuntimeError("Unapproved release symlink")
                 elif stat.S_ISREG(child.st_mode):
                     rel = path.relative_to(source).as_posix() if in_source else None
@@ -666,6 +694,8 @@ def normalize_release_permissions(dest, manifest=None):
 
 def release_inventory_sha256(dest):
     """Attest every generated source/venv path, type, mode, link target, and content."""
+    if _managed_release_directory(dest) is None:
+        raise RuntimeError("Unexpected managed release directory")
     records = []
     stack = [dest]
     while stack:
@@ -695,7 +725,7 @@ def release_inventory_sha256(dest):
                     records.append([relative, "file", mode, digest.hexdigest()])
                 elif stat.S_ISLNK(info.st_mode):
                     target = os.readlink(path)
-                    if not _allowed_venv_symlink(path, target):
+                    if not _allowed_venv_symlink(dest, path, target):
                         raise RuntimeError("Unapproved symlink in built release")
                     records.append([relative, "symlink", target])
                 else:
