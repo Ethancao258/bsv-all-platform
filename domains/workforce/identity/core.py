@@ -461,8 +461,12 @@ def request_grant(db, tr, legal_entity_id, store_id, action, role, qualification
         if qualification and qualification != mandatory:
             raise DomainError("Mandatory action qualification cannot be weakened", 422, "QUALIFICATION_MISMATCH")
         qualification = mandatory
-    if role == "hq" and store_id:
-        raise DomainError("HQ privileges cannot silently include store operations; use scoped manager role", 422, "SCOPE_ERROR")
+    # HQ floor-map privileges are store-scoped management actions, not POS
+    # operational permissions. A narrow exception preserves global HQ-only
+    # restrictions for all other privileged actions.
+    scoped_hq_layout_actions = {"hq.layout.read", "hq.layout.edit", "hq.layout.publish"}
+    if role == "hq" and store_id and action not in scoped_hq_layout_actions:
+        raise DomainError("HQ privileges cannot silently include store operations", 422, "SCOPE_ERROR")
     if end and aware(end) <= aware(start):
         raise DomainError("Invalid grant window", 422, "INVALID_DATES")
     if (person_for_subject(db, actor) or Person(tr_code="")).tr_code == tr:
