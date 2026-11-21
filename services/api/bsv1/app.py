@@ -1267,6 +1267,30 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json({"context":token,"store_id":staff["session_store_id"],
                         "expires_in_seconds":90})
 
+    def growth_staff_verify(self, data):
+        """Internal-only live POS shift/device proof for the identity.A employee.
+
+        Identity.A alone must not infer a POS shift from an approved grant:
+        the academy version verifies attendance, course and the actual device.
+        """
+        key = os.environ.get("BSV_GROWTH_POS_VERIFY_TOKEN", "")
+        actual = self.headers.get("Authorization", "")
+        if (not growth_integration() or len(key) < 32
+                or not hmac.compare_digest(actual, "Bearer " + key)
+                or self.client_address[0] not in ("127.0.0.1", "::1")):
+            raise UserError("内部当班核验不可访问", 403, "GROWTH_VERIFY_FORBIDDEN")
+        if data:
+            raise UserError("当班核验字段不正确", 422)
+        staff = self.resolve_auth()  # device + academy + active shift, every request
+        if not staff or not staff.get("authority"):
+            raise UserError("当前员工设备或班次未获准接待", 403, "POS_SCOPE_DENIED")
+        tr = staff["authority"].get("tr_code")
+        store = staff["session_store_id"]
+        if not tr or not store:
+            raise UserError("人员和门店身份不完整", 403, "POS_SCOPE_DENIED")
+        self.send_json({"allowed":True,"active_shift":True,
+                        "actor_tr":tr,"store_id":store})
+
     def growth_visit_verify(self, data):
         """Private same-host call; re-authorizes the *actual* browser POS device."""
         key = os.environ.get("BSV_GROWTH_POS_VERIFY_TOKEN", "")
@@ -1917,6 +1941,9 @@ class Handler(BaseHTTPRequestHandler):
         path=urlparse(self.path).path
         try:
             data=self.read_body()
+            if path == "/api/v1/visits/customer-staff/verify":
+                self.growth_staff_verify(data)
+                return
             if path == "/api/v1/visits/customer-context/verify":
                 self.growth_visit_verify(data)
                 return
