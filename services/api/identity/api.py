@@ -655,6 +655,12 @@ class PosSessionCheck(StrictModel):
     action: Literal["pos.order.read", "pos.order.create"]
 
 
+class HqLayoutSessionCheck(StrictModel):
+    action: Literal["hq.layout.read", "hq.layout.edit", "hq.layout.publish", "hq.store.register"]
+    legal_entity_id: str = Field(min_length=2, max_length=80)
+    store_id: str | None = Field(default=None, min_length=3, max_length=32)
+
+
 @app.post("/api/v1/identity/pos-session")
 def pos_session(body: PosSessionCheck, request: Request):
     conf = require_integration_service(request, "pos")
@@ -670,6 +676,37 @@ def pos_session(body: PosSessionCheck, request: Request):
         allowed = bool(person and alias and alias.tr_code == person.tr_code and has_action(
             db, session.subject, body.action, body.store_id, body.legal_entity_id))
         return {"allowed":allowed,"decision_source":"A","cache_ttl_seconds":0}
+
+
+@app.post("/api/v1/identity/hq-layout-session")
+def hq_layout_session(body: HqLayoutSessionCheck, request: Request):
+    conf = require_integration_service(request, "layout-admin")
+    # Read may list authorized stores in the legal entity. Any mutation must
+    # name a concrete store, never silently turn into a broad HQ write.
+    if body.action != "hq.layout.read" and body.store_id is None:
+        raise DomainError("Store required for layout mutation", 422, "STORE_REQUIRED")
+    if (body.action not in conf.get("actions", [])
+            or body.legal_entity_id not in conf.get("legal_entities", [])
+            or (body.store_id is not None and body.store_id not in conf.get("stores", []))
+            or (body.action == "hq.store.register" and body.store_id is None)):
+        raise DomainError("Service scope denied", 403, "SERVICE_SCOPE_DENIED")
+    with router.session() as db:
+        session = bearer_session(request, db)
+        if not session:
+            raise DomainError("Authentication required", 401, "AUTH_REQUIRED")
+        if body.action != "hq.layout.read":
+            # Browser-originated edits are relayed by the trusted POS service.
+            # Validate the CSRF proof against the actual bearer session in A.
+            verify_csrf(session, request.headers.get("X-CSRF-Token", ""))
+        person = person_for_subject(db, session.subject)
+        if not person or not person.status == "active" or not is_issued(db, person.tr_code, "EMP"):
+            return {"allowed": False, "decision_source": "A", "cache_ttl_seconds": 0,
+                    "action": body.action, "legal_entity_id": body.legal_entity_id,
+                    "store_id": body.store_id}
+        allowed = has_action(db, session.subject, body.action, body.store_id, body.legal_entity_id)
+        return {"allowed": allowed, "decision_source": "A", "cache_ttl_seconds": 0,
+                "action": body.action, "legal_entity_id": body.legal_entity_id,
+                "store_id": body.store_id, **({"actor_tr_code": person.tr_code} if allowed else {})}
 
 
 @app.get("/api/v1/auth/me")
