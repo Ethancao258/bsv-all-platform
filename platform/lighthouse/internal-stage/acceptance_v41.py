@@ -287,7 +287,7 @@ def growth_pos_flow(employee, flow):
             # A tampered but otherwise valid token must still fail closed.
             wrong_token=valid["token"][:-1]+("f" if valid["token"][-1]!="f" else "e")
         state=call(employee, "GET", "/api/state", 200)
-        headers={"X-BSV-CSRF":state["csrf"]}
+        headers={"X-BSV-CSRF":state["csrf"],"Origin":flow.base}
         seat=next((x["id"] for x in state["seats"] if x["enabled"] and x["id"]
                    not in {v["seat_id"] for v in state["visits"]}
                    and x.get("cleaning_state")!="DIRTY"), None)
