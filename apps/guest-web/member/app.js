@@ -22,7 +22,9 @@
   appConfig=conf;
   for(const anchor of ['menu-link','footer-menu-link']){
    const url=String(conf.menu_url||'/cocktail/');
-   if(url.startsWith('/')&&!url.startsWith('//'))el(anchor).href=url;
+   try{const parsed=new URL(url,location.origin);
+     if(parsed.origin===location.origin||(parsed.protocol==='https:'&&(parsed.hostname==='bsvm.cn'||parsed.hostname.endsWith('.bsvm.cn'))))el(anchor).href=parsed.href;
+   }catch{}
   }
   const list=el('store-choice');list.replaceChildren();
   list.add(new Option('请选择门店',''));

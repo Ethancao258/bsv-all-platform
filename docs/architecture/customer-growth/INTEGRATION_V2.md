@@ -20,7 +20,7 @@
 
 `{"customer_id":"<authoritative>","store_id":"<authoritative>","visit_id":"<authoritative>","iat":<unix>,"exp":<unix plus <=120s>}`
 
-由服务端返回短期token，门店前端调用 `BSVGrowthPOS.openCustomerPanel({storeId,context})`。浏览器不生成签名、不传通讯录、不在前端永久储存客户ID。POS后台还需提供私网核验 `BSV_GROWTH_POS_VERIFY_URL`，对 `actor_tr, store_id, visit_id, customer_id` 返回均为true的 `allowed/active_shift/customer_linked/store_ownership_verified`。只要任一项目不通过就403，不展示偏好；连接失败则拒绝读取、保留常规点单能力。该核验器尚未在现有POS实装，**当前只是安全接入契约，不得声称完整POS生产联调已通过。**
+由服务端返回短期token，门店前端调用 `BSVGrowthPOS.openCustomerPanel({storeId,context})`。短时token通过URL片段（`#`）传递，不出现在HTTP请求路径或查询串；页面读取后立即清理片段。浏览器不生成签名、不传通讯录、不在前端永久储存客户ID。POS后台还需提供私网核验 `BSV_GROWTH_POS_VERIFY_URL`，对 `actor_tr, store_id, visit_id, customer_id` 返回均为true的 `allowed/active_shift/customer_linked/store_ownership_verified`。只要任一项目不通过就403，不展示偏好；连接失败则拒绝读取、保留常规点单能力。该核验器尚未在现有POS实装，**当前只是安全接入契约，不得声称完整POS生产联调已通过。**
 
 风味标签只取客人本人填写的四类：`清爽轻盈`、`果香酸爽`、`甜香醇厚`、`烈酒本味`。系统不保存顾客被员工推断的心理、醉酒、过敏史或私人微信对话。客人关闭服务分享后，下一次服务端读取即时返回空标签，不能从POS缓存继续展示。没有顾客确认，调酒师正常问口味即可。
 

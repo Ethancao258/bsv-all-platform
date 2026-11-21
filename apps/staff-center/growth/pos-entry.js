@@ -4,7 +4,7 @@
  openCustomerPanel({storeId,context}){
    if(!/^[A-Za-z0-9_-]{3,40}$/.test(storeId)||typeof context!=='string'||context.length>3000||!context.includes('.'))
      throw Error('接待授权尚未核验');
-   const url='/staff/growth/?'+new URLSearchParams({store_id:storeId,context})+'#service';
+   const url='/staff/growth/?'+new URLSearchParams({store_id:storeId})+'#service&context='+encodeURIComponent(context);
    window.location.assign(url);
  }
 });})();

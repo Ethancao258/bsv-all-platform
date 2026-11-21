@@ -2,6 +2,7 @@
  const el=id=>document.getElementById(id),q=new URLSearchParams(location.search);
  const base='/api/v1/growth',titles={service:['CUSTOMER SERVICE','当前接待','在点单时识别会员，让推荐更加贴合当下的口味。'],claims:['CUSTOMER CLAIM','客户认领','确认真实获客贡献，认领记录清楚可追溯。'],invite:['INVITE & CONNECT','我的推广','把好的体验分享给朋友，推荐关系由系统记录。'],signature:['MY SIGNATURE','我的签名','规范保存签名母版，后续文件无需重复书写。']};
  let identity=null,policy=null,inviteLink='',hasDrawn=false,activeView='service';
+ const visitContext=q.get('context')||(()=>{const match=location.hash.match(/(?:^|&)context=([^&]+)/);try{return match?decodeURIComponent(match[1]):''}catch{return ''}})();
  const selectedStore=()=>el('store').value;
  const cookie=n=>document.cookie.split('; ').find(v=>v.startsWith(n+'='))?.slice(n.length+1)||'';
  const status=(message,error=false)=>{const x=el('status');x.hidden=!message;x.textContent=message;x.classList.toggle('error',error);};
@@ -29,7 +30,7 @@
  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
  function removeContext(){el('service-empty').hidden=false;el('service-present').hidden=true;}
  async function loadContext(){
-   const ctx=q.get('context');if(!ctx){removeContext();return;}
+   const ctx=visitContext;if(!ctx){removeContext();return;}
    try{
       const result=await api('/staff/guest-context?context='+encodeURIComponent(ctx));
       el('service-empty').hidden=true;el('service-present').hidden=false;
@@ -72,7 +73,7 @@
      el('signature-saved').hidden=!data.signature_version;
      if(data.signature_version)el('saved-image').src='/api/v1/growth/staff/signature-preview?store_id='+encodeURIComponent(selectedStore())+'&v='+data.signature_version;
      await Promise.all([loadQueue(),loadPolicy(),loadContext()]);
-     if(!q.get('context'))status('');
+     if(!visitContext)status('');
    }catch(e){el('who').textContent='暂时无法使用客户工作台';el('who-note').textContent='请从员工中心登录，并确认本店岗位权限';el('claim').disabled=true;el('signature-saved').hidden=true;status(e.message,true);}
  }
  el('refresh').addEventListener('click',loadIdentity);
@@ -126,7 +127,7 @@
      ctx.clearRect(0,0,canvas.width,canvas.height);hasDrawn=false;
    }catch(e){status(e.message,true)}finally{busy(b,false)}
  });
- const initial=q.get('context')?'service':(titles[location.hash.slice(1)]?location.hash.slice(1):'service');
+ const initial=visitContext?'service':(titles[location.hash.slice(1)]?location.hash.slice(1):'service');
  async function bootstrap(){
    showView(initial);
    const storeChoice=el('store');storeChoice.replaceChildren(new Option('核验门店中…',''));
