@@ -1,0 +1,1017 @@
+{
+  "schema_version": "1.0",
+  "report_id": "V42-R32-G0-STATIC-20261121",
+  "generated_on": "2026-11-21",
+  "scope": "REPOSITORY_STATIC_EVIDENCE_ONLY",
+  "source": {
+    "repository": "Ethancao258/bsv-all-platform",
+    "inspected_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b",
+    "registry": "config/use-case-registry.json",
+    "crosswalk": "contracts/v4-2/R3_2_USE_CASE_INTEGRATION_MAP.json",
+    "owner_registry": "config/data-ownership.json",
+    "routes": "platform/lighthouse/internal-stage/ingress.py",
+    "ci_run_url": "https://github.com/Ethancao258/bsv-all-platform/actions/runs/44853170192",
+    "ci_result": "8/8_success_for_inspected_sha_not_full_V42"
+  },
+  "definitions": {
+    "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF": "tracked implementation file for this use case; feature completeness unverified",
+    "NO_DIRECT_CODE_ANCHOR": "crosswalk contains no direct implementation file hint; not a claim of zero code",
+    "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE": "related subsystem passed at inspected SHA; whole use case not specifically accepted",
+    "NO_USE_CASE_ACCEPTANCE_EVIDENCE": "no mapped end-to-end acceptance in this report",
+    "V42_USE_CASE_HOST_NOT_VERIFIED": "no direct V4.2 host evidence for this use case",
+    "NO_GO": "production cannot be inferred from static code/CI"
+  },
+  "metrics": {
+    "total_use_cases": 32,
+    "code_anchors_present": 17,
+    "without_direct_code_anchor": 15,
+    "full_use_case_acceptances_verified": 0,
+    "v42_host_acceptances_verified": 0,
+    "production_go_verified": 0,
+    "r3_capabilities_documented": 13,
+    "r3_addenda_documented": 6
+  },
+  "g0_gates": [
+    {
+      "id": "G0-01",
+      "status": "STATIC_INVENTORY_COMPLETE_HOST_UNKNOWN",
+      "finding": "32/32 source use cases inventory; no verified per-use-case host evidence; registry DESIGN_ONLY statuses remain unchanged",
+      "next": "runtime and CI test-to-usecase evidence for A-G"
+    },
+    {
+      "id": "G0-02",
+      "status": "PARTIAL_UNKNOWN_REAL_MASTER",
+      "finding": "config/data-ownership.json declares single owners; real CloudBase fields, 5th store ID and organization/legal mappings unverified",
+      "next": "read-only authoritative organization and schema evidence"
+    },
+    {
+      "id": "G0-03",
+      "status": "STATIC_BLOCKER",
+      "finding": "ingress.upstream() currently returns POS fallback for unregistered paths; R3.2 requires explicit allowed paths and default 404. /work/craft not a registered entry",
+      "next": "A phase explicit route/method allowlist plus negative HTTP tests"
+    },
+    {
+      "id": "G0-04",
+      "status": "BLOCKED_REAL_AUTHORITIES",
+      "finding": "CloudBase production ACL/RLS backup/migrations and D/E authoritative services not directly verified; isolated identity PG and POS SQLite are separate writers",
+      "next": "authoritative read-only schema and grants plus recovery evidence; no new production DDL"
+    },
+    {
+      "id": "G0-05",
+      "status": "PARTIAL_AWAITING_E2E",
+      "finding": "synthetic identity/academy/POS/HQ and supply paths have subsystem tests; J1-J8 full business journeys not accepted",
+      "next": "role/qualification/shift/device and negative journey acceptance matrix"
+    },
+    {
+      "id": "G0-06",
+      "status": "PARTIAL_HOST_NOT_ATTESTED",
+      "finding": "bsvctl release control and 8 CI jobs exist; current Lighthouse SHA/capacity, actual rollback and recovery not directly attested",
+      "next": "read-only host status and capacity, then controlled isolated release"
+    }
+  ],
+  "route_inventory": [
+    {
+      "path": "/hq",
+      "target": "identity",
+      "mode": "EXACT_ROUTE_EXISTING",
+      "status": "CODE_PRESENT",
+      "source": "platform/lighthouse/internal-stage/ingress.py"
+    },
+    {
+      "path": "/hq/stores/layout",
+      "target": "pos",
+      "mode": "EXACT_ROUTE_EXISTING",
+      "status": "CI_TESTED_SYNTHETIC_ONLY",
+      "source": "platform/lighthouse/internal-stage/ingress.py"
+    },
+    {
+      "path": "/pos",
+      "target": "pos",
+      "mode": "ALIAS_EXISTING",
+      "status": "ISOLATED",
+      "source": "platform/lighthouse/internal-stage/ingress.py"
+    },
+    {
+      "path": "/staff",
+      "target": "identity",
+      "mode": "EXACT_ROUTE_EXISTING",
+      "status": "ISOLATED",
+      "source": "platform/lighthouse/internal-stage/ingress.py"
+    },
+    {
+      "path": "/supply-ui/*",
+      "target": "supply",
+      "mode": "PREFIX_EXISTING",
+      "status": "ISOLATED",
+      "source": "platform/lighthouse/internal-stage/ingress.py"
+    },
+    {
+      "path": "/cocktail/",
+      "target": "public_static",
+      "mode": "MOUNT_EXISTING",
+      "status": "CODE_PRESENT_NOT_LIVE_PUBLIC_VERIFIED",
+      "source": "platform/lighthouse/internal-stage/ingress.py"
+    },
+    {
+      "path": "/craft/*",
+      "target": null,
+      "mode": "EXPLICIT_404",
+      "status": "NOT_AVAILABLE",
+      "source": "platform/lighthouse/internal-stage/ingress.py"
+    },
+    {
+      "path": "/work/craft",
+      "target": null,
+      "mode": "NOT_REGISTERED",
+      "status": "DESIGN_ONLY",
+      "source": "docs/architecture/BSV_ALL_V4_2_R3_2_FINAL_ARCHITECTURE.md"
+    },
+    {
+      "path": "UNREGISTERED_PATH",
+      "target": "pos",
+      "mode": "IMPLICIT_FALLBACK",
+      "status": "SAFETY_GAP",
+      "source": "platform/lighthouse/internal-stage/ingress.py"
+    }
+  ],
+  "data_boundaries": [
+    {
+      "namespace": "identity.A",
+      "authority": "identity primary PG",
+      "live_status": "ISOLATED_ONLY",
+      "production": "BLOCKED"
+    },
+    {
+      "namespace": "identity.B",
+      "authority": "optional restricted read replica",
+      "live_status": "NOT_REQUIRED",
+      "production": "UNKNOWN"
+    },
+    {
+      "namespace": "supply.A",
+      "authority": "catalog",
+      "live_status": "BLOCKED",
+      "production": "UNKNOWN"
+    },
+    {
+      "namespace": "supply.B",
+      "authority": "identity read API",
+      "live_status": "ISOLATED_READ",
+      "production": "BLOCKED"
+    },
+    {
+      "namespace": "supply.C",
+      "authority": "organization locations",
+      "live_status": "BLOCKED",
+      "production": "UNKNOWN"
+    },
+    {
+      "namespace": "supply.D",
+      "authority": "stock and shipping ledger",
+      "live_status": "BLOCKED",
+      "production": "BLOCKED"
+    },
+    {
+      "namespace": "supply.E",
+      "authority": "independent quality audit ledger",
+      "live_status": "BLOCKED",
+      "production": "BLOCKED"
+    },
+    {
+      "namespace": "pos.SQLite",
+      "authority": "existing seat/order/map facts",
+      "live_status": "ISOLATED_TEST_ONLY",
+      "production": "UNVERIFIED"
+    },
+    {
+      "namespace": "cloudbase.PG",
+      "authority": "existing product tables reported",
+      "live_status": "READ_ONLY_USER_REPORTED",
+      "production": "BLOCKED_ACL_RLS_AND_RECOVERY"
+    }
+  ],
+  "critical_blockers": [
+    {
+      "id": "B-01",
+      "type": "SECURITY",
+      "issue": "Unknown ingress route falls through to POS rather than explicit 404",
+      "next_phase": "A"
+    },
+    {
+      "id": "B-02",
+      "type": "AUTHORITY",
+      "issue": "Organization/store/legal ownership and fifth shop ID not independently evidenced",
+      "next_phase": "A"
+    },
+    {
+      "id": "B-03",
+      "type": "DATA_SECURITY",
+      "issue": "CloudBase existing product table ACL/RLS/backup not production accepted",
+      "next_phase": "G0-04"
+    },
+    {
+      "id": "B-04",
+      "type": "INTEGRATION",
+      "issue": "Customer/real payment/refund/commission event pipeline not accepted",
+      "next_phase": "E-F"
+    },
+    {
+      "id": "B-05",
+      "type": "DATA",
+      "issue": "Supply D/E central stock and independent audit writers not connected",
+      "next_phase": "D"
+    },
+    {
+      "id": "B-06",
+      "type": "OPERATIONS",
+      "issue": "No V4.2 host deployment, business journey and real recovery evidence",
+      "next_phase": "G"
+    }
+  ],
+  "cases": [
+    {
+      "use_case_id": "bsv1.product.design",
+      "owner_domain": "catalog",
+      "writer_domain": "catalog",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "C",
+      "observed_file": "services/api/bsv1/bsv_v9_import.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "bsv1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "研发并审批鸡尾酒、材料、套餐、配方及有效版本",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.product.publish",
+      "owner_domain": "catalog",
+      "writer_domain": "catalog",
+      "ui_apps": [
+        "hq-console",
+        "guest-web"
+      ],
+      "phase": "C",
+      "observed_file": "services/api/bsv1/public_menu_projection.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "menu-v13-1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "总部批准发布可售菜单与门店价格",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.store.floor",
+      "owner_domain": "organization",
+      "writer_domain": "organization",
+      "ui_apps": [
+        "store-console"
+      ],
+      "phase": "C",
+      "observed_file": "services/api/bsv1/bsv_layouts.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "bsv1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "选择店内座位、开桌、合分桌、清桌",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.store.order",
+      "owner_domain": "commerce",
+      "writer_domain": "commerce",
+      "ui_apps": [
+        "store-console"
+      ],
+      "phase": "C",
+      "observed_file": "services/api/bsv1/app.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "bsv1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "待下单商品转正式订单，记录价格快照",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.store.payment",
+      "owner_domain": "payments",
+      "writer_domain": "payments",
+      "ui_apps": [
+        "store-console"
+      ],
+      "phase": "F",
+      "observed_file": "services/api/bsv1/bsv_ledger.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "bsv1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "退款、分次支付、结账与可信核对",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.store.bartending",
+      "owner_domain": "service_ops",
+      "writer_domain": "service_ops",
+      "ui_apps": [
+        "store-console"
+      ],
+      "phase": "C",
+      "observed_file": "services/api/bsv1/app.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "bsv1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "使用审核配方与已授权制酒人员完成调酒引导",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.store.fulfillment",
+      "owner_domain": "service_ops",
+      "writer_domain": "service_ops",
+      "ui_apps": [
+        "store-console"
+      ],
+      "phase": "C",
+      "observed_file": "services/api/bsv1/app.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "bsv1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "制作分派、制作人、送达人、出品结果",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.store.open_close",
+      "owner_domain": "service_ops",
+      "writer_domain": "service_ops",
+      "ui_apps": [
+        "store-console"
+      ],
+      "phase": "C",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "开闭店、清洁、交接、风险升级",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.store.local_procure",
+      "owner_domain": "procurement",
+      "writer_domain": "procurement",
+      "ui_apps": [
+        "store-console"
+      ],
+      "phase": "D",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "门店按许可独立采购、验收与报损",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.people.onboarding",
+      "owner_domain": "workforce",
+      "writer_domain": "workforce",
+      "ui_apps": [
+        "staff-center",
+        "hq-console"
+      ],
+      "phase": "B",
+      "observed_file": "services/api/identity/api.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "identity-r2",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "招聘入职、有效合同和基础资料复核",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.people.schedule",
+      "owner_domain": "workforce",
+      "writer_domain": "workforce",
+      "ui_apps": [
+        "staff-center"
+      ],
+      "phase": "B",
+      "observed_file": "services/api/identity/academy_api.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "v4-1-integration",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "排班、请假、候补、跨店资格验证",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.people.attendance",
+      "owner_domain": "workforce",
+      "writer_domain": "workforce",
+      "ui_apps": [
+        "staff-center"
+      ],
+      "phase": "B",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "考勤、打卡、交接与纠错",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.learning.courses",
+      "owner_domain": "learning",
+      "writer_domain": "learning",
+      "ui_apps": [
+        "staff-center"
+      ],
+      "phase": "B",
+      "observed_file": "services/api/identity/academy_api.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "v4-1-integration",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "展示授权教程、SOP、视频与学习记录",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.learning.exams",
+      "owner_domain": "learning",
+      "writer_domain": "learning",
+      "ui_apps": [
+        "staff-center"
+      ],
+      "phase": "B",
+      "observed_file": "services/api/identity/academy_api.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "v4-1-integration",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "线上考试、实操认证、资格有效期与基础权限激活",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.identity.grants",
+      "owner_domain": "identity_access",
+      "writer_domain": "identity_access",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "A",
+      "observed_file": "services/api/identity/api.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "identity-r2",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "按员工状态/门店/操作/有效期授权及回收",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.customer.menu",
+      "owner_domain": "catalog",
+      "writer_domain": "catalog",
+      "ui_apps": [
+        "guest-web"
+      ],
+      "phase": "C",
+      "observed_file": "apps/guest-web/bsv1/site/cocktail/index.html",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "menu-v13-1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "按有效发布版本显示统一电子菜单",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.customer.member",
+      "owner_domain": "customer",
+      "writer_domain": "customer",
+      "ui_apps": [
+        "guest-web"
+      ],
+      "phase": "E",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "自愿入会、查看权益和经授权的消费历史",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.customer.booking",
+      "owner_domain": "commerce",
+      "writer_domain": "commerce",
+      "ui_apps": [
+        "guest-web"
+      ],
+      "phase": "E",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "展示营业信息并接受预约",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.customer.online_order",
+      "owner_domain": "commerce",
+      "writer_domain": "commerce",
+      "ui_apps": [
+        "guest-web"
+      ],
+      "phase": "E",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "未来线上下单但仍复用统一订单ID",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.finance.daily",
+      "owner_domain": "operating_finance",
+      "writer_domain": "operating_finance",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "F",
+      "observed_file": "services/api/bsv1/bsv_ledger.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "bsv1",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "薪资、成本、日结对账与直营/合作经济归属",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.continuity.sync",
+      "owner_domain": "event_audit",
+      "writer_domain": "event_audit",
+      "ui_apps": [
+        "store-console"
+      ],
+      "phase": "G",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "本地离线任务队列与幂等补传",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv1.marketing.basic_tasks",
+      "owner_domain": "marketing",
+      "writer_domain": "marketing",
+      "ui_apps": [
+        "staff-center"
+      ],
+      "phase": "F",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "基础营业信息更新、官方账号协作、顾客服务展示",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv2.growth.campaign",
+      "owner_domain": "marketing",
+      "writer_domain": "marketing",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "F",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "总部获客、渠道投放、增量转化归因",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv2.supply.central",
+      "owner_domain": "production",
+      "writer_domain": "production",
+      "ui_apps": [
+        "hq-console",
+        "store-console"
+      ],
+      "phase": "D",
+      "observed_file": "services/api/supply/domain.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "supply-v2",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "集中制作、标签、跨店配送、签收和记录",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv2.supply.audit_sheet",
+      "owner_domain": "inventory",
+      "writer_domain": "inventory",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "D",
+      "observed_file": "services/api/supply/domain.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "supply-v2",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "门店供货督查纸质表、机器预填后人工核验",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv2.quality.independent",
+      "owner_domain": "quality",
+      "writer_domain": "quality",
+      "ui_apps": [
+        "inspector-console"
+      ],
+      "phase": "D",
+      "observed_file": "services/api/supply/domain.py",
+      "code_status": "EXISTING_CODE_ANCHOR_NOT_FULL_SCOPE_PROOF",
+      "ci_status": "RELATED_JOB_PASS_NOT_USE_CASE_ACCEPTANCE",
+      "related_ci_job": "supply-v2",
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "第三方或独立督查证据、整改、再复核",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv2.partnership.manage",
+      "owner_domain": "partnership",
+      "writer_domain": "partnership",
+      "ui_apps": [
+        "partner-portal",
+        "hq-console"
+      ],
+      "phase": "F",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "咖啡厅合作、跨店项目、合同和经营归属",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv2.system.licensing",
+      "owner_domain": "partnership",
+      "writer_domain": "partnership",
+      "ui_apps": [
+        "partner-portal"
+      ],
+      "phase": "F",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "向外部客户授权经营工具并作租户隔离",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv3.capital.budget",
+      "owner_domain": "capital",
+      "writer_domain": "capital",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "F",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "安全底线、流动性、重大资本开支审批",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv3.capital.investment",
+      "owner_domain": "capital",
+      "writer_domain": "capital",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "F",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "投资与退出决策、风险与机会成本审计",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv3.capital.funding",
+      "owner_domain": "capital",
+      "writer_domain": "capital",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "F",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "融资、股权和并购审批及合同流转",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    },
+    {
+      "use_case_id": "bsv3.capital.regulated",
+      "owner_domain": "capital",
+      "writer_domain": "capital",
+      "ui_apps": [
+        "hq-console"
+      ],
+      "phase": "F",
+      "observed_file": null,
+      "code_status": "NO_DIRECT_CODE_ANCHOR",
+      "ci_status": "NO_USE_CASE_ACCEPTANCE_EVIDENCE",
+      "related_ci_job": null,
+      "host_status": "V42_USE_CASE_HOST_NOT_VERIFIED",
+      "production_status": "NO_GO",
+      "required_acceptance": "潜在受监管金融业务的合规预研",
+      "evidence_baseline_sha": "5d31005544b74e09e66d2b028d8a8877fdfcd58b"
+    }
+  ],
+  "r3_extensions": [
+    {
+      "feature_id": "R3-01",
+      "name": "unified_management_operator_notes",
+      "owner_domain": "event_audit",
+      "phase": [
+        "A"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "all BM operations permit optional note; mandatory reason for emergency, immutable audit",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-02",
+      "name": "emergency_permission_suspend",
+      "owner_domain": "identity_access",
+      "phase": [
+        "B"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "single authorized BM may suspend, all relevant BM informed, independent restore",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-03",
+      "name": "shared_tablet_user_switch",
+      "owner_domain": "identity_access",
+      "phase": [
+        "A",
+        "C"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "current operator distinct from device_id; reauthentication and inactivity lock",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-04",
+      "name": "end_of_shift_handoff",
+      "owner_domain": "service_ops",
+      "phase": [
+        "B",
+        "C"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "shift schedule locks not actual clock out; qualified successor handoff",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-05",
+      "name": "companywide_incident_tasks",
+      "owner_domain": "service_ops",
+      "phase": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "one incident ID; consistent escalation and independent closure",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-06",
+      "name": "prepublication_impact_preview",
+      "owner_domain": "service_ops",
+      "phase": [
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "projections only; no cross-domain writes",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-07",
+      "name": "location_inventory_reconciliation",
+      "owner_domain": "organization",
+      "phase": [
+        "C",
+        "D"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "physical slot owner organization; stock movement owner inventory",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-08",
+      "name": "batch_emergency_quarantine",
+      "owner_domain": "quality",
+      "phase": [
+        "D"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "quarantine immediately blocks unsafe batch usage; restoration independently approved",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-09",
+      "name": "staff_assisted_wallet_topup",
+      "owner_domain": "payments",
+      "phase": [
+        "E",
+        "F"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "dual evidence and verified money; production topup blocked",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-10",
+      "name": "customer_wallet_custody_disputes",
+      "owner_domain": "service_ops",
+      "phase": [
+        "E",
+        "F"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "incident case; correcting entries not overwritten balances",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-11",
+      "name": "admin_step_up_authentication",
+      "owner_domain": "identity_access",
+      "phase": [
+        "A",
+        "B",
+        "F"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "high-risk operations require strong reauthentication/mock in staging",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-12",
+      "name": "business_journey_health_probes",
+      "owner_domain": "event_audit",
+      "phase": [
+        "G"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "external read/synthetic checks; no real money/sms",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "R3-13",
+      "name": "announcements_dynamic_store_audience",
+      "owner_domain": "knowledge",
+      "phase": [
+        "A",
+        "B",
+        "F"
+      ],
+      "code_status": "REQUIREMENT_NOT_VERIFIED_AS_COMPLETE",
+      "acceptance": "store-based recipient preview, dedupe, snapshots and authorization on read",
+      "host_status": "NOT_VERIFIED",
+      "production_status": "NO_GO"
+    }
+  ],
+  "design_addenda": [
+    {
+      "feature_id": "ADD-01",
+      "name": "food_safety_daily_weekly_monthly",
+      "owner_domain": "quality",
+      "phase": "D",
+      "code_status": "DESIGN_NOT_PRODUCTION",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "ADD-02",
+      "name": "delegated_management_approval",
+      "owner_domain": "identity_access",
+      "phase": "B",
+      "code_status": "DESIGN_NOT_PRODUCTION",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "ADD-03",
+      "name": "single_cross_module_incident",
+      "owner_domain": "service_ops",
+      "phase": "B-G",
+      "code_status": "DESIGN_NOT_PRODUCTION",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "ADD-04",
+      "name": "reversible_policy_change_preview",
+      "owner_domain": "service_ops",
+      "phase": "B-E",
+      "code_status": "DESIGN_NOT_PRODUCTION",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "ADD-05",
+      "name": "prepaid_regulatory_data",
+      "owner_domain": "payments",
+      "phase": "F",
+      "code_status": "DESIGN_NOT_PRODUCTION",
+      "production_status": "NO_GO"
+    },
+    {
+      "feature_id": "ADD-06",
+      "name": "machine_readable_delivery_status",
+      "owner_domain": "event_audit",
+      "phase": "G0-G",
+      "code_status": "DESIGN_NOT_PRODUCTION",
+      "production_status": "NO_GO"
+    }
+  ],
+  "immediate_next_work": {
+    "phase": "A",
+    "name": "explicit gateway route/method allowlist and identity scope guards",
+    "scope": "isolated code and HTTP tests only",
+    "stop_conditions": [
+      "unresolved production store/legal ownership",
+      "any production migration",
+      "CI regression",
+      "breaking existing known routes"
+    ]
+  },
+  "release_decision": "V42_ARCHITECTURE_RETAIN_STATIC_G0_PARTIAL_NO_PRODUCTION_RELEASE"
+}
