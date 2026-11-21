@@ -1,5 +1,8 @@
 """Real ingress, POS, supply and identity sockets over disposable PostgreSQL 17."""
 from contextlib import contextmanager
+import base64
+import hashlib
+import hmac
 from dataclasses import replace
 import json
 import os
@@ -131,6 +134,7 @@ def test_internal_stage_live_ingress(identity_http, tmp_path, monkeypatch):
                           "BSV_GROWTH_TRUST_IDENTITY": "1",
                           "BSV_GROWTH_DB_URL": "sqlite:///" + str(tmp_path / "growth-candidate.sqlite3"),
                           "BSV_GROWTH_SIGNING_KEY": "ISOLATED-PG17-INTEGRATION-SIGNING-1234567890123456",
+                          "BSV_GROWTH_POS_CONTEXT_KEY": "ISOLATED-POS-TASTE-SIGNING-KEY-TEST-12345678",
                           "BSV_GROWTH_IDENTITY_ME_URL": identity_http + "/api/v1/identity/me",
                           "BSV_GROWTH_LEGAL_ENTITY_ID": "DEMO_LEGAL", "BSV_GROWTH_STORE_IDS": "BSVT"},
                          tmp_path, "ingress") as port:
@@ -185,6 +189,15 @@ def exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant, grow
         headers=member_headers)
     assert repeated.status_code == 200 and repeated.json()["customer_id"] == customer_id
     assert browser.get("/api/v1/growth/public/me").json()["customer_id"] == customer_id
+    # Even with a valid two-minute HMAC and current staff grant, POS must independently
+    # attest the same visit, linked member, current shift and store ownership.
+    context = {"customer_id": customer_id, "store_id": "BSVT", "visit_id": "SYNTH-VISIT-01",
+               "iat": int(time.time()), "exp": int(time.time()) + 90}
+    packed = base64.urlsafe_b64encode(json.dumps(context, separators=(",", ":")).encode()).decode().rstrip("=")
+    key = "ISOLATED-POS-TASTE-SIGNING-KEY-TEST-12345678"
+    sig = hmac.new(key.encode(), packed.encode(), hashlib.sha256).hexdigest()
+    assert browser.get("/api/v1/growth/staff/guest-context",
+                       params={"context": packed + "." + sig}).status_code == 503
     # Isolated visits and fake paid facts cannot become a real commission payable.
     scope = browser.get("/supply-ui/api/me")
     assert scope.status_code == 200, scope.text
