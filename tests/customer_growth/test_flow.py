@@ -139,3 +139,24 @@ def test_store_isolation_and_signature_versions():
     assert staff.get('/member/app.js').status_code==200
     assert staff.get('/staff/growth/styles.css').status_code==200
     assert staff.get('/member/traversal').status_code==404
+
+
+def test_hq_correction_requires_second_approver_and_preserves_finance():
+    Base.metadata.drop_all(engine);Base.metadata.create_all(engine)
+    guest=TestClient(app);hq1=TestClient(app);hq2=TestClient(app)
+    post(guest,'/dev/guest-login',{'subject':'error-attribution','store_id':'BSVS'})
+    invite_actor=TestClient(app)
+    post(invite_actor,'/dev/staff-login',{'tr':'TRA0001','role':'staff','name':'演练员工','store_id':'BSVS'})
+    token=post(invite_actor,'/staff/invite?store_id=BSVS',{},csrf=True).json()['invite']
+    post(guest,'/dev/guest-login',{'subject':'error-attribution','store_id':'BSVS','invite':token})
+    customer=post(guest,'/public/register',{'privacy_accepted':True},csrf=True).json()['customer_id']
+    post(hq1,'/dev/staff-login',{'tr':'TRC0001','role':'hq','name':'HQ-1','store_id':'BSVS'})
+    post(hq2,'/dev/staff-login',{'tr':'TRD0001','role':'hq','name':'HQ-2','store_id':'BSVS'})
+    proposal=post(hq1,'/hq/attribution-corrections',{'customer_id':customer,'proposed_actor_tr':'TRB0001',
+        'reason':'线上邀请有错误证据，客户提供新的验证记录','evidence_ref':'audit-probe-001'},csrf=True)
+    assert proposal.status_code==200,proposal.text
+    cid=proposal.json()['correction_id']
+    assert post(hq1,'/hq/attribution-corrections/'+cid+'/approve',{},csrf=True).status_code==403
+    approved=post(hq2,'/hq/attribution-corrections/'+cid+'/approve',{},csrf=True)
+    assert approved.status_code==200 and approved.json()['status']=='APPROVED'
+    assert post(hq2,'/hq/attribution-corrections/'+cid+'/approve',{},csrf=True).status_code==404

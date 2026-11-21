@@ -243,6 +243,21 @@ class Commission(Base):
     status: Mapped[str] = mapped_column(String(24), default='PROVISIONAL_NOT_PAYABLE')
 
 
+class AttributionCorrection(Base):
+    __tablename__='bsv_marketing_attribution_correction_candidate'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    customer_id: Mapped[str] = mapped_column(String(36),index=True)
+    prior_actor_tr: Mapped[str] = mapped_column(String(12))
+    requested_actor_tr: Mapped[str] = mapped_column(String(12))
+    proposed_by: Mapped[str] = mapped_column(String(12))
+    approved_by: Mapped[str | None] = mapped_column(String(12))
+    reason: Mapped[str] = mapped_column(String(400))
+    evidence_ref: Mapped[str] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(24),default='PENDING_SECOND_APPROVAL')
+    proposed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),default=now)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class CommissionLedger(Base):
     __tablename__='bsv_operating_finance_commission_ledger_candidate'
     event_id: Mapped[str] = mapped_column(String(100), primary_key=True)
@@ -872,6 +887,8 @@ class PolicyInput(BaseModel):
 
 @app.post(BASE_PATH + '/hq/commission-policy')
 def create_policy(data: PolicyInput,request: Request):
+    if not ISOLATED:
+        raise HTTPException(503,'真实财务政策审批与双人复核接口未接通，禁止修改')
     require_store(data.store_id)
     actor,_=staff_auth(request,None,write=True,hq=True)
     with db_session() as db:
@@ -884,6 +901,63 @@ def create_policy(data: PolicyInput,request: Request):
                      metadata_json=json.dumps({'version':data.version})))
         db.commit()
         return {'ok':True,'version':data.version}
+
+
+class CorrectionRequest(BaseModel):
+    customer_id: str = Field(min_length=3,max_length=40)
+    proposed_actor_tr: str = Field(pattern=r'^TR[A-Z][0-9]{4}$')
+    reason: str = Field(min_length=10,max_length=400)
+    evidence_ref: str = Field(min_length=3,max_length=100)
+
+
+@app.post(BASE_PATH + '/hq/attribution-corrections')
+def propose_correction(data:CorrectionRequest,request:Request):
+    if not ISOLATED:
+        raise HTTPException(503,'真实归因纠错权限和财务复核未接通，禁止修改')
+    proposer,_=staff_auth(request,None,write=True,hq=True)
+    with db_session() as db:
+        a=db.get(Attribution,data.customer_id)
+        if not a:raise HTTPException(404,'尚无可复核的开发归因')
+        if a.actor_tr==data.proposed_actor_tr:
+            raise HTTPException(409,'原开发人没有变化')
+        if db.scalar(select(AttributionCorrection).where(AttributionCorrection.customer_id==data.customer_id,
+                       AttributionCorrection.status=='PENDING_SECOND_APPROVAL')):
+            raise HTTPException(409,'该客户已有待复核的归因纠错')
+        row=AttributionCorrection(customer_id=data.customer_id,prior_actor_tr=a.actor_tr,
+              requested_actor_tr=data.proposed_actor_tr,proposed_by=proposer,
+              reason=data.reason.strip(),evidence_ref=data.evidence_ref.strip())
+        db.add(row)
+        db.add(Audit(actor=proposer,action='ATTRIBUTION_CORRECTION_REQUESTED',target=data.customer_id,
+                     metadata_json=json.dumps({'prior':a.actor_tr,'requested':data.proposed_actor_tr,'evidence_ref':data.evidence_ref})))
+        db.commit();return {'correction_id':row.id,'status':row.status}
+
+
+@app.post(BASE_PATH + '/hq/attribution-corrections/{correction_id}/approve')
+def approve_correction(correction_id:str,request:Request):
+    if not ISOLATED:
+        raise HTTPException(503,'真实归因纠错权限和财务复核未接通，禁止修改')
+    reviewer,_=staff_auth(request,None,write=True,hq=True)
+    with db_session() as db:
+        correction=db.get(AttributionCorrection,correction_id)
+        if not correction or correction.status!='PENDING_SECOND_APPROVAL':
+            raise HTTPException(404,'不存在有效的待审批纠错')
+        if correction.proposed_by==reviewer:
+            raise HTTPException(403,'申请人不得自己批准')
+        attr=db.get(Attribution,correction.customer_id)
+        if not attr or attr.actor_tr!=correction.prior_actor_tr:
+            raise HTTPException(409,'客户归因已变化，需重新审查')
+        attr.actor_tr=correction.requested_actor_tr
+        correction.approved_by=reviewer;correction.status='APPROVED';correction.approved_at=now()
+        # This freezes rather than silently rewriting historical finance. Finance must reconcile.
+        order_ids=list(db.scalars(select(PaymentFact.order_id).where(PaymentFact.customer_id==correction.customer_id)))
+        for order_id in order_ids:
+            payment_entry=db.get(Commission,order_id)
+            if payment_entry:payment_entry.status='FROZEN_ATTRIBUTION_REVIEW'
+        db.add(Audit(actor=reviewer,action='ATTRIBUTION_CORRECTION_APPROVED',target=correction.customer_id,
+                     metadata_json=json.dumps({'correction_id':correction.id,'prior':correction.prior_actor_tr,
+                     'new':correction.requested_actor_tr,'frozen_order_count':len(order_ids)})))
+        db.commit();return {'status':'APPROVED','frozen_order_count':len(order_ids),
+                            'notice':'历史佣金已冻结待财务核对，不追溯静默转款'}
 
 
 @app.get(BASE_PATH + '/staff/invite-qr')
