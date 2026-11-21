@@ -254,14 +254,16 @@ def prepare_config():
         if path.stat().st_uid != account.pw_uid or path.stat().st_mode & 0o077:
             raise RuntimeError(f"Unsafe service data directory: {path}")
     config = ROOT / "config"
-    dbpw, pos_token, supply_token, session, pepper, reviewer1, reviewer2 = [
+    dbpw, pos_token, layout_token, supply_token, session, pepper, reviewer1, reviewer2 = [
         write_secret(config / key, secrets.token_urlsafe(36)) for key in
-        ("pg-password", "pos-token", "supply-token", "session-key", "privacy-pepper", "reviewer1", "reviewer2")]
+        ("pg-password", "pos-token", "layout-token", "supply-token", "session-key", "privacy-pepper", "reviewer1", "reviewer2")]
     pin = write_secret(config / "pos-pin", str(10**10 + secrets.randbelow(9 * 10**10)))
     store_map = {"BSVT": "DEMO_LEGAL"}
     token_map = {
         "pos": {"token": pos_token, "actions": ["pos.order.read", "pos.order.create"],
                 "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]},
+        "layout-admin": {"token": layout_token, "actions": ["hq.layout.read"],
+                         "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]},
         "supply": {"token": supply_token, "legal_entity_id": "DEMO_LEGAL",
                    "stores": ["BSVM", "BSVS", "BSVT"], "isolated_test_department": "SYNTH-STAGE",
                    "actions": ["supply.dispatch", "supply.receive", "quality.self_check",
@@ -285,6 +287,8 @@ def prepare_config():
         "BSV_POS_IDENTITY_REQUIRED": "1", "BSV_POS_IDENTITY_URL": "http://127.0.0.1:18761",
         "BSV_POS_IDENTITY_TOKEN": pos_token, "BSV_POS_INTERNAL_STAGE": "1",
         "BSV_POS_STORE_LEGAL_JSON": json.dumps(store_map, separators=(",", ":")),
+        "BSV_POS_LAYOUT_SERVICE_TOKEN": layout_token, "BSV_POS_LAYOUT_SCOPE_MODE": "isolated-synthetic",
+        "BSV_APP_ENV": "isolated",
     })
     environment("postgres", {"BSV_STAGE_COMPONENT_DATA": str(DATA / "postgres")})
     environment("ingress", {})

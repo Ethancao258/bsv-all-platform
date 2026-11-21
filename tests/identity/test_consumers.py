@@ -216,3 +216,59 @@ def test_same_legacy_mapping_retries_and_conflicts_over_http(identity_http, monk
     monkeypatch.setattr(api, "settings", replace(api.settings, env="production"))
     denied = submit(one)
     assert denied.status_code == 403 and denied.json()["error"]["code"] == "MIGRATION_LOCKED"
+
+
+def test_hq_layout_read_uses_identity_a_and_never_writes_pos_sqlite(identity_http, tmp_path, monkeypatch):
+    user, one, two, tr, _ = create_person("hqmap-read-http")
+    onboard(tr, one, two, bm=True)
+    grant_action(tr, one, two, "hq.layout.read", store=None, role="hq")
+    fixture = tmp_path / "hq-read.xlsx"
+    runpy.run_path(str(ROOT / "tests/bsv1/make_fixture.py"))["write_fixture"](fixture)
+    monkeypatch.setenv("BSV_V9_XLSX", str(fixture))
+    monkeypatch.setenv("BSV_DB_PATH", str(tmp_path / "hq-read.sqlite3"))
+    monkeypatch.setenv("BSV_MODE", "staging")
+    monkeypatch.setenv("BSV_APP_ENV", "isolated")
+    monkeypatch.setenv("BSV_POS_LAYOUT_SCOPE_MODE", "isolated-synthetic")
+    monkeypatch.setenv("BSV_POS_STORE_LEGAL_JSON", '{"BSVT":"DEMO_LEGAL"}')
+    monkeypatch.syspath_prepend(str(ROOT / "services/api/bsv1"))
+    pos = importlib.import_module("services.api.bsv1.app")
+    monkeypatch.setattr(pos, "DB_PATH", tmp_path / "hq-read.sqlite3")
+    monkeypatch.setattr(pos, "MODE", "staging")
+    pos.init_db()
+    layout_token = "synthetic-layout-read-token-1234567890"
+    service = {"token": layout_token, "actions": ["hq.layout.read"],
+               "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]}
+    monkeypatch.setattr(api, "settings", replace(api.settings,
+        service_tokens={**api.settings.service_tokens, "layout-admin": service}))
+    monkeypatch.setenv("BSV_POS_IDENTITY_URL", identity_http)
+    monkeypatch.setenv("BSV_POS_LAYOUT_SERVICE_TOKEN", layout_token)
+    monkeypatch.setenv("BSV_POS_IDENTITY_REQUIRED", "1")
+    with pos.db_read() as db:
+        before = db.execute("SELECT COUNT(*) FROM bsv_layout_revisions").fetchone()[0]
+    with pos.ThreadingHTTPServer(("127.0.0.1", 0), pos.Handler) as server:
+        worker = threading.Thread(target=server.serve_forever)
+        worker.start()
+        try:
+            connection = http.client.HTTPConnection(*server.server_address, timeout=5)
+            cookie = f"{api.SESSION_COOKIE}={user.cookies.get(api.SESSION_COOKIE)}"
+            connection.request("GET", "/api/hq/layout?store_id=BSVT", headers={"Cookie": cookie})
+            response = connection.getresponse()
+            payload = json.loads(response.read())
+            assert response.status == 200, payload
+            assert payload["store_id"] == "BSVT"
+            connection.request("GET", "/api/hq/layout?store_id=BSVS", headers={"Cookie": cookie})
+            denied = connection.getresponse()
+            denied.read()
+            assert denied.status == 403
+            monkeypatch.delenv("BSV_POS_LAYOUT_SERVICE_TOKEN")
+            connection.request("GET", "/api/hq/layout?store_id=BSVT", headers={"Cookie": cookie})
+            unavailable = connection.getresponse()
+            unavailable.read()
+            assert unavailable.status == 503
+            connection.close()
+        finally:
+            server.shutdown()
+            worker.join(5)
+    with pos.db_read() as db:
+        after = db.execute("SELECT COUNT(*) FROM bsv_layout_revisions").fetchone()[0]
+    assert after == before
