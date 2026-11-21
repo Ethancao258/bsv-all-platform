@@ -278,6 +278,64 @@ def upgrade_managed_environment(name, values, allowed_additions, *, allow_blank=
     return values
 
 
+
+def upgrade_identity_environment(values):
+    """Permit only the c51 isolated identity token-map addition for layout read.
+
+    Keep every pre-existing token, account, policy and secret byte-equivalent.
+    Unknown keys or grants are configuration drift, not a reason to rewrite.
+    """
+    path = ROOT / "config" / "identity.env"
+    if not path.exists():
+        return environment("identity", values)
+    private_file(path, 0)
+    parsed = {}
+    for line in path.read_text().splitlines():
+        if "=" not in line:
+            raise RuntimeError("Invalid managed identity environment")
+        key, raw_value = line.split("=", 1)
+        if key in parsed or key not in values:
+            raise RuntimeError("Unexpected managed identity environment key")
+        words = shlex.split(raw_value)
+        if len(words) != 1:
+            raise RuntimeError("Malformed managed identity environment")
+        parsed[key] = words[0]
+    desired = {key: str(value) for key, value in values.items()}
+    if set(parsed) != set(desired):
+        raise RuntimeError("Missing or additional managed identity environment keys")
+    if parsed == desired:
+        return values
+    special = "BSV_SERVICE_TOKENS_JSON"
+    if any(parsed[key] != desired[key] for key in desired if key != special):
+        raise RuntimeError("Existing identity secrets or settings changed; refuse overwrite")
+    try:
+        old_tokens = json.loads(parsed[special])
+        new_tokens = json.loads(desired[special])
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError("Invalid managed identity service token map") from exc
+    if (not isinstance(old_tokens, dict) or not isinstance(new_tokens, dict)
+            or set(old_tokens) != {"pos", "supply"}
+            or set(new_tokens) != {"pos", "supply", "layout-admin"}
+            or any(old_tokens[key] != new_tokens[key] for key in old_tokens)
+            or new_tokens["layout-admin"].get("actions") != ["hq.layout.read"]
+            or new_tokens["layout-admin"].get("stores") != ["BSVT"]
+            or new_tokens["layout-admin"].get("legal_entities") != ["DEMO_LEGAL"]
+            or len(new_tokens["layout-admin"].get("token", "")) < 32):
+        raise RuntimeError("Unapproved identity token-map modification")
+    payload = "\n".join(f"{key}={shlex.quote(value)}"
+                        for key, value in sorted(desired.items()))
+    tmp = path.with_name(path.name + ".next")
+    if tmp.exists() or tmp.is_symlink():
+        raise RuntimeError("Unreviewed identity config migration marker")
+    try:
+        write_secret(tmp, payload)
+        tmp.replace(path)
+        sync_directory(path.parent)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return values
+
+
 def upgrade_blank_ingress_environment(values):
     """Backwards-compatible caller for the original V4.3 blank ingress upgrade."""
     return upgrade_managed_environment(
@@ -328,7 +386,7 @@ def prepare_config():
                    "actions": ["supply.dispatch", "supply.receive", "quality.self_check",
                                "quality.independent.submit", "quality.independent.review"]},
     }
-    identity = environment("identity", {
+    identity = upgrade_identity_environment({
         "BSV_APP_ENV": "isolated", "BSV_AUTH_PROVIDER": "isolated",
         "BSV_DB_A_URL": f"postgresql+psycopg://{DB_USER}:{dbpw}@127.0.0.1:18764/{DB}",
         "BSV_DB_SSLMODE": "disable", "BSV_SESSION_SECRET": session, "BSV_PRIVACY_PEPPER": pepper,
@@ -352,7 +410,8 @@ def prepare_config():
         "BSV_GROWTH_LINK_KEY": growth_link,
         "BSV_GROWTH_POS_CONTEXT_KEY": growth_context,
         "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
-    }, {"BSV_POS_GROWTH_INTEGRATION", "BSV_GROWTH_LINK_KEY",
+    }, {"BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
+        "BSV_APP_ENV", "BSV_POS_GROWTH_INTEGRATION", "BSV_GROWTH_LINK_KEY",
         "BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_POS_VERIFY_TOKEN"})
     environment("postgres", {"BSV_STAGE_COMPONENT_DATA": str(DATA / "postgres")})
     # Isolated, synthetic candidate only; no additional public service or authority.
