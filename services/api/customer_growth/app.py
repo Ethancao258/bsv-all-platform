@@ -761,7 +761,7 @@ def staff_me(request: Request, store_id: str):
         sig=latest_signature(db,tr) if can_marketing else None
         return {'actor_tr':tr,'name':name,'store_id':store_id,
                 'can_marketing':can_marketing,
-                'can_service':True,
+                'service_requires_live_pos':True,
                 'signature_version':sig.version if sig else None,
                 'policy_version':'GROWTH-CLAIM-V1'}
 
