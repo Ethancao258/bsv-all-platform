@@ -49,8 +49,12 @@ def sha256(path: Path) -> str:
 
 
 def _run(args: list[str], *, env=None, check=True) -> subprocess.CompletedProcess:
-    return subprocess.run(args, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          text=True, env=env)
+    result = subprocess.run(args, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, env=env)
+    if check and result.returncode:
+        detail = (result.stderr or result.stdout or "(no subprocess output)")[-4000:]
+        raise PredeployError(f"Command failed ({result.returncode}): {args[0]} {args[1:]}\n{detail}")
+    return result
 
 
 def verify_cosign_bootstrap(cosign: Path, public_key: Path, signature: Path,
