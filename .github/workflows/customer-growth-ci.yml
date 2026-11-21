@@ -14,7 +14,9 @@ on:
     branches:
       - feature/customer-growth-mvp-v1
       - feature/customer-growth-experience-v2
-      - feature/v4-3-pos-growth-closeout
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
