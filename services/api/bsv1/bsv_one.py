@@ -19,6 +19,28 @@ class ControlError(ValueError):
     def __init__(self, message, status=400):
         super().__init__(message); self.status=status
 
+class HQLayoutActor:
+    """In-process identity.A actor scoped to one authorized draft operation."""
+    __slots__ = ("staff_id", "tr_code", "action", "legal_entity_id", "store_id", "request_id")
+
+    def __init__(self, staff_id, tr_code, action, legal_entity_id, store_id, request_id):
+        if (action != "hq.layout.edit" or not isinstance(tr_code, str)
+                or not re.fullmatch(r"TR[ABCDEFGHJKLMNPQRSTUVWXYZ][0-9]{4}", tr_code)
+                or not isinstance(staff_id, str) or not staff_id
+                or not legal_entity_id or not store_id or not request_id):
+            raise ControlError("总部地图操作人身份无效", 403)
+        self.staff_id = staff_id
+        self.tr_code = tr_code
+        self.action = action
+        self.legal_entity_id = legal_entity_id
+        self.store_id = store_id
+        self.request_id = request_id
+
+    def __getitem__(self, key):
+        if key == "id":
+            return self.staff_id
+        raise KeyError(key)
+
 def now(): return datetime.now(timezone.utc).isoformat(timespec='seconds')
 def compact(x): return json.dumps(x,ensure_ascii=False,sort_keys=True,separators=(',',':'))
 def digest(x): return hashlib.sha256(compact(x).encode()).hexdigest()
@@ -207,7 +229,11 @@ def current(db,store_id):
        'viewport':{'width':1100,'height':580},'seats':[],'neighbors':{},'groups':[],'bathrooms':[]}}
 
 def draft(db,staff,store_id,payload,base_version):
-    require_hq(db,staff)
+    if isinstance(staff, HQLayoutActor):
+        if staff.action != "hq.layout.edit" or staff.store_id != store_id:
+            raise ControlError('总部地图操作人授权范围不匹配',403)
+    else:
+        require_hq(db,staff)
     if not db.execute('SELECT 1 FROM stores WHERE id=?',(store_id,)).fetchone():raise ControlError('门店不存在',404)
     old=current(db,store_id)
     if type(base_version)!=int or old['version']!=base_version:raise ControlError('布局已被其他人发布，请刷新后重新编辑',409)
@@ -215,7 +241,10 @@ def draft(db,staff,store_id,payload,base_version):
     rid='REV-'+uuid.uuid4().hex
     db.execute('''INSERT INTO bsv_layout_revisions(revision_id,store_id,status,base_version,payload_json,sha256,created_by,created_at)
          VALUES(?,?,?,?,?,?,?,?)''',(rid,store_id,'DRAFT',base_version,compact(cfg),digest(cfg),staff['id'],now()))
-    event(db,staff,'layout','SAVE_DRAFT',store_id,{'revision':rid,'base_version':base_version})
+    details={'revision':rid,'base_version':base_version}
+    if isinstance(staff, HQLayoutActor):
+        details.update({'actor_tr_code':staff.tr_code,'request_id':staff.request_id})
+    event(db,staff,'layout','SAVE_DRAFT',store_id,details)
     return {'ok':True,'revision_id':rid,'base_version':base_version}
 
 def revisions(db,store_id):

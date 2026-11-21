@@ -72,16 +72,21 @@ def authorize_device(session, store_id, device_id, device_token, action):
     return decision
 
 
-def authorize_hq_layout(session, store_id, action, legal_entity_id):
-    """Ask identity.A for one uncached HQ map read decision. Never infer scope locally."""
+def authorize_hq_layout(session, store_id, action, legal_entity_id, csrf=None):
+    """Ask identity.A for one uncached HQ map decision. Never infer scope locally."""
     service_token = os.environ.get("BSV_POS_LAYOUT_SERVICE_TOKEN", "")
     if not session or not service_token:
         return {"reason": "IDENTITY_UNAVAILABLE"}
-    if action != "hq.layout.read" or not legal_entity_id:
+    if action not in {"hq.layout.read", "hq.layout.edit"} or not legal_entity_id:
         return {"reason": "STORE_UNAUTHORIZED"}
+    if action == "hq.layout.edit" and not csrf:
+        return {"reason": "CSRF_REQUIRED"}
+    headers = {"X-BSV-Service-Token": service_token, "Authorization": "Bearer " + session}
+    if action == "hq.layout.edit":
+        headers["X-CSRF-Token"] = csrf
     decision = request_identity("/api/v1/identity/hq-layout-session", {
         "action": action, "legal_entity_id": legal_entity_id, "store_id": store_id,
-    }, {"X-BSV-Service-Token": service_token, "Authorization": "Bearer " + session}) or {}
+    }, headers) or {}
     if decision.get("http_status") == 401:
         return {"reason": "AUTH_REQUIRED"}
     if decision.get("decision_source") != "A" or decision.get("cache_ttl_seconds") != 0:

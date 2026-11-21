@@ -1259,6 +1259,88 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(binary)
 
+    def hq_layout_audit_actor(self, db, decision, store_id, legal_entity_id):
+        """Create or resolve a disabled SQLite audit projection for an A-verified TR."""
+        if (MODE != "staging" or os.environ.get("BSV_APP_ENV") != "isolated"
+                or os.environ.get("BSV_POS_LAYOUT_SCOPE_MODE") != "isolated-synthetic"):
+            return None
+        tr_code = decision.get("actor_tr_code")
+        if (not isinstance(tr_code, str)
+                or not re.fullmatch(r"TR[ABCDEFGHJKLMNPQRSTUVWXYZ][0-9]{4}", tr_code)):
+            return None
+        db.execute('''CREATE TABLE IF NOT EXISTS bsv_hq_actor_aliases(
+            tr_code TEXT PRIMARY KEY,
+            staff_id TEXT NOT NULL UNIQUE REFERENCES staff(id),
+            created_at TEXT NOT NULL)''')
+        alias = db.execute("SELECT staff_id FROM bsv_hq_actor_aliases WHERE tr_code=?", (tr_code,)).fetchone()
+        if alias:
+            staff_id = alias["staff_id"]
+            staff = db.execute("SELECT staff_code,role,enabled FROM staff WHERE id=?", (staff_id,)).fetchone()
+            if not staff or staff["staff_code"] != tr_code or staff["role"] != "STAFF" or staff["enabled"] != 0:
+                return None
+        else:
+            # Never adopt an unrelated legacy staff row that happens to share the TR string.
+            if db.execute("SELECT 1 FROM staff WHERE staff_code=? OR id=?", (tr_code, "HQ-AUDIT-" + tr_code)).fetchone():
+                return None
+            staff_id = "HQ-AUDIT-" + tr_code
+            salt = secrets.token_bytes(16)
+            disabled_pin = secrets.token_urlsafe(48)
+            db.execute("INSERT INTO staff(id,staff_code,pin_salt,pin_digest,role,enabled) VALUES(?,?,?,?,?,0)",
+                       (staff_id, tr_code, salt.hex(), pin_hash(disabled_pin, salt), "STAFF"))
+            db.execute("INSERT INTO bsv_hq_actor_aliases(tr_code,staff_id,created_at) VALUES(?,?,?)",
+                       (tr_code, staff_id, timestamp()))
+        if (db.execute("SELECT 1 FROM staff_store_access WHERE staff_id=? LIMIT 1", (staff_id,)).fetchone()
+                or db.execute("SELECT 1 FROM bsv_hq_roles WHERE staff_id=? LIMIT 1", (staff_id,)).fetchone()
+                or db.execute("SELECT 1 FROM sessions WHERE staff_id=? LIMIT 1", (staff_id,)).fetchone()):
+            return None
+        return bsv_one.HQLayoutActor(staff_id, tr_code, decision["action"],
+                                     legal_entity_id, store_id, secrets.token_urlsafe(18))
+
+    def hq_layout_draft(self, data):
+        identity_session = self.cookie("bsv_identity_session")
+        if not identity_session:
+            self.send_json({"error": "请先登录统一身份账号。", "code": "AUTH_REQUIRED"}, 401)
+            return
+        self.require_loopback_origin()
+        csrf = self.headers.get("X-CSRF-Token", "")
+        if not self.identity_csrf():
+            self.send_json({"error": "身份会话校验失败，请刷新后重试。", "code": "BAD_CSRF"}, 403)
+            return
+        if set(data) != {"store_id", "layout", "base_version"}:
+            self.send_json({"error": "草稿参数无效。", "code": "INVALID_DRAFT"}, 400)
+            return
+        store_id = data.get("store_id")
+        if type(store_id) is not str or not re.fullmatch("[A-Z0-9_-]{3,32}", store_id):
+            self.send_json({"error": "门店代码无效。", "code": "STORE_INVALID"}, 400)
+            return
+        with db_read() as db:
+            legal_entity_id = self.hq_layout_scope(db, store_id)
+            exists = bool(db.execute("SELECT 1 FROM stores WHERE id=?", (store_id,)).fetchone())
+        if not legal_entity_id or not exists:
+            self.send_json({"error": "门店法人关系尚未核验。", "code": "STORE_SCOPE_UNKNOWN"}, 403)
+            return
+        decision = identity_client().authorize_hq_layout(
+            identity_session, store_id, "hq.layout.edit", legal_entity_id, csrf)
+        if decision.get("allowed") is not True:
+            reason = decision.get("reason")
+            status = 401 if reason == "AUTH_REQUIRED" else 503 if reason == "IDENTITY_UNAVAILABLE" else 403
+            self.send_json({"error": "当前账号无权保存此门店地图草稿。", "code": reason or "HQ_LAYOUT_FORBIDDEN"}, status)
+            return
+        try:
+            with tx() as db:
+                # Repeat the local scope check immediately before touching the map database.
+                if self.hq_layout_scope(db, store_id) != legal_entity_id:
+                    raise bsv_one.ControlError("门店法人关系尚未核验。", 403)
+                actor = self.hq_layout_audit_actor(db, decision, store_id, legal_entity_id)
+                if actor is None:
+                    raise bsv_one.ControlError("总部操作人审计映射未通过。", 403)
+                result = bsv_one.draft(db, actor, store_id, data.get("layout"), data.get("base_version"))
+            self.send_json(result)
+        except bsv_one.ControlError as error:
+            self.send_json({"error": str(error)}, error.status)
+        except bsv_layouts.LayoutError as error:
+            self.send_json({"error": str(error)}, 409)
+
     def send_error_json(self, error):
         self.send_json({"error": error.message, **({"code": error.code} if error.code else {})}, error.status)
 
@@ -1615,6 +1697,10 @@ class Handler(BaseHTTPRequestHandler):
                 self.device_login(data);return
             if device_required() and path in {"/api/logout", "/api/pos/device-forget"}:
                 self.device_logout(forget=path.endswith("device-forget"));return
+            if ((device_required() or os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1")
+                    and path == "/api/hq/layout/draft"):
+                self.hq_layout_draft(data)
+                return
             if path=='/api/login':
                 if device_required():
                     raise UserError("请先登录员工中心，再核验此点单终端。", 403, "DEVICE_MODE_REQUIRED")
