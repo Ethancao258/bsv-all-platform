@@ -453,11 +453,38 @@ def prepare_config():
     return identity, pos, dbpw, pin
 
 
+def normalize_release_permissions(dest):
+    """Grant service identities read/traverse access to versioned code and venvs.
+
+    ROOT/config and DATA contain private credentials and are never traversed.
+    This also repairs a completed release built under a root systemd umask 077.
+    """
+    if dest.parent != ROOT / "releases" or dest.is_symlink() or not dest.is_dir():
+        raise RuntimeError("Unexpected managed release directory")
+    for directory, _, filenames in os.walk(dest, followlinks=False):
+        folder = Path(directory)
+        info = folder.lstat()
+        if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid()
+                or info.st_mode & 0o022):
+            raise RuntimeError("Unsafe release directory ownership or permissions")
+        folder.chmod(0o755)
+        for filename in filenames:
+            item = folder / filename
+            if item.is_symlink():
+                continue  # venv python binaries can be links; do not follow them
+            info = item.lstat()
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+                    or info.st_mode & 0o022):
+                raise RuntimeError("Unsafe release file ownership or permissions")
+            item.chmod(0o755 if info.st_mode & stat.S_IXUSR else 0o644)
+
+
 def build(sha):
     dest = ROOT / "releases" / sha
     if dest.is_symlink():
         raise RuntimeError("Release directory is a symlink")
     if (dest / ".built").is_file():
+        normalize_release_permissions(dest)
         return dest
     if dest.exists():
         if dest.is_symlink() or sha in (sha_at(ROOT / "current"), sha_at(ROOT / "previous")):
@@ -480,6 +507,7 @@ def build(sha):
                 "--no-deps", "-r", source / "services/api/customer_growth/requirements.stage.lock")
         run(directory / "bin/python", "-m", "pip", "check")
     (dest / ".built").touch()
+    normalize_release_permissions(dest)
     return dest
 
 
@@ -912,6 +940,11 @@ def deploy(sha):
         raise RuntimeError("Existing private data has no managed active release; investigate before deployment")
     identity, pos, dbpw, pin = prepare_config()
     dest = build(sha)
+    # Fail while the old release still runs if any service cannot traverse the new tree.
+    for service_name in START_ORDER:
+        as_user(service_name, "/usr/bin/test", "-x", dest / "src")
+    for service_name in ("identity", "supply"):
+        as_user(service_name, "/usr/bin/test", "-x", dest / service_name / "bin/python")
     if not UNIT_FILE.exists():
         UNIT_FILE.write_bytes((REPO / TOOL / UNIT_FILE.name).read_bytes())
     run("systemctl", "daemon-reload")
