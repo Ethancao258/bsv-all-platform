@@ -197,3 +197,11 @@
 - 审批边界。隔离环境可验证合成工作流。真实员工试点须由负责人批准最小资料范围、备案/HTTPS、私有访问、扫描、加密备份和恢复。正式营业还缺 CloudBase G0/G1 和 ACL/RLS 修复、真实收款专项批准、D/E 权威写入及五店容量证据。公开鸡尾酒菜单保持原发布物，只有私有同源入口提供工作台返回。
 - `PASS_ISOLATED` · 两轮 PG17 + SQLite 真实 HTTP 验收验证同一 TR 在 BSVT 两台独立注册终端创建未付款订单、重复请求防重、订单审计、设备撤销以及 BSVS 独立培训和班次解锁、撤权失效、跨店排班冲突和北京时间跨午夜。合成旧码保持零写入，追加迁移后复跑 V3 身份服务验证既有记录仍可读取。
 - `PASS_ISOLATED` · Chromium 在 320–1440px 的八个宽度验证工作台和注册终端流程，覆盖浏览器模拟缩放、文字放大、窄高视口及菜单返回；真实移动设备软键盘仍待现场观察。导入预检 7 项、发布控制和部署回归 16 项通过。GitHub 精确 SHA、CI 和截图见 [Issue #11](https://github.com/Ethancao258/bsv-all-platform/issues/11) 的集成 PR。
+
+## 2026-11-21｜BSV-OPS-003 V1 快速可信交付
+
+- 目标固定为 PR #27 SHA `f00371ccd1c233caf8eea97398bf981cf7d65dd0`，CI 证据固定为成功 run `44894443077`（9 项必需门禁）。独立分支 `feature/bsv-ops-003-fastpath` 基于该 SHA；源码包通过现有 `stage.py` 的逐条 Git blob/mode 校验生成，包含 release manifest、CI 证明及 SHA256。GitHub Actions 用 GitHub OIDC keyless 签名并发布 build provenance，避免静态签名密钥。
+- 本地验证：目标 tree 535 条目录/文件记录；交付物含可离线 clone 的完整精确 Git bundle（后续部署器可直接用本地 Git 对象，不需访问 GitHub），并在 manifest 中记录可重建源码归档摘要；CI 证明、bundle 完整性、构件摘要、Git commit/tree 和 Git blob SHA 可离线复核。最终 GitHub PR SHA、signing workflow 与 CI 结果以本分支 PR 为准。
+- `V1_GITHUB_ARTIFACT_READY / COS_UPLOAD_NOT_RUN / HOST_NOT_RUN / TUNNEL_VIEW_NOT_RUN`。已加入默认关闭的 GitHub OIDC→Tencent STS→私有 COS 发布 job 和模拟闭环测试；尚未配置 OIDC provider/role/bucket 参数、未启用仓库发布变量、未执行真实上传。本轮不联系云端，不创建 COS/TAT 资源，不部署，也没有新主机或浏览器证据。旧 8765/8767 不动。
+- 网页可见还需 V2 隔离主机发布与真实主机验收、然后 V3 同一 SSH 隧道浏览器验收。V2 之前需负责人一次性批准 GitHub Actions OIDC 到受限 Tencent STS 角色：指定实例固定 TAT 命令 + 指定私有 COS 前缀；不得用静态密钥、宽泛 SSH 或生产权限。唯一下一步为该一次性角色/资源范围批准与配置；未经批准保持 STOP。
+- 交付门禁与验证步骤：[`BSV_OPS_003_FASTPATH.md`](BSV_OPS_003_FASTPATH.md)。

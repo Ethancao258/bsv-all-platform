@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bsvm.cn/contracts/ops-bridge/release-bundle.schema.json",
+  "title": "BSV-OPS-003 immutable isolated release bundle manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "repository", "target_sha", "tree_sha", "source_manifest", "source_archive", "git_bundle", "ci", "deployment_boundary"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "request_id": {"const": "ISSUE-32"},
+    "repository": {"const": "Ethancao258/bsv-all-platform"},
+    "target_sha": {"const": "f00371ccd1c233caf8eea97398bf981cf7d65dd0"},
+    "tree_sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "source_manifest": {"type": "object", "required": ["format", "commit", "tree", "entries"]},
+    "source_archive": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sha256", "size_bytes", "entry_count"],
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1, "maximum": 104857600},
+        "entry_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "git_bundle": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "sha256", "size_bytes"],
+      "properties": {
+        "name": {"const": "source.gitbundle"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1, "maximum": 104857600}
+      }
+    },
+    "ci": {
+      "type": "object", "additionalProperties": false,
+      "required": ["url", "headSha", "event", "status", "conclusion", "workflowName", "run_id", "jobs"],
+      "properties": {
+        "url": {"const": "https://github.com/Ethancao258/bsv-all-platform/actions/runs/44894443077"},
+        "headSha": {"const": "f00371ccd1c233caf8eea97398bf981cf7d65dd0"},
+        "event": {"const": "pull_request"},
+        "status": {"const": "completed"},
+        "conclusion": {"const": "success"},
+        "workflowName": {"const": "validate-architecture"},
+        "run_id": {"const": 44894443077},
+        "jobs": {"type": "array", "minItems": 9, "maxItems": 9}
+      }
+    },
+    "deployment_boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["environment", "no_payment", "no_prod_db", "host_contacted"],
+      "properties": {
+        "environment": {"const": "isolated"},
+        "no_payment": {"const": true},
+        "no_prod_db": {"const": true},
+        "host_contacted": {"const": false}
+      }
+    }
+  }
+}
