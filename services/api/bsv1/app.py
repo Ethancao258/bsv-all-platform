@@ -1253,6 +1253,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", mime)
             self.send_header("Cache-Control", "private, no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            # Match the original HQ map image endpoint's SVG sandbox policy.
+            self.send_header("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'")
             self.send_header("Content-Length", str(len(binary)))
             self.end_headers()
             self.wfile.write(binary)
