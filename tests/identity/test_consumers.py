@@ -352,6 +352,27 @@ def test_hq_layout_draft_isolated_edit_grant_audit_and_no_pos_access(identity_ht
     monkeypatch.setattr(pos, "MODE", "staging")
     pos.init_db()
 
+    # Backfill the newly defined alias schema on an already valid canonical
+    # SQLite database, with an atomic pre-migration backup.
+    import sqlite3
+    with pos.db_read() as db:
+        assert db.execute("SELECT 1 FROM sqlite_master WHERE name='bsv_hq_actor_aliases'").fetchone()
+    with pos.tx() as db:
+        db.execute("DROP TABLE bsv_hq_actor_aliases")
+    backups_before = set(tmp_path.glob("*总部地图审计表迁移前备份*.sqlite3"))
+    pos.init_db()
+    backups_after = set(tmp_path.glob("*总部地图审计表迁移前备份*.sqlite3"))
+    created_backups = backups_after - backups_before
+    assert len(created_backups) == 1
+    with sqlite3.connect(str(next(iter(created_backups)))) as snapshot:
+        assert snapshot.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        assert snapshot.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='bsv_hq_actor_aliases'"
+        ).fetchone() is None
+    with pos.db_read() as db:
+        assert db.execute("SELECT 1 FROM sqlite_master WHERE name='bsv_hq_actor_aliases'").fetchone()
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 28
+
     layout_token = "synthetic-layout-edit-token-1234567890"
     service = {"token": layout_token, "actions": ["hq.layout.read", "hq.layout.edit"],
                "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT", "BSVS"]}
