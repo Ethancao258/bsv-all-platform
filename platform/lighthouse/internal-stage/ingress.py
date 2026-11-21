@@ -31,15 +31,70 @@ INTERNAL_PAGE_HEADERS = {
 }
 
 
+# Explicit route ownership for the isolated ingress. POS is never a fallback.
+# Unknown API names stay 404, without trying another subsystem or exposing a page.
+HQ_LAYOUT_FILES = {"/hq/stores/layout", "/hq/stores/layout/assets/app.js",
+                   "/hq/stores/layout/assets/style.css"}
+IDENTITY_PAGES = {"/identity", "/staff", "/hq", "/health/ready", "/health/live"}
+IDENTITY_ASSETS = {"/assets/common.js", "/assets/staff.js", "/assets/style.css"}
+POS_PAGES = {"/pos", "/index.html", "/app.js", "/style.css",
+             "/assets/BSV_徽记.png", "/assets/BSV_完整徽标.png",
+             "/hq.html", "/hq.js", "/hq.css",
+             "/menu", "/menu.html", "/menu.js", "/menu.css"}
+POS_GET_API = {
+    "/api/bootstrap", "/api/health", "/api/hq/status", "/api/hq/stores",
+    "/api/hq/modules", "/api/hq/layout", "/api/hq/layout/revision",
+    "/api/hq/art", "/api/hq/image", "/api/menu-preview", "/api/document",
+    "/api/store-layout-art", "/api/reports/checkout-csv",
+    "/api/production/photo", "/api/state", "/api/receipt", "/api/history",
+    "/api/audit", "/api/members/search", "/api/catalog/item", "/api/production/recipe",
+}
+POS_POST_API = {
+    "/api/login", "/api/logout", "/api/pos/device-login", "/api/pos/device-forget",
+    "/api/hq/stores/create", "/api/hq/layout/draft", "/api/hq/layout/publish",
+    "/api/hq/layout/restore", "/api/hq/image/upload",
+    "/api/presence/heartbeat", "/api/seats/claim-edit", "/api/seats/release-edit",
+    "/api/production/claim", "/api/production/finished", "/api/production/serve",
+    "/api/production/reassign", "/api/seats/open", "/api/drafts/add",
+    "/api/drafts/remove", "/api/orders/submit", "/api/members/assign",
+    "/api/orders/add-item", "/api/orders/remove-item", "/api/orders/serve-item",
+    "/api/unused-serve-item", "/api/visits/set-member", "/api/visits/set-guests",
+    "/api/visits/transfer", "/api/checkouts/settle-demo",
+    "/api/visits/depart-demo", "/api/visits/cancel",
+    "/api/housekeeping/clean-seat", "/api/housekeeping/clean-bathroom",
+    "/api/groups/set-mode",
+}
+
+
+def _pos_command_status_path(path):
+    # One opaque command ID, not a wildcard for arbitrary nested POS routes.
+    return (path.startswith("/api/pos/commands/")
+            and len(path.removeprefix("/api/pos/commands/")) <= 90
+            and bool(path.removeprefix("/api/pos/commands/"))
+            and "/" not in path.removeprefix("/api/pos/commands/"))
+
+
 def upstream(path):
     if path.startswith("/supply-ui/"):
         return "supply", path.removeprefix("/supply-ui")
-    if path == "/hq/stores/layout" or path.startswith("/hq/stores/layout/assets/"):
+    if path in HQ_LAYOUT_FILES:
         return "pos", path
-    if path in {"/identity", "/staff", "/hq", "/health/ready"} or path.startswith(
-            ("/api/v1/", "/hq-assets/")) or path in {"/assets/common.js", "/assets/staff.js", "/assets/style.css"}:
+    if path in IDENTITY_PAGES or path.startswith(("/api/v1/", "/hq-assets/")) or path in IDENTITY_ASSETS:
         return "identity", "/" if path == "/identity" else path
-    return "pos", "/" if path == "/pos" else path
+    if path in POS_PAGES or path in POS_GET_API or path in POS_POST_API or _pos_command_status_path(path):
+        return "pos", "/" if path == "/pos" else path
+    return None
+
+
+def routed_methods(path):
+    if path.startswith(("/supply-ui/", "/api/v1/")):
+        # The owning FastAPI service still enforces exact API paths and actions.
+        return {"GET", "HEAD", "POST"}
+    if path in POS_POST_API:
+        return {"POST"}
+    if path in POS_GET_API or _pos_command_status_path(path):
+        return {"GET", "HEAD"}
+    return {"GET", "HEAD"}
 
 
 async def proxy(request: Request):
@@ -58,7 +113,12 @@ async def proxy(request: Request):
     # Reject paths that could normalize to a different upstream route.
     if any(part in {".", ".."} for part in path.split("/")) or any(c in path for c in ("%", "\\", "//")):
         return Response(status_code=400)
-    key, target = upstream(path)
+    routed = upstream(path)
+    if routed is None:
+        return Response(status_code=404)
+    if request.method not in routed_methods(path):
+        return Response(status_code=405)
+    key, target = routed
     body = bytearray()
     async for chunk in request.stream():
         body.extend(chunk)
