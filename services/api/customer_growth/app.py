@@ -746,10 +746,22 @@ def staff_store_options(request:Request):
 @app.get(BASE_PATH + '/staff/me')
 def staff_me(request: Request, store_id: str):
     require_store(store_id)
-    tr,name=staff_auth(request,store_id)
+    # A working POS bartender may provide service without holding the
+    # separate marketing.task.write permission. Never grant claim/invite rights
+    # merely because a POS session was authorized.
+    can_marketing=True
+    try:
+        tr,name=staff_auth(request,store_id,action='marketing.task.write')
+    except HTTPException as exc:
+        if exc.status_code != 403:
+            raise
+        tr,name=staff_auth(request,store_id,action='pos.order.read')
+        can_marketing=False
     with db_session() as db:
-        sig=latest_signature(db,tr)
+        sig=latest_signature(db,tr) if can_marketing else None
         return {'actor_tr':tr,'name':name,'store_id':store_id,
+                'can_marketing':can_marketing,
+                'can_service':True,
                 'signature_version':sig.version if sig else None,
                 'policy_version':'GROWTH-CLAIM-V1'}
 
