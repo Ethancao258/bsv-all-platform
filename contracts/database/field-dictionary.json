@@ -2204,6 +2204,51 @@
       ],
       "unique": []
     },
+    "bsv_hq_actor_aliases": {
+      "checks": [],
+      "columns": [
+        {
+          "default": null,
+          "name": "tr_code",
+          "nullable": true,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "staff_id",
+          "nullable": false,
+          "type": "TEXT"
+        },
+        {
+          "default": null,
+          "name": "created_at",
+          "nullable": false,
+          "type": "TEXT"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "constrained_columns": [
+            "staff_id"
+          ],
+          "options": {},
+          "referred_columns": [
+            "id"
+          ],
+          "referred_schema": null,
+          "referred_table": "staff"
+        }
+      ],
+      "indexes": [],
+      "primary_key": [
+        "tr_code"
+      ],
+      "unique": [
+        [
+          "staff_id"
+        ]
+      ]
+    },
     "bsv_hq_roles": {
       "checks": [
         "role='HQ_ADMIN'"
