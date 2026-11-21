@@ -35,6 +35,14 @@
       <p class="center-foot">不注册也可以正常到店消费</p>
     </section>
 
+    <section class="surface hidden" id="isolated-login" aria-labelledby="isolated-heading">
+      <div class="mini-label">INTERNAL STAGE ONLY</div><h2 id="isolated-heading">内部隔离验收身份</h2>
+      <p class="support">仅在SSH私有测试环境使用虚构顾客，不能替代真实微信身份验证。禁止录入真实姓名、手机号或客户资料。</p>
+      <label class="field-label" for="synthetic-subject">虚构顾客标识</label>
+      <input id="synthetic-subject" maxlength="70" autocomplete="off" placeholder="例如 stage-guest-001">
+      <button class="action action-outline" id="synthetic-login" type="button">进入隔离会员验收</button>
+    </section>
+
     <section class="surface hidden" id="register" aria-labelledby="register-heading">
       <div class="mini-label">ALMOST THERE</div><h2 id="register-heading">确认你的会员资料</h2>
       <p class="support">身份已经验证，再完成一步即可使用会员服务。</p>
@@ -53,6 +61,18 @@
       <div class="member-details"><div><span>会员编号</span><strong id="customerid" class="code-short">—</strong></div><div><span>会员有效期</span><strong id="expiry">待激活</strong></div></div>
       <h3 class="section-subtitle">我的返场礼遇</h3><div id="benefits" class="benefits"></div>
       <p class="help">到店时出示会员账户，门店会核验适用权益。纸卡不作为独立兑换凭证。</p>
+    </section>
+
+    <section class="surface hidden" id="pos-link" aria-labelledby="pos-link-heading">
+      <div class="mini-label">VISIT CHECK-IN</div><h2 id="pos-link-heading">本次到店会员关联</h2>
+      <p class="support">由你本人授权；仅绑定当前门店的实际桌次。授权码120秒有效且只能核销一次，不代表已经付款或自动获得折扣。</p>
+      <label class="field-label" for="pos-store">本次实际到店门店</label>
+      <select id="pos-store"></select>
+      <button class="action action-outline" id="issue-pos-link" type="button">生成一次性接待授权码</button>
+      <label class="field-label" for="pos-token">请向当班调酒师出示以下授权码</label>
+      <textarea id="pos-token" readonly rows="4" spellcheck="false" placeholder="生成后显示"></textarea>
+      <button class="subtle-button" id="copy-pos-link" type="button">复制授权码</button>
+      <p class="help">生成后请在两分钟内由工作人员在对应POS桌次核验。验证失败时重新生成即可；无需重新注册会员。</p>
     </section>
 
     <section class="surface hidden" id="taste" aria-labelledby="taste-heading">
