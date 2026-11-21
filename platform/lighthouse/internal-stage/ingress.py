@@ -158,12 +158,31 @@ def internal_menu(request):
 class LocalHost:
     def __init__(self, app):
         self.app = app
+        self.growth_app = None
+        if os.getenv("BSV_STAGE_GROWTH_ENABLED") == "1":
+            # Growth remains an isolated, synthetic sub-application in this release.
+            # Mount directly in the existing loopback ingress: no parallel public
+            # gateway, database authority, port or independent authentication tree.
+            if (os.getenv("BSV_GROWTH_ENV") != "isolated"
+                    or os.getenv("BSV_GROWTH_TRUST_IDENTITY") != "1"):
+                raise RuntimeError("Growth integration requires isolated identity.A sessions")
+            from services.api.customer_growth.app import app as growth_app
+            self.growth_app = growth_app
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             hosts = [value for key, value in scope["headers"] if key == b"host"]
             if len(hosts) != 1 or hosts[0].split(b":", 1)[0] not in (b"127.0.0.1", b"localhost"):
                 return await Response(status_code=400)(scope, receive, send)
+            path = scope["path"]
+            if self.growth_app is not None and (
+                    path.startswith(("/api/v1/growth/", "/member/", "/staff/growth/"))
+                    or path == "/growth/health"):
+                # No public forwarding of machine payment/benefit events. These
+                # require a separately authorized internal adapter and audit.
+                if path.startswith("/api/v1/growth/internal/"):
+                    return await Response(status_code=404)(scope, receive, send)
+                return await self.growth_app(scope, receive, send)
         await self.app(scope, receive, send)
 
 
