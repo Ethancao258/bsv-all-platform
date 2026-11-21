@@ -377,6 +377,40 @@ def set_guest(response: Response, db: Session, provider: str, subject: str, stor
         response.set_cookie(name, value, max_age=7*86400, httponly=http_only, secure=secure, samesite='lax', path='/')
 
 
+def trusted_pos_staff_scope(request: Request, identity_tr: str) -> str:
+    """Check real POS device, academy qualification, current shift and actor identity.
+
+    identity.A /me intentionally filters the standalone POS_SERVICE qualification,
+    since that API cannot itself prove the live academy/device state.
+    """
+    if not TRUST_IDENTITY or not POS_VERIFY_URL or len(POS_VERIFY_TOKEN) < 32:
+        raise HTTPException(503, "集团POS当班核验尚未接通")
+    parsed=urlparse(POS_VERIFY_URL)
+    if (parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1','localhost')
+            or parsed.username or parsed.password or parsed.query or parsed.fragment
+            or parsed.path != '/api/v1/visits/customer-context/verify'):
+        raise HTTPException(503, "内部POS核验目标不符合受控配置")
+    target=parsed._replace(path='/api/v1/visits/customer-staff/verify').geturl()
+    try:
+        with httpx.Client(timeout=4, trust_env=False, follow_redirects=False) as client:
+            result=client.post(target, json={},
+                               headers={'Authorization':'Bearer '+POS_VERIFY_TOKEN,
+                                        'Cookie':request.headers.get('cookie','')})
+        if result.status_code in (401,403):
+            raise HTTPException(403, "尚未取得该门店的当班POS接待资格")
+        result.raise_for_status()
+        proof=result.json()
+    except HTTPException:
+        raise
+    except (httpx.HTTPError, ValueError, TypeError) as exc:
+        raise HTTPException(503,"POS当班权限暂时无法核验") from exc
+    if (proof.get('allowed') is not True or proof.get('active_shift') is not True
+            or proof.get('actor_tr') != identity_tr
+            or proof.get('store_id') not in STORES):
+        raise HTTPException(403,"当前身份与POS当班权限不匹配")
+    return proof['store_id']
+
+
 def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq=False, action=None) -> tuple[str,str]:
     if write:
         mutation_origin(request)
@@ -410,8 +444,12 @@ def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq
     if not me.get('tr_code') or not me.get('emp_code') or not me.get('active') or LEGAL_ENTITY not in me.get('active_legal_entities',[]):
         raise HTTPException(403, '人员资格不符合要求')
     action = action or ('hq.people.read' if hq else 'marketing.task.write')
-    if not any(g.get('action') == action and g.get('legal_entity_id') == LEGAL_ENTITY
-               and (hq or g.get('store_id') == store_id) for g in me.get('grants',[])):
+    if action == 'pos.order.read' and TRUST_IDENTITY:
+        verified_store=trusted_pos_staff_scope(request, me['tr_code'])
+        if not store_id or verified_store != store_id or hq:
+            raise HTTPException(403, '员工当前POS设备不属于该门店')
+    elif not any(g.get('action') == action and g.get('legal_entity_id') == LEGAL_ENTITY
+                 and (hq or g.get('store_id') == store_id) for g in me.get('grants',[])):
         raise HTTPException(403, '缺少对应岗位授权')
     if write:
         csrf = request.cookies.get('bsv_csrf','')
@@ -738,8 +776,15 @@ def staff_store_options(request:Request):
             raise HTTPException(403,'人员身份或任职资格未生效')
         allowed={g.get('store_id') for g in me.get('grants',[])
                  if g.get('status','active')=='active' and g.get('legal_entity_id')==LEGAL_ENTITY
-                 and g.get('action') in ('marketing.task.write','pos.order.read')
+                 and g.get('action')=='marketing.task.write'
                  and g.get('store_id') in STORES}
+        # POS grants in /me alone cannot prove active academy shift or device.
+        if TRUST_IDENTITY and POS_VERIFY_URL and POS_VERIFY_TOKEN:
+            try:
+                allowed.add(trusted_pos_staff_scope(request,me['tr_code']))
+            except HTTPException as exc:
+                if exc.status_code not in (401,403) and not allowed:
+                    raise
     return {'stores':sorted(allowed)}
 
 
