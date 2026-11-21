@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import (Boolean, DateTime, ForeignKey, Integer, String, Text, Index, text,
                         UniqueConstraint, create_engine, select)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from services.api.bsv1 import bsv_growth_pos as pos_contract
 
 ROOT = Path(__file__).resolve().parents[3]
 ENV = os.getenv('BSV_GROWTH_ENV', 'disabled')
@@ -35,6 +36,7 @@ WECHAT_SECRET = os.getenv('BSV_WECHAT_SECRET', '')
 WECHAT_REDIRECT = os.getenv('BSV_WECHAT_REDIRECT', '')
 PAYMENT_SIGNING_KEY = os.getenv('BSV_GROWTH_PAYMENT_SIGNING_KEY', '')
 POS_CONTEXT_KEY = os.getenv('BSV_GROWTH_POS_CONTEXT_KEY', '')
+POS_LINK_KEY = os.getenv('BSV_GROWTH_LINK_KEY', '')
 POS_VERIFY_URL = os.getenv('BSV_GROWTH_POS_VERIFY_URL', '')
 POS_VERIFY_TOKEN = os.getenv('BSV_GROWTH_POS_VERIFY_TOKEN', '')
 PRIVACY_APPROVED = os.getenv('BSV_GROWTH_PRIVACY_APPROVED', '0') == '1'
@@ -554,6 +556,38 @@ def register(body: Register, request: Request):
                 'referral':'PREBOUND' if assigned else 'AVAILABLE_FOR_CLAIM'}
 
 
+class PosLinkRequest(BaseModel):
+    store_id: str = Field(min_length=3,max_length=40)
+
+
+@app.post(BASE_PATH + '/public/pos-link')
+def create_guest_pos_link(body: PosLinkRequest, request: Request):
+    """One-time guest-consented 120s proof for a *trusted* POS to consume.
+
+    No business discount, payment, verified visit or POS permission is implied.
+    The customer chooses the venue being visited; the POS binds an actual live visit.
+    """
+    require_enabled()
+    require_store(body.store_id)
+    if not ISOLATED:
+        # Production customer authority/legacy dedup has not passed G0/G1.
+        raise HTTPException(503, '正式客户主库尚未验收')
+    with db_session() as db:
+        sess = require_guest(request, db, True)
+        person = customer_for_session(db, sess)
+        if person is None:
+            raise HTTPException(404, '请先完成会员注册')
+        try:
+            proof = pos_contract.make_guest_link(person.id, body.store_id, POS_LINK_KEY)
+        except pos_contract.ProofError as exc:
+            raise HTTPException(503, '门店会员关联服务尚未启用') from exc
+        db.add(Audit(actor='customer:'+person.id, action='POS_LINK_PROOF_ISSUED',
+                     target=person.id, metadata_json=json.dumps({'store_id':body.store_id})))
+        db.commit()
+    return {'token':proof,'store_id':body.store_id,'expires_in_seconds':120,
+            'notice':'仅用于当次到店会员关联；需在点单台由授权员工核验'}
+
+
 @app.get(BASE_PATH + '/public/me')
 def guest_me(request: Request):
     with db_session() as db:
@@ -643,11 +677,20 @@ def staff_guest_context(request:Request, context:str):
         # A valid signature and staff grant alone never prove an active visit.
         if not (POS_VERIFY_URL and POS_VERIFY_TOKEN):
             raise HTTPException(503,'当前无法核验接待权限')
+        parsed=urlparse(POS_VERIFY_URL)
+        if (parsed.scheme!='http' or parsed.hostname not in ('127.0.0.1','localhost')
+                or parsed.username or parsed.password or parsed.query or parsed.fragment
+                or parsed.path!='/api/v1/visits/customer-context/verify'):
+            raise HTTPException(503,'接待核验目标尚未经过可信内网配置')
         try:
-            r=httpx.post(POS_VERIFY_URL,json={
+            # This call stays on loopback and sends the *current browser* POS+identity
+            # cookies so the POS revalidates the device, course, shift and store.
+            with httpx.Client(trust_env=False,timeout=4,follow_redirects=False) as client:
+                r=client.post(POS_VERIFY_URL,json={
                 'actor_tr':tr,'store_id':ctx['store_id'],'visit_id':ctx['visit_id'],
                 'customer_id':ctx['customer_id']},
-                headers={'Authorization':'Bearer '+POS_VERIFY_TOKEN},timeout=4)
+                headers={'Authorization':'Bearer '+POS_VERIFY_TOKEN,
+                         'Cookie':request.headers.get('cookie','')})
             r.raise_for_status()
             facts=r.json()
             if not all(facts.get(k) is True for k in (
