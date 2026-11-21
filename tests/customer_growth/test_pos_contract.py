@@ -64,9 +64,9 @@ def test_pos_projection_is_additive_and_nonce_ledger_rejects_replay():
     nonce = p.nonce_digest("stage-pos-nonce-001-abcdefghijkl")
     assert len(nonce) == 64
     db.execute("""INSERT INTO bsv_growth_pos_consumed_nonces
-                  (nonce_hash,visit_id,store_id,customer_id,created_at)
-                  VALUES(?,?,?,?,?)""", (nonce, "VISIT1", "BSVT", str(uuid4()), "synthetic"))
+                  (nonce_hash,visit_id,store_id,customer_id,action_id,created_at)
+                  VALUES(?,?,?,?,?,?)""", (nonce, "VISIT1", "BSVT", str(uuid4()), "ACTION-ONE", "synthetic"))
     with pytest.raises(sqlite3.IntegrityError):
         db.execute("""INSERT INTO bsv_growth_pos_consumed_nonces
-                      (nonce_hash,visit_id,store_id,customer_id,created_at)
-                      VALUES(?,?,?,?,?)""", (nonce, "VISIT1", "BSVT", str(uuid4()), "synthetic"))
+                      (nonce_hash,visit_id,store_id,customer_id,action_id,created_at)
+                      VALUES(?,?,?,?,?,?)""", (nonce, "VISIT1", "BSVT", str(uuid4()), "ACTION-TWO", "synthetic"))
