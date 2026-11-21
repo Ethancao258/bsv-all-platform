@@ -7,9 +7,12 @@ on:
       - "services/api/customer_growth/**"
       - "tests/customer_growth/**"
       - ".github/workflows/customer-growth-ci.yml"
+      - "contracts/customer-growth/**"
+      - "config/modules/customer-growth-v2.json"
   push:
     branches:
       - feature/customer-growth-mvp-v1
+      - feature/customer-growth-experience-v2
 permissions:
   contents: read
 jobs:
@@ -29,4 +32,9 @@ jobs:
       - name: Parse Python modules
         run: python -m compileall -q services/api/customer_growth
       - name: Run end-to-end isolated API checks
-        run: python -m pytest -q tests/customer_growth/test_flow.py
+        run: python -m pytest -q tests/customer_growth/test_flow.py tests/customer_growth/test_service_preferences.py
+      - name: Validate customer and employee web scripts
+        run: |
+          node --check apps/guest-web/member/app.js
+          node --check apps/staff-center/growth/app.js
+          node --check apps/staff-center/growth/pos-entry.js
