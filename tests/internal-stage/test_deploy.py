@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import os
 import sqlite3
+import subprocess
 import tarfile
 from io import BytesIO
 from subprocess import CompletedProcess
@@ -11,6 +12,7 @@ from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest.mock import call, patch
+import venv
 
 path = Path(__file__).resolve().parents[2] / "platform/lighthouse/internal-stage/stage.py"
 spec = importlib.util.spec_from_file_location("internal_stage", path)
@@ -55,6 +57,76 @@ class ReleaseTest(unittest.TestCase):
             self.assertEqual(preserved.read_bytes(), b"existing")
             self.assertEqual([entry.args for entry in services.call_args_list], [(False,), (True,)] * 2)
             self.assertEqual(checkpoint.call_args_list, [call(OLD, "pre_deploy"), call(NEW, "pre_rollback")])
+
+    def test_real_venv_lib64_link_is_allowed_inside_managed_release(self):
+        """Regression proof: the release SHA prefix must not invalidate a standard venv link."""
+        with tempfile.TemporaryDirectory(prefix="bsv-real-venv-regression-") as tmp:
+            root = Path(tmp)
+            dest = root / "releases" / NEW
+            (dest / "identity").mkdir(parents=True)
+            venv.EnvBuilder(with_pip=False, symlinks=True).create(dest / "identity")
+            link = dest / "identity" / "lib64"
+            self.assertTrue(link.is_symlink(), "the test requires a real Python venv lib64 symlink")
+            with patch.object(stage, "ROOT", root):
+                self.assertTrue(stage._allowed_venv_symlink(dest, link, os.readlink(link)))
+
+    def test_real_standard_venv_build_inventory_and_marker_under_umasks(self):
+        python = Path("/usr/bin/python3")
+        if not python.exists() or not subprocess.check_output([python, "--version"], text=True).strip().startswith("Python 3.12."):
+            self.skipTest("requires Ubuntu 24.04 system Python 3.12")
+        sha = stage.output(*stage.git("rev-parse", "HEAD"))
+        for mask in (0o077, 0o022):
+            with self.subTest(umask=oct(mask)), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "releases").mkdir(mode=0o700)
+                old = root / "releases" / OLD
+                old.mkdir(mode=0o700)
+                (root / "current").symlink_to(old)
+
+                def real_venv(dest, source, name):
+                    subprocess.run([python, "-m", "venv", "--without-pip", dest / name], check=True)
+
+                previous_mask = os.umask(mask)
+                try:
+                    with patch.object(stage, "ROOT", root), patch.object(stage, "create_release_venv", side_effect=real_venv):
+                        release = stage.build(sha)
+                        for name in ("identity", "supply"):
+                            self.assertTrue((release / name / "lib64").is_symlink())
+                        attestation = json.loads((release / ".built").read_text())
+                        self.assertEqual(attestation["manifest"], stage.verified_source_manifest(sha))
+                        self.assertEqual(attestation["inventory_sha256"], stage.release_inventory_sha256(release))
+                        self.assertEqual((release / ".built").stat().st_mode & 0o777, 0o600)
+                        self.assertEqual(stage.build(sha), release)
+                finally:
+                    os.umask(previous_mask)
+
+    def test_venv_symlink_allowlist_rejects_unmanaged_or_unexpected_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            releases = root / "releases"
+            releases.mkdir()
+            dest = releases / NEW
+            (dest / "identity").mkdir(parents=True)
+            (dest / "identity/lib64").symlink_to("lib")
+            link = dest / "identity/lib64"
+            with patch.object(stage, "ROOT", root):
+                self.assertFalse(stage._allowed_venv_symlink(dest, link, "../other-release/lib"))
+                self.assertFalse(stage._allowed_venv_symlink(dest, dest / "identity/extra", "lib"))
+                traversal = dest / "identity" / ".." / "identity/lib64"
+                self.assertFalse(stage._allowed_venv_symlink(dest, traversal, "lib"))
+                other = releases / OLD
+                (other / "identity").mkdir(parents=True)
+                cross_release = other / "identity/lib64"
+                cross_release.symlink_to(dest / "identity/lib64")
+                self.assertFalse(stage._allowed_venv_symlink(other, cross_release, str(link)))
+                (dest / "supply").mkdir()
+                (dest / "supply/bin").symlink_to(other / "identity", target_is_directory=True)
+                self.assertFalse(stage._allowed_venv_symlink(
+                    dest, dest / "supply/bin/python", "python3"))
+                escaped = root / "outside" / NEW
+                escaped.parent.mkdir()
+                escaped.mkdir()
+                self.assertFalse(stage._allowed_venv_symlink(escaped, escaped / "x", "lib"))
 
     def test_failed_verification_recovers_previous_release(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \

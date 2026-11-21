@@ -1,0 +1,286 @@
+name: bsv-ops-003-release
+on:
+  pull_request:
+    paths:
+      - .github/workflows/bsv-ops-003-release.yml
+      - platform/lighthouse/internal-stage/ops003_release.py
+      - platform/lighthouse/internal-stage/ops003_publish_cos.py
+      - platform/lighthouse/internal-stage/ops003_predeploy.py
+      - contracts/ops-bridge/release-bundle.schema.json
+      - tests/internal-stage/test_ops003_release.py
+      - tests/internal-stage/test_ops003_publish.py
+      - tests/internal-stage/test_ops003_predeploy.py
+      - services/api/identity/requirements.lock
+      - services/api/supply/requirements.lock
+      - services/api/customer_growth/requirements.stage.lock
+      - docs/ops/BSV_OPS_003_PREDEPLOY.md
+      - docs/ops/CURRENT_STATE.md
+  workflow_dispatch:
+    inputs:
+      publish_to_cos:
+        description: "仅在负责人已配置并批准一次性受限 Tencent OIDC 角色后上传"
+        type: boolean
+        required: true
+        default: false
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+  attestations: write
+concurrency:
+  group: bsv-ops-003-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  exact-sha-release:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install release manifest schema validator
+        run: python -m pip install jsonschema==4.26.0
+      - name: Validate exact-commit bundle and release manifest
+        run: |
+          python tests/internal-stage/test_ops003_release.py
+          python tests/internal-stage/test_ops003_publish.py
+      - name: Export the already successful pinned PR #27 CI evidence
+        uses: actions/github-script@v7
+        env:
+          CI_RUN_ID: '44922120417'
+          CI_OUTPUT: ${{ runner.temp }}/bsv-ops-003-release/ci-run.json
+        with:
+          script: |
+            const fs = require('fs');
+            const runId = Number(process.env.CI_RUN_ID);
+            const run = (await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner, repo: context.repo.repo, run_id: runId
+            })).data;
+            const workflow = (await github.rest.actions.getWorkflow({
+              owner: context.repo.owner, repo: context.repo.repo, workflow_id: run.workflow_id
+            })).data;
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              owner: context.repo.owner, repo: context.repo.repo, run_id: runId, per_page: 100
+            });
+            fs.mkdirSync(require('path').dirname(process.env.CI_OUTPUT), {recursive: true, mode: 0o700});
+            fs.writeFileSync(process.env.CI_OUTPUT, JSON.stringify({
+              url: run.html_url, headSha: run.head_sha, event: run.event,
+              status: run.status, conclusion: run.conclusion, workflowName: workflow.name,
+              jobs: jobs.map(job => ({name: job.name, status: job.status, conclusion: job.conclusion}))
+            }));
+      - name: Build immutable target SHA bundle
+        id: package
+        run: |
+          python platform/lighthouse/internal-stage/ops003_release.py build \
+            --run-json "$RUNNER_TEMP/bsv-ops-003-release/ci-run.json" \
+            --output "$RUNNER_TEMP/bsv-ops-003-release"
+          echo "bundle=$RUNNER_TEMP/bsv-ops-003-release/bsv-all-cb06be66e78d92b8921fc3103b12bdbdc55284f8.tar" >> "$GITHUB_OUTPUT"
+      - name: Install Cosign for keyless bundle signature
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
+      - name: Sign and locally verify immutable bundle
+        env:
+          BUNDLE: ${{ steps.package.outputs.bundle }}
+        run: |
+          cosign sign-blob --yes --new-bundle-format --bundle "$BUNDLE.sigstore.json" "$BUNDLE"
+          cosign verify-blob --new-bundle-format --bundle "$BUNDLE.sigstore.json" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp '^https://github\.com/Ethancao258/bsv-all-platform/\.github/workflows/bsv-ops-003-release\.yml@refs/(pull/[0-9]+/merge|heads/feature/bsv-ops-003-fastpath|heads/main)$' \
+            "$BUNDLE"
+      - name: Publish signed build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.package.outputs.bundle }}
+      - name: Upload immutable, signed, short-retention bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bsv-ops-003-cb06be66e78d92b8921fc3103b12bdbdc55284f8-${{ github.run_id }}
+          path: |
+            ${{ steps.package.outputs.bundle }}
+            ${{ steps.package.outputs.bundle }}.sha256
+            ${{ steps.package.outputs.bundle }}.sigstore.json
+          if-no-files-found: error
+          retention-days: 7
+
+  offline-predeploy:
+    needs: exact-sha-release
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.number == 34
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download this run's signed release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bsv-ops-003-cb06be66e78d92b8921fc3103b12bdbdc55284f8-${{ github.run_id }}
+          path: ${{ runner.temp }}/bsv-ops-003-source
+      - name: Install pinned official Cosign verifier
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac
+        with:
+          cosign-release: 'v2.4.1'
+      - name: Initialize trusted Sigstore TUF root
+        run: |
+          cosign initialize
+          test -s "$HOME/.sigstore/root/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json"
+      - name: Verify actual release signature offline and reject tampering
+        env:
+          OPS003_RELEASE_DIR: ${{ runner.temp }}/bsv-ops-003-source
+          OPS003_COSIGN: ${{ runner.temp }}/bsv-ops-003-source/cosign
+          OPS003_TRUSTED_ROOT: ${{ runner.temp }}/bsv-ops-003-source/trusted_root.json
+          OPS003_WHEELHOUSE: ${{ runner.temp }}/bsv-ops-003-source/wheelhouse
+        run: |
+          cp "$(command -v cosign)" "$OPS003_COSIGN"
+          cp "$HOME/.sigstore/root/tuf-repo-cdn.sigstore.dev/targets/trusted_root.json" "$OPS003_TRUSTED_ROOT"
+          bundle="$OPS003_RELEASE_DIR/bsv-all-cb06be66e78d92b8921fc3103b12bdbdc55284f8.tar"
+          cosign verify-blob --new-bundle-format --offline --trusted-root "$OPS003_TRUSTED_ROOT" --bundle "$bundle.sigstore.json" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity 'https://github.com/Ethancao258/bsv-all-platform/.github/workflows/bsv-ops-003-release.yml@refs/pull/34/merge' "$bundle"
+          python platform/lighthouse/internal-stage/ops003_release.py verify --bundle "$bundle" --sha256 "$bundle.sha256"
+          cp "$bundle" "$RUNNER_TEMP/tampered-source.tar"; printf tamper >> "$RUNNER_TEMP/tampered-source.tar"
+          if cosign verify-blob --new-bundle-format --offline --trusted-root "$OPS003_TRUSTED_ROOT" --bundle "$bundle.sigstore.json" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity 'https://github.com/Ethancao258/bsv-all-platform/.github/workflows/bsv-ops-003-release.yml@refs/pull/34/merge' \
+            "$RUNNER_TEMP/tampered-source.tar" >/dev/null 2>&1; then exit 1; fi
+          echo OFFLINE_SIGNATURE_PASS_BAD_SIGNATURE_REJECTED_EXACT_SHA_TREE_NINE_CI_PASS
+      - name: Download exact locked wheels for Ubuntu Python 3.12 and native CPU
+        env:
+          OPS003_WHEELHOUSE: ${{ runner.temp }}/bsv-ops-003-source/wheelhouse
+        run: |
+          mkdir -p "$OPS003_WHEELHOUSE"
+          for lock in services/api/identity/requirements.lock services/api/customer_growth/requirements.stage.lock services/api/supply/requirements.lock; do
+            python -m pip download --disable-pip-version-check --only-binary=:all: --no-deps --dest "$OPS003_WHEELHOUSE" -r "$lock"
+          done
+      - name: Fresh offline venv install, pip check and missing-wheel refusal
+        env:
+          OPS003_RELEASE_DIR: ${{ runner.temp }}/bsv-ops-003-source
+          OPS003_COSIGN: ${{ runner.temp }}/bsv-ops-003-source/cosign
+          OPS003_TRUSTED_ROOT: ${{ runner.temp }}/bsv-ops-003-source/trusted_root.json
+          OPS003_WHEELHOUSE: ${{ runner.temp }}/bsv-ops-003-source/wheelhouse
+          OPS003_SOURCE_ARTIFACT_RUN: ${{ github.run_id }}
+        run: python tests/internal-stage/test_ops003_predeploy.py
+      - name: Revalidate the TUF chain using only its packaged local mirror
+        env:
+          SOURCE_DIR: ${{ runner.temp }}/bsv-ops-003-source
+        run: |
+          mirror="$RUNNER_TEMP/sigstore-tuf-mirror"
+          python platform/lighthouse/internal-stage/ops003_predeploy.py fetch-tuf-mirror --destination "$mirror"
+          offline_home="$RUNNER_TEMP/cosign-offline-home"; mkdir -m 700 "$offline_home"
+          HOME="$offline_home" cosign initialize --mirror="file://$mirror"
+          cmp "$SOURCE_DIR/trusted_root.json" "$offline_home/.sigstore/root/targets/trusted_root.json"
+      - name: Assemble and file-hash inventory the host supplement
+        env:
+          STAGING: ${{ runner.temp }}/bsv-ops-003-supplement
+          SOURCE_DIR: ${{ runner.temp }}/bsv-ops-003-source
+          ARCH: ${{ matrix.arch }}
+          OPS003_SOURCE_ARTIFACT_RUN: ${{ github.run_id }}
+        run: |
+          mkdir -p "$STAGING/trust/tuf-repo-cdn.sigstore.dev" "$STAGING/tools"
+          cp "$SOURCE_DIR/trusted_root.json" "$STAGING/trust/trusted_root.json"
+          cp -a "$RUNNER_TEMP/sigstore-tuf-mirror/." "$STAGING/trust/tuf-repo-cdn.sigstore.dev/"
+          cp platform/lighthouse/internal-stage/ops003_predeploy.py platform/lighthouse/internal-stage/ops003_release.py platform/lighthouse/internal-stage/stage.py "$STAGING/tools/"
+          cp docs/ops/BSV_OPS_003_PREDEPLOY.md "$STAGING/ORCA_EXECUTION.md"
+          python platform/lighthouse/internal-stage/ops003_predeploy.py lock-compatibility --base-sha f00371ccd1c233caf8eea97398bf981cf7d65dd0 --target-sha cb06be66e78d92b8921fc3103b12bdbdc55284f8 --output "$STAGING/wheelhouse-lock-compatibility.json"
+          printf '%s\n' '{"target_sha":"cb06be66e78d92b8921fc3103b12bdbdc55284f8","source_ci_run_id":44922120417,"source_artifact_run_id":'"$GITHUB_RUN_ID"',"offline_source_signature":"PASS","tampered_signature":"REJECTED","source_sha_tree_and_nine_ci_jobs":"PASS","fresh_offline_venvs_and_pip_check":"PASS","missing_wheel_refusal":"PASS","offline_tuf_chain":"PASS","previous_wheelhouse":"CONDITIONALLY_REUSABLE_IF_HOST_REVERIFIES_PRIOR_SIGNED_ARCHIVE_AND_FILE_INVENTORY","previous_supplement_run_id":44913890434,"previous_supplement_artifact_id":14710029781,"previous_supplement_sha256":"2b65e83493594d2bc1948e407499169264a44c36ba66510bb498a7515eff750a","host_architecture_confirmed":true,"host_architecture":"x86_64_operator_confirmed","host_systemd_postgresql_backups_and_http":"HOST_NOT_RUN"}' > "$STAGING/predeploy-evidence.json"
+          python platform/lighthouse/internal-stage/ops003_predeploy.py assemble --root "$STAGING" --arch "$ARCH" --metadata "$STAGING/predeploy-evidence.json" --output "$RUNNER_TEMP/bsv-ops-003-host-supplement-$ARCH.tar"
+          python platform/lighthouse/internal-stage/ops003_predeploy.py verify-supplement-archive --archive "$RUNNER_TEMP/bsv-ops-003-host-supplement-$ARCH.tar"
+          test "$(stat -c %s "$RUNNER_TEMP/bsv-ops-003-host-supplement-$ARCH.tar")" -lt 100000000
+      - name: Sign supplement and prove offline tamper rejection
+        env:
+          SUPPLEMENT: ${{ runner.temp }}/bsv-ops-003-host-supplement-${{ matrix.arch }}.tar
+          TRUSTED_ROOT: ${{ runner.temp }}/bsv-ops-003-supplement/trust/trusted_root.json
+        run: |
+          python -c 'import hashlib,os,pathlib;p=pathlib.Path(os.environ["SUPPLEMENT"]);p.with_name(p.name+".sha256").write_text(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n")'
+          cosign sign-blob --yes --new-bundle-format --bundle "$SUPPLEMENT.sigstore.json" "$SUPPLEMENT"
+          cosign verify-blob --new-bundle-format --offline --trusted-root "$TRUSTED_ROOT" --bundle "$SUPPLEMENT.sigstore.json" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity 'https://github.com/Ethancao258/bsv-all-platform/.github/workflows/bsv-ops-003-release.yml@refs/pull/34/merge' "$SUPPLEMENT"
+          cp "$SUPPLEMENT" "$RUNNER_TEMP/tampered-supplement.tar"; printf tamper >> "$RUNNER_TEMP/tampered-supplement.tar"
+          if cosign verify-blob --new-bundle-format --offline --trusted-root "$TRUSTED_ROOT" --bundle "$SUPPLEMENT.sigstore.json" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity 'https://github.com/Ethancao258/bsv-all-platform/.github/workflows/bsv-ops-003-release.yml@refs/pull/34/merge' \
+            "$RUNNER_TEMP/tampered-supplement.tar" >/dev/null 2>&1; then exit 1; fi
+      - name: Upload signed offline supplement
+        uses: actions/upload-artifact@v4
+        with:
+          name: bsv-ops-003-host-supplement-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/bsv-ops-003-host-supplement-${{ matrix.arch }}.tar
+            ${{ runner.temp }}/bsv-ops-003-host-supplement-${{ matrix.arch }}.tar.sha256
+            ${{ runner.temp }}/bsv-ops-003-host-supplement-${{ matrix.arch }}.tar.sigstore.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Attest host supplement provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ runner.temp }}/bsv-ops-003-host-supplement-${{ matrix.arch }}.tar
+
+  publish-cos:
+    needs: exact-sha-release
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_to_cos == true && vars.BSV_OPS003_COS_UPLOAD_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    environment: bsv-ops003-cos
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download this run's signed exact-SHA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bsv-ops-003-cb06be66e78d92b8921fc3103b12bdbdc55284f8-${{ github.run_id }}
+          path: ${{ runner.temp }}/bsv-ops-003-release
+      - name: Verify keyless signature before cloud upload
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.4.1'
+      - name: Check signature and bundle contents
+        run: |
+          bundle="$RUNNER_TEMP/bsv-ops-003-release/bsv-all-cb06be66e78d92b8921fc3103b12bdbdc55284f8.tar"
+          cosign verify-blob --bundle "$bundle.sigstore.json" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp '^https://github\.com/Ethancao258/bsv-all-platform/\.github/workflows/bsv-ops-003-release\.yml@refs/(pull/[0-9]+/merge|heads/feature/bsv-ops-003-fastpath|heads/main)$' \
+            "$bundle"
+          python3 platform/lighthouse/internal-stage/ops003_release.py verify \
+            --bundle "$bundle" --sha256 "$bundle.sha256"
+      - name: Install locked upload SDK
+        run: python -m pip install cos-python-sdk-v5==1.9.45
+      - name: Upload immutable bundle with one-time OIDC role
+        env:
+          BSV_COS_BUCKET: ${{ vars.BSV_OPS003_COS_BUCKET }}
+          BSV_COS_REGION: ${{ vars.BSV_OPS003_COS_REGION }}
+          BSV_TENCENT_ROLE_ARN: ${{ vars.BSV_OPS003_TENCENT_ROLE_ARN }}
+          BSV_TENCENT_PROVIDER_ID: ${{ vars.BSV_OPS003_TENCENT_PROVIDER_ID }}
+        run: |
+          bundle="$RUNNER_TEMP/bsv-ops-003-release/bsv-all-cb06be66e78d92b8921fc3103b12bdbdc55284f8.tar"
+          python3 platform/lighthouse/internal-stage/ops003_publish_cos.py \
+            --bundle "$bundle" --sha256 "$bundle.sha256" --bucket "$BSV_COS_BUCKET" \
+            --region "$BSV_COS_REGION" --role-arn "$BSV_TENCENT_ROLE_ARN" \
+            --provider-id "$BSV_TENCENT_PROVIDER_ID"

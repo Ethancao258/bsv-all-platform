@@ -197,3 +197,29 @@
 - 审批边界。隔离环境可验证合成工作流。真实员工试点须由负责人批准最小资料范围、备案/HTTPS、私有访问、扫描、加密备份和恢复。正式营业还缺 CloudBase G0/G1 和 ACL/RLS 修复、真实收款专项批准、D/E 权威写入及五店容量证据。公开鸡尾酒菜单保持原发布物，只有私有同源入口提供工作台返回。
 - `PASS_ISOLATED` · 两轮 PG17 + SQLite 真实 HTTP 验收验证同一 TR 在 BSVT 两台独立注册终端创建未付款订单、重复请求防重、订单审计、设备撤销以及 BSVS 独立培训和班次解锁、撤权失效、跨店排班冲突和北京时间跨午夜。合成旧码保持零写入，追加迁移后复跑 V3 身份服务验证既有记录仍可读取。
 - `PASS_ISOLATED` · Chromium 在 320–1440px 的八个宽度验证工作台和注册终端流程，覆盖浏览器模拟缩放、文字放大、窄高视口及菜单返回；真实移动设备软键盘仍待现场观察。导入预检 7 项、发布控制和部署回归 16 项通过。GitHub 精确 SHA、CI 和截图见 [Issue #11](https://github.com/Ethancao258/bsv-all-platform/issues/11) 的集成 PR。
+
+## 2026-11-21｜BSV-OPS-003 V1 快速可信交付
+
+- 目标固定为 PR #27 SHA `f00371ccd1c233caf8eea97398bf981cf7d65dd0`，CI 证据固定为成功 run `44894443077`（9 项必需门禁）。独立分支 `feature/bsv-ops-003-fastpath` 基于该 SHA；源码包通过现有 `stage.py` 的逐条 Git blob/mode 校验生成，包含 release manifest、CI 证明及 SHA256。GitHub Actions 用 GitHub OIDC keyless 签名并发布 build provenance，避免静态签名密钥。
+- 本地验证：目标 tree 535 条目录/文件记录；交付物含可离线 clone 的完整精确 Git bundle（后续部署器可直接用本地 Git 对象，不需访问 GitHub），并在 manifest 中记录可重建源码归档摘要；CI 证明、bundle 完整性、构件摘要、Git commit/tree 和 Git blob SHA 可离线复核。最终 GitHub PR SHA、signing workflow 与 CI 结果以本分支 PR 为准。
+- `V1_GITHUB_ARTIFACT_READY / COS_UPLOAD_NOT_RUN / HOST_NOT_RUN / TUNNEL_VIEW_NOT_RUN`。已加入默认关闭的 GitHub OIDC→Tencent STS→私有 COS 发布 job 和模拟闭环测试；尚未配置 OIDC provider/role/bucket 参数、未启用仓库发布变量、未执行真实上传。本轮不联系云端，不创建 COS/TAT 资源，不部署，也没有新主机或浏览器证据。旧 8765/8767 不动。
+- 网页可见还需 V2 隔离主机发布与真实主机验收、然后 V3 同一 SSH 隧道浏览器验收。V2 之前需负责人一次性批准 GitHub Actions OIDC 到受限 Tencent STS 角色：指定实例固定 TAT 命令 + 指定私有 COS 前缀；不得用静态密钥、宽泛 SSH 或生产权限。唯一下一步为该一次性角色/资源范围批准与配置；未经批准保持 STOP。
+- 交付门禁与验证步骤：[`BSV_OPS_003_FASTPATH.md`](BSV_OPS_003_FASTPATH.md)。
+- PR #34：<https://github.com/Ethancao258/bsv-all-platform/pull/34>。部署器与CI修复代码提交 `4593dce1d7700b04940f63697c2511bab1d3c3bf` 的 `validate-architecture` run `44899329498` 九门禁全绿；签名构件 workflow run `44899329551` 成功，COS job 因默认关闭被跳过。随后仅文档记录提交 `b15dde410aaf025b773a9e298b97aa21f5e56839` 也由 `validate-architecture` run `44899535272` 九门禁通过、`bsv-ops-003-release` run `44899535240` 签名构件成功。首轮 run `44899126975` 暴露浅克隆缺少目标 Git 对象，现已对内部阶段 job 设置 `fetch-depth: 0`。真实 COS 上传、TAT、主机部署和隧道浏览器验收仍未运行。
+
+## 2026-11-21｜BSV-OPS-003 指定升级包离线验收
+
+- 目标仍为 PR #27 的 `f00371ccd1c233caf8eea97398bf981cf7d65dd0`；本次交付代码提交 `80546ef2a72c5e78a5192d29a12e757eca89bf23` 位于原 PR #34 分支；当前 PR HEAD `255ec675fd3145c38817ac437a009a7e58b8290e` 仅追加本状态证据。固定源 CI run `44894443077` 九门禁均成功；目标源码归档运行 SHA、Git tree 和逐条文件 blob/mode 由签名包验证器复核。
+- 依赖/迁移审计：c51 与 f003 的 identity、supply 锁文件一致；f003 新增 growth stage 锁 `qrcode==8.2`、`Pillow==11.3.0`。补充 wheelhouse 是三份锁全部 pinned wheel，而非只含两个增量包；双架构分别新建 Python 3.12 venv，pip check 和实际包导入通过。c51→f003 的迁移文件一致，无新增 DB revision。主机系统需按当前资料状态现场核对，不假设 x86_64。
+- 最终 GitHub Actions 通过：当前 PR HEAD 的 `validate-architecture` run `44913618447` 九个 job 全绿；release/predeploy run `44913618500` 的精确源签名构件、amd64、arm64 三项均成功，COS 上传按默认关闭被跳过。离线验签使用 Cosign v2.4.1 new bundle format、官方 OIDC issuer/PR #34 workflow identity、TUF root/metadata 本地镜像；源包和 supplement 均实测签名通过、篡改拒绝。官方 Cosign 2.4.1 发布公钥摘要与 openssl 二进制签名校验通过。
+- 补充构件：`bsv-ops-003-host-supplement-amd64-44913618500`（Actions artifact ID `14710632240`，artifact zip 160,056,335 bytes；内部 tar SHA-256 `7e5d5d991adc719e1b8b1a512da8717a071b8fdd833b0965ac1d660427c126aa`，221,941,760 bytes）；`bsv-ops-003-host-supplement-arm64-44913618500`（artifact ID `14710762602`，artifact zip 131,803,181 bytes；内部 tar SHA-256 `5805d7b2a5478a64af2984a76ef0f662b858c4dea209c7cc5e8dfe5a9f2a4d89`，192,952,320 bytes）。两份包含外层 `.sha256`、Sigstore bundle、文件清单、TUF metadata、Cosign、离线 wheelhouse、工具和操作单；留存 7 天。Actions 运行页：<https://github.com/Ethancao258/bsv-all-platform/actions/runs/44913618500>。
+- 本轮首次 CI 曾发现 Cosign trusted-root 需要 new bundle format、TUF 镜像要用 versioned/hashes 文件，以及 smoke test 误要求 supply 锁中不存在的 psycopg；均已按最小范围修复，最终两个架构全通过。不是 READY 之前跳过的门禁。
+- `HOST_NOT_RUN` · 没有连接或操作腾讯云。现场 CPU 型号、实际 current/rollback SHA、pending 状态、systemd、监听范围、目录权限/磁盘、PG17/SQLite 加密检查点、HTTP 路由、SSH 隧道浏览器和真实恢复演练均尚未验证。保持旧 8765/8767、现有密钥与数据、回滚目标、数据库 revision；未部署、未触碰 CloudBase、未启用付款。
+- 可交付判定：离线验证和依赖材料已通过，可进入 OrcaTerm 的现场只读状态核对；仅在状态与操作单前置条件完全匹配、经营者此前的隔离发布批准有效且 `bsvctl preflight/verify` 通过后才可执行发布。若现场任一项不同即 STOP；切换后任一验收失败，用现有 `bsvctl rollback`，不得手工改链接或配置。真实主机上线状态仍是 `HOST_NOT_RUN`。
+
+## 2026-11-21｜OPS-003 P0 标准 venv 软链接修复
+
+- PR #35 `<https://github.com/Ethancao258/bsv-all-platform/pull/35>` 的 H 为 `cb06be66e78d92b8921fc3103b12bdbdc55284f8`，以 f003 `f00371ccd1c233caf8eea97398bf981cf7d65dd0` 为父提交。仅改动发布器 `stage.py` 和 `tests/internal-stage/test_deploy.py`。真实 venv 的 `lib64 -> lib` 在旧实现中复现失败，原因为从 releases 根计算出的路径额外包含发布 SHA。新实现从经验证 SHA 命名 release 目录计算相对路径，并由权限规范化和 inventory 共同调用；允许的链接路径与目标值保持不变，任意链接、异常目标、路径穿越和跨 release 目标仍拒绝。
+- PASS_CI_H · 九项门禁由 `validate-architecture` run `44922120417` 成功：<https://github.com/Ethancao258/bsv-all-platform/actions/runs/44922120417>。`lighthouse-internal-stage` 的 Ubuntu 24.04/Python 3.12 实测真实 Identity/Supply venv、权限规范化、inventory、`.built` 与第二次 build；umask 077/022 均通过。该 job 的发布器用例 25 项全通过。修改前回归用例以真实 venv 复现 `False`，修复后通过。签名源码包还附带每个普通源码文件的 SHA256 清单，并在离线验证时重算比对。
+- 三个依赖锁从 f003 到 H 逐字节一致。PR #34 发布器已改为 H 和 CI run 44922120417；amd64 supplemental 只携带签名源码关联、校验工具、TUF 信任镜像与锁兼容证明，限制小于 100,000,000 字节，不重复打包已上传 wheelhouse。旧补充包只能在主机重新核对签名、SHA、清单、wheel 文件后复用。
+- HOST_NOT_RUN · Codex 未连接或修改 Lighthouse。部署前 CPU 和实时服务状态须现场确认；主机升级、systemd/PostgreSQL/备份/HTTP 验收及回退演练仍未执行。保留 8765/8767、当前 c51、rollback 0e8b3、f003 半成品目录、现有数据和密钥。
