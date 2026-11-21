@@ -3,7 +3,7 @@
 API contract: /api/v1/growth. Never infer a paid order from POS's simulated checkout.
 """
 from __future__ import annotations
-import base64, hashlib, hmac, json, os, re, secrets, time, uuid
+import base64, binascii, hashlib, hmac, json, os, re, secrets, time, uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from io import BytesIO
@@ -654,15 +654,17 @@ def read_pos_context(context:str) -> dict:
         if not hmac.compare_digest(expect,mac):
             raise ValueError('bad signature')
         record=json.loads(base64.urlsafe_b64decode(body+'='*(-len(body)%4)))
-        if not {'customer_id','store_id','visit_id','exp','iat'} <= record.keys():
-            raise ValueError('missing fields')
+        if not isinstance(record, dict) or set(record)!={'customer_id','store_id','visit_id','exp','iat'}:
+            raise ValueError('missing or unrecognized fields')
+        if type(record['exp']) is not int or type(record['iat']) is not int:
+            raise ValueError('invalid timestamps')
         if record['exp'] < time.time() or record['iat'] > time.time()+10 or record['exp']-record['iat']>120:
             raise ValueError('expired')
         if any(not isinstance(record[k],str) or not 3<=len(record[k])<=80
                for k in ('customer_id','store_id','visit_id')):
             raise ValueError('invalid ids')
         return record
-    except (ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
+    except (ValueError,TypeError,KeyError,binascii.Error,OverflowError,json.JSONDecodeError) as exc:
         raise HTTPException(403,'接待授权已失效，请从点单台重新进入') from exc
 
 
