@@ -191,8 +191,9 @@ jobs:
           python -m pip check
       - name: Verify candidate registration, attribution, consent and POS-context denials
         run: |
-          python -m pytest -q tests/customer_growth/test_flow.py tests/customer_growth/test_service_preferences.py
-          python -m compileall -q services/api/customer_growth platform/lighthouse/internal-stage
+          python -m pytest -q tests/customer_growth/test_flow.py tests/customer_growth/test_service_preferences.py tests/customer_growth/test_pos_contract.py
+          python -m compileall -q services/api/customer_growth services/api/bsv1/bsv_growth_pos.py platform/lighthouse/internal-stage
+          node --check apps/store-console/bsv1/app.js
           node --check apps/guest-web/member/app.js
           node --check apps/staff-center/growth/app.js
           node --check apps/staff-center/growth/pos-entry.js
