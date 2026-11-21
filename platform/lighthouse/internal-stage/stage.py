@@ -551,6 +551,31 @@ def sqlite_snapshot(current, destination):
     return {"archive": str(destination), "sha256": file_sha256(destination), "integrity": "QUICK_CHECK_OK"}
 
 
+def growth_candidate_snapshot(current, destination):
+    """Back up the *isolated* customer candidate SQLite with a consistent copy."""
+    source = ROOT / "releases" / current / "src/services/api/customer_growth/app.py"
+    if not source.is_file():
+        return None  # older releases predate growth; not a missing business record
+    env = service_config("ingress")
+    if env.get("BSV_STAGE_GROWTH_ENABLED") != "1" or env.get("BSV_GROWTH_ENV") != "isolated":
+        raise RuntimeError("Growth backup must remain isolated and explicitly enabled")
+    live = DATA / "ingress" / "growth-candidate.sqlite3"
+    if env.get("BSV_GROWTH_DB_URL") != "sqlite:///" + str(live):
+        raise RuntimeError("Unexpected growth candidate source")
+    owner = pwd.getpwnam(user("ingress")).pw_uid
+    private_directory(live.parent, owner)
+    private_file(live, owner)
+    with closing(sqlite3.connect("file:" + str(live) + "?mode=ro", uri=True)) as original:
+        with closing(sqlite3.connect(destination)) as snapshot:
+            original.backup(snapshot)
+            if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                raise RuntimeError("Growth candidate SQLite snapshot failed integrity check")
+            snapshot.commit()
+    os.chmod(destination, 0o600)
+    return {"archive": str(destination), "sha256": file_sha256(destination),
+            "integrity": "QUICK_CHECK_OK", "classification": "ISOLATED_CANDIDATE_ONLY"}
+
+
 def academy_media_snapshot(directory):
     source = DATA / "identity" / "academy-media"
     if not source.exists() and not source.is_symlink():
@@ -594,11 +619,13 @@ def backup(current=None, purpose="manual"):
     dest.mkdir(mode=0o700)
     postgres = postgres_snapshot(current)
     pos = sqlite_snapshot(current, dest / "pos.sqlite3")
+    growth = growth_candidate_snapshot(current, dest / "growth-candidate.sqlite3")
     media = academy_media_snapshot(dest / "academy-media")
     receipt = dest / "receipt.json"
     record = {"version": 2, "time": stamp.isoformat(), "mode": "isolated", "purpose": purpose,
               "status": "CHECKPOINT_READY", "checkpoint": str(receipt), "release_sha": current,
               "postgres": postgres, "pos_sqlite": pos, "academy_media": media,
+              "growth_candidate_sqlite": growth,
               "isolated_db_revision": database_revision()}
     write_secret(receipt, json.dumps(record, ensure_ascii=False))
     sync_directory(recovery)
@@ -652,6 +679,17 @@ def recovery_check(receipt):
     with closing(sqlite3.connect(pos.as_uri() + "?mode=ro", uri=True)) as snapshot:
         if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
             raise RuntimeError("POS checkpoint integrity check failed")
+    growth = record.get("growth_candidate_sqlite")
+    if growth is not None:
+        snapshot = receipt.parent / "growth-candidate.sqlite3"
+        private_file(snapshot, 0)
+        if (growth.get("archive") != str(snapshot)
+                or growth.get("classification") != "ISOLATED_CANDIDATE_ONLY"
+                or growth.get("sha256") != file_sha256(snapshot)):
+            raise RuntimeError("Growth candidate checkpoint checksum/ownership mismatch")
+        with closing(sqlite3.connect(snapshot.as_uri() + "?mode=ro", uri=True)) as candidate:
+            if candidate.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                raise RuntimeError("Growth candidate checkpoint integrity failed")
     files = record.get("academy_media", [])
     names = set()
     directory = receipt.parent / "academy-media"
