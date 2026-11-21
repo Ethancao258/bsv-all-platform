@@ -516,6 +516,11 @@ def state(db,staff):
         v['member_reference']=db.execute('''SELECT member_reference FROM visit_member_links
                     WHERE visit_id=? AND person_slot=1''',(v['id'],)).fetchone()
         v['member_reference']=v['member_reference'][0] if v['member_reference'] else ''
+        v['canonical_customer_linked']=False
+        if growth_integration():
+            linked=db.execute("""SELECT canonical_customer_id FROM visit_member_links
+                                 WHERE visit_id=? AND person_slot=1""",(v['id'],)).fetchone()
+            v['canonical_customer_linked']=bool(linked and linked['canonical_customer_id'])
         v['drafts']=[dict(x) for x in db.execute('''SELECT d.*,p.name AS product_name,
            COALESCE(d.price_cents_snapshot,p.price_cents) AS price_cents,p.discount_eligible,
            p.sale_enabled,p.catalog_sha,p.store_id AS product_store_id
