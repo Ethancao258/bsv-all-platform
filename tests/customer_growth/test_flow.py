@@ -45,12 +45,13 @@ def test_complete_guest_to_staff_to_commission():
     assert reg.status_code==200,reg.text
     cid=reg.json()['customer_id']
     assert reg.json()['referral']=='AVAILABLE_FOR_CLAIM'
-    assert post(staff,'/staff/claims?store_id=BSVS',{'ticket_id':'invalid','attested':True},csrf=True).status_code==409
+    assert post(staff,'/staff/claims?store_id=BSVS',{'ticket_id':'invalid','attested':True,'policy_version':'DEMO-V1'},csrf=True).status_code==409
     signature=post(staff,'/staff/signature?store_id=BSVS',{'full_name':'演练员工','png_data':png()},csrf=True)
     assert signature.status_code==200,signature.text
+    assert staff.get('/api/v1/growth/staff/policy?store_id=BSVS').json()['base_rate_bps']==600
     queue=staff.get('/api/v1/growth/staff/queue?store_id=BSVS').json()['tickets']
     assert len(queue)==1
-    claim=post(staff,'/staff/claims?store_id=BSVS',{'ticket_id':queue[0]['ticket_id'],'attested':True,'policy_version':'GROWTH-CLAIM-V1'},csrf=True)
+    claim=post(staff,'/staff/claims?store_id=BSVS',{'ticket_id':queue[0]['ticket_id'],'attested':True,'policy_version':'DEMO-V1'},csrf=True)
     assert claim.status_code==200,claim.text
     claimid=claim.json()['claim_id']
     unauthorized=post(staff,'/public/claims/'+claimid+'/confirm',{'confirmed':True},csrf=True)

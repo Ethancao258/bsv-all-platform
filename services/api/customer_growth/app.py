@@ -550,6 +550,21 @@ def staff_invite(request: Request, store_id: str):
                              'exp':time.time()+14*86400}),'store_id':store_id,'valid_days':14}
 
 
+@app.get(BASE_PATH + '/staff/policy')
+def staff_policy(request:Request,store_id:str):
+    require_store(store_id)
+    staff_auth(request,store_id)
+    with db_session() as db:
+        p=db.scalar(select(Policy).where(Policy.store_id==store_id,Policy.effective_at<=now())
+                    .order_by(Policy.effective_at.desc()).limit(1))
+        if not p:
+            return {'configured':False,'notice':'总部尚未发布该门店佣金政策，暂不能确认认领'}
+        return {'configured':True,'version':p.version,'base_rate_bps':p.base_rate_bps,
+                'full_days':p.full_days,'reduced_days':p.reduced_days,
+                'reduced_coeff_bps':p.reduced_coeff_bps,
+                'notice':'本页面展示的佣金仅为当前候选政策；实际报酬仍须按有效合同及经验证的订单结算'}
+
+
 @app.get(BASE_PATH + '/staff/queue')
 def staff_queue(request: Request, store_id: str):
     require_store(store_id)
@@ -609,7 +624,7 @@ def enroll_signature(body: SignatureUpload, request: Request, store_id: str):
 
 class ClaimRequest(BaseModel):
     ticket_id: str
-    policy_version: str = 'GROWTH-CLAIM-V1'
+    policy_version: str = Field(min_length=3,max_length=40)
     attested: bool
     evidence_note: str = Field(default='',max_length=180)
 
@@ -618,9 +633,13 @@ class ClaimRequest(BaseModel):
 def claim(body: ClaimRequest, request: Request, store_id: str):
     require_store(store_id)
     tr,_=staff_auth(request,store_id,write=True)
-    if not body.attested or body.policy_version!='GROWTH-CLAIM-V1':
+    if not body.attested:
         raise HTTPException(422,'须明确确认本次认领规则')
     with db_session() as db:
+        policy=db.scalar(select(Policy).where(Policy.store_id==store_id,Policy.effective_at<=now())
+                         .order_by(Policy.effective_at.desc()).limit(1))
+        if not policy or policy.version!=body.policy_version:
+            raise HTTPException(409,'当前佣金制度尚未确认或已发生变化，请刷新后重新阅读')
         sig=latest_signature(db,tr)
         if not sig:
             raise HTTPException(409,'请先在员工中心录入本人规范签名')
