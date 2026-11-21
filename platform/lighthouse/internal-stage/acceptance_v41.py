@@ -260,6 +260,10 @@ def growth_pos_flow(employee, flow):
     if not stage_growth_enabled(employee):
         case(flow.results, "GROWTH_POS", {}, "BLOCKED", "Isolated member service not active")
         return None
+    scope=call(employee,"GET","/api/v1/growth/staff/me?store_id=BSVT",200)
+    require(scope["actor_tr"]==TARGET and scope["can_marketing"] is False,
+            "POS staff received an unauthorized marketing or claim role")
+    call(employee,"GET","/api/v1/growth/staff/queue?store_id=BSVT",403)
     with httpx.Client(base_url=flow.base, timeout=12, trust_env=False) as customer:
         cid_source = "stage-" + flow.tag.lower()
         call(customer, "POST", "/api/v1/growth/dev/guest-login", 200,
