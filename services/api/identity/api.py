@@ -681,6 +681,10 @@ def pos_session(body: PosSessionCheck, request: Request):
 @app.post("/api/v1/identity/hq-layout-session")
 def hq_layout_session(body: HqLayoutSessionCheck, request: Request):
     conf = require_integration_service(request, "layout-admin")
+    # Read may list authorized stores in the legal entity. Any mutation must
+    # name a concrete store, never silently turn into a broad HQ write.
+    if body.action != "hq.layout.read" and body.store_id is None:
+        raise DomainError("Store required for layout mutation", 422, "STORE_REQUIRED")
     if (body.action not in conf.get("actions", [])
             or body.legal_entity_id not in conf.get("legal_entities", [])
             or (body.store_id is not None and body.store_id not in conf.get("stores", []))
@@ -690,6 +694,10 @@ def hq_layout_session(body: HqLayoutSessionCheck, request: Request):
         session = bearer_session(request, db)
         if not session:
             raise DomainError("Authentication required", 401, "AUTH_REQUIRED")
+        if body.action != "hq.layout.read":
+            # Browser-originated edits are relayed by the trusted POS service.
+            # Validate the CSRF proof against the actual bearer session in A.
+            verify_csrf(session, request.headers.get("X-CSRF-Token", ""))
         person = person_for_subject(db, session.subject)
         if not person or not person.status == "active" or not is_issued(db, person.tr_code, "EMP"):
             return {"allowed": False, "decision_source": "A", "cache_ttl_seconds": 0,
