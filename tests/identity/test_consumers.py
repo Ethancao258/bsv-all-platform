@@ -260,6 +260,65 @@ def test_hq_layout_read_uses_identity_a_and_never_writes_pos_sqlite(identity_htt
             denied = connection.getresponse()
             denied.read()
             assert denied.status == 403
+
+            # Exercise every existing HQ read endpoint under the same live
+            # identity.A session. No new SQLite writer or POS login involved.
+            def read_hq(url, *, authorized=True):
+                headers = {"Cookie": cookie} if authorized else {}
+                connection.request("GET", url, headers=headers)
+                result = connection.getresponse()
+                body = result.read()
+                return result, body
+
+            status, body = read_hq("/api/hq/status")
+            assert status.status == 200
+            assert json.loads(body)["actor"] == tr
+
+            stores, body = read_hq("/api/hq/stores")
+            assert stores.status == 200
+            assert [item["id"] for item in json.loads(body)["stores"]] == ["BSVT"]
+
+            modules, body = read_hq("/api/hq/modules")
+            assert modules.status == 200
+            assert isinstance(json.loads(body)["modules"], list)
+
+            art, body = read_hq("/api/hq/art?store_id=BSVT")
+            assert art.status == 200 and body
+            assert art.getheader("X-Content-Type-Options") == "nosniff"
+            assert art.getheader("Content-Security-Policy") == (
+                "sandbox; default-src 'none'; style-src 'unsafe-inline'"
+            )
+            assert art.getheader("Cache-Control") == "private, no-store"
+
+            missing_image, body = read_hq(
+                "/api/hq/image?store_id=BSVT&asset_id=IMG-missing"
+            )
+            assert missing_image.status == 404
+            assert json.loads(body)["error"]
+
+            for other_store_path in (
+                "/api/hq/art?store_id=BSVS",
+                "/api/hq/image?store_id=BSVS&asset_id=IMG-missing",
+            ):
+                denied_path, _ = read_hq(other_store_path)
+                assert denied_path.status == 403
+            anonymous, _ = read_hq("/api/hq/layout?store_id=BSVT",
+                                   authorized=False)
+            assert anonymous.status == 401
+            unknown, _ = read_hq("/api/hq/not-a-real-route?store_id=BSVT")
+            assert unknown.status == 403
+
+            # A caller cannot self-select the synthetic scope in production-
+            # style mode, or point the trusted identity client at a dead A.
+            monkeypatch.setenv("BSV_POS_LAYOUT_SCOPE_MODE", "disabled")
+            no_scope, _ = read_hq("/api/hq/layout?store_id=BSVT")
+            assert no_scope.status == 403
+            monkeypatch.setenv("BSV_POS_LAYOUT_SCOPE_MODE", "isolated-synthetic")
+            monkeypatch.setenv("BSV_POS_IDENTITY_URL", "http://127.0.0.1:1")
+            offline, _ = read_hq("/api/hq/layout?store_id=BSVT")
+            assert offline.status == 503
+            monkeypatch.setenv("BSV_POS_IDENTITY_URL", identity_http)
+
             monkeypatch.delenv("BSV_POS_LAYOUT_SERVICE_TOKEN")
             connection.request("GET", "/api/hq/layout?store_id=BSVT", headers={"Cookie": cookie})
             unavailable = connection.getresponse()
