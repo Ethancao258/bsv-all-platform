@@ -331,3 +331,135 @@ def test_hq_layout_read_uses_identity_a_and_never_writes_pos_sqlite(identity_htt
     with pos.db_read() as db:
         after = db.execute("SELECT COUNT(*) FROM bsv_layout_revisions").fetchone()[0]
     assert after == before
+
+
+def test_hq_layout_draft_isolated_edit_grant_audit_and_no_pos_access(identity_http, tmp_path, monkeypatch):
+    from domains.workforce.identity.models import Grant
+
+    user, one, two, tr, _ = create_person("hqmap-draft-http")
+    onboard(tr, one, two, bm=True)
+    fixture = tmp_path / "hq-draft.xlsx"
+    runpy.run_path(str(ROOT / "tests/bsv1/make_fixture.py"))["write_fixture"](fixture)
+    monkeypatch.setenv("BSV_V9_XLSX", str(fixture))
+    monkeypatch.setenv("BSV_DB_PATH", str(tmp_path / "hq-draft.sqlite3"))
+    monkeypatch.setenv("BSV_MODE", "staging")
+    monkeypatch.setenv("BSV_APP_ENV", "isolated")
+    monkeypatch.setenv("BSV_POS_LAYOUT_SCOPE_MODE", "isolated-synthetic")
+    monkeypatch.setenv("BSV_POS_STORE_LEGAL_JSON", '{"BSVT":"DEMO_LEGAL","BSVS":"DEMO_LEGAL"}')
+    monkeypatch.syspath_prepend(str(ROOT / "services/api/bsv1"))
+    pos = importlib.import_module("services.api.bsv1.app")
+    monkeypatch.setattr(pos, "DB_PATH", tmp_path / "hq-draft.sqlite3")
+    monkeypatch.setattr(pos, "MODE", "staging")
+    pos.init_db()
+
+    # Backfill the newly defined alias schema on an already valid canonical
+    # SQLite database, with an atomic pre-migration backup.
+    import sqlite3
+    with pos.db_read() as db:
+        assert db.execute("SELECT 1 FROM sqlite_master WHERE name='bsv_hq_actor_aliases'").fetchone()
+    with pos.tx() as db:
+        db.execute("DROP TABLE bsv_hq_actor_aliases")
+    backups_before = set(tmp_path.glob("*总部地图审计表迁移前备份*.sqlite3"))
+    pos.init_db()
+    backups_after = set(tmp_path.glob("*总部地图审计表迁移前备份*.sqlite3"))
+    created_backups = backups_after - backups_before
+    assert len(created_backups) == 1
+    with sqlite3.connect(str(next(iter(created_backups)))) as snapshot:
+        assert snapshot.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        assert snapshot.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='bsv_hq_actor_aliases'"
+        ).fetchone() is None
+    with pos.db_read() as db:
+        assert db.execute("SELECT 1 FROM sqlite_master WHERE name='bsv_hq_actor_aliases'").fetchone()
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 28
+
+    layout_token = "synthetic-layout-edit-token-1234567890"
+    service = {"token": layout_token, "actions": ["hq.layout.read", "hq.layout.edit"],
+               "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT", "BSVS"]}
+    monkeypatch.setattr(api, "settings", replace(api.settings,
+        service_tokens={**api.settings.service_tokens, "layout-admin": service}))
+    monkeypatch.setenv("BSV_POS_IDENTITY_URL", identity_http)
+    monkeypatch.setenv("BSV_POS_LAYOUT_SERVICE_TOKEN", layout_token)
+    monkeypatch.setenv("BSV_POS_IDENTITY_REQUIRED", "1")
+
+    with pos.db_read() as db:
+        formal_before = pos.bsv_one.current(db, "BSVT")
+        revisions_before = db.execute("SELECT COUNT(*) FROM bsv_layout_revisions").fetchone()[0]
+        work_access_before = db.execute("SELECT COUNT(*) FROM staff_store_access").fetchone()[0]
+
+    with pos.ThreadingHTTPServer(("127.0.0.1", 0), pos.Handler) as server:
+        worker = threading.Thread(target=server.serve_forever)
+        worker.start()
+        connection = http.client.HTTPConnection(*server.server_address, timeout=5)
+        identity_cookie = (f"{api.SESSION_COOKIE}={user.cookies.get(api.SESSION_COOKIE)}; "
+                           f"bsv_csrf={user.cookies.get('bsv_csrf')}")
+        csrf = user.cookies.get("bsv_csrf")
+        origin = f"http://127.0.0.1:{server.server_address[1]}"
+
+        def save(store_id="BSVT", *, include_csrf=True):
+            with pos.db_read() as db:
+                current = pos.bsv_one.current(db, store_id)
+            layout = current["layout"]
+            if layout["seats"]:
+                layout["seats"][0]["x"] = min(99, layout["seats"][0]["x"] + 1)
+            headers = {"Cookie": identity_cookie, "Content-Type": "application/json", "Origin": origin}
+            if include_csrf:
+                headers["X-CSRF-Token"] = csrf
+            connection.request("POST", "/api/hq/layout/draft", json.dumps({
+                "store_id": store_id, "layout": layout, "base_version": current["version"],
+            }), headers)
+            response = connection.getresponse()
+            return response.status, json.loads(response.read())
+
+        try:
+            # A real identity with no edit Grant, a cross-store scope, and a missing CSRF all fail before SQLite writes.
+            denied, _ = save()
+            assert denied == 403
+            assert save("BSVS")[0] == 403
+            assert save(include_csrf=False)[0] == 403
+            with pos.db_read() as db:
+                assert db.execute("SELECT COUNT(*) FROM bsv_layout_revisions").fetchone()[0] == revisions_before
+                assert db.execute("SELECT COUNT(*) FROM staff_store_access").fetchone()[0] == work_access_before
+
+            grant_id = grant_action(tr, one, two, "hq.layout.edit", store="BSVT", role="hq")
+            status, body = save()
+            assert status == 200, body
+            assert body["ok"] is True
+            with pos.db_read() as db:
+                revision = db.execute("SELECT * FROM bsv_layout_revisions WHERE revision_id=?",
+                                      (body["revision_id"],)).fetchone()
+                audit_staff = db.execute("SELECT * FROM staff WHERE id=?", (revision["created_by"],)).fetchone()
+                alias = db.execute("SELECT tr_code,staff_id FROM bsv_hq_actor_aliases WHERE tr_code=?", (tr,)).fetchone()
+                assert revision["status"] == "DRAFT"
+                assert alias["staff_id"] == revision["created_by"]
+                assert audit_staff["staff_code"] == tr and audit_staff["role"] == "STAFF"
+                assert audit_staff["enabled"] == 0
+                assert db.execute("SELECT 1 FROM staff_store_access WHERE staff_id=?", (audit_staff["id"],)).fetchone() is None
+                assert db.execute("SELECT 1 FROM bsv_hq_roles WHERE staff_id=?", (audit_staff["id"],)).fetchone() is None
+                event = db.execute("SELECT actor_staff_id,payload_json FROM bsv_platform_events "
+                                   "WHERE action='SAVE_DRAFT' AND entity_id='BSVT' ORDER BY event_id DESC LIMIT 1").fetchone()
+                assert event["actor_staff_id"] == revision["created_by"]
+                assert json.loads(event["payload_json"])["actor_tr_code"] == tr
+                assert db.execute("SELECT COUNT(*) FROM staff_store_access").fetchone()[0] == work_access_before
+                assert pos.bsv_one.current(db, "BSVT") == formal_before
+                assert db.execute("SELECT COUNT(*) FROM bsv_layout_revisions").fetchone()[0] == revisions_before + 1
+
+            connection.request("POST", "/api/hq/layout/publish", json.dumps({
+                "store_id": "BSVT", "revision_id": body["revision_id"],
+            }), {"Cookie": identity_cookie, "Content-Type": "application/json", "Origin": origin,
+                "X-CSRF-Token": csrf})
+            publish = connection.getresponse()
+            publish.read()
+            assert publish.status in (401, 403)
+
+            with api.router.session(write=True) as db:
+                db.get(Grant, grant_id).status = "revoked"
+            revoked, _ = save()
+            assert revoked == 403
+            with pos.db_read() as db:
+                assert db.execute("SELECT COUNT(*) FROM bsv_layout_revisions").fetchone()[0] == revisions_before + 1
+                assert db.execute("SELECT COUNT(*) FROM staff_store_access").fetchone()[0] == work_access_before
+            connection.close()
+        finally:
+            server.shutdown()
+            worker.join(5)
