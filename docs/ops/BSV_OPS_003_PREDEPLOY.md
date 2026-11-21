@@ -2,7 +2,7 @@
 
 ## 交付边界
 
-源码仍使用目标 `f00371ccd1c233caf8eea97398bf981cf7d65dd0` 的 PR #34 签名构件；本补充包只含完整离线 Python wheelhouse、Cosign 2.4.1 验签器、其官方发布签名材料、Sigstore 生产 TUF 信任材料和文件 SHA 清单，不重复包含源码 Git bundle。发布构件来源为 Actions run `44899535240`，签名 workflow 是本仓库 `bsv-ops-003-release.yml` 的 PR #34 merge ref；源码 CI 证明固定为成功 run `44894443077` 的九个必需 job。
+源码仍使用目标 `f00371ccd1c233caf8eea97398bf981cf7d65dd0` 的 PR #34 签名构件；本补充包只含完整离线 Python wheelhouse、Cosign 2.4.1 验签器、其官方发布签名材料、Sigstore 生产 TUF 信任材料和文件 SHA 清单，不重复包含源码 Git bundle。发布构件来源为当前 PR #34 release workflow 同次运行生成的签名构件，签名 workflow 是本仓库 `bsv-ops-003-release.yml` 的 PR #34 merge ref；源码 CI 证明固定为成功 run `44894443077` 的九个必需 job。
 
 因为 Lighthouse 架构尚未读取，CI 分别在 Ubuntu 24.04/Python 3.12 的原生 `amd64` 和 `arm64` runner 构建及断网安装。主机只根据 `uname -m` 选择一份；其他架构必须停止，不准借用或软链接另一架构/旧版 venv。原 c51 与 f003 的 `requirements.lock` 相同；f003 新增 `services/api/customer_growth/requirements.stage.lock`（qrcode 8.2、Pillow 11.3.0），由 identity 的新 venv 同时安装。故每份 wheelhouse 都完整包含 identity lock、growth stage lock 和 supply lock 三份精确锁定文件，不只提供两个新 wheel。`pip check` 是成功条件。
 
@@ -12,8 +12,23 @@
 
 仅在经营者把**新架构补充包**放入 `/home/ubuntu/bsv-ops-003-verify/predeploy-supplement/` 后执行；原发布 ZIP 不需要重新下载或上传。先核实现场状态，任何现状与以下已报告基线不符即 STOP：运行 SHA `c51b58d67dabae53afcdf9851a80cdc93d4200f6`、回滚 SHA `0e8b3c00544ccd533eebd1258598f2622c5b0984`、`pending_activation=false`、五个隔离服务正常，8765/8767 旧服务正常。不能从旧对话状态推定当前仍相同。
 
-1. 从 supplement 文件名选定 `amd64` 或 `arm64`，并执行 `uname -m`。`x86_64` 对应 amd64，`aarch64` 对应 arm64；其他值 STOP。确认 PR #34 对应的补充 artifact 名、run ID 与文件 SHA sidecar一致。补充 artifact 的 Actions 页面及文件名会列在本任务的最终交付中。
-2. 从 supplement tar 中仅用 `tar -xOf` 读取 `bootstrap/cosign`、`bootstrap/release-cosign.pub` 和 `bootstrap/cosign-release.sig.b64` 到全新私有临时目录。核验 public key SHA256 必须等于 `f4cea466e5e887a45da5031757fa1d32655d83420639dc1758749b744179f126`，用系统 `openssl dgst -sha256 -verify` 验证该架构 Cosign 二进制的官方 2.4.1 发布签名；校验 Cosign 自报版本与主机架构相符。任一不符 STOP。该固定公钥摘要来自 PR 中锁定的官方 `sigstore/cosign-installer` 源码，installer 会以同一公钥校验官方 Cosign 发布二进制。
+1. 从 supplement 文件名选定 `amd64` 或 `arm64`，并执行 `uname -m`。`x86_64` 对应 amd64，`aarch64` 对应 arm64；其他值 STOP。确认 PR #34 对应的补充 artifact 名、本次 PR #34 release run ID 与文件 SHA sidecar 一致。补充 artifact 的 Actions 页面及文件名会列在本任务的最终交付中。将 `SUPP` 设为 `.tar` 路径，`ARCH_DIR` 设为上一步说明的全新空解包目录，`ROOT="$ARCH_DIR"`。
+2. 从 supplement tar 中仅用 `tar -xOf` 读取启动验签材料到全新私有临时目录：
+
+   ```bash
+   export BOOT=/home/ubuntu/bsv-ops-003-verify/cosign-bootstrap
+   install -d -m 700 "$BOOT"
+   tar -xOf "$SUPP" bsv-ops-003-host-supplement/bootstrap/cosign > "$BOOT/cosign"
+   tar -xOf "$SUPP" bsv-ops-003-host-supplement/bootstrap/release-cosign.pub > "$BOOT/release-cosign.pub"
+   tar -xOf "$SUPP" bsv-ops-003-host-supplement/bootstrap/cosign-release.sig.b64 > "$BOOT/cosign-release.sig.b64"
+   chmod 700 "$BOOT/cosign"
+   sha256sum "$BOOT/release-cosign.pub"
+   base64 -d "$BOOT/cosign-release.sig.b64" > "$BOOT/cosign-release.sig"
+   openssl dgst -sha256 -verify "$BOOT/release-cosign.pub" -signature "$BOOT/cosign-release.sig" "$BOOT/cosign"
+   "$BOOT/cosign" version
+   ```
+
+   公钥 SHA256 必须等于 `f4cea466e5e887a45da5031757fa1d32655d83420639dc1758749b744179f126`，Cosign 自报版本及架构必须是 2.4.1 与目标 CPU。任一不符 STOP。该固定公钥摘要来自 PR 中锁定的官方 `sigstore/cosign-installer` 源码，installer 会以同一公钥校验官方 Cosign 发布二进制。
 3. 在运行任何包内程序前，使用系统 Python 安全解包。以下命令只允许预期前缀下的常规文件/目录，拒绝路径穿越、重复成员、链接、设备和超过 700 MiB 的展开：
 
    ```bash
@@ -52,13 +67,22 @@
    export ARCH_DIR="$EXTRACT"
    ```
 
-   Then use the packaged TUF metadata and Cosign's bootstrap trust root, with `HOME` pointing to a new offline directory, to run `cosign initialize --mirror=file://...`; the resulting `trusted_root.json` must equal the packaged copy. This verifies the TUF signature chain; do not trust only the root JSON packaged beside the supplement.
-4. 用这个经官方签名验证的 Cosign、已通过本地 TUF 链验证的 trusted root，离线验 supplement 外层 `.sigstore.json`。issuer 必须是 `https://token.actions.githubusercontent.com`，certificate identity 必须精确为：
+   Then use the packaged TUF repository mirror and Cosign's bootstrap trust root, with `HOME` pointing to a new offline directory, to run `cosign initialize --mirror="file://$ARCH_DIR/trust/tuf-repo-cdn.sigstore.dev"`; the resulting `$HOME/.sigstore/root/targets/trusted_root.json` must byte-match `$ROOT/trust/trusted_root.json`. This replays root rotations 1–N and validates the timestamp, snapshot, targets and target hashes through TUF; do not trust only the root JSON packaged beside the supplement.
+4. 用这个经官方签名验证的 Cosign、已通过本地 TUF 链验证的 trusted root，离线验 supplement 外层 `.sigstore.json`。必须使用 Cosign **new bundle format**（该 release workflow 已显式生成），issuer 必须是 `https://token.actions.githubusercontent.com`，certificate identity 必须精确为：
 
-   `https://github.com/Ethancao258/bsv-all-platform/.github/workflows/bsv-ops-003-predeploy.yml@refs/pull/34/merge`
+   `https://github.com/Ethancao258/bsv-all-platform/.github/workflows/bsv-ops-003-release.yml@refs/pull/34/merge`
 
-   同时运行外层 `.sha256` 校验和包内 `supplement-manifest.json` 的逐文件 SHA 校验。验签必须在读取/执行补充包内任何脚本前完成。
-5. 将原源发布包作为独立输入，用同一 Cosign/root 离线验证 `bsv-all-f00371ccd1c233caf8eea97398bf981cf7d65dd0.tar.sigstore.json`。issuer 不变，certificate identity 必须精确为：
+   验签及 SHA 命令如下；通过外层签名后，才可执行包内验证器检查文件清单：
+
+   ```bash
+   cosign verify-blob --new-bundle-format --offline --trusted-root "$ROOT/trust/trusted_root.json" \
+     --bundle "$SUPP.sigstore.json" --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+     --certificate-identity 'https://github.com/Ethancao258/bsv-all-platform/.github/workflows/bsv-ops-003-release.yml@refs/pull/34/merge' "$SUPP"
+   (cd "$(dirname "$SUPP")" && sha256sum --check "$(basename "$SUPP").sha256")
+   python "$ARCH_DIR/tools/ops003_predeploy.py" verify-supplement-archive --archive "$SUPP"
+   python "$ARCH_DIR/tools/ops003_predeploy.py" verify-supplement-tree --root "$ARCH_DIR"
+   ```
+5. 将原源发布包作为独立输入，用同一 Cosign/root 离线验证 `bsv-all-f00371ccd1c233caf8eea97398bf981cf7d65dd0.tar.sigstore.json`。同样使用 `--new-bundle-format --offline --trusted-root`；issuer 不变，certificate identity 必须精确为：
 
    `https://github.com/Ethancao258/bsv-all-platform/.github/workflows/bsv-ops-003-release.yml@refs/pull/34/merge`
 

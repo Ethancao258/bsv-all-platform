@@ -8,11 +8,13 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import platform
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.request
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
@@ -21,7 +23,7 @@ import ops003_release  # noqa: E402
 
 TARGET_SHA = ops003_release.TARGET_SHA
 SOURCE_CI_RUN = ops003_release.CI_RUN_ID
-SOURCE_ARTIFACT_RUN = 44899535240
+SOURCE_ARTIFACT_RUN = int(os.environ.get("OPS003_SOURCE_ARTIFACT_RUN", "44899535240"))
 COSIGN_VERSION = "v2.4.1"
 COSIGN_RELEASE_KEY_SHA256 = "f4cea466e5e887a45da5031757fa1d32655d83420639dc1758749b744179f126"
 REQUIRED_LOCKS = (
@@ -31,6 +33,7 @@ REQUIRED_LOCKS = (
 )
 EXPECTED_ARCH = {"x86_64": "amd64", "aarch64": "arm64"}
 MAX_SUPPLEMENT_BYTES = 700 * 1024 * 1024
+SIGSTORE_TUF_URL = "https://tuf-repo-cdn.sigstore.dev"
 
 
 class PredeployError(ValueError):
@@ -72,7 +75,7 @@ def verify_source_package(cosign: Path, root: Path, bundle: Path, sidecar: Path,
     if any(path.is_symlink() or not path.is_file() for path in (root, bundle, sidecar, signature_bundle)):
         raise PredeployError("Source release evidence must be regular files")
     # The release artifact is signed by this repository's PR #34 release workflow.
-    _run([str(cosign), "verify-blob", "--offline", "--trusted-root", str(root),
+    _run([str(cosign), "verify-blob", "--new-bundle-format", "--offline", "--trusted-root", str(root),
           "--bundle", str(signature_bundle),
           "--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
           "--certificate-identity",
@@ -97,7 +100,7 @@ def prove_tamper_rejection(cosign: Path, root: Path, bundle: Path,
     shutil.copyfile(bundle, tampered)
     with tampered.open("ab") as stream:
         stream.write(b"tamper")
-    command = [str(cosign), "verify-blob", "--offline", "--trusted-root", str(root),
+    command = [str(cosign), "verify-blob", "--new-bundle-format", "--offline", "--trusted-root", str(root),
                "--bundle", str(signature_bundle),
                "--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
                "--certificate-identity",
@@ -169,6 +172,105 @@ def prove_missing_wheel_rejected(wheelhouse: Path, *, scratch: Path) -> None:
                    "install", "--no-deps", "-r", str(REPO / REQUIRED_LOCKS[0])], env=env, check=False)
     if result.returncode == 0:
         raise PredeployError("Missing wheelhouse dependency unexpectedly installed")
+
+
+def fetch_tuf_mirror(destination: Path) -> dict:
+    """Fetch a complete Sigstore TUF mirror; trust is established later by offline Cosign."""
+    if destination.exists() or destination.is_symlink():
+        raise PredeployError("Refusing to overwrite the Sigstore TUF mirror directory")
+    destination.mkdir(mode=0o700, parents=True)
+
+    def get(name: str) -> bytes:
+        path = PurePosixPath(name)
+        if (path.is_absolute() or ".." in path.parts or "." in path.parts or len(path.parts) > 2
+                or (len(path.parts) == 2 and path.parts[0] != "targets")):
+            raise PredeployError("Unexpected TUF metadata or target path")
+        request = urllib.request.Request(f"{SIGSTORE_TUF_URL}/{name}", headers={"User-Agent": "bsv-ops-003-predeploy/1"})
+        with urllib.request.urlopen(request, timeout=20) as response:
+            if response.status != 200:
+                raise PredeployError("Sigstore TUF mirror returned a non-200 response")
+            return response.read(MAX_SUPPLEMENT_BYTES + 1)
+
+    request = urllib.request.Request(f"{SIGSTORE_TUF_URL}/", headers={"User-Agent": "bsv-ops-003-predeploy/1"})
+    with urllib.request.urlopen(request, timeout=20) as response:
+        html = response.read(1024 * 1024).decode("utf-8", errors="strict")
+    root_matches = re.findall(r'href="([1-9][0-9]*)\.root\.json"', html)
+    if len(root_matches) != 1:
+        raise PredeployError("Cannot identify a single current Sigstore TUF root version")
+    root_version = int(root_matches[0])
+    if not 1 <= root_version <= 100:
+        raise PredeployError("Sigstore TUF root version is outside the supported bound")
+    root_dir = destination
+    total = 0
+
+    def save(name: str, body: bytes, *, subdir: str | None = None) -> None:
+        nonlocal total
+        total += len(body)
+        if len(body) > 16 * 1024 * 1024 or total > 64 * 1024 * 1024:
+            raise PredeployError("Sigstore TUF metadata mirror exceeds its size bound")
+        parent = root_dir if subdir is None else root_dir / subdir
+        parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path = parent / name
+        if path.exists() or path.is_symlink():
+            raise PredeployError("Duplicate TUF metadata path")
+        path.write_bytes(body)
+        path.chmod(0o600)
+
+    for version in range(1, root_version + 1):
+        save(f"{version}.root.json", get(f"{version}.root.json"))
+    timestamp = get("timestamp.json")
+    save("timestamp.json", timestamp)
+    try:
+        timestamp_doc = json.loads(timestamp)
+        snapshot_meta = timestamp_doc["signed"]["meta"]["snapshot.json"]
+        snapshot_version = int(snapshot_meta["version"])
+        expected = snapshot_meta.get("hashes", {}).get("sha256")
+        snapshot_length = snapshot_meta.get("length")
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise PredeployError("Sigstore timestamp metadata is malformed") from error
+    if not 1 <= snapshot_version <= 10000:
+        raise PredeployError("Sigstore snapshot version is outside the supported bound")
+    snapshot = get(f"{snapshot_version}.snapshot.json")
+    if ((snapshot_length is not None and len(snapshot) != snapshot_length)
+            or (expected is not None and hashlib.sha256(snapshot).hexdigest() != expected)):
+        raise PredeployError("Sigstore snapshot digest does not match signed timestamp metadata")
+    save(f"{snapshot_version}.snapshot.json", snapshot)
+    try:
+        targets_meta = json.loads(snapshot)["signed"]["meta"]["targets.json"]
+        targets_version = int(targets_meta["version"])
+        expected_targets = targets_meta.get("hashes", {}).get("sha256")
+        targets_length = targets_meta.get("length")
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise PredeployError("Sigstore snapshot metadata is malformed") from error
+    if not 1 <= targets_version <= 10000:
+        raise PredeployError("Sigstore targets version is outside the supported bound")
+    targets = get(f"{targets_version}.targets.json")
+    if ((targets_length is not None and len(targets) != targets_length)
+            or (expected_targets is not None and hashlib.sha256(targets).hexdigest() != expected_targets)):
+        raise PredeployError("Sigstore targets digest does not match signed snapshot metadata")
+    save(f"{targets_version}.targets.json", targets)
+    try:
+        target_rows = json.loads(targets)["signed"]["targets"]
+    except (KeyError, TypeError, json.JSONDecodeError) as error:
+        raise PredeployError("Sigstore targets metadata is malformed") from error
+    if not 1 <= len(target_rows) <= 128 or "trusted_root.json" not in target_rows:
+        raise PredeployError("Sigstore targets metadata lacks the trusted root")
+    for name, metadata in target_rows.items():
+        digest = metadata.get("hashes", {}).get("sha256")
+        length = metadata.get("length")
+        if (not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest)
+                or type(length) is not int or length < 0 or length > 16 * 1024 * 1024
+                or PurePosixPath(name).name != name):
+            raise PredeployError("Sigstore target metadata is malformed")
+        body = get(f"targets/{digest}.{name}")
+        if len(body) != length or hashlib.sha256(body).hexdigest() != digest:
+            raise PredeployError(f"Sigstore TUF target digest mismatch: {name}")
+        save(f"{digest}.{name}", body, subdir="targets")
+    return {"root_version": root_version, "snapshot_version": snapshot_version,
+            "targets_version": targets_version, "target_count": len(target_rows),
+            "trusted_root_sha256": hashlib.sha256(
+                (destination / "targets" / f"{target_rows['trusted_root.json']['hashes']['sha256']}.trusted_root.json").read_bytes()
+            ).hexdigest(), "metadata_bytes": total}
 
 
 def wheelhouse_digest(wheelhouse: Path) -> str:
@@ -347,6 +449,8 @@ def main(argv=None) -> int:
     assemble.add_argument("--arch", choices=("amd64", "arm64"), required=True)
     assemble.add_argument("--metadata", type=Path, required=True)
     assemble.add_argument("--output", type=Path, required=True)
+    tuf = commands.add_parser("fetch-tuf-mirror")
+    tuf.add_argument("--destination", type=Path, required=True)
     check = commands.add_parser("verify-supplement-tree")
     check.add_argument("--root", type=Path, required=True)
     check_archive = commands.add_parser("verify-supplement-archive")
@@ -357,6 +461,8 @@ def main(argv=None) -> int:
     elif args.command == "assemble":
         metadata = json.loads(args.metadata.read_text())
         result = pack_supplement(args.root, arch=args.arch, metadata=metadata, output=args.output)
+    elif args.command == "fetch-tuf-mirror":
+        result = fetch_tuf_mirror(args.destination)
     elif args.command == "verify-supplement-tree":
         result = verify_supplement_tree(args.root)
     else:
