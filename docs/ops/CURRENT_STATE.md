@@ -220,6 +220,6 @@
 ## 2026-11-21｜OPS-003 P0 标准 venv 软链接修复
 
 - PR #35 `<https://github.com/Ethancao258/bsv-all-platform/pull/35>` 的 H 为 `cb06be66e78d92b8921fc3103b12bdbdc55284f8`，以 f003 `f00371ccd1c233caf8eea97398bf981cf7d65dd0` 为父提交。仅改动发布器 `stage.py` 和 `tests/internal-stage/test_deploy.py`。真实 venv 的 `lib64 -> lib` 在旧实现中复现失败，原因为从 releases 根计算出的路径额外包含发布 SHA。新实现从经验证 SHA 命名 release 目录计算相对路径，并由权限规范化和 inventory 共同调用；允许的链接路径与目标值保持不变，任意链接、异常目标、路径穿越和跨 release 目标仍拒绝。
-- PASS_CI_H · 九项门禁由 `validate-architecture` run `44922120417` 成功：<https://github.com/Ethancao258/bsv-all-platform/actions/runs/44922120417>。`lighthouse-internal-stage` 的 Ubuntu 24.04/Python 3.12 实测真实 Identity/Supply venv、权限规范化、inventory、`.built` 与第二次 build；umask 077/022 均通过。该 job 的发布器用例 25 项全通过。修改前回归用例以真实 venv 复现 `False`，修复后通过。
+- PASS_CI_H · 九项门禁由 `validate-architecture` run `44922120417` 成功：<https://github.com/Ethancao258/bsv-all-platform/actions/runs/44922120417>。`lighthouse-internal-stage` 的 Ubuntu 24.04/Python 3.12 实测真实 Identity/Supply venv、权限规范化、inventory、`.built` 与第二次 build；umask 077/022 均通过。该 job 的发布器用例 25 项全通过。修改前回归用例以真实 venv 复现 `False`，修复后通过。签名源码包还附带每个普通源码文件的 SHA256 清单，并在离线验证时重算比对。
 - 三个依赖锁从 f003 到 H 逐字节一致。PR #34 发布器已改为 H 和 CI run 44922120417；amd64 supplemental 只携带签名源码关联、校验工具、TUF 信任镜像与锁兼容证明，限制小于 100,000,000 字节，不重复打包已上传 wheelhouse。旧补充包只能在主机重新核对签名、SHA、清单、wheel 文件后复用。
 - HOST_NOT_RUN · Codex 未连接或修改 Lighthouse。部署前 CPU 和实时服务状态须现场确认；主机升级、systemd/PostgreSQL/备份/HTTP 验收及回退演练仍未执行。保留 8765/8767、当前 c51、rollback 0e8b3、f003 半成品目录、现有数据和密钥。

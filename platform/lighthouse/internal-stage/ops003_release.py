@@ -76,7 +76,30 @@ def validate_ci(run: dict, jobs: list[dict]) -> dict:
             "jobs": sorted(normalized, key=lambda row: row["name"])}
 
 
-def _source_tarball() -> tuple[bytes, dict]:
+def _source_file_sha256(source_tar: bytes, source_manifest: dict) -> dict[str, str]:
+    expected = {name for name, row in source_manifest["entries"].items() if row["kind"] == "file"}
+    hashes = {}
+    try:
+        with tarfile.open(fileobj=io.BytesIO(source_tar), mode="r:") as archive:
+            for member in archive:
+                if member.isfile():
+                    if member.name in hashes or member.name not in expected:
+                        raise ReleaseError("Source archive SHA256 list contains an unexpected file")
+                    stream = archive.extractfile(member)
+                    if stream is None:
+                        raise ReleaseError("Source archive file has no readable content")
+                    digest = hashlib.sha256()
+                    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                        digest.update(chunk)
+                    hashes[member.name] = digest.hexdigest()
+    except (tarfile.TarError, OSError) as error:
+        raise ReleaseError("Unable to produce the source file SHA256 inventory") from error
+    if set(hashes) != expected:
+        raise ReleaseError("Source file SHA256 inventory is incomplete")
+    return dict(sorted(hashes.items()))
+
+
+def _source_tarball() -> tuple[bytes, dict, dict[str, str]]:
     manifest = stage.verified_source_manifest(TARGET_SHA)
     raw = subprocess.run(["git", "-C", str(REPO), "archive", "--format=tar", TARGET_SHA],
                          check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -85,7 +108,7 @@ def _source_tarball() -> tuple[bytes, dict]:
         temporary.write(raw)
         temporary.flush()
         stage.validate_source_archive(Path(temporary.name), manifest)
-    return gzip.compress(raw, compresslevel=9, mtime=0), manifest
+    return gzip.compress(raw, compresslevel=9, mtime=0), manifest, _source_file_sha256(raw, manifest)
 
 
 def _git_bundle() -> bytes:
@@ -137,12 +160,13 @@ def _tar_bundle(files: dict[str, bytes]) -> bytes:
 
 def build(run: dict, jobs: list[dict], output_dir: Path) -> dict:
     proof = validate_ci(run, jobs)
-    source_gz, source_manifest = _source_tarball()
+    source_gz, source_manifest, source_file_hashes = _source_tarball()
     git_bundle = _git_bundle()
     manifest = {
         "schema_version": "1.0", "request_id": REQUEST_ID, "repository": REPOSITORY,
         "target_sha": TARGET_SHA, "tree_sha": source_manifest["tree"],
         "source_manifest": source_manifest,
+        "source_file_sha256": source_file_hashes,
         "source_archive": {"sha256": hashlib.sha256(source_gz).hexdigest(),
                            "size_bytes": len(source_gz), "entry_count": len(source_manifest["entries"])},
         "git_bundle": {"name": "source.gitbundle", "sha256": hashlib.sha256(git_bundle).hexdigest(),
@@ -263,6 +287,8 @@ def verify(bundle_path: Path, checksum_path: Path | None = None) -> dict:
                 stage.validate_source_archive(Path(temporary.name), manifest["source_manifest"])
             except (KeyError, RuntimeError, TypeError) as error:
                 raise ReleaseError("Git bundle source does not match exact Git blob inventory") from error
+        if _source_file_sha256(source_tar, manifest["source_manifest"]) != manifest.get("source_file_sha256"):
+            raise ReleaseError("Per-file SHA256 inventory differs from the reconstructed target source")
     if (source_meta.get("size_bytes") != len(source_gz)
             or source_meta.get("sha256") != hashlib.sha256(source_gz).hexdigest()):
         raise ReleaseError("Reconstructed source digest or length differs from manifest")

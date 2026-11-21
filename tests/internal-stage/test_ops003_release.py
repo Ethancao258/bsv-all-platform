@@ -52,6 +52,11 @@ class ReleaseBundleTests(unittest.TestCase):
             self.assertLess(result["size_bytes"], 10_000_000)
             self.assertEqual(bundle.stat().st_mode & 0o777, 0o600)
             self.assertEqual(release.verify(bundle, checksum)["bundle_sha256"], result["sha256"])
+            files = release._read_bundle(bundle)
+            manifest = json.loads(files["release-manifest.json"])
+            self.assertEqual(len(manifest["source_file_sha256"]),
+                             sum(row["kind"] == "file" for row in manifest["source_manifest"]["entries"].values()))
+            self.assertTrue(all(len(digest) == 64 for digest in manifest["source_file_sha256"].values()))
             first = bundle.read_bytes()
             with self.assertRaisesRegex(release.ReleaseError, "Refusing to overwrite"):
                 release.build(valid_run(), valid_jobs(), output)

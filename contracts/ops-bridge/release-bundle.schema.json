@@ -4,7 +4,7 @@
   "title": "BSV-OPS-003 immutable isolated release bundle manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "request_id", "repository", "target_sha", "tree_sha", "source_manifest", "source_archive", "git_bundle", "ci", "deployment_boundary"],
+  "required": ["schema_version", "request_id", "repository", "target_sha", "tree_sha", "source_manifest", "source_file_sha256", "source_archive", "git_bundle", "ci", "deployment_boundary"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "request_id": {"const": "ISSUE-32"},
@@ -12,6 +12,10 @@
     "target_sha": {"const": "cb06be66e78d92b8921fc3103b12bdbdc55284f8"},
     "tree_sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
     "source_manifest": {"type": "object", "required": ["format", "commit", "tree", "entries"]},
+    "source_file_sha256": {
+      "type": "object", "minProperties": 1,
+      "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+    },
     "source_archive": {
       "type": "object", "additionalProperties": false,
       "required": ["sha256", "size_bytes", "entry_count"],
