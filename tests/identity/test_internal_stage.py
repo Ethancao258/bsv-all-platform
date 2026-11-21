@@ -22,6 +22,30 @@ ROOT = Path(__file__).resolve().parents[2]
 STAGE = ROOT / "platform/lighthouse/internal-stage"
 
 
+def test_internal_ingress_has_no_pos_catchall():
+    """Route ownership is explicit before touching any backend or database."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("bsv_a1_ingress", STAGE / "ingress.py")
+    ingress = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ingress)
+    for path, owner in (
+        ("/hq", "identity"), ("/hq/stores/layout", "pos"),
+        ("/staff", "identity"), ("/pos", "pos"),
+        ("/api/hq/layout/revision", "pos"), ("/api/state", "pos"),
+        ("/api/v1/identity/registrations", "identity"),
+        ("/supply-ui/api/me", "supply"),
+    ):
+        resolved = ingress.upstream(path)
+        assert resolved and resolved[0] == owner, (path, resolved)
+    for path in (
+        "/totally-unknown", "/hq/random", "/hq/stores/layout/assets/no.js",
+        "/api/unknown", "/work/craft", "/pos/unknown", "/supply-ui",
+    ):
+        assert ingress.upstream(path) is None, path
+    assert ingress.routed_methods("/api/orders/submit") == {"POST"}
+    assert ingress.routed_methods("/api/hq/layout/revision") == {"GET", "HEAD"}
+
+
 @contextmanager
 def process(argv, port_env, env, tmp_path, name):
     with socket.socket() as probe:
@@ -115,6 +139,12 @@ def exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant):
                  "/supply-ui/inspector/supply", "/supply-ui/assets/app.js", "/cocktail/"):
         assert browser.get(path).status_code == 200, path
     assert browser.get("/craft/").status_code == 404
+    for path in ("/totally-unknown", "/hq/random",
+                 "/hq/stores/layout/assets/no.js", "/api/unknown", "/work/craft"):
+        assert browser.get(path).status_code == 404, path
+    assert browser.post("/pos", json={}).status_code == 405
+    assert browser.get("/api/orders/submit").status_code == 405
+    assert browser.post("/api/hq/layout/revision", json={}).status_code == 405
     assert browser.get("/supply-ui/api/me").status_code == 401
     assert browser.get("/api/state").status_code == 401
     assert browser.post("/api/v1/identity/pos-session", json={}).status_code == 404
