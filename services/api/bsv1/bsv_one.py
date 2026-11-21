@@ -54,6 +54,10 @@ def schema(db):
       CREATE TABLE IF NOT EXISTS bsv_hq_roles(
         staff_id TEXT PRIMARY KEY REFERENCES staff(id),role TEXT NOT NULL CHECK(role='HQ_ADMIN'),
         granted_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS bsv_hq_actor_aliases(
+        tr_code TEXT PRIMARY KEY,
+        staff_id TEXT NOT NULL UNIQUE REFERENCES staff(id),
+        created_at TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS bsv_layout_ownership(
         store_id TEXT PRIMARY KEY REFERENCES stores(id),origin TEXT NOT NULL CHECK(origin='HQ_PUBLISHED'),
         published_revision TEXT NOT NULL,published_at TEXT NOT NULL);
