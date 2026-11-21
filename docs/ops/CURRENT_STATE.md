@@ -200,8 +200,8 @@
 
 ## 2026-11-21｜BSV-OPS-002 TAT/COS 交付桥 M1
 
-- 基于 V4.3 PR #27 的 `f00371ccd1c233caf8eea97398bf981cf7d65dd0` 创建独立分支 `feature/bsv-ops-002-tat-cos-bridge`。Issue #31 定义的当前阶段为可复现的只读模拟回环；TAT/COS真实传输需要后续一次性授权。
+- 基于 V4.3 PR #27 的 `f00371ccd1c233caf8eea97398bf981cf7d65dd0` 创建独立分支 `feature/bsv-ops-002-tat-cos-bridge`。实现提交 `d82c9086bdccb24f1982efee2267f74722cb030e`。Draft PR #33 以 PR #27 当前 HEAD 为 base。Issue #31 定义的当前阶段为可复现的只读模拟回环；TAT/COS真实传输需要后续一次性授权。
 - 实现 `contracts/ops-bridge/` 任务/结果 Schema、`platform/ops-bridge/` HMAC签名协议、精确 SHA/CI 绑定、短时效 nonce、原子防重状态账本、固定操作策略、重试限制、脱敏报告及注入式私有 COS/固定 TAT 适配器。新增独立 workflow-dispatch 和 `validate.yml` 的 mock CI 检查；扩展现有 deployment-config 路由，不新增顶层目录。
-- 已通过本地定向 unittest：签名与篡改拒绝、过期和 CI SHA 拒绝、重复任务与并发防重、构件摘要、固定 TAT 命令、COS 私有不可覆盖语义、临时凭据隐藏、journal 权限、结果签名/摘要脱敏及两种模拟闭环。CI 状态应以本分支最新 HEAD 对应的 GitHub Actions 为准。
+- 已通过本地定向 unittest：签名与篡改拒绝、过期和 CI SHA 拒绝、重复任务与并发防重、构件摘要、固定 TAT 命令、COS 私有不可覆盖语义、临时凭据隐藏、journal 权限、结果签名/摘要脱敏及两种模拟闭环。完整 GitHub Actions 状态以 PR #33 最新 SHA 为准。
 - `MOCK_ONLY / CLOUD_NOT_CONNECTED / HOST_NOT_RUN`：当前工作流没有云凭据；未创建 SDK 客户端、未请求或访问真实 TAT/COS、未联系 Lighthouse、未部署。真实云端验证前必须进行一次性最小权限授权（仅目标隔离实例的固定 TAT 命令与私有 COS 专用前缀），并另行配置受控 GitHub 结果回写身份。`STAGING_DEPLOY`、生产、数据库、支付及公网操作保持禁用。
 - 交接与 M2 授权边界：[`BSV_OPS_002_TAT_COS_BRIDGE.md`](BSV_OPS_002_TAT_COS_BRIDGE.md)。
