@@ -1,0 +1,23 @@
+[Unit]
+Description=BSV Customer Growth (single-host staging candidate)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bsv-app
+Group=bsv-app
+WorkingDirectory=/srv/bsv/current
+EnvironmentFile=/etc/bsv/growth.env
+ExecStart=/srv/bsv/venv/bin/python -m uvicorn services.api.customer_growth.app:app --host 127.0.0.1 --port 8767 --workers 1
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/bsv/data
+
+[Install]
+WantedBy=multi-user.target
