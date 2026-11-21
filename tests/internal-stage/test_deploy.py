@@ -283,6 +283,75 @@ class ReleaseTest(unittest.TestCase):
                     "pos", dict(values, UNREVIEWED_KEY="secret"), set())
             self.assertNotIn("UNREVIEWED_KEY", pos.read_text())
 
+    def test_real_c51_identity_env_migrates_only_layout_admin_token(self):
+        """Existing deployed identity.env has POS and supply; preserve both exactly."""
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "private_file"):
+            (stage.ROOT / "config").mkdir()
+            old_tokens = {
+                "pos": {"token": "P" * 42, "actions": ["pos.order.read", "pos.order.create"],
+                        "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]},
+                "supply": {"token": "S" * 42, "legal_entity_id": "DEMO_LEGAL",
+                           "stores": ["BSVM", "BSVS", "BSVT"],
+                           "isolated_test_department": "SYNTH-STAGE",
+                           "actions": ["supply.dispatch", "supply.receive"]},
+            }
+            old = {"BSV_APP_ENV": "isolated", "BSV_AUTH_PROVIDER": "isolated",
+                   "BSV_SESSION_SECRET": "unaltered-session-secret",
+                   "BSV_SERVICE_TOKENS_JSON": json.dumps(old_tokens, separators=(",", ":"))}
+            cfg = stage.ROOT / "config" / "identity.env"
+            stage.environment("identity", old)
+            layout = {"token": "L" * 48, "actions": ["hq.layout.read"],
+                      "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]}
+            newer_tokens = dict(old_tokens, **{"layout-admin": layout})
+            new = dict(old, BSV_SERVICE_TOKENS_JSON=json.dumps(newer_tokens, separators=(",", ":")))
+            stage.upgrade_identity_environment(new)
+            migrated = stage.service_config("identity")
+            self.assertEqual(migrated["BSV_SESSION_SECRET"], old["BSV_SESSION_SECRET"])
+            self.assertEqual(json.loads(migrated["BSV_SERVICE_TOKENS_JSON"]), newer_tokens)
+            self.assertEqual(cfg.stat().st_mode & 0o777, 0o600)
+            self.assertFalse((cfg.with_name("identity.env.next")).exists())
+            first = cfg.read_bytes()
+            stage.upgrade_identity_environment(new)
+            self.assertEqual(cfg.read_bytes(), first, "Subsequent deploy may not rewrite managed secrets")
+            with self.assertRaisesRegex(RuntimeError, "Existing identity secrets"):
+                stage.upgrade_identity_environment(dict(new, BSV_SESSION_SECRET="altered"))
+            with self.assertRaisesRegex(RuntimeError, "Unapproved identity token-map"):
+                injected = dict(newer_tokens, arbitrary={"token": "X" * 48,
+                                                          "actions": ["hq.people.read"]})
+                stage.upgrade_identity_environment(
+                    dict(new, BSV_SERVICE_TOKENS_JSON=json.dumps(injected)))
+            self.assertEqual(cfg.read_bytes(), first, "Rejected drift must not mutate config")
+
+    def test_c51_pos_layout_and_growth_keys_upgrade_additively(self):
+        """Only the exact new isolated POS keys may be added on top of c51."""
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "private_file"):
+            config = stage.ROOT / "config"
+            config.mkdir()
+            old = {"BSV_MODE": "staging", "BSV_PORT": "18762",
+                   "BSV_POS_IDENTITY_TOKEN": "old-pos-token"}
+            stage.environment("pos", old)
+            additions = {"BSV_POS_LAYOUT_SERVICE_TOKEN": "layout-test-token",
+                         "BSV_POS_LAYOUT_SCOPE_MODE": "isolated-synthetic",
+                         "BSV_APP_ENV": "isolated",
+                         "BSV_POS_GROWTH_INTEGRATION": "1",
+                         "BSV_GROWTH_LINK_KEY": "isolated-link-test"}
+            allowed = {"BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
+                       "BSV_APP_ENV", "BSV_POS_GROWTH_INTEGRATION",
+                       "BSV_GROWTH_LINK_KEY", "BSV_GROWTH_POS_CONTEXT_KEY",
+                       "BSV_GROWTH_POS_VERIFY_TOKEN"}
+            merged = {**old, **additions}
+            stage.upgrade_managed_environment("pos", merged, allowed)
+            self.assertEqual(stage.service_config("pos"), merged)
+            stage.upgrade_managed_environment("pos", merged, allowed)
+            with self.assertRaisesRegex(RuntimeError, "changed"):
+                stage.upgrade_managed_environment(
+                    "pos", dict(merged, BSV_POS_IDENTITY_TOKEN="other-token"), allowed)
+            with self.assertRaisesRegex(RuntimeError, "Unapproved environment keys"):
+                stage.upgrade_managed_environment(
+                    "pos", dict(merged, UNKNOWN_SECURITY_OVERRIDE="1"), allowed)
+
     def test_health_evidence_rejects_public_or_unmanaged_listeners(self):
         reported = {port: ["127.0.0.1"] for port in (*stage.PORTS.values(), *stage.LEGACY_UNITS)}
         with patch.object(stage, "listening_ports", return_value=reported), \
