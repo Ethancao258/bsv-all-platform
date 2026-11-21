@@ -273,8 +273,15 @@ def growth_pos_flow(employee, flow):
         require(reg2["customer_id"]==cid and reg2["already_registered"],"Duplicate customer ID")
         call(customer, "POST", "/api/v1/growth/public/taste", 200,
              {"tags":["果香酸爽"],"share_for_service":True}, hdr)
-        wrong=call(customer, "POST", "/api/v1/growth/public/pos-link", 200, {"store_id":"BSVS"}, hdr)
+        configured=call(customer,"GET","/api/v1/growth/public/config",200)["stores"]
         valid=call(customer, "POST", "/api/v1/growth/public/pos-link", 200, {"store_id":"BSVT"}, hdr)
+        if "BSVS" in configured:
+            wrong=call(customer, "POST", "/api/v1/growth/public/pos-link", 200, {"store_id":"BSVS"}, hdr)
+            wrong_token=wrong["token"]
+        else:
+            # The real Lighthouse isolated baseline authorizes only BSVT.
+            # A tampered but otherwise valid token must still fail closed.
+            wrong_token=valid["token"][:-1]+("f" if valid["token"][-1]!="f" else "e")
         state=call(employee, "GET", "/api/state", 200)
         headers={"X-BSV-CSRF":state["csrf"]}
         seat=next((x["id"] for x in state["seats"] if x["enabled"] and x["id"]
@@ -289,7 +296,7 @@ def growth_pos_flow(employee, flow):
         try:
             call(employee,"GET","/api/visits/customer-context?visit_id="+visit,404)
             call(employee,"POST","/api/visits/customer-link",403,
-                 {"visit_id":visit,"proof":wrong["token"]},headers)
+                 {"visit_id":visit,"proof":wrong_token},headers)
             call(employee,"POST","/api/visits/customer-link",200,
                  {"visit_id":visit,"proof":valid["token"]},headers)
             call(employee,"POST","/api/visits/customer-link",409,
