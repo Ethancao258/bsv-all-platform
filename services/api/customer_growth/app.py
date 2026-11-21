@@ -768,7 +768,9 @@ def enroll_signature(body: SignatureUpload, request: Request, store_id: str):
         if not (180 <= pic.width <= 1500 and 60 <= pic.height <= 650):
             raise ValueError('invalid size')
         # Transparent-canvas and white-background strokes both count, blank signatures do not.
-        pixels=list(pic.get_flattened_data())
+        # Pillow 11 has getdata(); Pillow 12+ provides get_flattened_data().
+        # Both yield identical RGBA tuples for the existing nonblank-stroke check.
+        pixels=list(pic.get_flattened_data() if hasattr(pic, 'get_flattened_data') else pic.getdata())
         strokes=sum(1 for r,g,b,a in pixels[::max(1,len(pixels)//10000)]
                     if a>90 and max(r,g,b)<170)
         if strokes<12:
