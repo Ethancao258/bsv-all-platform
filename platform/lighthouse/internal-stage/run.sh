@@ -20,6 +20,8 @@ case "$1" in
   supply)
     exec "$release/supply/bin/python" -m uvicorn services.api.supply.main:app --host 127.0.0.1 --port 18763 --no-proxy-headers --no-access-log ;;
   ingress)
+    # The integrated growth candidate SQLite and guest credentials must be private.
+    umask 077
     exec "$release/identity/bin/python" -m uvicorn --app-dir platform/lighthouse/internal-stage ingress:app --host 127.0.0.1 --port 18760 --no-proxy-headers --no-access-log ;;
   *) exit 2 ;;
 esac
