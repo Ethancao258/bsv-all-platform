@@ -21,6 +21,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sess
 ROOT = Path(__file__).resolve().parents[3]
 ENV = os.getenv('BSV_GROWTH_ENV', 'disabled')
 ISOLATED = ENV == 'isolated'
+# In the unified private Lighthouse stage, employee sessions come from identity.A,
+# never from the standalone growth demo staff cookie.
+TRUST_IDENTITY = os.getenv('BSV_GROWTH_TRUST_IDENTITY', '0') == '1'
 DATABASE_URL = os.getenv('BSV_GROWTH_DB_URL', 'sqlite:///:memory:' if ISOLATED else '')
 SECRET = os.getenv('BSV_GROWTH_SIGNING_KEY', '')
 SIGNATURE_KEY = os.getenv('BSV_GROWTH_SIGNATURE_KEY', '')
@@ -375,7 +378,7 @@ def set_guest(response: Response, db: Session, provider: str, subject: str, stor
 def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq=False, action=None) -> tuple[str,str]:
     if write:
         mutation_origin(request)
-    if ISOLATED:
+    if ISOLATED and not TRUST_IDENTITY:
         raw = request.cookies.get('bsv_dev_staff','')
         payload = unsign(raw) if raw else {}
         if payload.get('role') not in ('staff','hq'):
@@ -420,6 +423,8 @@ class DemoLogin(BaseModel):
 
 @app.post(BASE_PATH + '/dev/staff-login')
 def demo_staff_login(data: DemoLogin, request: Request, response: Response):
+    if TRUST_IDENTITY:
+        raise HTTPException(404, '请使用集团统一身份登录')
     if not ISOLATED or request.client.host not in ('127.0.0.1','::1','testclient','localhost') or request.url.hostname not in ('127.0.0.1','localhost','testserver'):
         raise HTTPException(404, 'Not available')
     require_store(data.store_id)
@@ -660,7 +665,7 @@ def staff_guest_context(request:Request, context:str):
 @app.get(BASE_PATH + '/staff/store-options')
 def staff_store_options(request:Request):
     # Before choosing the first store, discover actual grants instead of guessing BSVM.
-    if ISOLATED:
+    if ISOLATED and not TRUST_IDENTITY:
         raw=request.cookies.get('bsv_dev_staff','')
         payload=unsign(raw) if raw else {}
         if payload.get('role') not in ('staff','hq'):
