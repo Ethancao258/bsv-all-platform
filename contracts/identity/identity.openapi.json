@@ -1391,6 +1391,42 @@
         }
       }
     },
+    "/api/v1/identity/hq-layout-session": {
+      "post": {
+        "summary": "Hq Layout Session",
+        "operationId": "hq_layout_session_api_v1_identity_hq_layout_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HqLayoutSessionCheck"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "summary": "Supply Identity",
@@ -2827,7 +2863,47 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "LegacyCommit": {
+      "HqLayoutSessionCheck": {
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "hq.layout.read",
+            "hq.layout.edit",
+            "hq.layout.publish",
+            "hq.store.register"
+          ],
+          "title": "Action"
+        },
+        "legal_entity_id": {
+          "type": "string",
+          "maxLength": 80,
+          "minLength": 2,
+          "title": "Legal Entity Id"
+        },
+        "store_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 32,
+              "minLength": 3
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Store Id"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "action",
+        "legal_entity_id"
+      ],
+      "title": "HqLayoutSessionCheck"
+    },
+    "LegacyCommit": {
         "properties": {
           "legal_entity_id": {
             "type": "string",
