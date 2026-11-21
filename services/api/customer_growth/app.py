@@ -397,8 +397,12 @@ def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq
     try:
         with httpx.Client(timeout=5) as client:
             response = client.get(IDENTITY_ME_URL, headers={'Cookie':request.headers.get('cookie','')})
+        if response.status_code in (401, 403):
+            raise HTTPException(response.status_code, '请先登录集团员工中心或核对权限')
         response.raise_for_status()
         me = response.json()
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(503,'人员权限暂时无法验证') from exc
     if not me.get('tr_code') or not me.get('emp_code') or not me.get('active') or LEGAL_ENTITY not in me.get('active_legal_entities',[]):
@@ -676,7 +680,11 @@ def staff_store_options(request:Request):
             raise HTTPException(503,'人员身份服务未接通')
         try:
             r=httpx.get(IDENTITY_ME_URL,headers={'Cookie':request.headers.get('cookie','')},timeout=5)
+            if r.status_code in (401, 403):
+                raise HTTPException(r.status_code, '请先登录集团员工中心或核对权限')
             r.raise_for_status();me=r.json()
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(503,'无法核验员工门店权限') from exc
         if (not me.get('tr_code') or not me.get('emp_code') or not me.get('active')
