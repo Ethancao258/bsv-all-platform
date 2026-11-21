@@ -1,0 +1,40 @@
+name: customer-growth-isolated-tests
+on:
+  pull_request:
+    paths:
+      - "apps/guest-web/member/**"
+      - "apps/staff-center/growth/**"
+      - "services/api/customer_growth/**"
+      - "tests/customer_growth/**"
+      - ".github/workflows/customer-growth-ci.yml"
+      - "contracts/customer-growth/**"
+      - "config/modules/customer-growth-v2.json"
+  push:
+    branches:
+      - feature/customer-growth-mvp-v1
+      - feature/customer-growth-experience-v2
+permissions:
+  contents: read
+jobs:
+  isolated-api-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r services/api/customer_growth/requirements.txt
+          python -m pip install pytest pillow
+      - name: Parse Python modules
+        run: python -m compileall -q services/api/customer_growth
+      - name: Run end-to-end isolated API checks
+        run: python -m pytest -q tests/customer_growth/test_flow.py tests/customer_growth/test_service_preferences.py
+      - name: Validate customer and employee web scripts
+        run: |
+          node --check apps/guest-web/member/app.js
+          node --check apps/staff-center/growth/app.js
+          node --check apps/staff-center/growth/pos-entry.js

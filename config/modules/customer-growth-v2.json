@@ -1,0 +1,33 @@
+{
+  "version": "2.0",
+  "project": "BSV1 customer membership, attribution and service preferences",
+  "ui": {
+    "guest_member": {"path": "/member/", "repository": "apps/guest-web/member", "parent": "guest-web", "menu_route_config": "BSV_GROWTH_MENU_URL"},
+    "staff_guest_claim_invitation_signature": {"path": "/staff/growth/", "repository": "apps/staff-center/growth", "parent": "staff-center"},
+    "pos_visit_entry": {"asset": "/staff/growth/pos-entry.js", "requires": ["authenticated staff", "valid 120s visit token", "POS visit/member link", "current shift", "customer service preference consent"]}
+  },
+  "authority_mappings": [
+    {"entity": "customer_id", "owner": "customer", "read": ["/public/me", "/staff/guest-context"], "write": ["/public/register"], "migration": "reuse existing customer master; candidate Customer is isolated only"},
+    {"entity": "customer_taste", "owner": "customer", "read": ["/public/me", "/staff/guest-context"], "write": ["/public/taste"], "migration": "FK to verified customer_id; never new customer identity"},
+    {"entity": "tr_code", "owner": "workforce", "read": ["/staff/me", "/staff/store-options"], "write": [], "migration": "TR authority A; never assign a second staff/person code"},
+    {"entity": "signature_template", "owner": "workforce", "read": ["/staff/signature-preview"], "write": ["/staff/signature"], "migration": "encrypted private object with version by stable tr_code"},
+    {"entity": "store_id", "owner": "organization", "read": ["/staff/store-options"], "write": [], "migration": "store legal-entity owner requires authoritative lookup"},
+    {"entity": "visit_id", "owner": "commerce", "read": ["/staff/guest-context"], "write": [], "migration": "POS/visit master; no new visit table"},
+    {"entity": "attribution_id", "owner": "marketing", "read": ["/staff/queue"], "write": ["/staff/claims"], "migration": "reuse attribution, touchpoint IDs and keep history immutable"},
+    {"entity": "order_id", "owner": "commerce", "read": ["/internal/payment-event"], "write": [], "migration": "do not infer payment from simulated POS checkout"},
+    {"entity": "payment_event_id", "owner": "payments", "read": ["/internal/payment-event"], "write": [], "migration": "verified payment provider bridge must be the only trusted source"},
+    {"entity": "settlement_id", "owner": "operating_finance", "read": [], "write": [], "migration": "commission remains PROVISIONAL_NOT_PAYABLE; payroll writer not connected"},
+    {"entity": "audit_event_id", "owner": "event_audit", "read": [], "write": ["/public/taste", "/staff/signature", "/staff/claims"], "migration": "authoritative append-only audit event via core service"}
+  ],
+  "gates": {
+    "status": "SOURCE_READY_NO_PRODUCTION_MIGRATION",
+    "requires_cloudbase_G0_G1": true,
+    "requires_issuer_identity": true,
+    "requires_real_payment_before_payout": true,
+    "requires_privacy_approval": true,
+    "requires_shift_and_live_visit": true,
+    "requires_legal_entity_store_mapping": true,
+    "avoid_copied_pos_identity": true,
+    "avoid_legacy_mapping_rewrite": true
+  }
+}

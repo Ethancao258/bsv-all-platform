@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bsvm.cn/contracts/customer-growth/pos-visit-context-v2",
+  "title": "BSV1 POS-scoped customer taste access",
+  "description": "Backend signed with BSV_GROWTH_POS_CONTEXT_KEY; sign only after authoritative POS visit-member verification. The browser never signs a context.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["customer_id", "store_id", "visit_id", "iat", "exp"],
+  "properties": {
+    "customer_id": {"type": "string", "minLength": 3, "maxLength": 80},
+    "store_id": {"type": "string", "minLength": 3, "maxLength": 40},
+    "visit_id": {"type": "string", "minLength": 3, "maxLength": 80},
+    "iat": {"type": "integer"},
+    "exp": {"type": "integer"}
+  },
+  "x-bsv-signature": "base64url(compact-json) + '.' + hex(hmac-sha256(POS_CONTEXT_KEY, base64url-json))",
+  "x-bsv-constraints": {"ttl_seconds_max": 120, "production_pos_verifier_required": true,
+    "pos_verifier_must_confirm": ["allowed", "active_shift", "customer_linked", "store_ownership_verified"],
+    "no_customer_phone_or_order_history": true}
+}
