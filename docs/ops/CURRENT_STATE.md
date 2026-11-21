@@ -197,3 +197,11 @@
 - 审批边界。隔离环境可验证合成工作流。真实员工试点须由负责人批准最小资料范围、备案/HTTPS、私有访问、扫描、加密备份和恢复。正式营业还缺 CloudBase G0/G1 和 ACL/RLS 修复、真实收款专项批准、D/E 权威写入及五店容量证据。公开鸡尾酒菜单保持原发布物，只有私有同源入口提供工作台返回。
 - `PASS_ISOLATED` · 两轮 PG17 + SQLite 真实 HTTP 验收验证同一 TR 在 BSVT 两台独立注册终端创建未付款订单、重复请求防重、订单审计、设备撤销以及 BSVS 独立培训和班次解锁、撤权失效、跨店排班冲突和北京时间跨午夜。合成旧码保持零写入，追加迁移后复跑 V3 身份服务验证既有记录仍可读取。
 - `PASS_ISOLATED` · Chromium 在 320–1440px 的八个宽度验证工作台和注册终端流程，覆盖浏览器模拟缩放、文字放大、窄高视口及菜单返回；真实移动设备软键盘仍待现场观察。导入预检 7 项、发布控制和部署回归 16 项通过。GitHub 精确 SHA、CI 和截图见 [Issue #11](https://github.com/Ethancao258/bsv-all-platform/issues/11) 的集成 PR。
+
+## 2026-11-21｜BSV-OPS-002 TAT/COS 交付桥 M1
+
+- 基于 V4.3 PR #27 的 `f00371ccd1c233caf8eea97398bf981cf7d65dd0` 创建独立分支 `feature/bsv-ops-002-tat-cos-bridge`。Issue #31 定义的当前阶段为可复现的只读模拟回环；TAT/COS真实传输需要后续一次性授权。
+- 实现 `contracts/ops-bridge/` 任务/结果 Schema、`platform/ops-bridge/` HMAC签名协议、精确 SHA/CI 绑定、短时效 nonce、原子防重状态账本、固定操作策略、重试限制、脱敏报告及注入式私有 COS/固定 TAT 适配器。新增独立 workflow-dispatch 和 `validate.yml` 的 mock CI 检查；扩展现有 deployment-config 路由，不新增顶层目录。
+- 已通过本地定向 unittest：签名与篡改拒绝、过期和 CI SHA 拒绝、重复任务与并发防重、构件摘要、固定 TAT 命令、COS 私有不可覆盖语义、临时凭据隐藏、journal 权限、结果签名/摘要脱敏及两种模拟闭环。CI 状态应以本分支最新 HEAD 对应的 GitHub Actions 为准。
+- `MOCK_ONLY / CLOUD_NOT_CONNECTED / HOST_NOT_RUN`：当前工作流没有云凭据；未创建 SDK 客户端、未请求或访问真实 TAT/COS、未联系 Lighthouse、未部署。真实云端验证前必须进行一次性最小权限授权（仅目标隔离实例的固定 TAT 命令与私有 COS 专用前缀），并另行配置受控 GitHub 结果回写身份。`STAGING_DEPLOY`、生产、数据库、支付及公网操作保持禁用。
+- 交接与 M2 授权边界：[`BSV_OPS_002_TAT_COS_BRIDGE.md`](BSV_OPS_002_TAT_COS_BRIDGE.md)。

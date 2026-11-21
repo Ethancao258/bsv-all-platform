@@ -291,6 +291,8 @@
       "primary_domain": "platform",
       "code_paths": [
         "platform/lighthouse/internal-stage",
+        "platform/ops-bridge",
+        "contracts/ops-bridge",
         "docs/ops",
         "config/change-routing.json",
         "scripts/route_change.py",
@@ -308,6 +310,7 @@
         "supply.B"
       ],
       "test_paths": [
+        "tests/ops-bridge",
         "tests/internal-stage",
         "tests/internal-stage/test_control.py",
         "tests/identity/test_acceptance_v3.py",

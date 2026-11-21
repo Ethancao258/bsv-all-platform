@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bsvm.cn/contracts/ops-bridge/result.schema.json",
+  "title": "BSV OPS Bridge redacted result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "request_id", "operation", "state", "result_code", "target_sha", "current_sha", "rollback_sha", "environment", "evidence_location", "summary", "occurred_at", "host_contacted", "signature"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "task_id": {"type": "string", "format": "uuid"},
+    "request_id": {"type": "string", "pattern": "^(BSV-OPS-[0-9]{3}|BSV-CHG-[0-9]{8}-[A-Za-z0-9-]{1,24})$"},
+    "operation": {"enum": ["READ_DIAGNOSE", "VERIFY_ARTIFACT", "STAGING_DEPLOY"]},
+    "state": {"enum": ["SUCCEEDED", "BLOCKED", "FAILED"]},
+    "result_code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$"},
+    "target_sha": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40}$"},
+    "current_sha": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40}$"},
+    "rollback_sha": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40}$"},
+    "environment": {"enum": ["isolated", "staging", "production"]},
+    "evidence_location": {"type": "string", "maxLength": 240, "pattern": "^(memory|cos)://[A-Za-z0-9._/-]+$"},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 240},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "host_contacted": {"type": "boolean"},
+    "signature": {"type": "object", "additionalProperties": false, "required": ["key_id", "algorithm", "value"],
+      "properties": {"key_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,40}$"}, "algorithm": {"const": "HMAC-SHA256"}, "value": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}}
+  }
+}

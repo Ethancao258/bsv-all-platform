@@ -202,3 +202,25 @@ jobs:
           node --check apps/guest-web/member/app.js
           node --check apps/staff-center/growth/app.js
           node --check apps/staff-center/growth/pos-entry.js
+
+  bsv-ops-002-mock-bridge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run bridge protocol, security and mock transport tests
+        run: python -m unittest discover -s tests/ops-bridge -v
+      - name: Run both local closed-loop operations without cloud access
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+        run: |
+          python platform/ops-bridge/runner/cli.py --mock-roundtrip --operation READ_DIAGNOSE --sha "$GITHUB_SHA"
+          python platform/ops-bridge/runner/cli.py --mock-roundtrip --operation VERIFY_ARTIFACT --sha "$GITHUB_SHA"

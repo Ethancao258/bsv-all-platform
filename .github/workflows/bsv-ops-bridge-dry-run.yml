@@ -1,0 +1,44 @@
+name: bsv-ops-bridge-dry-run
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "仅运行离线模拟操作"
+        type: choice
+        required: true
+        default: READ_DIAGNOSE
+        options:
+          - READ_DIAGNOSE
+          - VERIFY_ARTIFACT
+      target_sha:
+        description: "用于模拟的40位提交 SHA；留空则使用当前 workflow SHA"
+        type: string
+        required: false
+        default: ""
+permissions:
+  contents: read
+concurrency:
+  group: bsv-ops-bridge-dry-run-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  mock-roundtrip:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run signed mock task/result roundtrip
+        env:
+          BSV_TARGET_SHA: ${{ inputs.target_sha }}
+          BSV_OPERATION: ${{ inputs.operation }}
+        run: |
+          target_sha="$BSV_TARGET_SHA"
+          if [[ -z "$target_sha" ]]; then target_sha="$GITHUB_SHA"; fi
+          if [[ ! "$target_sha" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "Target SHA must be exactly 40 lowercase hexadecimal characters" >&2
+            exit 2
+          fi
+          python3 platform/ops-bridge/runner/cli.py --mock-roundtrip \
+            --operation "$BSV_OPERATION" --sha "$target_sha"
