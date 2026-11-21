@@ -1158,6 +1158,107 @@ class Handler(BaseHTTPRequestHandler):
         error = getattr(self, "auth_error", None) or UserError(default, 401)
         self.send_error_json(error)
 
+    def hq_layout_scope(self, db, store_id):
+        """Only an explicitly marked isolated fixture may use the legacy map for legal scope."""
+        if (MODE != "staging" or os.environ.get("BSV_POS_LAYOUT_SCOPE_MODE") != "isolated-synthetic"
+                or os.environ.get("BSV_APP_ENV") != "isolated"):
+            return None
+        try:
+            mappings = json.loads(os.environ.get("BSV_POS_STORE_LEGAL_JSON", "{}"))
+        except (ValueError, TypeError):
+            return None
+        legal = mappings.get(store_id) if isinstance(mappings, dict) else None
+        if (not isinstance(legal, str) or not legal
+                or not db.execute("SELECT 1 FROM stores WHERE id=?", (store_id,)).fetchone()):
+            return None
+        return legal
+
+    def hq_layout_read(self, path):
+        """Read existing POS map data after an uncached identity.A decision."""
+        query = parse_qs(urlparse(self.path).query)
+        identity_session = self.cookie("bsv_identity_session")
+        if not identity_session:
+            self.send_json({"error": "请先登录统一身份账号。", "code": "AUTH_REQUIRED"}, 401)
+            return
+        requested_store = query.get("store_id", [""])[0]
+        if requested_store and not re.fullmatch("[A-Z0-9_-]{3,32}", requested_store):
+            self.send_json({"error": "门店代码无效。", "code": "STORE_INVALID"}, 400)
+            return
+        with db_read() as db:
+            if path == "/api/hq/status":
+                actor = None
+                unavailable = False
+                for store in bsv_one.stores(db):
+                    legal = self.hq_layout_scope(db, store["id"])
+                    if legal is None:
+                        continue
+                    decision = identity_client().authorize_hq_layout(
+                        identity_session, store["id"], "hq.layout.read", legal)
+                    if decision.get("allowed") is True:
+                        actor = decision["actor_tr_code"]
+                        break
+                    unavailable |= decision.get("reason") == "IDENTITY_UNAVAILABLE"
+                if not actor:
+                    status = 503 if unavailable else 403
+                    self.send_json({"error": "当前账号无权查看总部地图。", "code": "IDENTITY_UNAVAILABLE" if unavailable else "HQ_LAYOUT_FORBIDDEN"}, status)
+                    return
+                self.send_json({"ok": True, "hq": True, "actor": actor})
+                return
+            stores = bsv_one.stores(db)
+            if path in {"/api/hq/stores", "/api/hq/modules"}:
+                visible = []
+                for store in stores:
+                    legal = self.hq_layout_scope(db, store["id"])
+                    if legal is None:
+                        continue
+                    allowed = identity_client().authorize_hq_layout(
+                        identity_session, store["id"], "hq.layout.read", legal)
+                    if allowed.get("allowed") is True:
+                        visible.append(store)
+                    elif allowed.get("reason") == "IDENTITY_UNAVAILABLE":
+                        self.send_json({"error": "身份服务暂不可用。", "code": "IDENTITY_UNAVAILABLE"}, 503)
+                        return
+                if path == "/api/hq/modules":
+                    self.send_json({"modules": bsv_one.modules() if visible else []})
+                else:
+                    self.send_json({"stores": visible})
+                return
+            legal = self.hq_layout_scope(db, requested_store)
+            if legal is None:
+                self.send_json({"error": "门店法人关系尚未核验。", "code": "STORE_SCOPE_UNKNOWN"}, 403)
+                return
+            decision = identity_client().authorize_hq_layout(
+                identity_session, requested_store, "hq.layout.read", legal)
+            if decision.get("allowed") is not True:
+                status = 503 if decision.get("reason") == "IDENTITY_UNAVAILABLE" else 403
+                self.send_json({"error": "当前账号无权查看此门店地图。", "code": decision.get("reason")}, status)
+                return
+            if not db.execute("SELECT 1 FROM stores WHERE id=?", (requested_store,)).fetchone():
+                self.send_json({"error": "门店不存在。", "code": "STORE_NOT_FOUND"}, 404)
+                return
+            if path == "/api/hq/layout":
+                result = bsv_one.current(db, requested_store)
+                result["revisions"] = bsv_one.revisions(db, requested_store)
+                self.send_json(result)
+                return
+            try:
+                if path == "/api/hq/image":
+                    mime, binary = bsv_one.image_by_id(db, requested_store, query.get("asset_id", [""])[0])
+                else:
+                    mime, binary = bsv_one.layout_art(db, requested_store)
+            except bsv_one.ControlError as error:
+                self.send_json({"error": str(error)}, error.status)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", mime)
+            self.send_header("Cache-Control", "private, no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            # Match the original HQ map image endpoint's SVG sandbox policy.
+            self.send_header("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'")
+            self.send_header("Content-Length", str(len(binary)))
+            self.end_headers()
+            self.wfile.write(binary)
+
     def send_error_json(self, error):
         self.send_json({"error": error.message, **({"code": error.code} if error.code else {})}, error.status)
 
@@ -1275,6 +1376,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         # Headquarters API: authenticated + separately granted HQ role.
         if (device_required() or os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1") and path.startswith(('/api/hq/','/hq','/api/reports/','/api/audit')):
+            read_only_hq = {"/api/hq/status", "/api/hq/stores", "/api/hq/modules",
+                            "/api/hq/layout", "/api/hq/art", "/api/hq/image"}
+            if path in read_only_hq and self.command == "GET":
+                self.hq_layout_read(path)
+                return
             self.send_json({'error':'此读操作尚未接入集团授权'},403)
             return
         if path in ('/api/hq/status','/api/hq/stores','/api/hq/layout','/api/hq/art','/api/hq/image','/api/hq/modules'):

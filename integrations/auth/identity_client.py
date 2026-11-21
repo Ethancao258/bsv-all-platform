@@ -72,6 +72,30 @@ def authorize_device(session, store_id, device_id, device_token, action):
     return decision
 
 
+def authorize_hq_layout(session, store_id, action, legal_entity_id):
+    """Ask identity.A for one uncached HQ map read decision. Never infer scope locally."""
+    service_token = os.environ.get("BSV_POS_LAYOUT_SERVICE_TOKEN", "")
+    if not session or not service_token:
+        return {"reason": "IDENTITY_UNAVAILABLE"}
+    if action != "hq.layout.read" or not legal_entity_id:
+        return {"reason": "STORE_UNAUTHORIZED"}
+    decision = request_identity("/api/v1/identity/hq-layout-session", {
+        "action": action, "legal_entity_id": legal_entity_id, "store_id": store_id,
+    }, {"X-BSV-Service-Token": service_token, "Authorization": "Bearer " + session}) or {}
+    if decision.get("http_status") == 401:
+        return {"reason": "AUTH_REQUIRED"}
+    if decision.get("decision_source") != "A" or decision.get("cache_ttl_seconds") != 0:
+        return {"reason": "IDENTITY_UNAVAILABLE"}
+    if decision.get("allowed") is not True:
+        return {"reason": "HQ_LAYOUT_FORBIDDEN"}
+    if (decision.get("action") != action or decision.get("store_id") != store_id
+            or decision.get("legal_entity_id") != legal_entity_id
+            or not isinstance(decision.get("actor_tr_code"), str)
+            or not re.fullmatch(r"TR[ABCDEFGHJKLMNPQRSTUVWXYZ][0-9]{4}", decision["actor_tr_code"])):
+        return {"reason": "IDENTITY_UNAVAILABLE"}
+    return decision
+
+
 def revoke_browser_session(session, csrf):
     if not (session and csrf and re.fullmatch(r"[A-Za-z0-9_-]{1,150}", session)
             and re.fullmatch(r"[A-Za-z0-9_-]{1,150}", csrf)):
