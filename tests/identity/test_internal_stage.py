@@ -84,6 +84,7 @@ def test_internal_stage_live_ingress(identity_http, tmp_path, monkeypatch):
     certificate(tr, first, "QUALITY_INSPECTOR")
     pos_grant = grant_action(tr, first, second, "pos.order.read")
     grant_action(tr, first, second, "pos.order.create")
+    growth_grant = grant_action(tr, first, second, "marketing.task.write")
     supply_grant = grant_action(tr, first, second, "supply.receive")
     inspection_grant = grant_action(tr, first, second, "quality.independent.submit")
     actions = ["supply.receive", "quality.independent.submit"]
@@ -125,13 +126,19 @@ def test_internal_stage_live_ingress(identity_http, tmp_path, monkeypatch):
                                               "BSV_SUPPLY_STATE_DIR": str(tmp_path / "supply"),
                                               "BSV_SOURCE_B_TOKEN": "test-local-supply"}, tmp_path, "supply") as supply_port:
             with process(ingress, "BSV_STAGE_INGRESS_PORT", {"BSV_STAGE_POS_PORT": str(pos_port),
-                         "BSV_STAGE_SUPPLY_PORT": str(supply_port), "BSV_STAGE_IDENTITY_PORT": identity_http.rsplit(":", 1)[1]},
+                         "BSV_STAGE_SUPPLY_PORT": str(supply_port), "BSV_STAGE_IDENTITY_PORT": identity_http.rsplit(":", 1)[1],
+                          "BSV_STAGE_GROWTH_ENABLED": "1", "BSV_GROWTH_ENV": "isolated",
+                          "BSV_GROWTH_TRUST_IDENTITY": "1",
+                          "BSV_GROWTH_DB_URL": "sqlite:///" + str(tmp_path / "growth-candidate.sqlite3"),
+                          "BSV_GROWTH_SIGNING_KEY": "ISOLATED-PG17-INTEGRATION-SIGNING-1234567890123456",
+                          "BSV_GROWTH_IDENTITY_ME_URL": identity_http + "/api/v1/identity/me",
+                          "BSV_GROWTH_LEGAL_ENTITY_ID": "DEMO_LEGAL", "BSV_GROWTH_STORE_IDS": "BSVT"},
                          tmp_path, "ingress") as port:
                 with httpx.Client(base_url=f"http://127.0.0.1:{port}", trust_env=False) as browser:
-                    exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant)
+                    exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant, growth_grant)
 
 
-def exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant):
+def exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant, growth_grant):
     base_origin = str(browser.base_url).rstrip("/")
     assert browser.get("/health/ready").json()["database"] == "A"
     assert browser.get("/", headers={"Host": "external.invalid"}).status_code == 400
@@ -139,6 +146,13 @@ def exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant):
                  "/supply-ui/inspector/supply", "/supply-ui/assets/app.js", "/cocktail/"):
         assert browser.get(path).status_code == 200, path
     assert browser.get("/craft/").status_code == 404
+    for path in ("/member/", "/member/privacy", "/member/app.js",
+                 "/staff/growth/", "/staff/growth/pos-entry.js", "/growth/health"):
+        assert browser.get(path).status_code == 200, path
+    assert browser.get("/api/v1/growth/public/config").status_code == 200
+    assert browser.get("/api/v1/growth/staff/store-options").status_code == 401
+    assert browser.post("/api/v1/growth/dev/staff-login", json={}).status_code == 404
+    assert browser.post("/api/v1/growth/internal/payment-event", json={}).status_code == 404
     for path in ("/totally-unknown", "/hq/random",
                  "/hq/stores/layout/assets/no.js", "/api/unknown", "/work/craft"):
         assert browser.get(path).status_code == 404, path
@@ -150,6 +164,28 @@ def exercise(browser, first, tr, pos_grant, supply_grant, inspection_grant):
     assert browser.post("/api/v1/identity/pos-session", json={}).status_code == 404
     assert browser.post("/api/v1/auth/isolated/login", headers={"Origin": base_origin},
                         json={"username": "internal-stage-user", "password": "example-only-password-22222"}).status_code == 200
+    growth_shops = browser.get("/api/v1/growth/staff/store-options")
+    assert growth_shops.status_code == 200, growth_shops.text
+    assert growth_shops.json()["stores"] == ["BSVT"]
+    growth_staff = browser.get("/api/v1/growth/staff/me?store_id=BSVT")
+    assert growth_staff.status_code == 200, growth_staff.text
+    assert growth_staff.json()["actor_tr"] == tr
+    assert browser.get("/api/v1/growth/staff/me?store_id=BSVS").status_code == 422
+    guest_login = browser.post("/api/v1/growth/dev/guest-login",
+                               json={"subject": "synthetic-v43-guest", "store_id": "BSVT"})
+    assert guest_login.status_code == 200, guest_login.text
+    member_headers = {"X-Growth-CSRF": browser.cookies["bsv_growth_csrf"]}
+    registration = browser.post("/api/v1/growth/public/register",
+        json={"display_name": "虚构会员", "privacy_accepted": True},
+        headers=member_headers)
+    assert registration.status_code == 200, registration.text
+    customer_id = registration.json()["customer_id"]
+    repeated = browser.post("/api/v1/growth/public/register",
+        json={"display_name": "重复入会", "privacy_accepted": True},
+        headers=member_headers)
+    assert repeated.status_code == 200 and repeated.json()["customer_id"] == customer_id
+    assert browser.get("/api/v1/growth/public/me").json()["customer_id"] == customer_id
+    # Isolated visits and fake paid facts cannot become a real commission payable.
     scope = browser.get("/supply-ui/api/me")
     assert scope.status_code == 200, scope.text
     assert scope.json()["employee_id"] == "EMP" + tr[2:]
