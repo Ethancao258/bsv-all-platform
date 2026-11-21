@@ -172,3 +172,27 @@ jobs:
           name: v4-1-isolated-browser
           path: ${{ runner.temp }}/v41-ui
           if-no-files-found: warn
+
+  customer-growth-v43:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install candidate dependencies and pinned ingress extras
+        run: |
+          python -m pip install -r services/api/customer_growth/requirements.txt pytest
+          python -m pip install --no-deps -r services/api/customer_growth/requirements.stage.lock
+          python -m pip check
+      - name: Verify candidate registration, attribution, consent and POS-context denials
+        run: |
+          python -m pytest -q tests/customer_growth/test_flow.py tests/customer_growth/test_service_preferences.py
+          python -m compileall -q services/api/customer_growth platform/lighthouse/internal-stage
+          node --check apps/guest-web/member/app.js
+          node --check apps/staff-center/growth/app.js
+          node --check apps/staff-center/growth/pos-entry.js
