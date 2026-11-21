@@ -200,10 +200,14 @@ def business(flow, employee, reviewer, approver, second, people, browser_check):
                                  "before_confirmation_denied": True})
     pos_order(employee, flow, first_terminal)
     pos_order(second, flow, second_terminal)
+    growth_context = growth_pos_flow(employee, flow)
     if browser_check:
         browser = flow.device(reviewer, "BSVT", "WEB")
         browser_check(browser)
     post(reviewer, ACADEMY + f"/devices/{first_terminal['device_id']}/revoke")
+    if growth_context:
+        # A formerly authorized staff member must lose customer access immediately.
+        call(employee, "GET", "/api/v1/growth/staff/guest-context?context=" + growth_context, 403)
     call(employee, "GET", "/api/state", (401, 403))
     call(second, "GET", "/api/state", 200)
     case(flow.results, "POS", {"authorized_terminals": 2, "unpaid_orders": 2, "one_device_revoked": True})
@@ -246,6 +250,97 @@ def business(flow, employee, reviewer, approver, second, people, browser_check):
     case(flow.results, "CROSS_STORE", {"other_store_theory_not_enough": True, "overlap_denied": True,
                                        "other_store_after_independent_practical_and_shift": True,
                                        "credential_revocation_and_retraining": True, "beijing_midnight": True})
+
+
+def growth_pos_flow(employee, flow):
+    """Real HTTP: customer consent -> live POS visit -> scoped taste -> revocation.
+
+    Uses only private synthetic users/records and never calls a payment writer.
+    """
+    if not stage_growth_enabled(employee):
+        case(flow.results, "GROWTH_POS", {}, "BLOCKED", "Isolated member service not active")
+        return None
+    scope=call(employee,"GET","/api/v1/growth/staff/me?store_id=BSVT",200)
+    require(scope["actor_tr"]==TARGET and scope["can_marketing"] is False,
+            "POS staff received an unauthorized marketing or claim role")
+    call(employee,"GET","/api/v1/growth/staff/queue?store_id=BSVT",403)
+    with httpx.Client(base_url=flow.base, timeout=12, trust_env=False) as customer:
+        cid_source = "stage-" + flow.tag.lower()
+        call(customer, "POST", "/api/v1/growth/dev/guest-login", 200,
+             {"subject":cid_source,"store_id":"BSVT"})
+        hdr={"X-Growth-CSRF": customer.cookies["bsv_growth_csrf"]}
+        reg=call(customer, "POST", "/api/v1/growth/public/register", 200,
+                 {"privacy_accepted":True, "display_name":"合成会员"}, hdr)
+        cid=reg["customer_id"]
+        reg2=call(customer, "POST", "/api/v1/growth/public/register", 200,
+                  {"privacy_accepted":True, "display_name":"重复虚构会员"}, hdr)
+        require(reg2["customer_id"]==cid and reg2["already_registered"],"Duplicate customer ID")
+        call(customer, "POST", "/api/v1/growth/public/taste", 200,
+             {"tags":["果香酸爽"],"share_for_service":True}, hdr)
+        configured=call(customer,"GET","/api/v1/growth/public/config",200)["stores"]
+        valid=call(customer, "POST", "/api/v1/growth/public/pos-link", 200, {"store_id":"BSVT"}, hdr)
+        if "BSVS" in configured:
+            wrong=call(customer, "POST", "/api/v1/growth/public/pos-link", 200, {"store_id":"BSVS"}, hdr)
+            wrong_token=wrong["token"]
+        else:
+            # The real Lighthouse isolated baseline authorizes only BSVT.
+            # A tampered but otherwise valid token must still fail closed.
+            wrong_token=valid["token"][:-1]+("f" if valid["token"][-1]!="f" else "e")
+        state=call(employee, "GET", "/api/state", 200)
+        headers={"X-BSV-CSRF":state["csrf"],"Origin":flow.base}
+        seat=next((x["id"] for x in state["seats"] if x["enabled"] and x["id"]
+                   not in {v["seat_id"] for v in state["visits"]}
+                   and x.get("cleaning_state")!="DIRTY"), None)
+        require(seat is not None,"No available POS seat for member integration")
+        run=str(uuid4())
+        payload={"seat_id":seat,"acceptance_run":run,"_action_id":str(uuid4())}
+        opened=call(employee,"POST","/api/seats/open",200,payload,headers)
+        visit=opened["visit_id"]
+        context=None
+        try:
+            call(employee,"GET","/api/visits/customer-context?visit_id="+visit,404)
+            call(employee,"POST","/api/visits/customer-link",403,
+                 {"visit_id":visit,"proof":wrong_token},headers)
+            action_id=str(uuid4())
+            link_request={"visit_id":visit,"proof":valid["token"],"_action_id":action_id}
+            first=call(employee,"POST","/api/visits/customer-link",200,link_request,headers)
+            require(first["linked"] is True,"Customer proof was not bound to this visit")
+            retry=call(employee,"POST","/api/visits/customer-link",200,link_request,headers)
+            require(retry.get("duplicate") is True,"Lost response retry was not idempotent")
+            call(employee,"POST","/api/visits/customer-link",409,
+                 {**link_request,"_action_id":str(uuid4())},headers)
+            linked=call(employee,"GET","/api/state",200)
+            visit_row=next(v for v in linked["visits"] if v["id"]==visit)
+            require(visit_row["canonical_customer_linked"] is True and visit_row["member"] is None,
+                    "Linked customer incorrectly became a SILVER member or discount")
+            result=call(employee,"GET","/api/visits/customer-context?visit_id="+visit,200)
+            context=result["context"]
+            from urllib.parse import quote
+            url="/api/v1/growth/staff/guest-context?context="+quote(context,safe="")
+            tags=call(employee,"GET",url,200)
+            require(tags["tags"]==["果香酸爽"] and tags["share_for_service"] is True,
+                    "POS visit consent was not validated through identity/shift")
+            with httpx.Client(base_url=flow.base,timeout=12,trust_env=False) as anonymous:
+                call(anonymous,"GET",url,401)
+            call(customer,"POST","/api/v1/growth/public/taste",200,
+                 {"tags":["果香酸爽"],"share_for_service":False},hdr)
+            require(call(employee,"GET",url,200)["tags"]==[],
+                    "Revoked sharing persisted in POS customer view")
+            case(flow.results,"GROWTH_POS",{
+                "stable_customer_id":True,"one_use_proof":True,"scope_denials":True,
+                "live_pos_authorization":True,"guest_revocation_immediate":True,
+                "payments_enabled":False})
+        finally:
+            call(employee,"POST","/api/visits/cancel",200,
+                 {"visit_id":visit,"acceptance_run":run,"_action_id":str(uuid4())},headers)
+        if context:
+            call(employee,"GET","/api/v1/growth/staff/guest-context?context="+context,403)
+        return context
+
+
+def stage_growth_enabled(employee):
+    response=employee.get("/growth/health")
+    return response.status_code==200 and response.json().get("mode")=="isolated"
 
 
 def pos_order(client, flow, terminal):

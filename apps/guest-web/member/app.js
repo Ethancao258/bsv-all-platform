@@ -34,6 +34,11 @@
   setVisible('store-picker',!selectedStore);
   el('source-label').textContent=sourceText();
   el('wechat').disabled=!conf.enabled||!conf.wechat_enabled;
+  setVisible('isolated-login',conf.mode==='isolated');
+  const visitorStores=el('pos-store');visitorStores.replaceChildren();
+  visitorStores.add(new Option('请选择实际到店门店',''));
+  for(const store of conf.stores||[])visitorStores.add(new Option(names[store]||store,store));
+  visitorStores.value=conf.stores.includes(selectedStore)?selectedStore:'';
   el('wxhint').textContent=!conf.enabled?'会员服务暂不可用，请稍后再试。':
      conf.wechat_enabled?'仅用于确认会员身份，不会读取聊天记录或通讯录。':
      '当前未开放在线身份验证。请向门店工作人员咨询。';
@@ -63,10 +68,11 @@
  }
  async function refresh(){
   if(!appConfig)hydrateConfig(await request('/public/config'));
-  let me;try{me=await request('/public/me')}catch(e){setVisible('login',true);setVisible('register',false);setVisible('member',false);setVisible('taste',false);setVisible('privacy-control',false);setVisible('requests',false);if(e.message&&!/身份验证/.test(e.message))notice(e.message,'error');return;}
+  let me;try{me=await request('/public/me')}catch(e){setVisible('login',true);setVisible('register',false);setVisible('member',false);setVisible('taste',false);setVisible('pos-link',false);setVisible('privacy-control',false);setVisible('requests',false);if(e.message&&!/身份验证/.test(e.message))notice(e.message,'error');return;}
   setVisible('login',false);
-  if(!me.registered){setVisible('register',true);setVisible('member',false);setVisible('taste',false);setVisible('privacy-control',false);setVisible('requests',false);el('source').textContent='注册来源：'+(names[me.source_store_id]||'已记录');return;}
-  profile=me;setVisible('register',false);setVisible('member',true);setVisible('taste',true);setVisible('privacy-control',true);
+  if(!me.registered){setVisible('register',true);setVisible('member',false);setVisible('taste',false);setVisible('pos-link',false);setVisible('privacy-control',false);setVisible('requests',false);el('source').textContent='注册来源：'+(names[me.source_store_id]||'已记录');return;}
+  profile=me;setVisible('register',false);setVisible('member',true);setVisible('taste',true);
+  setVisible('pos-link',appConfig.mode==='isolated');setVisible('privacy-control',true);
   el('display-name').textContent=me.display_name&&me.display_name!=='会员'?me.display_name+'，欢迎回来':'欢迎回来';
   el('customerid').textContent='BSV · '+me.customer_id.slice(0,8).toUpperCase();
   el('tier').textContent=me.membership_status==='ACTIVE'?'有效会员':'已注册';
@@ -82,6 +88,31 @@
   if(!selectedStore){notice('请先选择了解文森特的门店。','error');el('store-choice').focus();return;}
   const args=new URLSearchParams({store_id:selectedStore});if(invite)args.set('invite',invite);
   location.assign('/api/v1/growth/auth/wechat/start?'+args);
+ });
+ el('synthetic-login').addEventListener('click',async()=>{
+  if(appConfig?.mode!=='isolated')return;
+  const subject=el('synthetic-subject').value.trim();
+  if(!/^[A-Za-z0-9_-]{3,70}$/.test(subject)){notice('请填写3至70位虚构标识，不得包含真实客户信息。','error');return;}
+  const btn=el('synthetic-login');busy(btn,true);
+  try{
+   await request('/dev/guest-login','POST',{subject,store_id:appConfig.stores.includes(selectedStore)?selectedStore:appConfig.stores[0]});
+   notice('内部模拟身份已建立，请完成虚构会员登记。','ok');await refresh();
+  }catch(e){notice(e.message,'error')}finally{busy(btn,false)}
+ });
+ el('issue-pos-link').addEventListener('click',async()=>{
+  const store_id=el('pos-store').value;
+  if(!appConfig?.stores.includes(store_id)){notice('请先选择本次实际到店门店。','error');return;}
+  const btn=el('issue-pos-link');busy(btn,true);
+  try{const result=await request('/public/pos-link','POST',{store_id});
+   el('pos-token').value=result.token;
+   notice('一次性接待授权码已生成，有效120秒。','ok');
+  }catch(e){notice(e.message,'error')}finally{busy(btn,false)}
+ });
+ el('copy-pos-link').addEventListener('click',async()=>{
+  const token=el('pos-token').value;
+  if(!token){notice('请先生成授权码。','error');return;}
+  try{await navigator.clipboard.writeText(token);notice('授权码已复制，请向当班员工出示。','ok')}
+  catch{el('pos-token').focus();el('pos-token').select();notice('请手动复制已选中的授权码。','error')}
  });
  el('submit').addEventListener('click',async()=>{
   if(!el('privacy').checked){notice('请先阅读并确认会员个人信息处理说明。','error');return;}

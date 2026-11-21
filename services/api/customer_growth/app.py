@@ -3,7 +3,7 @@
 API contract: /api/v1/growth. Never infer a paid order from POS's simulated checkout.
 """
 from __future__ import annotations
-import base64, hashlib, hmac, json, os, re, secrets, time, uuid
+import base64, binascii, hashlib, hmac, json, os, re, secrets, time, uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from io import BytesIO
@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import (Boolean, DateTime, ForeignKey, Integer, String, Text, Index, text,
                         UniqueConstraint, create_engine, select)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from services.api.bsv1 import bsv_growth_pos as pos_contract
 
 ROOT = Path(__file__).resolve().parents[3]
 ENV = os.getenv('BSV_GROWTH_ENV', 'disabled')
@@ -35,6 +36,7 @@ WECHAT_SECRET = os.getenv('BSV_WECHAT_SECRET', '')
 WECHAT_REDIRECT = os.getenv('BSV_WECHAT_REDIRECT', '')
 PAYMENT_SIGNING_KEY = os.getenv('BSV_GROWTH_PAYMENT_SIGNING_KEY', '')
 POS_CONTEXT_KEY = os.getenv('BSV_GROWTH_POS_CONTEXT_KEY', '')
+POS_LINK_KEY = os.getenv('BSV_GROWTH_LINK_KEY', '')
 POS_VERIFY_URL = os.getenv('BSV_GROWTH_POS_VERIFY_URL', '')
 POS_VERIFY_TOKEN = os.getenv('BSV_GROWTH_POS_VERIFY_TOKEN', '')
 PRIVACY_APPROVED = os.getenv('BSV_GROWTH_PRIVACY_APPROVED', '0') == '1'
@@ -375,6 +377,40 @@ def set_guest(response: Response, db: Session, provider: str, subject: str, stor
         response.set_cookie(name, value, max_age=7*86400, httponly=http_only, secure=secure, samesite='lax', path='/')
 
 
+def trusted_pos_staff_scope(request: Request, identity_tr: str) -> str:
+    """Check real POS device, academy qualification, current shift and actor identity.
+
+    identity.A /me intentionally filters the standalone POS_SERVICE qualification,
+    since that API cannot itself prove the live academy/device state.
+    """
+    if not TRUST_IDENTITY or not POS_VERIFY_URL or len(POS_VERIFY_TOKEN) < 32:
+        raise HTTPException(503, "集团POS当班核验尚未接通")
+    parsed=urlparse(POS_VERIFY_URL)
+    if (parsed.scheme != 'http' or parsed.hostname not in ('127.0.0.1','localhost')
+            or parsed.username or parsed.password or parsed.query or parsed.fragment
+            or parsed.path != '/api/v1/visits/customer-context/verify'):
+        raise HTTPException(503, "内部POS核验目标不符合受控配置")
+    target=parsed._replace(path='/api/v1/visits/customer-staff/verify').geturl()
+    try:
+        with httpx.Client(timeout=4, trust_env=False, follow_redirects=False) as client:
+            result=client.post(target, json={},
+                               headers={'Authorization':'Bearer '+POS_VERIFY_TOKEN,
+                                        'Cookie':request.headers.get('cookie','')})
+        if result.status_code in (401,403):
+            raise HTTPException(403, "尚未取得该门店的当班POS接待资格")
+        result.raise_for_status()
+        proof=result.json()
+    except HTTPException:
+        raise
+    except (httpx.HTTPError, ValueError, TypeError) as exc:
+        raise HTTPException(503,"POS当班权限暂时无法核验") from exc
+    if (proof.get('allowed') is not True or proof.get('active_shift') is not True
+            or proof.get('actor_tr') != identity_tr
+            or proof.get('store_id') not in STORES):
+        raise HTTPException(403,"当前身份与POS当班权限不匹配")
+    return proof['store_id']
+
+
 def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq=False, action=None) -> tuple[str,str]:
     if write:
         mutation_origin(request)
@@ -408,8 +444,12 @@ def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq
     if not me.get('tr_code') or not me.get('emp_code') or not me.get('active') or LEGAL_ENTITY not in me.get('active_legal_entities',[]):
         raise HTTPException(403, '人员资格不符合要求')
     action = action or ('hq.people.read' if hq else 'marketing.task.write')
-    if not any(g.get('action') == action and g.get('legal_entity_id') == LEGAL_ENTITY
-               and (hq or g.get('store_id') == store_id) for g in me.get('grants',[])):
+    if action == 'pos.order.read' and TRUST_IDENTITY:
+        verified_store=trusted_pos_staff_scope(request, me['tr_code'])
+        if not store_id or verified_store != store_id or hq:
+            raise HTTPException(403, '员工当前POS设备不属于该门店')
+    elif not any(g.get('action') == action and g.get('legal_entity_id') == LEGAL_ENTITY
+                 and (hq or g.get('store_id') == store_id) for g in me.get('grants',[])):
         raise HTTPException(403, '缺少对应岗位授权')
     if write:
         csrf = request.cookies.get('bsv_csrf','')
@@ -554,6 +594,38 @@ def register(body: Register, request: Request):
                 'referral':'PREBOUND' if assigned else 'AVAILABLE_FOR_CLAIM'}
 
 
+class PosLinkRequest(BaseModel):
+    store_id: str = Field(min_length=3,max_length=40)
+
+
+@app.post(BASE_PATH + '/public/pos-link')
+def create_guest_pos_link(body: PosLinkRequest, request: Request):
+    """One-time guest-consented 120s proof for a *trusted* POS to consume.
+
+    No business discount, payment, verified visit or POS permission is implied.
+    The customer chooses the venue being visited; the POS binds an actual live visit.
+    """
+    require_enabled()
+    require_store(body.store_id)
+    if not ISOLATED:
+        # Production customer authority/legacy dedup has not passed G0/G1.
+        raise HTTPException(503, '正式客户主库尚未验收')
+    with db_session() as db:
+        sess = require_guest(request, db, True)
+        person = customer_for_session(db, sess)
+        if person is None:
+            raise HTTPException(404, '请先完成会员注册')
+        try:
+            proof = pos_contract.make_guest_link(person.id, body.store_id, POS_LINK_KEY)
+        except pos_contract.ProofError as exc:
+            raise HTTPException(503, '门店会员关联服务尚未启用') from exc
+        db.add(Audit(actor='customer:'+person.id, action='POS_LINK_PROOF_ISSUED',
+                     target=person.id, metadata_json=json.dumps({'store_id':body.store_id})))
+        db.commit()
+    return {'token':proof,'store_id':body.store_id,'expires_in_seconds':120,
+            'notice':'仅用于当次到店会员关联；需在点单台由授权员工核验'}
+
+
 @app.get(BASE_PATH + '/public/me')
 def guest_me(request: Request):
     with db_session() as db:
@@ -620,15 +692,17 @@ def read_pos_context(context:str) -> dict:
         if not hmac.compare_digest(expect,mac):
             raise ValueError('bad signature')
         record=json.loads(base64.urlsafe_b64decode(body+'='*(-len(body)%4)))
-        if not {'customer_id','store_id','visit_id','exp','iat'} <= record.keys():
-            raise ValueError('missing fields')
+        if not isinstance(record, dict) or set(record)!={'customer_id','store_id','visit_id','exp','iat'}:
+            raise ValueError('missing or unrecognized fields')
+        if type(record['exp']) is not int or type(record['iat']) is not int:
+            raise ValueError('invalid timestamps')
         if record['exp'] < time.time() or record['iat'] > time.time()+10 or record['exp']-record['iat']>120:
             raise ValueError('expired')
         if any(not isinstance(record[k],str) or not 3<=len(record[k])<=80
                for k in ('customer_id','store_id','visit_id')):
             raise ValueError('invalid ids')
         return record
-    except (ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
+    except (ValueError,TypeError,KeyError,binascii.Error,OverflowError,json.JSONDecodeError) as exc:
         raise HTTPException(403,'接待授权已失效，请从点单台重新进入') from exc
 
 
@@ -643,11 +717,20 @@ def staff_guest_context(request:Request, context:str):
         # A valid signature and staff grant alone never prove an active visit.
         if not (POS_VERIFY_URL and POS_VERIFY_TOKEN):
             raise HTTPException(503,'当前无法核验接待权限')
+        parsed=urlparse(POS_VERIFY_URL)
+        if (parsed.scheme!='http' or parsed.hostname not in ('127.0.0.1','localhost')
+                or parsed.username or parsed.password or parsed.query or parsed.fragment
+                or parsed.path!='/api/v1/visits/customer-context/verify'):
+            raise HTTPException(503,'接待核验目标尚未经过可信内网配置')
         try:
-            r=httpx.post(POS_VERIFY_URL,json={
+            # This call stays on loopback and sends the *current browser* POS+identity
+            # cookies so the POS revalidates the device, course, shift and store.
+            with httpx.Client(trust_env=False,timeout=4,follow_redirects=False) as client:
+                r=client.post(POS_VERIFY_URL,json={
                 'actor_tr':tr,'store_id':ctx['store_id'],'visit_id':ctx['visit_id'],
                 'customer_id':ctx['customer_id']},
-                headers={'Authorization':'Bearer '+POS_VERIFY_TOKEN},timeout=4)
+                headers={'Authorization':'Bearer '+POS_VERIFY_TOKEN,
+                         'Cookie':request.headers.get('cookie','')})
             r.raise_for_status()
             facts=r.json()
             if not all(facts.get(k) is True for k in (
@@ -693,18 +776,37 @@ def staff_store_options(request:Request):
             raise HTTPException(403,'人员身份或任职资格未生效')
         allowed={g.get('store_id') for g in me.get('grants',[])
                  if g.get('status','active')=='active' and g.get('legal_entity_id')==LEGAL_ENTITY
-                 and g.get('action') in ('marketing.task.write','pos.order.read')
+                 and g.get('action')=='marketing.task.write'
                  and g.get('store_id') in STORES}
+        # POS grants in /me alone cannot prove active academy shift or device.
+        if TRUST_IDENTITY and POS_VERIFY_URL and POS_VERIFY_TOKEN:
+            try:
+                allowed.add(trusted_pos_staff_scope(request,me['tr_code']))
+            except HTTPException as exc:
+                if exc.status_code not in (401,403) and not allowed:
+                    raise
     return {'stores':sorted(allowed)}
 
 
 @app.get(BASE_PATH + '/staff/me')
 def staff_me(request: Request, store_id: str):
     require_store(store_id)
-    tr,name=staff_auth(request,store_id)
+    # A working POS bartender may provide service without holding the
+    # separate marketing.task.write permission. Never grant claim/invite rights
+    # merely because a POS session was authorized.
+    can_marketing=True
+    try:
+        tr,name=staff_auth(request,store_id,action='marketing.task.write')
+    except HTTPException as exc:
+        if exc.status_code != 403:
+            raise
+        tr,name=staff_auth(request,store_id,action='pos.order.read')
+        can_marketing=False
     with db_session() as db:
-        sig=latest_signature(db,tr)
+        sig=latest_signature(db,tr) if can_marketing else None
         return {'actor_tr':tr,'name':name,'store_id':store_id,
+                'can_marketing':can_marketing,
+                'service_requires_live_pos':True,
                 'signature_version':sig.version if sig else None,
                 'policy_version':'GROWTH-CLAIM-V1'}
 

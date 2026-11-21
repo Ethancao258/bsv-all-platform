@@ -17,7 +17,8 @@ REPO = Path(__file__).resolve().parents[3]
 PROOF_ROOT = stage.ROOT / "control"
 REPO_NAME = "Ethancao258/bsv-all-platform"
 JOBS = {"architecture", "bsv1", "menu-v13-1", "supply-v2", "identity-r2",
-        "db-contract-preflight", "lighthouse-internal-stage", "v4-1-integration"}
+        "db-contract-preflight", "lighthouse-internal-stage", "v4-1-integration",
+        "customer-growth-v43"}
 CI_FIELDS = ("url", "headSha", "event", "status", "conclusion", "workflowName", "jobs")
 REMOTE = re.compile(r"^(?:https://github\.com/|git@github\.com:)Ethancao258/bsv-all-platform(?:\.git)?$")
 SHA = re.compile("[a-f0-9]{40}")

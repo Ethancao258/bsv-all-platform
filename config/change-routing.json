@@ -245,6 +245,39 @@
       "stage": "COCKTAIL_PREVIEW_ONLY"
     },
     {
+      "module_id": "customer-growth",
+      "examples": [
+        "免费会员注册",
+        "客户认领",
+        "营销推广",
+        "POS会员桌次绑定",
+        "风味授权",
+        "佣金候选"
+      ],
+      "primary_domain": "customer",
+      "code_paths": [
+        "services/api/customer_growth",
+        "services/api/bsv1/bsv_growth_pos.py",
+        "apps/guest-web/member",
+        "apps/staff-center/growth",
+        "platform/lighthouse/internal-stage/ingress.py"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@pos.service",
+        "bsv-all-internal-stage@ingress.service"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "test_paths": [
+        "tests/customer_growth",
+        "tests/v4-1",
+        "tests/internal-stage"
+      ],
+      "risk": "HIGH_PERSONAL_DATA_AND_FINANCIAL",
+      "stage": "ISOLATED_CANDIDATE_ONLY_NO_PAYMENT"
+    },
+    {
       "module_id": "deployment-config",
       "examples": [
         "一键上云",

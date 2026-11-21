@@ -106,11 +106,18 @@ def test_v4_authority_two_devices_on_upgraded_v3_data(tmp_path, monkeypatch):
 
     data = tmp_path / "bsv-all-internal-stage" / "pos"
     data.mkdir(parents=True)
+    link_key="V43-TEST-CUSTOMER-POS-LINK-SIGNING-KEY-1234567890"
+    context_key="V43-TEST-POS-READ-CONTEXT-SIGNING-KEY-123456789"
+    verify_token="V43-TEST-PRIVATE-POS-VERIFY-SERVICE-KEY-123456"
     pos_env = {"BSV_MODE": "staging", "BSV_DB_PATH": str(data / "synthetic.sqlite3"),
                "BSV_V9_XLSX": str(data / "synthetic-v9.xlsx"), "BSV_STAGE_POS_PIN": "81351593300",
                "BSV_PRIVATE_SSH_TUNNEL": "1", "BSV_POS_INTERNAL_STAGE": "1", "BSV_POS_IDENTITY_REQUIRED": "1",
                "BSV_POS_DEVICE_REQUIRED": "1", "BSV_POS_STORE_LEGAL_JSON": '{"BSVT":"DEMO_LEGAL","BSVS":"DEMO_LEGAL"}',
-               "BSV_POS_IDENTITY_TOKEN": "test-pos-service-isolated"}
+               "BSV_POS_IDENTITY_TOKEN": "test-pos-service-isolated",
+               "BSV_POS_GROWTH_INTEGRATION":"1",
+               "BSV_GROWTH_LINK_KEY":link_key,
+               "BSV_GROWTH_POS_CONTEXT_KEY":context_key,
+               "BSV_GROWTH_POS_VERIFY_TOKEN":verify_token}
     run(sys.executable, STAGE / "seed_pos.py", env=pos_env)
     assert (data / "synthetic.sqlite3").is_file()
     supply_python = os.environ.get("BSV_STAGE_SUPPLY_PYTHON", sys.executable)
@@ -132,7 +139,19 @@ def test_v4_authority_two_devices_on_upgraded_v3_data(tmp_path, monkeypatch):
         with listen((sys.executable, ROOT / "services/api/bsv1/app.py"), pos_env, tmp_path, "pos") as pos:
             with listen(supply, sup_env, tmp_path, "supply") as sup:
                 settings = {"BSV_STAGE_POS_PORT": str(pos), "BSV_STAGE_SUPPLY_PORT": str(sup),
-                            "BSV_STAGE_IDENTITY_PORT": str(identity_port)}
+                            "BSV_STAGE_IDENTITY_PORT": str(identity_port),
+                            "BSV_STAGE_GROWTH_ENABLED":"1",
+                            "BSV_GROWTH_ENV":"isolated",
+                            "BSV_GROWTH_TRUST_IDENTITY":"1",
+                            "BSV_GROWTH_DB_URL":"sqlite:///"+str(tmp_path/"growth-candidate.sqlite3"),
+                            "BSV_GROWTH_IDENTITY_ME_URL":orig+"/api/v1/identity/me",
+                            "BSV_GROWTH_SIGNING_KEY":"V43-ISOLATED-INTEGRATION-SESSION-KEY-98765432101",
+                            "BSV_GROWTH_LINK_KEY":link_key,
+                            "BSV_GROWTH_POS_CONTEXT_KEY":context_key,
+                            "BSV_GROWTH_POS_VERIFY_TOKEN":verify_token,
+                            "BSV_GROWTH_POS_VERIFY_URL":f"http://127.0.0.1:{pos}/api/v1/visits/customer-context/verify",
+                            "BSV_GROWTH_STORE_IDS":"BSVT,BSVS",
+                            "BSV_GROWTH_LEGAL_ENTITY_ID":"DEMO_LEGAL"}
                 with listen(ingress, settings, tmp_path, "ingress") as port:
                     base = f"http://127.0.0.1:{port}"
                     browser_check = None
@@ -148,6 +167,7 @@ def test_v4_authority_two_devices_on_upgraded_v3_data(tmp_path, monkeypatch):
                         driver["run_flow"](base, PASSWORDS, results, str(uuid4()),
                                            browser_check=browser_check if index == 1 else None)
                         assert {r["test_id"] for r in results if r["status"] == "BLOCKED"} == {"CENTRAL_D_E"}, results
+                        assert any(r["test_id"]=="GROWTH_POS" and r["status"]=="PASS" for r in results),results
                         assert all(any(r["test_id"] == check and r["status"] == "PASS" for r in results)
                                    for check in {"IDENTITY", "LEGACY_ALIAS", "TRAINING", "SHIFT", "POS", "CROSS_STORE"})
     # A code rollback leaves the additive tables in place. The actual pinned V3

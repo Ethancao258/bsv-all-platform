@@ -508,6 +508,7 @@ function renderOrderPanel(){const panel=$('orderPanel'),v=getVisit(activeVisitId
  const dTotal=v.drafts.reduce((sum,d)=>sum+d.price_cents*d.quantity,0);
  const previewDiscount=v.member?v.drafts.reduce((sum,d)=>sum+(d.discount_eligible?Math.floor((d.price_cents*10+50)/100):0)*d.quantity,0):0;
  const dNet=dTotal-previewDiscount;
+ const useGrowthMember=internalStage&&deviceRequired;
  const memberTxt=v.member?`<b>银卡 · 9折</b> ${esc(v.member.surname)} · ${esc(v.member.masked_phone)}`:
                          '未确认会员 · 默认原价（银卡会员最高9折）';
  const productBtns=(data.products||[]).filter(p=>p.demo_only).map(p=>`<button class="product-btn" data-product="${esc(p.id)}"><span>＋ ${esc(p.name)}${p.demo_only?' <small class="product-drill-tag">演练</small>':''}</span><span>${yuan(p.price_cents)}</span></button>`).join('');
@@ -525,8 +526,13 @@ function renderOrderPanel(){const panel=$('orderPanel'),v=getVisit(activeVisitId
  <div class="order-sub">到店 ${chinaFull(v.created_at)} · ${v.guests}人</div></div>
  <div class="order-content">
  <div class="compact-row"><strong>当前人数</strong><span class="counter"><button id="guestMinus">−</button><strong>${v.guests}</strong><button id="guestPlus">＋</button></span></div>
- <div class="member-area"><div class="section-label">会员识别｜输入手机后四位</div><div class="member-row"><input id="memberLast4" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="输入4位尾号"/><button id="memberSearchBtn" class="outline">查询会员</button></div>
- <p class="member-note">${memberTxt} ${v.member?'<button id="memberRemove" class="inline-link">移除关联</button>':''}</p></div>
+ ${useGrowthMember?`<div class="member-area"><div class="section-label">统一会员 · 本次到店授权</div>
+ <p class="member-note">${v.canonical_customer_linked?"✓ 本桌已关联顾客本人授权的会员（仅接待，不自动打折）":"尚未关联会员；请客人在会员页生成120秒一次性授权码。"}</p>
+ <div class="member-row"><input id="growthProof" type="text" maxlength="900" autocomplete="off" spellcheck="false" placeholder="粘贴客人本人生成的授权码" aria-label="一次性会员授权码"/><button type="button" class="outline" id="growthLinkBtn" ${v.canonical_customer_linked?"disabled":""}>核验并绑定</button></div>
+ <p class="member-note"><a href="/member/" target="_blank" rel="noopener noreferrer">打开会员注册与授权页</a> · 只记录本次到店，不触发折扣或支付</p>
+ <button type="button" id="growthTasteBtn" class="outline" ${v.canonical_customer_linked?"":"disabled"}>查看顾客授权的接待风味</button>
+ </div>`:`<div class="member-area"><div class="section-label">会员识别｜输入手机后四位</div><div class="member-row"><input id="memberLast4" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="输入4位尾号"/><button id="memberSearchBtn" class="outline">查询会员</button></div>
+ <p class="member-note">${memberTxt} ${v.member?'<button id="memberRemove" class="inline-link">移除关联</button>':''}</p></div>`}
  <div class="section-label">添加商品 · 搜索中文或拼音首字母</div><input id="quickProductSearch" class="quick-product-search" type="search" autocomplete="off" placeholder="输入商品名称 / 拼音首字母，如 yl、mjt"/><div id="quickSearchResults" class="quick-search-results"></div>
  <div class="catalog-status-mini">${internalStage?`有 ${readyCount} 种演练商品可以点单。点击商品后先核对，再提交未付款订单。`:`已上架 ${catalogCount} 种现场成品；其中 ${readyCount} 款有AJ统一售价可下单，其余请在Excel补价。正式支付仍未接入，结账登记不代表真实到账。`}</div>
 
@@ -566,8 +572,22 @@ function renderOrderPanel(){const panel=$('orderPanel'),v=getVisit(activeVisitId
    setPage('queue');await openRecipeGuide(b.dataset.serve);
  }));
  $('catalogInline').onclick=()=>setPage('catalog');
- $('memberSearchBtn').onclick=safe(()=>searchMember(v));$('memberLast4').onkeydown=e=>{if(e.key==='Enter')$('memberSearchBtn').click();};
- if($('memberRemove'))$('memberRemove').onclick=()=>dialog({title:'移除本桌会员关联？',body:'只影响以后正式提交的商品，不修改已下单商品的价格快照。',onConfirm:async()=>{await send('/api/members/assign',{visit_id:v.id,member_id:null});await refresh();}});
+ if(useGrowthMember){
+  $('growthLinkBtn').onclick=safe(async()=>{
+    const proof=$('growthProof').value.trim();
+    if(!proof)throw Error('请先输入客人本人生成的授权码');
+    await send('/api/visits/customer-link',{visit_id:v.id,proof});
+    await refresh();flash('本桌会员关联成功；此操作不是结账或优惠核销');
+  });
+  $('growthTasteBtn').onclick=safe(async()=>{
+    const result=await getJson('/api/visits/customer-context?visit_id='+encodeURIComponent(v.id));
+    window.location.assign('/staff/growth/?store_id='+encodeURIComponent(result.store_id)+'#service&context='+encodeURIComponent(result.context));
+  });
+ }else{
+  $('memberSearchBtn').onclick=safe(()=>searchMember(v));
+  $('memberLast4').onkeydown=e=>{if(e.key==='Enter')$('memberSearchBtn').click();};
+  if($('memberRemove'))$('memberRemove').onclick=()=>dialog({title:'移除本桌会员关联？',body:'只影响以后正式提交的商品，不修改已下单商品的价格快照。',onConfirm:async()=>{await send('/api/members/assign',{visit_id:v.id,member_id:null});await refresh();}});
+ }
  $('guestMinus').onclick=safe(async()=>{await send('/api/visits/set-guests',{visit_id:v.id,guests:v.guests-1});await refresh();});
  $('guestPlus').onclick=safe(async()=>{await send('/api/visits/set-guests',{visit_id:v.id,guests:v.guests+1});await refresh();});
  $('submitOrder').onclick=()=>confirmSubmit(v,dNet);

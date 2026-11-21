@@ -18,6 +18,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
+import tarfile
 import time
 import urllib.error
 import urllib.request
@@ -194,6 +195,8 @@ def preflight(sha):
     for required in ("git", "tar", "useradd", "systemctl", "diff", "ss"):
         if not shutil.which(required):
             raise RuntimeError(f"Missing host dependency: {required}")
+    if not output("tar", "--version").startswith("tar (GNU tar)"):
+        raise RuntimeError("Safe release extraction requires Ubuntu GNU tar")
     for executable in ("postgres", "initdb", "psql", "pg_isready", "pg_dump", "pg_restore"):
         if not os.access(PG / executable, os.X_OK):
             raise RuntimeError(f"Install approved native PostgreSQL 17 binaries: missing {executable}")
@@ -234,27 +237,115 @@ def environment(name, values):
     return values
 
 
-def upgrade_blank_ingress_environment(values):
-    path = ROOT / "config" / "ingress.env"
-    payload = "\n".join(f"{key}={shlex.quote(str(value))}" for key, value in sorted(values.items()))
+def upgrade_managed_environment(name, values, allowed_additions, *, allow_blank=False):
+    """Atomic, strictly additive upgrade of a 0600 root-owned managed env.
+
+    Do not rewrite arbitrary existing values: previous release configurations
+    are already managed, and their secrets must remain stable across rollouts.
+    """
+    path = ROOT / "config" / f"{name}.env"
     if not path.exists():
-        environment("ingress", values)
-        return
+        environment(name, values)
+        return values
     private_file(path, 0)
-    old = path.read_text().strip()
-    if old == payload:
-        return
-    if old:
-        raise RuntimeError("Unexpected existing ingress.env; refuse automatic rewrite")
-    temp = path.with_name("ingress.env.next")
-    if temp.exists() or temp.is_symlink():
-        raise RuntimeError("Unexpected ingress environment upgrade marker")
+    raw = path.read_text().strip()
+    parsed = {}
+    for line in raw.splitlines():
+        if "=" not in line:
+            raise RuntimeError("Managed environment has invalid line")
+        key, value = line.split("=", 1)
+        if key in parsed or key not in values:
+            raise RuntimeError("Unexpected managed environment key")
+        tokens = shlex.split(value)
+        if len(tokens) != 1:
+            raise RuntimeError("Invalid managed environment quoting")
+        parsed[key] = tokens[0]
+    if not raw and not allow_blank:
+        raise RuntimeError("Unexpected empty managed environment")
+    if any(parsed[key] != str(values[key]) for key in parsed):
+        raise RuntimeError("Existing managed environment has changed; refuse overwrite")
+    if raw and set(values) - set(parsed) - set(allowed_additions):
+        raise RuntimeError("Unapproved environment keys requested")
+    payload = "\n".join(f"{key}={shlex.quote(str(value))}" for key, value in sorted(values.items()))
+    if raw == payload:
+        return values
+    tmp = path.with_name(path.name + ".next")
+    if tmp.exists() or tmp.is_symlink():
+        raise RuntimeError("Unreviewed config migration marker")
     try:
-        write_secret(temp, payload)
-        temp.replace(path)
+        write_secret(tmp, payload)
+        tmp.replace(path)
         sync_directory(path.parent)
     finally:
-        temp.unlink(missing_ok=True)
+        tmp.unlink(missing_ok=True)
+    return values
+
+
+
+def upgrade_identity_environment(values):
+    """Permit only the c51 isolated identity token-map addition for layout read.
+
+    Keep every pre-existing token, account, policy and secret byte-equivalent.
+    Unknown keys or grants are configuration drift, not a reason to rewrite.
+    """
+    path = ROOT / "config" / "identity.env"
+    if not path.exists():
+        return environment("identity", values)
+    private_file(path, 0)
+    parsed = {}
+    for line in path.read_text().splitlines():
+        if "=" not in line:
+            raise RuntimeError("Invalid managed identity environment")
+        key, raw_value = line.split("=", 1)
+        if key in parsed or key not in values:
+            raise RuntimeError("Unexpected managed identity environment key")
+        words = shlex.split(raw_value)
+        if len(words) != 1:
+            raise RuntimeError("Malformed managed identity environment")
+        parsed[key] = words[0]
+    desired = {key: str(value) for key, value in values.items()}
+    if set(parsed) != set(desired):
+        raise RuntimeError("Missing or additional managed identity environment keys")
+    if parsed == desired:
+        return values
+    special = "BSV_SERVICE_TOKENS_JSON"
+    if any(parsed[key] != desired[key] for key in desired if key != special):
+        raise RuntimeError("Existing identity secrets or settings changed; refuse overwrite")
+    try:
+        old_tokens = json.loads(parsed[special])
+        new_tokens = json.loads(desired[special])
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError("Invalid managed identity service token map") from exc
+    if (not isinstance(old_tokens, dict) or not isinstance(new_tokens, dict)
+            or set(old_tokens) != {"pos", "supply"}
+            or set(new_tokens) != {"pos", "supply", "layout-admin"}
+            or any(old_tokens[key] != new_tokens[key] for key in old_tokens)
+            or new_tokens["layout-admin"].get("actions") != ["hq.layout.read"]
+            or new_tokens["layout-admin"].get("stores") != ["BSVT"]
+            or new_tokens["layout-admin"].get("legal_entities") != ["DEMO_LEGAL"]
+            or len(new_tokens["layout-admin"].get("token", "")) < 32):
+        raise RuntimeError("Unapproved identity token-map modification")
+    payload = "\n".join(f"{key}={shlex.quote(value)}"
+                        for key, value in sorted(desired.items()))
+    tmp = path.with_name(path.name + ".next")
+    if tmp.exists() or tmp.is_symlink():
+        raise RuntimeError("Unreviewed identity config migration marker")
+    try:
+        write_secret(tmp, payload)
+        tmp.replace(path)
+        sync_directory(path.parent)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return values
+
+
+def upgrade_blank_ingress_environment(values):
+    """Backwards-compatible caller for the original V4.3 blank ingress upgrade."""
+    return upgrade_managed_environment(
+        "ingress", values,
+        {"BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_LINK_KEY",
+         "BSV_GROWTH_POS_VERIFY_TOKEN", "BSV_GROWTH_POS_VERIFY_URL"},
+        allow_blank=True)
 
 
 def prepare_config():
@@ -282,6 +373,11 @@ def prepare_config():
         write_secret(config / key, secrets.token_urlsafe(36)) for key in
         ("pg-password", "pos-token", "layout-token", "supply-token", "session-key", "privacy-pepper", "reviewer1", "reviewer2")]
     pin = write_secret(config / "pos-pin", str(10**10 + secrets.randbelow(9 * 10**10)))
+    # Three distinct secrets: guest authorization, POS visit context and the
+    # private POS-to-growth verification channel. Never share payment secrets.
+    growth_link = write_secret(config / "growth-link-key", secrets.token_urlsafe(48))
+    growth_context = write_secret(config / "growth-pos-context-key", secrets.token_urlsafe(48))
+    growth_verify = write_secret(config / "growth-pos-verify-token", secrets.token_urlsafe(48))
     store_map = {"BSVT": "DEMO_LEGAL"}
     token_map = {
         "pos": {"token": pos_token, "actions": ["pos.order.read", "pos.order.create"],
@@ -293,7 +389,7 @@ def prepare_config():
                    "actions": ["supply.dispatch", "supply.receive", "quality.self_check",
                                "quality.independent.submit", "quality.independent.review"]},
     }
-    identity = environment("identity", {
+    identity = upgrade_identity_environment({
         "BSV_APP_ENV": "isolated", "BSV_AUTH_PROVIDER": "isolated",
         "BSV_DB_A_URL": f"postgresql+psycopg://{DB_USER}:{dbpw}@127.0.0.1:18764/{DB}",
         "BSV_DB_SSLMODE": "disable", "BSV_SESSION_SECRET": session, "BSV_PRIVACY_PEPPER": pepper,
@@ -303,7 +399,7 @@ def prepare_config():
         "BSV_DEMO_ADMIN_1_PASSWORD": reviewer1, "BSV_DEMO_ADMIN_2_PASSWORD": reviewer2,
         "BSV_SERVICE_TOKENS_JSON": json.dumps(token_map, separators=(",", ":")),
     })
-    pos = environment("pos", {
+    pos = upgrade_managed_environment("pos", {
         "BSV_MODE": "staging", "BSV_PORT": "18762", "BSV_PRIVATE_SSH_TUNNEL": "1",
         "BSV_DB_PATH": str(DATA / "pos" / "synthetic.sqlite3"),
         "BSV_V9_XLSX": str(DATA / "pos" / "synthetic-v9.xlsx"),
@@ -313,7 +409,13 @@ def prepare_config():
         "BSV_POS_STORE_LEGAL_JSON": json.dumps(store_map, separators=(",", ":")),
         "BSV_POS_LAYOUT_SERVICE_TOKEN": layout_token, "BSV_POS_LAYOUT_SCOPE_MODE": "isolated-synthetic",
         "BSV_APP_ENV": "isolated",
-    })
+        "BSV_POS_GROWTH_INTEGRATION": "1",
+        "BSV_GROWTH_LINK_KEY": growth_link,
+        "BSV_GROWTH_POS_CONTEXT_KEY": growth_context,
+        "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
+    }, {"BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
+        "BSV_APP_ENV", "BSV_POS_GROWTH_INTEGRATION", "BSV_GROWTH_LINK_KEY",
+        "BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_POS_VERIFY_TOKEN"})
     environment("postgres", {"BSV_STAGE_COMPONENT_DATA": str(DATA / "postgres")})
     # Isolated, synthetic candidate only; no additional public service or authority.
     # The original ingress.env is an empty, root-owned environment file on older
@@ -328,6 +430,10 @@ def prepare_config():
         "BSV_GROWTH_IDENTITY_ME_URL": "http://127.0.0.1:18761/api/v1/identity/me",
         "BSV_GROWTH_SIGNING_KEY": growth_signing,
         "BSV_GROWTH_SIGNATURE_KEY": growth_signature,
+        "BSV_GROWTH_LINK_KEY": growth_link,
+        "BSV_GROWTH_POS_CONTEXT_KEY": growth_context,
+        "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
+        "BSV_GROWTH_POS_VERIFY_URL": "http://127.0.0.1:18762/api/v1/visits/customer-context/verify",
         "BSV_GROWTH_LEGAL_ENTITY_ID": "DEMO_LEGAL",
         "BSV_GROWTH_STORE_IDS": "BSVT",
         "BSV_GROWTH_PUBLIC_BASE_URL": "http://127.0.0.1:18760",
@@ -350,34 +456,351 @@ def prepare_config():
     return identity, pos, dbpw, pin
 
 
+def git_blob_sha(data):
+    digest = hashlib.sha1()
+    digest.update(f"blob {len(data)}\0".encode("ascii"))
+    digest.update(data)
+    return digest.hexdigest()
+
+
+def verified_source_manifest(sha):
+    """Resolve an immutable commit and enumerate every path/blob before extraction."""
+    if not re.fullmatch(r"[a-f0-9]{40}", sha or ""):
+        raise RuntimeError("A full immutable Git commit SHA is required")
+    env = {**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"}
+    try:
+        commit = subprocess.run(git("rev-parse", "--verify", f"{sha}^{{commit}}"),
+                                check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env).stdout.strip()
+        if commit != sha:
+            raise RuntimeError("Release SHA does not resolve to the exact requested commit")
+        tree = subprocess.run(git("rev-parse", "--verify", f"{sha}^{{tree}}"),
+                              check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env).stdout.strip()
+        if not re.fullmatch(r"[a-f0-9]{40}", tree):
+            raise RuntimeError("Release commit has an invalid Git tree identity")
+        listing = subprocess.run(git("ls-tree", "-r", "-t", "-z", "--full-tree", sha),
+                                 check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env).stdout
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError("Release SHA or tree is unavailable in the verified Git object store") from error
+    entries = {}
+    for record in listing.split(b"\0"):
+        if not record:
+            continue
+        metadata, raw_path = record.split(b"\t", 1)
+        mode, kind, oid = metadata.decode("ascii").split(" ")
+        path = raw_path.decode("utf-8", "strict")
+        parts = path.split("/")
+        if (not path or path.startswith("/") or "\\" in path
+                or any(part in {"", ".", ".."} for part in parts)
+                or any(len(part.encode("utf-8")) > 255 for part in parts)):
+            raise RuntimeError("Git tree contains a path unsafe for release extraction")
+        if path in entries:
+            raise RuntimeError("Git tree contains duplicate paths")
+        if mode == "040000" and kind == "tree":
+            entries[path] = {"kind": "directory"}
+        elif mode in {"100644", "100755"} and kind == "blob" and re.fullmatch(r"[a-f0-9]{40}", oid):
+            entries[path] = {"kind": "file", "mode": mode, "oid": oid}
+        else:
+            # There are no reviewed source symlinks, submodules, or special files.
+            raise RuntimeError(f"Unsupported tracked release entry: {path}")
+    if not entries:
+        raise RuntimeError("Release commit has an empty source tree")
+    return {"format": 1, "commit": sha, "tree": tree, "entries": dict(sorted(entries.items()))}
+
+
+def _safe_tar_path(name):
+    path = name.rstrip("/")
+    parts = path.split("/")
+    if (not path or path.startswith("/") or "\\" in path
+            or any(part in {"", ".", ".."} for part in parts)):
+        raise RuntimeError("Unsafe path in release archive")
+    return path
+
+
+def validate_source_archive(archive_path, manifest):
+    """Validate tar member names, types, executable bits, and blob IDs before extraction."""
+    seen = set()
+    with tarfile.open(archive_path, "r:") as archive:
+        for member in archive:
+            path = _safe_tar_path(member.name)
+            if path in seen or path not in manifest["entries"]:
+                raise RuntimeError("Release archive paths do not match the immutable Git tree")
+            seen.add(path)
+            expected = manifest["entries"][path]
+            if member.mode & 0o7000:
+                raise RuntimeError("Release archive contains special permission bits")
+            if expected["kind"] == "directory":
+                if not member.isdir():
+                    raise RuntimeError("Release archive directory type differs from Git tree")
+            else:
+                if not member.isreg() or bool(member.mode & stat.S_IXUSR) != (expected["mode"] == "100755"):
+                    raise RuntimeError("Release archive file type or executable bit differs from Git tree")
+                stream = archive.extractfile(member)
+                if stream is None:
+                    raise RuntimeError("Release archive file has no content")
+                digest = hashlib.sha1()
+                digest.update(f"blob {member.size}\0".encode("ascii"))
+                size = 0
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    size += len(chunk)
+                    digest.update(chunk)
+                if size != member.size or digest.hexdigest() != expected["oid"]:
+                    raise RuntimeError("Release archive file content differs from immutable Git blob")
+    if seen != set(manifest["entries"]):
+        raise RuntimeError("Release archive is incomplete for the immutable Git tree")
+
+
+def verify_source_tree(source, manifest):
+    if source.is_symlink() or not source.is_dir():
+        raise RuntimeError("Release source root is not a real directory")
+    seen = set()
+    stack = [source]
+    while stack:
+        folder = stack.pop()
+        with os.scandir(folder) as children:
+            for item in children:
+                path = Path(item.path)
+                relative = path.relative_to(source).as_posix()
+                expected = manifest["entries"].get(relative)
+                if expected is None or relative in seen:
+                    raise RuntimeError("Release source paths differ from the immutable Git tree")
+                seen.add(relative)
+                info = path.lstat()
+                if info.st_uid != os.geteuid() or info.st_mode & 0o7000:
+                    raise RuntimeError("Unsafe release source owner or special permission bits")
+                if expected["kind"] == "directory":
+                    if not stat.S_ISDIR(info.st_mode):
+                        raise RuntimeError("Release source directory differs from immutable Git tree")
+                    stack.append(path)
+                else:
+                    if not stat.S_ISREG(info.st_mode):
+                        raise RuntimeError("Release source file is not a regular file")
+                    with path.open("rb") as stream:
+                        digest = hashlib.sha1()
+                        size = info.st_size
+                        digest.update(f"blob {size}\0".encode("ascii"))
+                        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                            digest.update(chunk)
+                    if digest.hexdigest() != expected["oid"]:
+                        raise RuntimeError("Release source file differs from immutable Git blob")
+    if seen != set(manifest["entries"]):
+        raise RuntimeError("Release source is incomplete for the immutable Git tree")
+
+
+def _allowed_venv_symlink(path, target):
+    relative = path.relative_to(ROOT / "releases").as_posix()
+    if relative in {"identity/lib64", "supply/lib64"}:
+        return target == "lib"
+    if relative in {"identity/bin/python", "supply/bin/python"}:
+        return target == "python3"
+    if relative in {"identity/bin/python3.12", "supply/bin/python3.12"}:
+        return target == "python3"
+    if relative in {"identity/bin/python3", "supply/bin/python3"}:
+        resolved = os.path.realpath("/usr/bin/python3")
+        return target in {"/usr/bin/python3", "/usr/bin/python3.12", resolved} and os.path.realpath(target) == resolved
+    return False
+
+
+def normalize_release_permissions(dest, manifest=None):
+    """Grant service identities read/traverse access to versioned code and venvs.
+
+    ROOT/config and DATA contain private credentials and are never traversed.
+    This also repairs a completed release built under a root systemd umask 077.
+    """
+    if dest.parent != ROOT / "releases" or dest.is_symlink() or not dest.is_dir():
+        raise RuntimeError("Unexpected managed release directory")
+    source = dest / "src"
+    source_directories = {path for path, entry in (manifest or {}).get("entries", {}).items()
+                          if entry["kind"] == "directory"}
+    source_files = {path: entry for path, entry in (manifest or {}).get("entries", {}).items()
+                    if entry["kind"] == "file"}
+    if manifest:
+        verify_source_tree(source, manifest)
+    stack = [dest]
+    while stack:
+        folder = stack.pop()
+        info = folder.lstat()
+        if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o7000):
+            raise RuntimeError("Unsafe release directory ownership or type")
+        in_source = folder == source or source in folder.parents
+        rel_dir = folder.relative_to(source).as_posix() if folder != source and in_source else ""
+        if info.st_mode & 0o022 and not (manifest and in_source and rel_dir in source_directories):
+            raise RuntimeError("Unexpected writable release directory")
+        folder.chmod(0o755)
+        with os.scandir(folder) as children:
+            for item in children:
+                path = Path(item.path)
+                child = path.lstat()
+                if child.st_uid != os.geteuid() or child.st_mode & 0o7000:
+                    raise RuntimeError("Unsafe release entry ownership or special permissions")
+                if stat.S_ISDIR(child.st_mode):
+                    stack.append(path)
+                elif stat.S_ISLNK(child.st_mode):
+                    if not _allowed_venv_symlink(path, os.readlink(path)):
+                        raise RuntimeError("Unapproved release symlink")
+                elif stat.S_ISREG(child.st_mode):
+                    rel = path.relative_to(source).as_posix() if in_source else None
+                    if path == dest / ".built":
+                        if child.st_mode & 0o077:
+                            raise RuntimeError("Release build marker must remain private")
+                        continue
+                    if manifest:
+                        if in_source:
+                            expected = source_files.get(rel)
+                            if expected is None:
+                                raise RuntimeError("Unexpected release source file")
+                            executable = expected["mode"] == "100755"
+                        else:
+                            if child.st_mode & 0o022:
+                                raise RuntimeError("Unexpected writable generated release file")
+                            executable = bool(child.st_mode & stat.S_IXUSR)
+                    else:
+                        if child.st_mode & 0o022:
+                            raise RuntimeError("Unsafe release file ownership or permissions")
+                        executable = bool(child.st_mode & stat.S_IXUSR)
+                    path.chmod(0o755 if executable else 0o644)
+                else:
+                    raise RuntimeError("Unsupported file type in release")
+    if manifest:
+        verify_source_tree(source, manifest)
+
+
+def release_inventory_sha256(dest):
+    """Attest every generated source/venv path, type, mode, link target, and content."""
+    records = []
+    stack = [dest]
+    while stack:
+        folder = stack.pop()
+        with os.scandir(folder) as children:
+            for item in children:
+                path = Path(item.path)
+                if path == dest / ".built":
+                    continue
+                info = path.lstat()
+                if info.st_uid != os.geteuid() or info.st_mode & 0o7000:
+                    raise RuntimeError("Unsafe owner or special permissions in built release")
+                relative = path.relative_to(dest).as_posix()
+                mode = stat.S_IMODE(info.st_mode)
+                if stat.S_ISDIR(info.st_mode):
+                    if mode & 0o022:
+                        raise RuntimeError("Writable directory in built release")
+                    records.append([relative, "directory", mode])
+                    stack.append(path)
+                elif stat.S_ISREG(info.st_mode):
+                    if mode & 0o022:
+                        raise RuntimeError("Writable file in built release")
+                    digest = hashlib.sha256()
+                    with path.open("rb") as stream:
+                        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                            digest.update(chunk)
+                    records.append([relative, "file", mode, digest.hexdigest()])
+                elif stat.S_ISLNK(info.st_mode):
+                    target = os.readlink(path)
+                    if not _allowed_venv_symlink(path, target):
+                        raise RuntimeError("Unapproved symlink in built release")
+                    records.append([relative, "symlink", target])
+                else:
+                    raise RuntimeError("Unsupported file type in built release")
+    encoded = json.dumps(sorted(records), separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def release_marker(manifest, inventory_sha):
+    return json.dumps({"manifest": manifest, "inventory_sha256": inventory_sha},
+                      sort_keys=True, separators=(",", ":")) + "\n"
+
+
+def create_release_venv(dest, source, name):
+    directory = dest / name
+    run("/usr/bin/python3", "-m", "venv", directory)
+    run(directory / "bin/python", "-m", "pip", "--disable-pip-version-check", "install",
+        "--no-deps", "-r", source / f"services/api/{name}/requirements.lock")
+    if name == "identity":
+        run(directory / "bin/python", "-m", "pip", "--disable-pip-version-check", "install",
+            "--no-deps", "-r", source / "services/api/customer_growth/requirements.stage.lock")
+    run(directory / "bin/python", "-m", "pip", "check")
+
+
 def build(sha):
+    manifest = verified_source_manifest(sha)
     dest = ROOT / "releases" / sha
     if dest.is_symlink():
         raise RuntimeError("Release directory is a symlink")
-    if (dest / ".built").is_file():
+    marker = dest / ".built"
+    if marker.is_symlink():
+        raise RuntimeError("Release build marker is a symlink")
+    if marker.is_file():
+        info = marker.lstat()
+        if info.st_uid != os.geteuid() or not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077:
+            raise RuntimeError("Existing release marker does not attest this immutable commit and tree")
+        try:
+            attestation = json.loads(marker.read_text())
+        except (OSError, json.JSONDecodeError) as error:
+            raise RuntimeError("Existing release build marker is invalid") from error
+        inventory = attestation.get("inventory_sha256") if isinstance(attestation, dict) else None
+        if (not isinstance(attestation, dict)
+                or set(attestation) != {"manifest", "inventory_sha256"}
+                or attestation.get("manifest") != manifest
+                or not isinstance(inventory, str)
+                or not re.fullmatch(r"[a-f0-9]{64}", inventory)):
+            raise RuntimeError("Existing release marker references another immutable commit or tree")
+        verify_source_tree(dest / "src", manifest)
+        if attestation.get("inventory_sha256") != release_inventory_sha256(dest):
+            raise RuntimeError("Built release files differ from their per-file inventory attestation")
+        normalize_release_permissions(dest, manifest)
         return dest
     if dest.exists():
         if dest.is_symlink() or sha in (sha_at(ROOT / "current"), sha_at(ROOT / "previous")):
             raise RuntimeError("Incomplete release is active or has an unexpected path")
         dest.rename(dest.with_name(f".failed-{sha}-{secrets.token_hex(4)}"))
-    dest.mkdir(mode=0o755)
+    dest.mkdir(mode=0o700)
     source = dest / "src"
-    source.mkdir()
-    with subprocess.Popen(git("archive", sha), stdout=subprocess.PIPE) as archive:
-        run("tar", "-xf", "-", "-C", source, stdin=archive.stdout)
-        if archive.wait() != 0:
-            raise RuntimeError("git archive failed")
+    source.mkdir(mode=0o700)
+    archive_path = dest / ".source.tar"
+    fd = os.open(archive_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as archive_stream:
+            env = {**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"}
+            with subprocess.Popen(git("archive", "--format=tar", sha), stdout=archive_stream, env=env) as archive:
+                if archive.wait() != 0:
+                    raise RuntimeError("git archive failed")
+            archive_stream.flush()
+            os.fsync(archive_stream.fileno())
+        validate_source_archive(archive_path, manifest)
+        run("tar", "--no-same-owner", "--no-same-permissions", "-xf", archive_path, "-C", source)
+        verify_source_tree(source, manifest)
+    finally:
+        archive_path.unlink(missing_ok=True)
     for name in ("identity", "supply"):
-        directory = dest / name
-        run("/usr/bin/python3", "-m", "venv", directory)
-        run(directory / "bin/python", "-m", "pip", "--disable-pip-version-check", "install",
-            "--no-deps", "-r", source / f"services/api/{name}/requirements.lock")
-        if name == "identity":
-            run(directory / "bin/python", "-m", "pip", "--disable-pip-version-check", "install",
-                "--no-deps", "-r", source / "services/api/customer_growth/requirements.stage.lock")
-        run(directory / "bin/python", "-m", "pip", "check")
-    (dest / ".built").touch()
+        create_release_venv(dest, source, name)
+    normalize_release_permissions(dest, manifest)
+    inventory_sha = release_inventory_sha256(dest)
+    with marker.open("x", encoding="utf-8") as stream:
+        stream.write(release_marker(manifest, inventory_sha))
+        stream.flush()
+        os.fsync(stream.fileno())
+    marker.chmod(0o600)
+    normalize_release_permissions(dest, manifest)
     return dest
+
+
+def verify_release_access(dest):
+    """Check the candidate source and runtime interpreters as their real service users."""
+    def assert_readable_tree(service_name, path):
+        result = as_user(
+            service_name, "/usr/bin/find", "-P", path,
+            "(", "-type", "d", "!", "-executable", "-o", "-type", "f", "!", "-readable", ")",
+            "-print", "-quit", stdout=subprocess.PIPE,
+        )
+        if result.stdout.strip():
+            raise RuntimeError(f"Release files are not traversable/readable by {user(service_name)}")
+
+    for service_name in START_ORDER:
+        as_user(service_name, "/usr/bin/test", "-x", dest / "src")
+        assert_readable_tree(service_name, dest / "src")
+    for service_name in ("identity", "supply"):
+        python = dest / service_name / "bin/python"
+        as_user(service_name, "/usr/bin/test", "-x", python)
+        assert_readable_tree(service_name, dest / service_name)
 
 
 def prepare_pg(dbpw):
@@ -807,8 +1230,10 @@ def deploy(sha):
     if not previous and ((DATA / "postgres" / "pg" / "PG_VERSION").exists()
                          or (DATA / "pos" / "synthetic.sqlite3").exists()):
         raise RuntimeError("Existing private data has no managed active release; investigate before deployment")
-    identity, pos, dbpw, pin = prepare_config()
     dest = build(sha)
+    identity, pos, dbpw, pin = prepare_config()
+    # Fail while the old release still runs if any service cannot read/traverse the candidate.
+    verify_release_access(dest)
     if not UNIT_FILE.exists():
         UNIT_FILE.write_bytes((REPO / TOOL / UNIT_FILE.name).read_bytes())
     run("systemctl", "daemon-reload")

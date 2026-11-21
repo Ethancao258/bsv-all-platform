@@ -5,6 +5,7 @@ on:
       - "apps/guest-web/member/**"
       - "apps/staff-center/growth/**"
       - "services/api/customer_growth/**"
+      - "services/api/bsv1/bsv_growth_pos.py"
       - "tests/customer_growth/**"
       - ".github/workflows/customer-growth-ci.yml"
       - "contracts/customer-growth/**"
@@ -13,6 +14,9 @@ on:
     branches:
       - feature/customer-growth-mvp-v1
       - feature/customer-growth-experience-v2
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
@@ -32,7 +36,7 @@ jobs:
       - name: Parse Python modules
         run: python -m compileall -q services/api/customer_growth
       - name: Run end-to-end isolated API checks
-        run: python -m pytest -q tests/customer_growth/test_flow.py tests/customer_growth/test_service_preferences.py
+        run: python -m pytest -q tests/customer_growth/test_flow.py tests/customer_growth/test_service_preferences.py tests/customer_growth/test_pos_contract.py
       - name: Validate customer and employee web scripts
         run: |
           node --check apps/guest-web/member/app.js

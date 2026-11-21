@@ -48,6 +48,7 @@ POS_GET_API = {
     "/api/store-layout-art", "/api/reports/checkout-csv",
     "/api/production/photo", "/api/state", "/api/receipt", "/api/history",
     "/api/audit", "/api/members/search", "/api/catalog/item", "/api/production/recipe",
+    "/api/visits/customer-context",
 }
 POS_POST_API = {
     "/api/login", "/api/logout", "/api/pos/device-login", "/api/pos/device-forget",
@@ -59,7 +60,7 @@ POS_POST_API = {
     "/api/drafts/remove", "/api/orders/submit", "/api/members/assign",
     "/api/orders/add-item", "/api/orders/remove-item", "/api/orders/serve-item",
     "/api/unused-serve-item", "/api/visits/set-member", "/api/visits/set-guests",
-    "/api/visits/transfer", "/api/checkouts/settle-demo",
+    "/api/visits/transfer", "/api/visits/customer-link", "/api/checkouts/settle-demo",
     "/api/visits/depart-demo", "/api/visits/cancel",
     "/api/housekeeping/clean-seat", "/api/housekeeping/clean-bathroom",
     "/api/groups/set-mode",

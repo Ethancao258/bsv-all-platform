@@ -23,6 +23,7 @@ from bsv_ledger import checkout_report, checkout_csv_bytes
 import bsv_layouts
 import bsv_one
 import bsv_device_pos as device_pos
+import bsv_growth_pos as growth_pos
 DB_PATH = get_database_path(ROOT)
 # Cloud preview is exclusively behind a local-loopback reverse proxy with HTTPS + access gate.
 MODE = os.environ.get('BSV_MODE', 'local').strip().lower()
@@ -36,6 +37,13 @@ SCHEMA_VERSION = 28
 
 def device_required():
     return os.environ.get("BSV_POS_DEVICE_REQUIRED") == "1"
+
+
+def growth_integration():
+    return (MODE == "staging" and device_required()
+            and os.environ.get("BSV_POS_INTERNAL_STAGE") == "1"
+            and os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1"
+            and os.environ.get("BSV_POS_GROWTH_INTEGRATION") == "1")
 
 
 def application_version():
@@ -277,6 +285,8 @@ def init_db():
         bsv_one.schema(db)
         if device_required():
             device_pos.schema(db)
+        if growth_integration():
+            growth_pos.install_pos_projection(db)
     with tx() as db:
         # 仅新建的规范数据库可在本程序内迭代；拒绝迁移旧V2.x测试库。
         bsv_layouts.apply_data(db, configs,force=previous_db_version<SCHEMA_VERSION)
@@ -506,6 +516,11 @@ def state(db,staff):
         v['member_reference']=db.execute('''SELECT member_reference FROM visit_member_links
                     WHERE visit_id=? AND person_slot=1''',(v['id'],)).fetchone()
         v['member_reference']=v['member_reference'][0] if v['member_reference'] else ''
+        v['canonical_customer_linked']=False
+        if growth_integration():
+            linked=db.execute("""SELECT canonical_customer_id FROM visit_member_links
+                                 WHERE visit_id=? AND person_slot=1""",(v['id'],)).fetchone()
+            v['canonical_customer_linked']=bool(linked and linked['canonical_customer_id'])
         v['drafts']=[dict(x) for x in db.execute('''SELECT d.*,p.name AS product_name,
            COALESCE(d.price_cents_snapshot,p.price_cents) AS price_cents,p.discount_eligible,
            p.sale_enabled,p.catalog_sha,p.store_id AS product_store_id
@@ -1159,6 +1174,152 @@ class Handler(BaseHTTPRequestHandler):
         staff["role"] = "STAFF"
         return staff
 
+    def growth_customer_link(self, data, staff):
+        """Bind a guest's explicit one-use proof to this authenticated POS visit."""
+        if not growth_integration():
+            raise UserError("会员桌次绑定尚未启用", 403, "GROWTH_DISABLED")
+        self.require_loopback_origin()
+        device = device_pos.parse_device_cookie(self.cookie(device_pos.DEVICE_COOKIE))
+        authority = self.authorize_device_context(staff["session_store_id"], device, "pos.order.create")
+        if device_pos.scope_from(authority) != staff.get("authority"):
+            raise self.device_error("POS_SESSION_CHANGED")
+        visit_id = data.get("visit_id")
+        if not isinstance(visit_id, str) or not growth_pos.VISIT_RE.fullmatch(visit_id):
+            raise UserError("桌次编号无效", 422)
+        if set(data) not in ({"visit_id", "proof"}, {"visit_id", "proof", "_action_id"}):
+            raise UserError("绑定请求字段不符合要求", 422)
+        action_id = data.get("_action_id")
+        if action_id is not None and (not isinstance(action_id, str)
+                                   or not re.fullmatch(r"[a-zA-Z0-9-]{8,90}", action_id)):
+            raise UserError("提交编号不符合规范", 422)
+        action_id = action_id or uid()
+        try:
+            proof = growth_pos.verify_guest_link(
+                data["proof"], staff["session_store_id"], os.environ.get("BSV_GROWTH_LINK_KEY", ""))
+            nonce_hash = growth_pos.nonce_digest(proof["nonce"])
+        except (growth_pos.ProofError, KeyError, TypeError):
+            raise UserError("顾客授权码无效、已过期或与本店不符", 403, "GROWTH_PROOF_INVALID")
+        customer_id = proof["customer_id"]
+        with tx() as db:
+            live_visit(db, staff["session_store_id"], visit_id)
+            used = db.execute(
+                """SELECT visit_id,store_id,customer_id,action_id
+                   FROM bsv_growth_pos_consumed_nonces WHERE nonce_hash=?""",
+                (nonce_hash,)).fetchone()
+            if used:
+                if (used["visit_id"] == visit_id and used["store_id"] == staff["session_store_id"]
+                        and used["customer_id"] == customer_id and used["action_id"] == action_id):
+                    # Identical retry after a lost HTTP response: verify state, not
+                    # merely the nonce, and return the original successful outcome.
+                    linked_now = db.execute("""SELECT 1 FROM visit_member_links
+                                               WHERE visit_id=? AND person_slot=1
+                                               AND canonical_customer_id=?""",
+                                            (visit_id, customer_id)).fetchone()
+                    if linked_now:
+                        self.send_json({"ok":True,"linked":True,"visit_id":visit_id,
+                                        "duplicate":True,
+                                        "notice":"会员关联此前已完成，不产生第二条记录"})
+                        return
+                raise UserError("授权码已使用，请顾客重新生成", 409, "GROWTH_PROOF_REPLAY")
+            linked = db.execute("""SELECT member_id,canonical_customer_id FROM visit_member_links
+                                   WHERE visit_id=? AND person_slot=1""", (visit_id,)).fetchone()
+            if linked and (linked["member_id"] or
+                           (linked["canonical_customer_id"] and linked["canonical_customer_id"] != customer_id)):
+                raise UserError("本桌已关联其他会员，请先由总部核对", 409, "CUSTOMER_LINK_CONFLICT")
+            db.execute("""INSERT INTO bsv_growth_pos_consumed_nonces
+                          (nonce_hash,visit_id,store_id,customer_id,action_id,created_at)
+                          VALUES(?,?,?,?,?,?)""",
+                       (nonce_hash, visit_id, staff["session_store_id"], customer_id,
+                        action_id, now()))
+            db.execute("""INSERT INTO visit_member_links
+                          (visit_id,person_slot,member_reference,canonical_customer_id)
+                          VALUES (?,1,'BSV_ACCOUNT',?)
+                          ON CONFLICT(visit_id,person_slot) DO UPDATE SET
+                          canonical_customer_id=excluded.canonical_customer_id""",
+                       (visit_id, customer_id))
+            record(db, staff, "LINK_CANONICAL_CUSTOMER", visit_id,
+                   {"source": "GUEST_CONSENT_PROOF", "customer_ref_hash": hashlib.sha256(customer_id.encode()).hexdigest()})
+        self.send_json({"ok": True, "linked": True, "visit_id":visit_id,
+                        "notice":"已关联会员到本次桌次；优惠与支付尚需独立验证"})
+
+    def growth_visit_context(self):
+        if not growth_integration():
+            raise UserError("接待授权尚未启用", 403, "GROWTH_DISABLED")
+        staff = self.resolve_auth()
+        if not staff:
+            self.fail_auth("请先登录已授权POS设备")
+            return
+        visit_id = parse_qs(urlparse(self.path).query).get("visit_id", [""])[0]
+        if not growth_pos.VISIT_RE.fullmatch(visit_id):
+            raise UserError("桌次编号无效", 422)
+        with db_read() as db:
+            live_visit(db, staff["session_store_id"], visit_id)
+            row = db.execute("""SELECT canonical_customer_id FROM visit_member_links
+                                WHERE visit_id=? AND person_slot=1""", (visit_id,)).fetchone()
+            if not row or not row["canonical_customer_id"]:
+                raise UserError("本桌没有经过本人授权关联的会员", 404, "CUSTOMER_NOT_LINKED")
+        try:
+            token = growth_pos.make_visit_context(
+                row["canonical_customer_id"], staff["session_store_id"], visit_id,
+                os.environ.get("BSV_GROWTH_POS_CONTEXT_KEY", ""))
+        except growth_pos.ProofError:
+            raise UserError("接待签名服务未配置", 503, "GROWTH_UNAVAILABLE")
+        self.send_json({"context":token,"store_id":staff["session_store_id"],
+                        "expires_in_seconds":90})
+
+    def growth_staff_verify(self, data):
+        """Internal-only live POS shift/device proof for the identity.A employee.
+
+        Identity.A alone must not infer a POS shift from an approved grant:
+        the academy version verifies attendance, course and the actual device.
+        """
+        key = os.environ.get("BSV_GROWTH_POS_VERIFY_TOKEN", "")
+        actual = self.headers.get("Authorization", "")
+        if (not growth_integration() or len(key) < 32
+                or not hmac.compare_digest(actual, "Bearer " + key)
+                or self.client_address[0] not in ("127.0.0.1", "::1")):
+            raise UserError("内部当班核验不可访问", 403, "GROWTH_VERIFY_FORBIDDEN")
+        if data:
+            raise UserError("当班核验字段不正确", 422)
+        staff = self.resolve_auth()  # device + academy + active shift, every request
+        if not staff or not staff.get("authority"):
+            raise UserError("当前员工设备或班次未获准接待", 403, "POS_SCOPE_DENIED")
+        tr = staff["authority"].get("tr_code")
+        store = staff["session_store_id"]
+        if not tr or not store:
+            raise UserError("人员和门店身份不完整", 403, "POS_SCOPE_DENIED")
+        self.send_json({"allowed":True,"active_shift":True,
+                        "actor_tr":tr,"store_id":store})
+
+    def growth_visit_verify(self, data):
+        """Private same-host call; re-authorizes the *actual* browser POS device."""
+        key = os.environ.get("BSV_GROWTH_POS_VERIFY_TOKEN", "")
+        actual = self.headers.get("Authorization", "")
+        if (not growth_integration() or len(key) < 32
+                or not hmac.compare_digest(actual, "Bearer " + key)
+                or self.client_address[0] not in ("127.0.0.1", "::1")):
+            raise UserError("内部接待核验不可访问", 403, "GROWTH_VERIFY_FORBIDDEN")
+        if set(data) != {"actor_tr", "store_id", "visit_id", "customer_id"}:
+            raise UserError("核验字段不正确", 422)
+        tr, store, vid, cid = (data[key] for key in ("actor_tr","store_id","visit_id","customer_id"))
+        if (not isinstance(tr,str) or not re.fullmatch(r"TR[A-Z][0-9]{4}",tr)
+                or not isinstance(store,str) or not growth_pos.ID_RE.fullmatch(store)
+                or not isinstance(vid,str) or not growth_pos.VISIT_RE.fullmatch(vid)
+                or not growth_pos._uuid(cid)):
+            raise UserError("核验实体无效", 422)
+        staff = self.resolve_auth()  # includes uncached identity.A academy device + current shift
+        if not staff or staff["session_store_id"] != store or staff.get("authority",{}).get("tr_code") != tr:
+            raise UserError("当前员工、设备或班次无权接待", 403, "POS_SCOPE_DENIED")
+        with db_read() as db:
+            v=db.execute("SELECT 1 FROM visits WHERE id=? AND store_id=? AND status='OPEN'",
+                         (vid,store)).fetchone()
+            link=db.execute("""SELECT 1 FROM visit_member_links WHERE visit_id=?
+                               AND person_slot=1 AND canonical_customer_id=?""",(vid,cid)).fetchone()
+        if not v or not link:
+            raise UserError("本桌会员关联未通过核验", 403, "POS_LINK_DENIED")
+        self.send_json({"allowed":True,"active_shift":True,"customer_linked":True,
+                        "store_ownership_verified":True})
+
     def fail_auth(self, default):
         error = getattr(self, "auth_error", None) or UserError(default, 401)
         self.send_error_json(error)
@@ -1517,6 +1678,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'province':'北京市','stores':stores,'prototype':True,'version':application_version(),'mode':MODE,
                             **capability});return
         if path=='/api/health':self.send_json(health_snapshot());return
+        if path=='/api/visits/customer-context':
+            try:self.growth_visit_context()
+            except UserError as e:self.send_error_json(e)
+            return
         if device_required() and path.startswith("/api/pos/commands/"):
             request_id = path.removeprefix("/api/pos/commands/")
             if not re.fullmatch(r"[A-Za-z0-9-]{8,90}", request_id):
@@ -1776,6 +1941,12 @@ class Handler(BaseHTTPRequestHandler):
         path=urlparse(self.path).path
         try:
             data=self.read_body()
+            if path == "/api/v1/visits/customer-staff/verify":
+                self.growth_staff_verify(data)
+                return
+            if path == "/api/v1/visits/customer-context/verify":
+                self.growth_visit_verify(data)
+                return
             if path == "/api/pos/device-login":
                 self.device_login(data);return
             if device_required() and path in {"/api/logout", "/api/pos/device-forget"}:
@@ -1848,6 +2019,9 @@ class Handler(BaseHTTPRequestHandler):
                     with tx() as db:db.execute('DELETE FROM sessions WHERE token_digest=?',
                           (hashlib.sha256(jar['bsv_session'].value.encode()).hexdigest(),))
                 self.send_json({'ok':True},delete_cookie=True);return
+            if path == "/api/visits/customer-link":
+                self.growth_customer_link(data, staff)
+                return
             if device_required() or os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1":
                 acceptance_cancel = path == ACCEPTANCE_CANCEL_PATH and "acceptance_run" in data
                 if path not in ACCEPTANCE_ORDER_PATHS and not acceptance_cancel:

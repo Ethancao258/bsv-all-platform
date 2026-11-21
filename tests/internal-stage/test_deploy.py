@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import os
 import sqlite3
+import tarfile
+from io import BytesIO
 from subprocess import CompletedProcess
 from types import SimpleNamespace
 import tempfile
@@ -32,6 +34,7 @@ class ReleaseTest(unittest.TestCase):
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
                 patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
+                patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "activation_checkpoint") as checkpoint, patch.object(stage, "host_evidence"), \
                 patch.object(stage, "switch_services") as services, patch.object(stage, "verify"):
             for sha in (OLD, NEW):
@@ -58,6 +61,7 @@ class ReleaseTest(unittest.TestCase):
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
                 patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
+                patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "migration_compatibility"), \
                 patch.object(stage, "activation_checkpoint") as checkpoint, patch.object(stage, "host_evidence"), \
                 patch.object(stage, "switch_services") as services, \
@@ -91,6 +95,7 @@ class ReleaseTest(unittest.TestCase):
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
                 patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg") as prepare_pg, \
+                patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "migration_compatibility"), \
                 patch.object(stage, "activation_checkpoint", side_effect=RuntimeError("backup failed")), \
                 patch.object(stage, "switch_services") as services, patch.object(stage, "verify"):
@@ -255,9 +260,280 @@ class ReleaseTest(unittest.TestCase):
             stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "1"})
             self.assertIn("BSV_STAGE_GROWTH_ENABLED=1", blank.read_text())
             stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "1"})
-            with self.assertRaisesRegex(RuntimeError, "Unexpected existing"):
+            with self.assertRaisesRegex(RuntimeError, "Existing managed environment has changed"):
                 stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "0"})
             self.assertIn("BSV_STAGE_GROWTH_ENABLED=1", blank.read_text())
+
+    def test_pos_managed_env_allows_explicit_additions_only(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "private_file"):
+            config = stage.ROOT / "config"
+            config.mkdir()
+            pos = config / "pos.env"
+            pos.write_text("BSV_MODE=staging\nBSV_PORT=18762\n")
+            pos.chmod(0o600)
+            values = {"BSV_MODE":"staging", "BSV_PORT":"18762",
+                      "BSV_GROWTH_LINK_KEY":"isolated_test_key"}
+            stage.upgrade_managed_environment(
+                "pos", values, {"BSV_GROWTH_LINK_KEY"})
+            self.assertIn("BSV_GROWTH_LINK_KEY=isolated_test_key", pos.read_text())
+            stage.upgrade_managed_environment(
+                "pos", values, {"BSV_GROWTH_LINK_KEY"})
+            with self.assertRaisesRegex(RuntimeError,"changed"):
+                stage.upgrade_managed_environment(
+                    "pos", dict(values, BSV_GROWTH_LINK_KEY="different_key"),
+                    {"BSV_GROWTH_LINK_KEY"})
+            with self.assertRaisesRegex(RuntimeError,"Unapproved environment keys"):
+                stage.upgrade_managed_environment(
+                    "pos", dict(values, UNREVIEWED_KEY="secret"), set())
+            self.assertNotIn("UNREVIEWED_KEY", pos.read_text())
+
+    def test_real_c51_identity_env_migrates_only_layout_admin_token(self):
+        """Existing deployed identity.env has POS and supply; preserve both exactly."""
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "private_file"):
+            (stage.ROOT / "config").mkdir()
+            old_tokens = {
+                "pos": {"token": "P" * 42, "actions": ["pos.order.read", "pos.order.create"],
+                        "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]},
+                "supply": {"token": "S" * 42, "legal_entity_id": "DEMO_LEGAL",
+                           "stores": ["BSVM", "BSVS", "BSVT"],
+                           "isolated_test_department": "SYNTH-STAGE",
+                           "actions": ["supply.dispatch", "supply.receive"]},
+            }
+            old = {"BSV_APP_ENV": "isolated", "BSV_AUTH_PROVIDER": "isolated",
+                   "BSV_SESSION_SECRET": "unaltered-session-secret",
+                   "BSV_SERVICE_TOKENS_JSON": json.dumps(old_tokens, separators=(",", ":"))}
+            cfg = stage.ROOT / "config" / "identity.env"
+            stage.environment("identity", old)
+            layout = {"token": "L" * 48, "actions": ["hq.layout.read"],
+                      "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]}
+            newer_tokens = dict(old_tokens, **{"layout-admin": layout})
+            new = dict(old, BSV_SERVICE_TOKENS_JSON=json.dumps(newer_tokens, separators=(",", ":")))
+            stage.upgrade_identity_environment(new)
+            migrated = stage.service_config("identity")
+            self.assertEqual(migrated["BSV_SESSION_SECRET"], old["BSV_SESSION_SECRET"])
+            self.assertEqual(json.loads(migrated["BSV_SERVICE_TOKENS_JSON"]), newer_tokens)
+            self.assertEqual(cfg.stat().st_mode & 0o777, 0o600)
+            self.assertFalse((cfg.with_name("identity.env.next")).exists())
+            first = cfg.read_bytes()
+            stage.upgrade_identity_environment(new)
+            self.assertEqual(cfg.read_bytes(), first, "Subsequent deploy may not rewrite managed secrets")
+            with self.assertRaisesRegex(RuntimeError, "Existing identity secrets"):
+                stage.upgrade_identity_environment(dict(new, BSV_SESSION_SECRET="altered"))
+            with self.assertRaisesRegex(RuntimeError, "Unapproved identity token-map"):
+                injected = dict(newer_tokens, arbitrary={"token": "X" * 48,
+                                                          "actions": ["hq.people.read"]})
+                stage.upgrade_identity_environment(
+                    dict(new, BSV_SERVICE_TOKENS_JSON=json.dumps(injected)))
+            self.assertEqual(cfg.read_bytes(), first, "Rejected drift must not mutate config")
+
+    def test_c51_pos_layout_and_growth_keys_upgrade_additively(self):
+        """Only the exact new isolated POS keys may be added on top of c51."""
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "private_file"):
+            config = stage.ROOT / "config"
+            config.mkdir()
+            old = {"BSV_MODE": "staging", "BSV_PORT": "18762",
+                   "BSV_POS_IDENTITY_TOKEN": "old-pos-token"}
+            stage.environment("pos", old)
+            additions = {"BSV_POS_LAYOUT_SERVICE_TOKEN": "layout-test-token",
+                         "BSV_POS_LAYOUT_SCOPE_MODE": "isolated-synthetic",
+                         "BSV_APP_ENV": "isolated",
+                         "BSV_POS_GROWTH_INTEGRATION": "1",
+                         "BSV_GROWTH_LINK_KEY": "isolated-link-test"}
+            allowed = {"BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
+                       "BSV_APP_ENV", "BSV_POS_GROWTH_INTEGRATION",
+                       "BSV_GROWTH_LINK_KEY", "BSV_GROWTH_POS_CONTEXT_KEY",
+                       "BSV_GROWTH_POS_VERIFY_TOKEN"}
+            merged = {**old, **additions}
+            stage.upgrade_managed_environment("pos", merged, allowed)
+            self.assertEqual(stage.service_config("pos"), merged)
+            stage.upgrade_managed_environment("pos", merged, allowed)
+            with self.assertRaisesRegex(RuntimeError, "changed"):
+                stage.upgrade_managed_environment(
+                    "pos", dict(merged, BSV_POS_IDENTITY_TOKEN="other-token"), allowed)
+            with self.assertRaisesRegex(RuntimeError, "Unapproved environment keys"):
+                stage.upgrade_managed_environment(
+                    "pos", dict(merged, UNKNOWN_SECURITY_OVERRIDE="1"), allowed)
+
+    def test_git_archive_build_normalizes_root_umasks_and_revalidates_marker(self):
+        """Exercise the actual immutable archive and cached-release path under both common umasks."""
+        sha = stage.output(*stage.git("rev-parse", "HEAD"))
+        for mask in (0o077, 0o022):
+            with self.subTest(umask=oct(mask)), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "releases").mkdir(mode=0o700)
+                old = root / "releases" / OLD
+                old.mkdir(mode=0o700)
+                (root / "current").symlink_to(old)
+
+                def fake_venv(dest, source, name):
+                    folder = dest / name
+                    (folder / "bin").mkdir(parents=True, mode=0o700)
+                    python = folder / "bin/python"
+                    python.write_text("#!/bin/sh\nexit 0\n")
+                    python.chmod(0o700)
+                    (folder / "lib/python3.12/site-packages").mkdir(parents=True, mode=0o700)
+                    (folder / "lib/python3.12/site-packages/sample.py").write_text("value = 1\n")
+
+                old_mask = os.umask(mask)
+                try:
+                    with patch.object(stage, "ROOT", root), patch.object(stage, "create_release_venv", side_effect=fake_venv) as venv:
+                        release = stage.build(sha)
+                        self.assertEqual(stage.sha_at(root / "current"), OLD)
+                        manifest = stage.verified_source_manifest(sha)
+                        self.assertEqual((release / ".built").stat().st_mode & 0o777, 0o600)
+                        self.assertEqual((release / "src").stat().st_mode & 0o777, 0o755)
+                        for relative, entry in manifest["entries"].items():
+                            path = release / "src" / relative
+                            if entry["kind"] == "directory":
+                                self.assertEqual(path.stat().st_mode & 0o777, 0o755, relative)
+                            else:
+                                expected = 0o755 if entry["mode"] == "100755" else 0o644
+                                self.assertEqual(path.stat().st_mode & 0o777, expected, relative)
+                        venv.reset_mock()
+                        stage.build(sha)
+                        venv.assert_not_called()
+                        sample = release / "identity/lib/python3.12/site-packages/sample.py"
+                        sample.write_text("tampered = True\n")
+                        with self.assertRaisesRegex(RuntimeError, "per-file inventory"):
+                            stage.build(sha)
+                        sample.write_text("value = 1\n")
+                        changed = next(path for path, entry in manifest["entries"].items()
+                                       if entry["kind"] == "file")
+                        source_file = release / "src" / changed
+                        source_file.write_bytes(source_file.read_bytes() + b"tampered")
+                        with self.assertRaisesRegex(RuntimeError, "immutable Git blob"):
+                            stage.build(sha)
+                        self.assertEqual(stage.sha_at(root / "current"), OLD)
+                finally:
+                    os.umask(old_mask)
+
+    def test_archive_accepts_git_permission_metadata_but_rejects_unsafe_members(self):
+        content = b"print('fixture')\n"
+        executable = b"#!/bin/sh\nexit 0\n"
+        manifest = {"entries": {
+            "app": {"kind": "directory"},
+            "app/main.py": {"kind": "file", "mode": "100644", "oid": stage.git_blob_sha(content)},
+            "app/run": {"kind": "file", "mode": "100755", "oid": stage.git_blob_sha(executable)},
+        }}
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = Path(tmp) / "source.tar"
+            with tarfile.open(archive, "w") as tar:
+                directory = tarfile.TarInfo("app")
+                directory.type, directory.mode = tarfile.DIRTYPE, 0o775
+                tar.addfile(directory)
+                for name, data, mode in (("app/main.py", content, 0o664), ("app/run", executable, 0o775)):
+                    entry = tarfile.TarInfo(name)
+                    entry.mode, entry.size = mode, len(data)
+                    tar.addfile(entry, BytesIO(data))
+            stage.validate_source_archive(archive, manifest)
+            release = Path(tmp) / "releases" / NEW
+            source = release / "src"
+            source.mkdir(parents=True, mode=0o700)
+            old_mask = os.umask(0o077)
+            try:
+                stage.run("tar", "--no-same-owner", "--no-same-permissions", "-xf", archive, "-C", source)
+            finally:
+                os.umask(old_mask)
+            with patch.object(stage, "ROOT", Path(tmp)):
+                stage.normalize_release_permissions(release, manifest)
+            self.assertEqual((source / "app").stat().st_mode & 0o777, 0o755)
+            self.assertEqual((source / "app/main.py").stat().st_mode & 0o777, 0o644)
+            self.assertEqual((source / "app/run").stat().st_mode & 0o777, 0o755)
+
+            with tarfile.open(archive, "w") as tar:
+                entry = tarfile.TarInfo("../escape")
+                entry.size = len(content)
+                tar.addfile(entry, BytesIO(content))
+            with self.assertRaisesRegex(RuntimeError, "Unsafe path"):
+                stage.validate_source_archive(archive, manifest)
+
+            with tarfile.open(archive, "w") as tar:
+                entry = tarfile.TarInfo("app/main.py")
+                entry.type, entry.linkname = tarfile.SYMTYPE, "../../etc/passwd"
+                tar.addfile(entry)
+            with self.assertRaisesRegex(RuntimeError, "type or executable bit"):
+                stage.validate_source_archive(archive, manifest)
+
+            with tarfile.open(archive, "w") as tar:
+                entry = tarfile.TarInfo("app/main.py")
+                entry.type, entry.linkname = tarfile.LNKTYPE, "app/run"
+                tar.addfile(entry)
+            with self.assertRaisesRegex(RuntimeError, "type or executable bit"):
+                stage.validate_source_archive(archive, manifest)
+
+            corrupted = {"entries": dict(manifest["entries"])}
+            corrupted["entries"]["app/main.py"] = dict(corrupted["entries"]["app/main.py"], oid="0" * 40)
+            with tarfile.open(archive, "w") as tar:
+                directory = tarfile.TarInfo("app")
+                directory.type = tarfile.DIRTYPE
+                tar.addfile(directory)
+                for name, data, mode in (("app/main.py", content, 0o644), ("app/run", executable, 0o755)):
+                    entry = tarfile.TarInfo(name)
+                    entry.mode, entry.size = mode, len(data)
+                    tar.addfile(entry, BytesIO(data))
+            with self.assertRaisesRegex(RuntimeError, "content differs"):
+                stage.validate_source_archive(archive, corrupted)
+
+            with self.assertRaisesRegex(RuntimeError, "unavailable"):
+                stage.verified_source_manifest("0" * 40)
+
+    def test_runtime_account_access_gate_checks_each_user_and_refuses_before_activation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dest = root / "releases" / NEW
+            (dest / "src").mkdir(parents=True)
+            (dest / "identity/bin").mkdir(parents=True)
+            (dest / "supply/bin").mkdir(parents=True)
+            (dest / "identity/bin/python").touch(mode=0o755)
+            (dest / "supply/bin/python").touch(mode=0o755)
+            success = CompletedProcess([], 0, stdout="")
+            with patch.object(stage, "ROOT", root), patch.object(stage, "as_user", return_value=success) as account_call:
+                stage.verify_release_access(dest)
+                self.assertEqual(sum("/usr/bin/find" in call.args for call in account_call.call_args_list),
+                                 len(stage.START_ORDER) + 2)
+                denied = CompletedProcess([], 0, stdout="/private/path")
+                account_call.reset_mock()
+                account_call.side_effect = lambda service, *args, **kwargs: denied if args[0] == "/usr/bin/find" else success
+                with self.assertRaisesRegex(RuntimeError, "not traversable/readable"):
+                    stage.verify_release_access(dest)
+
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "UNIT_FILE", Path(tmp) / "unit"), patch.object(stage, "run"), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
+                patch.object(stage, "build", return_value=dest), patch.object(stage, "verify_release_access", side_effect=RuntimeError("access denied")), \
+                patch.object(stage, "migration_compatibility"), \
+                patch.object(stage, "switch_services") as services, patch.object(stage, "activation_checkpoint") as checkpoint:
+            for sha in (OLD, NEW):
+                (stage.ROOT / "releases" / sha).mkdir(parents=True)
+            stage.link("current", OLD)
+            with self.assertRaisesRegex(RuntimeError, "access denied"):
+                stage.deploy(NEW)
+            self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
+            services.assert_not_called()
+            checkpoint.assert_not_called()
+
+    def test_release_permission_gate_rejects_unexpected_writable_or_symlink_release(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)):
+            releases = stage.ROOT / "releases"
+            releases.mkdir()
+            dest = releases / OLD
+            dest.mkdir(mode=0o755)
+            (dest / "src").mkdir()
+            bad = dest / "src" / "untrusted.py"
+            bad.write_text("x=1")
+            bad.chmod(0o666)
+            with self.assertRaisesRegex(RuntimeError, "Unsafe release file"):
+                stage.normalize_release_permissions(dest)
+            bad.chmod(0o600)
+            stage.normalize_release_permissions(dest)
+            self.assertEqual(bad.stat().st_mode & 0o777, 0o644)
+            elsewhere = stage.ROOT / "external"
+            elsewhere.mkdir()
+            with self.assertRaisesRegex(RuntimeError, "Unexpected managed release"):
+                stage.normalize_release_permissions(elsewhere)
 
     def test_health_evidence_rejects_public_or_unmanaged_listeners(self):
         reported = {port: ["127.0.0.1"] for port in (*stage.PORTS.values(), *stage.LEGACY_UNITS)}
