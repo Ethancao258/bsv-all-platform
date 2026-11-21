@@ -151,12 +151,12 @@ def exercise_offline_venvs(wheelhouse: Path, *, scratch: Path) -> dict:
                             if line.strip() and not line.lstrip().startswith("#"))
         _run([str(pip), "-m", "pip", "check"], env=env)
         smoke = ("import fastapi, pydantic, uvicorn; "
-                 "import cryptography, psycopg, sqlalchemy, httpx; "
+                 "import cryptography, httpx; "
                  "print('IMPORTS_OK')")
         if name == "supply":
             smoke += "; import cv2, numpy; print('SUPPLY_NATIVE_WHEELS_OK')"
         else:
-            smoke += "; import qrcode, PIL; print('GROWTH_MEDIA_WHEELS_OK')"
+            smoke += "; import psycopg, sqlalchemy, jwt, argon2, qrcode, PIL; print('IDENTITY_AND_GROWTH_IMPORTS_OK')"
         result = _run([str(pip), "-c", smoke], env=env)
         installs[name] = {"locked_packages": len(packages), "wheel_count": len(wheels),
                           "pip_check": "PASS", "imports": result.stdout.strip().splitlines()}
