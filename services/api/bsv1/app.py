@@ -1186,8 +1186,13 @@ class Handler(BaseHTTPRequestHandler):
         visit_id = data.get("visit_id")
         if not isinstance(visit_id, str) or not growth_pos.VISIT_RE.fullmatch(visit_id):
             raise UserError("桌次编号无效", 422)
-        if set(data) != {"visit_id", "proof"}:
+        if set(data) not in ({"visit_id", "proof"}, {"visit_id", "proof", "_action_id"}):
             raise UserError("绑定请求字段不符合要求", 422)
+        action_id = data.get("_action_id")
+        if action_id is not None and (not isinstance(action_id, str)
+                                   or not re.fullmatch(r"[a-zA-Z0-9-]{8,90}", action_id)):
+            raise UserError("提交编号不符合规范", 422)
+        action_id = action_id or uid()
         try:
             proof = growth_pos.verify_guest_link(
                 data["proof"], staff["session_store_id"], os.environ.get("BSV_GROWTH_LINK_KEY", ""))
@@ -1198,9 +1203,23 @@ class Handler(BaseHTTPRequestHandler):
         with tx() as db:
             live_visit(db, staff["session_store_id"], visit_id)
             used = db.execute(
-                "SELECT 1 FROM bsv_growth_pos_consumed_nonces WHERE nonce_hash=?",
+                """SELECT visit_id,store_id,customer_id,action_id
+                   FROM bsv_growth_pos_consumed_nonces WHERE nonce_hash=?""",
                 (nonce_hash,)).fetchone()
             if used:
+                if (used["visit_id"] == visit_id and used["store_id"] == staff["session_store_id"]
+                        and used["customer_id"] == customer_id and used["action_id"] == action_id):
+                    # Identical retry after a lost HTTP response: verify state, not
+                    # merely the nonce, and return the original successful outcome.
+                    linked_now = db.execute("""SELECT 1 FROM visit_member_links
+                                               WHERE visit_id=? AND person_slot=1
+                                               AND canonical_customer_id=?""",
+                                            (visit_id, customer_id)).fetchone()
+                    if linked_now:
+                        self.send_json({"ok":True,"linked":True,"visit_id":visit_id,
+                                        "duplicate":True,
+                                        "notice":"会员关联此前已完成，不产生第二条记录"})
+                        return
                 raise UserError("授权码已使用，请顾客重新生成", 409, "GROWTH_PROOF_REPLAY")
             linked = db.execute("""SELECT member_id,canonical_customer_id FROM visit_member_links
                                    WHERE visit_id=? AND person_slot=1""", (visit_id,)).fetchone()
@@ -1208,9 +1227,10 @@ class Handler(BaseHTTPRequestHandler):
                            (linked["canonical_customer_id"] and linked["canonical_customer_id"] != customer_id)):
                 raise UserError("本桌已关联其他会员，请先由总部核对", 409, "CUSTOMER_LINK_CONFLICT")
             db.execute("""INSERT INTO bsv_growth_pos_consumed_nonces
-                          (nonce_hash,visit_id,store_id,customer_id,created_at)
-                          VALUES(?,?,?,?,?)""",
-                       (nonce_hash, visit_id, staff["session_store_id"], customer_id, now()))
+                          (nonce_hash,visit_id,store_id,customer_id,action_id,created_at)
+                          VALUES(?,?,?,?,?,?)""",
+                       (nonce_hash, visit_id, staff["session_store_id"], customer_id,
+                        action_id, now()))
             db.execute("""INSERT INTO visit_member_links
                           (visit_id,person_slot,member_reference,canonical_customer_id)
                           VALUES (?,1,'BSV_ACCOUNT',?)
