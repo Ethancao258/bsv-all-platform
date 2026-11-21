@@ -34,6 +34,8 @@ INTERNAL_PAGE_HEADERS = {
 def upstream(path):
     if path.startswith("/supply-ui/"):
         return "supply", path.removeprefix("/supply-ui")
+    if path == "/hq/stores/layout" or path.startswith("/hq/stores/layout/assets/"):
+        return "pos", path
     if path in {"/identity", "/staff", "/hq", "/health/ready"} or path.startswith(
             ("/api/v1/", "/hq-assets/")) or path in {"/assets/common.js", "/assets/staff.js", "/assets/style.css"}:
         return "identity", "/" if path == "/identity" else path
@@ -42,7 +44,8 @@ def upstream(path):
 
 async def proxy(request: Request):
     path = request.url.path
-    if path.rstrip("/") in {"/api/v1/identity/authorize", "/api/v1/identity/pos-session", "/api/v1/auth/me",
+    if path.rstrip("/") in {"/api/v1/identity/authorize", "/api/v1/identity/pos-session",
+                             "/api/v1/identity/hq-layout-session", "/api/v1/auth/me",
                              "/api/v1/academy/pos-authorize"}:
         return Response(status_code=404)
     if path in STAFF_PAGES:

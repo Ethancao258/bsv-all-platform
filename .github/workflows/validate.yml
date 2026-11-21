@@ -72,6 +72,10 @@ jobs:
           node-version: '22'
       - name: Install locked identity dependencies
         run: python -m pip install -r services/api/identity/requirements.lock
+      - name: Install isolated HQ map browser runner
+        run: |
+          python -m pip install playwright==1.62.0
+          python -m playwright install --with-deps chromium
       - name: Identity, POS and supply integration
         run: bash tests/identity/check.sh
       - name: PostgreSQL 17 migration, concurrency, encrypted recovery

@@ -1297,6 +1297,56 @@ class Handler(BaseHTTPRequestHandler):
         return bsv_one.HQLayoutActor(staff_id, tr_code, decision["action"],
                                      legal_entity_id, store_id, secrets.token_urlsafe(18))
 
+    def hq_layout_page(self, path):
+        """Authorize the original HQ editor page and its assets through identity.A."""
+        identity_session = self.cookie("bsv_identity_session")
+        if not identity_session:
+            self.send_json({"error": "请先登录总部统一身份账号。", "code": "AUTH_REQUIRED"}, 401)
+            return
+        unavailable = False
+        with db_read() as db:
+            for store in bsv_one.stores(db):
+                legal_entity_id = self.hq_layout_scope(db, store["id"])
+                if legal_entity_id is None:
+                    continue
+                decision = identity_client().authorize_hq_layout(
+                    identity_session, store["id"], "hq.layout.read", legal_entity_id)
+                if decision.get("allowed") is True:
+                    break
+                unavailable |= decision.get("reason") == "IDENTITY_UNAVAILABLE"
+            else:
+                status = 503 if unavailable else 403
+                code = "IDENTITY_UNAVAILABLE" if unavailable else "HQ_LAYOUT_FORBIDDEN"
+                self.send_json({"error": "当前账号没有门店地图查看权限。", "code": code}, status)
+                return
+        files = {
+            "/hq/stores/layout": "hq.html",
+            "/hq/stores/layout/assets/app.js": "hq.js",
+            "/hq/stores/layout/assets/style.css": "hq.css",
+        }
+        name = files.get(path)
+        if not name:
+            self.send_error(404)
+            return
+        file = APPS / "hq-console" / "bsv1" / name
+        if not file.is_file():
+            self.send_error(404)
+            return
+        mime = ("text/html; charset=utf-8" if name.endswith(".html") else
+                "text/css; charset=utf-8" if name.endswith(".css") else
+                "application/javascript; charset=utf-8")
+        content = file.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", str(len(content)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(content)
+
     def hq_layout_draft(self, data):
         identity_session = self.cookie("bsv_identity_session")
         if not identity_session:
@@ -1426,6 +1476,10 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,UnicodeDecodeError):raise UserError('JSON格式错误')
     def do_GET(self):
         path=unquote(urlparse(self.path).path)
+        if path in {"/hq/stores/layout", "/hq/stores/layout/assets/app.js",
+                    "/hq/stores/layout/assets/style.css"}:
+            self.hq_layout_page(path)
+            return
         if path=='/api/bootstrap':
             with db_read() as db:
                 stores=[dict(x) for x in db.execute('SELECT id,name,district,business_type,layout_ready FROM stores ORDER BY district,id')]

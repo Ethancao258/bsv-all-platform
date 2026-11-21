@@ -463,3 +463,145 @@ def test_hq_layout_draft_isolated_edit_grant_audit_and_no_pos_access(identity_ht
         finally:
             server.shutdown()
             worker.join(5)
+
+
+def test_hq_layout_browser_drag_save_refresh_and_access_denial(identity_http, tmp_path, monkeypatch):
+    """Exercise the original map page through Chromium and the real isolated ingress."""
+    import importlib.util
+    import shutil
+    from pathlib import Path
+    from playwright.sync_api import expect, sync_playwright
+
+    user, one, two, tr, _ = create_person("hqmap-browser")
+    onboard(tr, one, two, bm=True)
+    fixture = tmp_path / "hq-browser.xlsx"
+    runpy.run_path(str(ROOT / "tests/bsv1/make_fixture.py"))["write_fixture"](fixture)
+    monkeypatch.setenv("BSV_V9_XLSX", str(fixture))
+    monkeypatch.setenv("BSV_DB_PATH", str(tmp_path / "hq-browser.sqlite3"))
+    monkeypatch.setenv("BSV_MODE", "staging")
+    monkeypatch.setenv("BSV_APP_ENV", "isolated")
+    monkeypatch.setenv("BSV_POS_LAYOUT_SCOPE_MODE", "isolated-synthetic")
+    monkeypatch.setenv("BSV_POS_STORE_LEGAL_JSON", '{"BSVT":"DEMO_LEGAL"}')
+    monkeypatch.syspath_prepend(str(ROOT / "services/api/bsv1"))
+    pos = importlib.import_module("services.api.bsv1.app")
+    monkeypatch.setattr(pos, "DB_PATH", tmp_path / "hq-browser.sqlite3")
+    monkeypatch.setattr(pos, "MODE", "staging")
+    pos.init_db()
+
+    layout_token = "synthetic-layout-browser-token-1234567890"
+    service = {"token": layout_token, "actions": ["hq.layout.read", "hq.layout.edit"],
+               "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]}
+    monkeypatch.setattr(api, "settings", replace(api.settings,
+        service_tokens={**api.settings.service_tokens, "layout-admin": service}))
+    monkeypatch.setenv("BSV_POS_IDENTITY_URL", identity_http)
+    monkeypatch.setenv("BSV_POS_LAYOUT_SERVICE_TOKEN", layout_token)
+    monkeypatch.setenv("BSV_POS_IDENTITY_REQUIRED", "1")
+
+    with pos.db_read() as db:
+        formal_before = pos.bsv_one.current(db, "BSVT")
+
+    import uvicorn
+    ingress_path = ROOT / "platform/lighthouse/internal-stage/ingress.py"
+    spec = importlib.util.spec_from_file_location("bsv_test_hq_ingress", ingress_path)
+    ingress = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ingress)
+
+    with pos.ThreadingHTTPServer(("127.0.0.1", 0), pos.Handler) as pos_server:
+        pos_worker = threading.Thread(target=pos_server.serve_forever)
+        pos_worker.start()
+        pos_base = f"http://127.0.0.1:{pos_server.server_address[1]}"
+        ingress.UPSTREAM = {"identity": identity_http, "pos": pos_base,
+                            "supply": "http://127.0.0.1:1"}
+        config = uvicorn.Config(ingress.app, host="127.0.0.1", port=0, log_level="warning", access_log=False)
+        listener = config.bind_socket()
+        ingress_server = uvicorn.Server(config)
+        ingress_worker = threading.Thread(target=ingress_server.run, kwargs={"sockets": [listener]})
+        ingress_worker.start()
+        base = f"http://127.0.0.1:{listener.getsockname()[1]}"
+        try:
+            # Existing /hq stays the identity people-management page; the map editor is separately routed.
+            with sync_playwright() as playwright:
+                system_chromium = shutil.which("chromium")
+                executable = system_chromium if system_chromium and not Path(
+                    playwright.chromium.executable_path).is_file() else None
+                browser = playwright.chromium.launch(headless=True, executable_path=executable)
+                try:
+                    no_session = browser.new_page()
+                    anonymous = no_session.goto(base + "/hq/stores/layout")
+                    assert anonymous.status == 401
+                    assert no_session.request.get(base + "/api/hq/layout?store_id=BSVT").status == 401
+
+                    context = browser.new_context(viewport={"width": 1440, "height": 1000}, locale="zh-CN")
+                    context.add_cookies([
+                        {"name": api.SESSION_COOKIE, "value": user.cookies.get(api.SESSION_COOKIE), "url": base},
+                        {"name": "bsv_csrf", "value": user.cookies.get("bsv_csrf"), "url": base},
+                    ])
+                    page = context.new_page()
+                    people_page = page.goto(base + "/hq")
+                    assert people_page.status == 200
+                    expect(page.get_by_role("heading", name="人员身份与授权管理")).to_be_visible()
+
+                    # An authenticated identity without hq.layout.read must not receive the editor HTML.
+                    denied = page.goto(base + "/hq/stores/layout")
+                    assert denied.status == 403
+                    assert "总部管理 · 门店与座位地图" not in page.locator("body").inner_text()
+                    assert page.request.get(base + "/api/hq/layout?store_id=BSVT").status == 403
+                    assert page.request.post(base + "/api/v1/identity/hq-layout-session", data={}).status == 404
+
+                    grant_action(tr, one, two, "hq.layout.read", store=None, role="hq")
+                    grant_action(tr, one, two, "hq.layout.edit", store="BSVT", role="hq")
+                    responses = []
+                    page.on("response", lambda response: responses.append((response.request.method, response.url, response.status)))
+                    page.goto(base + "/hq/stores/layout")
+                    expect(page.get_by_role("heading", name="总部管理 · 门店与座位地图")).to_be_visible()
+                    expect(page.locator("#store")).to_have_value("BSVT")
+                    expect(page.locator(".seat").first).to_be_visible()
+                    original_style = page.locator(".seat").first.get_attribute("style")
+                    draft_count_before = page.locator("#history button").filter(has_text="DRAFT").count()
+
+                    seat = page.locator(".seat").first.bounding_box()
+                    assert seat
+                    page.mouse.move(seat["x"] + seat["width"] / 2, seat["y"] + seat["height"] / 2)
+                    page.mouse.down()
+                    page.mouse.move(seat["x"] + seat["width"] / 2 + 35,
+                                    seat["y"] + seat["height"] / 2 + 25, steps=5)
+                    page.mouse.up()
+                    dragged_style = page.locator(".seat").first.get_attribute("style")
+                    assert dragged_style != original_style
+
+                    expect(page.locator("#publish")).to_be_disabled()
+                    expect(page.locator("#uploadImage")).to_be_disabled()
+                    expect(page.locator("#newStore")).to_be_disabled()
+                    page.locator("#publish").evaluate("button => button.click()")
+                    page.locator("#uploadImage").evaluate("button => button.click()")
+                    page.locator("#newStore").evaluate("button => button.click()")
+
+                    page.locator("#save").click()
+                    expect(page.locator("#status")).to_contain_text("已确认保存", timeout=10000)
+                    expect(page.locator("#history button").filter(has_text="DRAFT")).to_have_count(draft_count_before + 1)
+                    page.locator("#history button").first.click()
+                    expect(page.locator("#status")).to_contain_text("恢复写入暂未开放")
+                    draft_posts = [item for item in responses if item[0] == "POST" and "/api/hq/layout/draft" in item[1]]
+                    blocked_posts = [item for item in responses if item[0] == "POST" and any(
+                        path in item[1] for path in ("/api/hq/layout/publish", "/api/hq/layout/restore",
+                                                    "/api/hq/image/upload", "/api/hq/stores/create"))]
+                    assert len(draft_posts) == 1, draft_posts
+                    assert blocked_posts == [], blocked_posts
+
+                    page.reload()
+                    expect(page.locator("#history button").filter(has_text="DRAFT")).to_have_count(draft_count_before + 1)
+                    expect(page.locator("#revision")).to_contain_text(f"V{formal_before['version']}")
+                    refreshed_style = page.locator(".seat").first.get_attribute("style")
+                    assert refreshed_style == original_style  # a saved draft did not replace the formal map
+
+                    current = page.evaluate("async () => (await (await fetch('/api/hq/layout?store_id=BSVT')).json())")
+                    assert current["version"] == formal_before["version"]
+                    assert current["layout"] == formal_before["layout"]
+                finally:
+                    browser.close()
+        finally:
+            ingress_server.should_exit = True
+            ingress_worker.join(10)
+            listener.close()
+            pos_server.shutdown()
+            pos_worker.join(5)

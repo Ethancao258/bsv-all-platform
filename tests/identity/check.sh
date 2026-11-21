@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 export PYTHONDONTWRITEBYTECODE=1
 for js in apps/staff-center/identity/assets/*.js apps/hq-console/identity/*.js; do node --check "$js"; done
+node --check apps/hq-console/bsv1/hq.js
 python -m pytest -q -p no:cacheprovider tests/identity
 tmp=$(mktemp -d)
 pid=
