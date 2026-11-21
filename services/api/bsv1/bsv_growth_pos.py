@@ -110,3 +110,21 @@ def nonce_digest(nonce: str) -> str:
     if not NONCE_RE.fullmatch(nonce):
         raise ProofError("Bad nonce")
     return hashlib.sha256(nonce.encode("ascii")).hexdigest()
+
+def install_pos_projection(db) -> None:
+    """Add only a customer-id reference and spent nonces to the isolated POS.
+
+    Customer ownership and membership policy remain exclusively in the customer
+    service. This is deliberately additive and readable by the previous V28 POS.
+    """
+    cols = {row["name"] for row in db.execute("PRAGMA table_info(visit_member_links)")}
+    if "canonical_customer_id" not in cols:
+        db.execute("ALTER TABLE visit_member_links ADD COLUMN canonical_customer_id TEXT")
+    db.execute("""CREATE INDEX IF NOT EXISTS ix_pos_customer_visit
+                  ON visit_member_links(canonical_customer_id, visit_id)""")
+    db.execute("""CREATE TABLE IF NOT EXISTS bsv_growth_pos_consumed_nonces (
+                  nonce_hash TEXT PRIMARY KEY,
+                  visit_id TEXT NOT NULL REFERENCES visits(id),
+                  store_id TEXT NOT NULL REFERENCES stores(id),
+                  customer_id TEXT NOT NULL,
+                  created_at TEXT NOT NULL)""")
