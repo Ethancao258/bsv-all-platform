@@ -1,0 +1,3 @@
+# Isolated ingress additional wheels; core identity dependencies remain pinned separately.
+qrcode==8.2
+Pillow==11.3.0

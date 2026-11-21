@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Versioned deployment for the private internal stage on a systemd host."""
 import argparse
+import base64
 from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 import fcntl
@@ -233,6 +234,29 @@ def environment(name, values):
     return values
 
 
+def upgrade_blank_ingress_environment(values):
+    path = ROOT / "config" / "ingress.env"
+    payload = "\n".join(f"{key}={shlex.quote(str(value))}" for key, value in sorted(values.items()))
+    if not path.exists():
+        environment("ingress", values)
+        return
+    private_file(path, 0)
+    old = path.read_text().strip()
+    if old == payload:
+        return
+    if old:
+        raise RuntimeError("Unexpected existing ingress.env; refuse automatic rewrite")
+    temp = path.with_name("ingress.env.next")
+    if temp.exists() or temp.is_symlink():
+        raise RuntimeError("Unexpected ingress environment upgrade marker")
+    try:
+        write_secret(temp, payload)
+        temp.replace(path)
+        sync_directory(path.parent)
+    finally:
+        temp.unlink(missing_ok=True)
+
+
 def prepare_config():
     for path, mode in ((ROOT, 0o755), (ROOT / "releases", 0o755), (ROOT / "config", 0o700), (DATA, 0o755)):
         path.mkdir(mode=mode, exist_ok=True)
@@ -291,7 +315,26 @@ def prepare_config():
         "BSV_APP_ENV": "isolated",
     })
     environment("postgres", {"BSV_STAGE_COMPONENT_DATA": str(DATA / "postgres")})
-    environment("ingress", {})
+    # Isolated, synthetic candidate only; no additional public service or authority.
+    # The original ingress.env is an empty, root-owned environment file on older
+    # releases. Only that exact baseline may be upgraded atomically.
+    growth_signing = write_secret(config / "growth-signing-key", secrets.token_urlsafe(40))
+    growth_signature = write_secret(
+        config / "growth-signature-key", base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
+    ingress_settings = {
+        "BSV_STAGE_GROWTH_ENABLED": "1", "BSV_GROWTH_ENV": "isolated",
+        "BSV_GROWTH_TRUST_IDENTITY": "1",
+        "BSV_GROWTH_DB_URL": "sqlite:///" + str(DATA / "ingress" / "growth-candidate.sqlite3"),
+        "BSV_GROWTH_IDENTITY_ME_URL": "http://127.0.0.1:18761/api/v1/identity/me",
+        "BSV_GROWTH_SIGNING_KEY": growth_signing,
+        "BSV_GROWTH_SIGNATURE_KEY": growth_signature,
+        "BSV_GROWTH_LEGAL_ENTITY_ID": "DEMO_LEGAL",
+        "BSV_GROWTH_STORE_IDS": "BSVT",
+        "BSV_GROWTH_PUBLIC_BASE_URL": "http://127.0.0.1:18760",
+        "BSV_GROWTH_MENU_URL": "/cocktail/",
+        "BSV_GROWTH_PRIVACY_APPROVED": "0",
+    }
+    upgrade_blank_ingress_environment(ingress_settings)
     sources = json.loads((REPO / "config/modules/supply-sources.example.json").read_text())
     for value in sources["sources"].values():
         value["primary"] = value["standby_read"] = ""
@@ -329,6 +372,9 @@ def build(sha):
         run("/usr/bin/python3", "-m", "venv", directory)
         run(directory / "bin/python", "-m", "pip", "--disable-pip-version-check", "install",
             "--no-deps", "-r", source / f"services/api/{name}/requirements.lock")
+        if name == "identity":
+            run(directory / "bin/python", "-m", "pip", "--disable-pip-version-check", "install",
+                "--no-deps", "-r", source / "services/api/customer_growth/requirements.stage.lock")
         run(directory / "bin/python", "-m", "pip", "check")
     (dest / ".built").touch()
     return dest
@@ -505,6 +551,31 @@ def sqlite_snapshot(current, destination):
     return {"archive": str(destination), "sha256": file_sha256(destination), "integrity": "QUICK_CHECK_OK"}
 
 
+def growth_candidate_snapshot(current, destination):
+    """Back up the *isolated* customer candidate SQLite with a consistent copy."""
+    source = ROOT / "releases" / current / "src/services/api/customer_growth/app.py"
+    if not source.is_file():
+        return None  # older releases predate growth; not a missing business record
+    env = service_config("ingress")
+    if env.get("BSV_STAGE_GROWTH_ENABLED") != "1" or env.get("BSV_GROWTH_ENV") != "isolated":
+        raise RuntimeError("Growth backup must remain isolated and explicitly enabled")
+    live = DATA / "ingress" / "growth-candidate.sqlite3"
+    if env.get("BSV_GROWTH_DB_URL") != "sqlite:///" + str(live):
+        raise RuntimeError("Unexpected growth candidate source")
+    owner = pwd.getpwnam(user("ingress")).pw_uid
+    private_directory(live.parent, owner)
+    private_file(live, owner)
+    with closing(sqlite3.connect("file:" + str(live) + "?mode=ro", uri=True)) as original:
+        with closing(sqlite3.connect(destination)) as snapshot:
+            original.backup(snapshot)
+            if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                raise RuntimeError("Growth candidate SQLite snapshot failed integrity check")
+            snapshot.commit()
+    os.chmod(destination, 0o600)
+    return {"archive": str(destination), "sha256": file_sha256(destination),
+            "integrity": "QUICK_CHECK_OK", "classification": "ISOLATED_CANDIDATE_ONLY"}
+
+
 def academy_media_snapshot(directory):
     source = DATA / "identity" / "academy-media"
     if not source.exists() and not source.is_symlink():
@@ -548,11 +619,13 @@ def backup(current=None, purpose="manual"):
     dest.mkdir(mode=0o700)
     postgres = postgres_snapshot(current)
     pos = sqlite_snapshot(current, dest / "pos.sqlite3")
+    growth = growth_candidate_snapshot(current, dest / "growth-candidate.sqlite3")
     media = academy_media_snapshot(dest / "academy-media")
     receipt = dest / "receipt.json"
     record = {"version": 2, "time": stamp.isoformat(), "mode": "isolated", "purpose": purpose,
               "status": "CHECKPOINT_READY", "checkpoint": str(receipt), "release_sha": current,
               "postgres": postgres, "pos_sqlite": pos, "academy_media": media,
+              "growth_candidate_sqlite": growth,
               "isolated_db_revision": database_revision()}
     write_secret(receipt, json.dumps(record, ensure_ascii=False))
     sync_directory(recovery)
@@ -606,6 +679,17 @@ def recovery_check(receipt):
     with closing(sqlite3.connect(pos.as_uri() + "?mode=ro", uri=True)) as snapshot:
         if snapshot.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
             raise RuntimeError("POS checkpoint integrity check failed")
+    growth = record.get("growth_candidate_sqlite")
+    if growth is not None:
+        snapshot = receipt.parent / "growth-candidate.sqlite3"
+        private_file(snapshot, 0)
+        if (growth.get("archive") != str(snapshot)
+                or growth.get("classification") != "ISOLATED_CANDIDATE_ONLY"
+                or growth.get("sha256") != file_sha256(snapshot)):
+            raise RuntimeError("Growth candidate checkpoint checksum/ownership mismatch")
+        with closing(sqlite3.connect(snapshot.as_uri() + "?mode=ro", uri=True)) as candidate:
+            if candidate.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                raise RuntimeError("Growth candidate checkpoint integrity failed")
     files = record.get("academy_media", [])
     names = set()
     directory = receipt.parent / "academy-media"
@@ -643,6 +727,13 @@ def verify():
         ("/api/v1/identity/pos-session", 404), ("/cocktail/", 200), ("/craft/", 404),
         ("/__bsv_unknown_release_route__", 404),
     ]
+    if deployed and (ROOT / "releases" / deployed / "src/services/api/customer_growth/app.py").exists():
+        routes.extend((
+            ("/member/", 200), ("/staff/growth/", 200),
+            ("/api/v1/growth/public/config", 200),
+            ("/api/v1/growth/staff/store-options", 401),
+            ("/api/v1/growth/internal/payment-event", 404),
+        ))
     if deployed and ACADEMY_REVISION in migration_revisions(ROOT / "releases" / deployed / "src"):
         routes.append(("/api/v1/academy/work", 401))
     for _ in range(35):

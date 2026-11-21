@@ -1,0 +1,27 @@
+{
+  "version": "isolated-vertical-slice-v1",
+  "status": "ISOLATED_TESTED_NOT_PRODUCTION",
+  "pages": {
+    "guest": "apps/guest-web/member/index.html",
+    "staff": "apps/staff-center/growth/index.html"
+  },
+  "backend": "services/api/customer_growth/app.py",
+  "api_prefix": "/api/v1/growth",
+  "identity_source": "workforce/identity_access TR→EMP→BM; real source A required",
+  "data_owners": {
+    "customer_id": "customer",
+    "loyalty_account_id": "customer",
+    "touchpoint_id": "marketing",
+    "attribution_id": "marketing",
+    "store_id": "organization",
+    "tr_code": "workforce",
+    "order_id": "commerce",
+    "payment_event_id": "payments",
+    "settlement_id": "operating_finance",
+    "signature_version": "workforce/identity_access",
+    "audit_event_id": "event_audit"
+  },
+  "source_of_truth": "Existing BSV ALL domain registry; candidate SQL model is only an isolated test fixture",
+  "first_phase": "Guest register→claim pending→guest confirmation→signed payment fact→membership benefit→provisional commission",
+  "required_live_gates": ["schema_readonly_G0","backup_restore_G1","verified_customer_identity","verified_person_id","verified_payment_bridge","policy_contracts","privacy_publication","integration_E2E"]
+}

@@ -1,0 +1,38 @@
+<!doctype html><html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f5f2ed"><meta name="color-scheme" content="light"><title>客户接待与开发｜文森特员工中心</title>
+<link rel="stylesheet" href="/staff/growth/styles.css"><script defer src="/staff/growth/app.js"></script>
+</head><body>
+<div class="workspace">
+ <header class="topbar"><div class="brand"><span class="logo" aria-hidden="true">V</span><div><strong>文森特工作台</strong><small>BAR ST. VINCENT / PEOPLE & SERVICE</small></div></div><div class="top-actions"><a href="/pos" class="top-link">返回点单台</a><a href="/staff" class="top-link">员工中心</a></div></header>
+ <div class="layout">
+  <aside class="sidebar" aria-label="客户工作导航"><div class="sidebar-title">客户与服务 <span class="tiny-diamond">◆</span></div>
+   <nav class="navigation" aria-label="工作模块"><button type="button" data-view="service" aria-current="page"><span class="nav-icon">◈</span>当前接待</button><button type="button" data-view="claims"><span class="nav-icon">◌</span>客户认领<span id="queue-count" class="nav-count" hidden>0</span></button><button type="button" data-view="invite"><span class="nav-icon">◇</span>我的推广</button><button type="button" data-view="signature"><span class="nav-icon">✎</span>我的签名</button></nav>
+   <div class="sidebar-note">一次有效邀请，跨店自动归因。<br>每次服务，尊重客人的选择。</div>
+  </aside>
+  <main class="mainarea">
+   <div class="contextbar"><div><p class="eyebrow" id="section-kicker">CUSTOMER SERVICE</p><h1 id="section-title">当前接待</h1><p class="subtitle" id="section-summary">在点单时识别会员，让推荐更加贴合当下的口味。</p></div><div class="select-wrap"><label for="store">当前门店</label><select id="store"><option value="BSVM">密云鸡尾酒吧</option><option value="BSVS">顺义鸡尾酒吧</option><option value="BSVT">通州高空鸡尾酒吧</option></select></div></div>
+   <div id="status" role="status" aria-live="polite" class="status-banner" hidden></div>
+   <div class="identity-strip"><div class="identity-icon">◎</div><div><strong id="who">正在核对员工身份…</strong><small id="who-note">业务操作与总部身份权限保持同步</small></div><button id="refresh" class="text-btn" type="button">刷新</button></div>
+
+   <section class="page-section active" id="view-service" aria-labelledby="service-title">
+    <div class="section-heading"><div><p class="eyebrow">CURRENT VISIT</p><h2 id="service-title">顾客偏好卡</h2></div><span class="soft-pill">限当前消费场次</span></div>
+    <div class="service-card" id="service-empty"><div class="service-art" aria-hidden="true">✳</div><h3>先识别会员，再推荐合适的酒</h3><p>从点单台选择当前桌位、关联会员后，系统会显示客人愿意分享的风味偏好。</p><div class="soft-steps"><span>关联会员</span><b>→</b><span>核验当前班次</span><b>→</b><span>查看偏好</span></div><a href="/pos" class="button button-dark">打开点单台 <span aria-hidden="true">↗</span></a></div>
+    <div class="service-card" id="service-present" hidden><div class="service-result-top"><div><span class="eyebrow">GUEST PREFERENCES</span><h3>会员风味偏好</h3></div><span class="verified" id="service-verified">本次接待已核验</span></div><div class="preference-pills" id="service-tags"></div><p class="service-guidance" id="service-guidance"></p><p class="field-help">风味偏好由客人本人填写，仅供本次点单参考。过敏及禁忌请当面确认。</p></div>
+    <div class="insight-row"><div><span class="insight-mark">01</span><strong>尊重边界</strong><p>客户偏好不是服务指令，想聊就聊，想安静就给空间。</p></div><div><span class="insight-mark">02</span><strong>信息最少化</strong><p>不展示联系电话、私人消息或跨店消费记录。</p></div></div>
+   </section>
+
+   <section class="page-section" id="view-claims" aria-labelledby="claims-title">
+     <div class="section-heading"><div><p class="eyebrow">CUSTOMER CLAIM</p><h2 id="claims-title">待认领客户</h2></div><button class="button button-light" id="queue-refresh" type="button">刷新名单</button></div>
+     <p class="intro">只有你确实向客人介绍过文森特，才可以申请开发归因。客户本人确认后，系统再核验首次有效消费。</p>
+     <div id="queue" class="ticket-list"><p class="empty-line">正在读取本店待认领记录…</p></div>
+     <div class="claim-form" id="claim-form"><h3>确认本次认领</h3><p id="policy-current" class="policy-callout" aria-live="polite">正在核对佣金政策…</p><div class="field"><label for="ticket">已选择的客户识别码</label><input id="ticket" readonly placeholder="请先从上方选择客户"><input type="hidden" id="ticket-id"></div><div class="field"><label for="evidence">补充说明 <span>选填</span></label><textarea id="evidence" maxlength="180" placeholder="只填写必要的获客事实，请勿复制私人聊天内容。"></textarea></div>
+     <label class="agree"><input type="checkbox" id="attest"><span>我确认本次申请真实、未冒认其他员工开发的客户，已了解当前佣金政策及期限。虚假认领将按公司适用制度核查处理。</span></label><button class="button button-dark" id="claim" type="button">提交认领申请 <span aria-hidden="true">→</span></button><p class="field-help">认领申请不等于立即获得佣金；客户确认与真实付款均需完成核验。</p></div>
+   </section>
+
+   <section class="page-section" id="view-invite" aria-labelledby="invite-title"><div class="section-heading"><div><p class="eyebrow">INVITE & CONNECT</p><h2 id="invite-title">我的专属邀请</h2></div></div><p class="intro">把你喜欢的文森特介绍给朋友。邀请链接会记录你的开发线索，不需要客人记住员工编号。</p><div class="invite-layout"><div class="qr-frame"><div class="qr-empty" id="qr-empty"><span class="qr-symbol">▦</span><small>专属二维码</small></div><img id="invite-qr" alt="本人专属邀请二维码" hidden></div><div class="invite-copy"><h3>朋友扫码，轻松入会</h3><p>邀请有效期14天。已绑定其他开发人的会员，不会因再次扫码被重新认领。</p><button class="button button-dark" id="invitation" type="button">生成我的邀请二维码</button><button class="button button-light" id="copy-link" type="button" hidden>复制邀请链接</button><a id="open-link" hidden target="_blank" rel="noopener">查看会员注册页面</a></div></div><p class="invite-url" id="invite-link" hidden></p></section>
+
+   <section class="page-section" id="view-signature" aria-labelledby="signature-title"><div class="section-heading"><div><p class="eyebrow">MY SIGNATURE</p><h2 id="signature-title">我的签名母版</h2></div><span class="soft-pill" id="signature-status">正在核验</span></div><p class="intro">入职时清楚书写一次本人姓名。以后认领确认和公司文件可调用相同签名字形，每份正式合同仍由本人独立确认。</p><div class="signature-body"><label for="full-name">已核验姓名</label><input id="full-name" readonly placeholder="由人员身份档案提供"><div id="signature-saved" class="signature-saved" hidden><p class="field-help">已保存的签名样式</p><img id="saved-image" alt="本人已保存的签名母版"><p class="field-help">只有本人及获得签署授权的流程可使用此签名母版。</p></div><label for="signature" class="sig-label">本人手写签名</label><canvas id="signature" width="800" height="300" aria-label="在此书写本人姓名" role="img"></canvas><div class="signature-actions"><button type="button" id="clear" class="button button-light">清除重写</button><button type="button" id="save-signature" class="button button-dark">保存签名母版</button></div><p class="field-help">请完整写出档案中的真实姓名。不得代签或上传他人签名。更新不会抹除此前版本。</p></div></section>
+  </main>
+ </div>
+ <nav class="mobile-tabs" aria-label="移动端工作导航"><button data-view="service" aria-current="page">接待</button><button data-view="claims">认领</button><button data-view="invite">推广</button><button data-view="signature">签名</button></nav>
+</div></body></html>
