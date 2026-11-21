@@ -134,10 +134,15 @@ def init_db():
             has_ownership=src.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bsv_layout_ownership'").fetchone()
             protected={x[0] for x in src.execute("SELECT store_id FROM bsv_layout_ownership WHERE origin='HQ_PUBLISHED'")} if has_ownership else set()
             map_updates=[cfg['store_id'] for _,cfg,digest,_ in configs if cfg and cfg['store_id'] not in protected and old_hashes.get(cfg['store_id'])!=digest]
+            # Additive HQ audit alias migration must be backed up before init.
+            # Runtime draft handling is never allowed to change SQLite schema.
+            needs_hq_audit_migration = bool(has_data and 'bsv_hq_actor_aliases' not in tables)
             # 同一版本仅更改某店JSON/SVG，也必须先做原子一致性备份。
-            if has_data and (version<SCHEMA_VERSION or map_updates):
+            if has_data and (version<SCHEMA_VERSION or map_updates or needs_hq_audit_migration):
                 stamp=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
-                reason='升级V28备份' if version<SCHEMA_VERSION else '门店地图更新前备份'
+                reason=('升级V28备份' if version<SCHEMA_VERSION
+                        else '总部地图审计表迁移前备份' if needs_hq_audit_migration
+                        else '门店地图更新前备份')
                 backup=DB_PATH.parent/(DB_PATH.stem+'_'+reason+'_'+stamp+'.sqlite3')
                 with sqlite3.connect(str(backup)) as dest:src.backup(dest)
         finally:src.close()
@@ -1268,10 +1273,6 @@ class Handler(BaseHTTPRequestHandler):
         if (not isinstance(tr_code, str)
                 or not re.fullmatch(r"TR[ABCDEFGHJKLMNPQRSTUVWXYZ][0-9]{4}", tr_code)):
             return None
-        db.execute('''CREATE TABLE IF NOT EXISTS bsv_hq_actor_aliases(
-            tr_code TEXT PRIMARY KEY,
-            staff_id TEXT NOT NULL UNIQUE REFERENCES staff(id),
-            created_at TEXT NOT NULL)''')
         alias = db.execute("SELECT staff_id FROM bsv_hq_actor_aliases WHERE tr_code=?", (tr_code,)).fetchone()
         if alias:
             staff_id = alias["staff_id"]
