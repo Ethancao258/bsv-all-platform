@@ -255,9 +255,33 @@ class ReleaseTest(unittest.TestCase):
             stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "1"})
             self.assertIn("BSV_STAGE_GROWTH_ENABLED=1", blank.read_text())
             stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "1"})
-            with self.assertRaisesRegex(RuntimeError, "Unexpected existing"):
+            with self.assertRaisesRegex(RuntimeError, "Existing managed environment has changed"):
                 stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "0"})
             self.assertIn("BSV_STAGE_GROWTH_ENABLED=1", blank.read_text())
+
+    def test_pos_managed_env_allows_explicit_additions_only(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "private_file"):
+            config = stage.ROOT / "config"
+            config.mkdir()
+            pos = config / "pos.env"
+            pos.write_text("BSV_MODE=staging\nBSV_PORT=18762\n")
+            pos.chmod(0o600)
+            values = {"BSV_MODE":"staging", "BSV_PORT":"18762",
+                      "BSV_GROWTH_LINK_KEY":"isolated_test_key"}
+            stage.upgrade_managed_environment(
+                "pos", values, {"BSV_GROWTH_LINK_KEY"})
+            self.assertIn("BSV_GROWTH_LINK_KEY=isolated_test_key", pos.read_text())
+            stage.upgrade_managed_environment(
+                "pos", values, {"BSV_GROWTH_LINK_KEY"})
+            with self.assertRaisesRegex(RuntimeError,"changed"):
+                stage.upgrade_managed_environment(
+                    "pos", dict(values, BSV_GROWTH_LINK_KEY="different_key"),
+                    {"BSV_GROWTH_LINK_KEY"})
+            with self.assertRaisesRegex(RuntimeError,"Unapproved environment keys"):
+                stage.upgrade_managed_environment(
+                    "pos", dict(values, UNREVIEWED_KEY="secret"), set())
+            self.assertNotIn("UNREVIEWED_KEY", pos.read_text())
 
     def test_health_evidence_rejects_public_or_unmanaged_listeners(self):
         reported = {port: ["127.0.0.1"] for port in (*stage.PORTS.values(), *stage.LEGACY_UNITS)}
