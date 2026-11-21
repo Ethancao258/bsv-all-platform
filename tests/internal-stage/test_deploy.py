@@ -352,6 +352,61 @@ class ReleaseTest(unittest.TestCase):
                 stage.upgrade_managed_environment(
                     "pos", dict(merged, UNKNOWN_SECURITY_OVERRIDE="1"), allowed)
 
+    def test_completed_release_under_private_umask_is_repaired_before_activation(self):
+        """Real operator uses umask 077; every isolated service needs traverse/read."""
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)):
+            release = stage.ROOT / "releases" / NEW
+            old_umask = os.umask(0o077)
+            try:
+                (release / "src" / "platform").mkdir(parents=True)
+                (release / "identity" / "bin").mkdir(parents=True)
+                (release / "supply" / "bin").mkdir(parents=True)
+                (release / "identity" / "lib" / "python3.12" / "site-packages").mkdir(parents=True)
+                (release / "src" / "platform" / "app.py").write_text("# synthetic")
+                (release / "identity" / "bin" / "python").write_text("#!/bin/sh\nexit 0\n")
+                (release / "identity" / "bin" / "python").chmod(0o700)
+                (release / "supply" / "bin" / "python").write_text("#!/bin/sh\nexit 0\n")
+                (release / "supply" / "bin" / "python").chmod(0o700)
+                (release / "identity" / "lib" / "python3.12" / "site-packages" / "sample.py").write_text("x=1")
+                (release / ".built").write_text("")
+            finally:
+                os.umask(old_umask)
+            self.assertEqual((release / "src").stat().st_mode & 0o777, 0o700)
+            self.assertEqual((release / "identity" / "bin" / "python").stat().st_mode & 0o777, 0o700)
+            result = stage.build(NEW)
+            self.assertEqual(result, release)
+            for folder in (release, release / "src", release / "src" / "platform",
+                           release / "identity", release / "identity" / "bin",
+                           release / "identity" / "lib" / "python3.12" / "site-packages",
+                           release / "supply" / "bin"):
+                self.assertEqual(folder.stat().st_mode & 0o777, 0o755)
+            self.assertEqual((release / "src" / "platform" / "app.py").stat().st_mode & 0o777, 0o644)
+            self.assertEqual((release / "identity" / "bin" / "python").stat().st_mode & 0o777, 0o755)
+            self.assertEqual((release / "supply" / "bin" / "python").stat().st_mode & 0o777, 0o755)
+            self.assertEqual((release / "identity" / "lib" / "python3.12" / "site-packages" / "sample.py").stat().st_mode & 0o777, 0o644)
+            stage.build(NEW)
+            self.assertEqual((release / "src").stat().st_mode & 0o777, 0o755)
+
+    def test_release_permission_gate_rejects_unexpected_writable_or_symlink_release(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)):
+            releases = stage.ROOT / "releases"
+            releases.mkdir()
+            dest = releases / OLD
+            dest.mkdir(mode=0o755)
+            (dest / "src").mkdir()
+            bad = dest / "src" / "untrusted.py"
+            bad.write_text("x=1")
+            bad.chmod(0o666)
+            with self.assertRaisesRegex(RuntimeError, "Unsafe release file"):
+                stage.normalize_release_permissions(dest)
+            bad.chmod(0o600)
+            stage.normalize_release_permissions(dest)
+            self.assertEqual(bad.stat().st_mode & 0o777, 0o644)
+            elsewhere = stage.ROOT / "external"
+            elsewhere.mkdir()
+            with self.assertRaisesRegex(RuntimeError, "Unexpected managed release"):
+                stage.normalize_release_permissions(elsewhere)
+
     def test_health_evidence_rejects_public_or_unmanaged_listeners(self):
         reported = {port: ["127.0.0.1"] for port in (*stage.PORTS.values(), *stage.LEGACY_UNITS)}
         with patch.object(stage, "listening_ports", return_value=reported), \
