@@ -18,6 +18,7 @@ TR_RE = re.compile(r"^TR[ABCDEFGHJKLMNPQRSTUVWXYZ][0-9]{4}$")
 STAGES = {"TR": "TR", "EMP": "EMP", "BM": "BM"}
 MANAGEMENT_ACTIONS = frozenset({
     "hq.people.read", "people.verify", "people.approve", "engagement.manage",
+    "hq.layout.read", "hq.layout.edit", "hq.layout.publish", "hq.store.register",
     "qualification.attest", "stage.request", "stage.issue", "stage.revoke",
     "grant.request", "grant.approve", "grant.revoke", "audit.read",
     "legacy.preview", "legacy.commit", "people.suspend", "people.redact",
