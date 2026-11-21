@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "default_mode": "mock",
+  "cloud_transport_enabled": false,
+  "max_task_ttl_seconds": 600,
+  "max_artifact_bytes": 52428800,
+  "max_retries": 2,
+  "retryable_errors": ["TIMEOUT", "CONNECTION_RESET", "THROTTLED"],
+  "repository": "Ethancao258/bsv-all-platform",
+  "operations": {
+    "READ_DIAGNOSE": {"enabled": true, "mock_enabled": true, "cloud_enabled": false, "environments": ["isolated", "staging"], "effects": ["read_only"]},
+    "VERIFY_ARTIFACT": {"enabled": true, "mock_enabled": true, "cloud_enabled": false, "environments": ["isolated", "staging"], "effects": ["private_cos_read"]},
+    "STAGING_DEPLOY": {"enabled": false, "mock_enabled": false, "cloud_enabled": false, "environments": ["staging"], "effects": ["invoke_reviewed_bsvctl"], "approval": "separate_explicit_owner_approval"}
+  },
+  "prohibited": ["PRODUCTION_DEPLOY", "DATABASE_MIGRATION", "PAYMENT", "PUBLIC_EXPOSURE", "ARBITRARY_SHELL", "ARBITRARY_GITHUB_ISSUE_EXECUTION"],
+  "diagnostics": {"include_raw_logs": false, "include_host_identifiers": false, "include_public_ip": false},
+  "reporting": {"public_report": "redacted_structured_only", "raw_logs": "private_cos_only_after_review", "retention_days": 14},
+  "cloud_credentials": {"github_actions": "not_configured", "tat": "not_configured", "cos": "not_configured", "github_app": "not_configured"}
+}

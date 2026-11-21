@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bsvm.cn/contracts/ops-bridge/task.schema.json",
+  "title": "BSV OPS Bridge task envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "request_id", "operation", "environment", "repository", "target_sha", "expected_current_sha", "rollback_sha", "created_at", "expires_at", "nonce", "ci", "artifact", "auth"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "task_id": {"type": "string", "format": "uuid"},
+    "request_id": {"type": "string", "pattern": "^(BSV-OPS-[0-9]{3}|BSV-CHG-[0-9]{8}-[A-Za-z0-9-]{1,24})$"},
+    "operation": {"enum": ["READ_DIAGNOSE", "VERIFY_ARTIFACT", "STAGING_DEPLOY"]},
+    "environment": {"enum": ["isolated", "staging", "production"]},
+    "repository": {"const": "Ethancao258/bsv-all-platform"},
+    "target_sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "expected_current_sha": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40}$"},
+    "rollback_sha": {"type": ["string", "null"], "pattern": "^[a-f0-9]{40}$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "nonce": {"type": "string", "minLength": 32, "maxLength": 128},
+    "ci": {
+      "type": "object", "additionalProperties": false,
+      "required": ["run_id", "run_url", "head_sha", "status", "conclusion", "workflow"],
+      "properties": {
+        "run_id": {"type": "integer", "minimum": 1},
+        "run_url": {"type": "string", "pattern": "^https://github\\.com/Ethancao258/bsv-all-platform/actions/runs/[1-9][0-9]*$"},
+        "head_sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+        "status": {"enum": ["completed", "simulated"]},
+        "conclusion": {"enum": ["success", "simulated"]},
+        "workflow": {"enum": ["validate-architecture", "bsv-ops-bridge-dry-run"]}
+      }
+    },
+    "artifact": {"oneOf": [{"type": "null"}, {
+      "type": "object", "additionalProperties": false,
+      "required": ["object_key", "sha256", "size_bytes"],
+      "properties": {
+        "object_key": {"type": "string", "pattern": "^releases/[a-f0-9]{40}/[A-Za-z0-9._-]+$"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1, "maximum": 52428800}
+      }
+    }]},
+    "auth": {
+      "type": "object", "additionalProperties": false,
+      "required": ["key_id", "algorithm", "signature"],
+      "properties": {
+        "key_id": {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,40}$"},
+        "algorithm": {"const": "HMAC-SHA256"},
+        "signature": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}
