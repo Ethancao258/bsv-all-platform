@@ -211,6 +211,54 @@ class ReleaseTest(unittest.TestCase):
             with sqlite3.connect(destination) as db:
                 self.assertEqual(db.execute("SELECT * FROM orders").fetchall(), [(1,)])
 
+    def test_growth_isolated_candidate_backup_has_integrity_and_private_permissions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "managed"
+            data = Path(tmp) / "data"
+            source = root / "releases" / NEW / "src/services/api/customer_growth/app.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("# synthetic only")
+            growth = data / "ingress"
+            growth.mkdir(parents=True, mode=0o700)
+            growth.chmod(0o700)
+            live = growth / "growth-candidate.sqlite3"
+            with sqlite3.connect(live) as db:
+                db.execute("CREATE TABLE synthetic_customer (id TEXT PRIMARY KEY)")
+                db.execute("INSERT INTO synthetic_customer VALUES ('C-FAKE')")
+            live.chmod(0o600)
+            target = Path(tmp) / "snapshot.sqlite3"
+            cfg = {"BSV_STAGE_GROWTH_ENABLED": "1", "BSV_GROWTH_ENV": "isolated",
+                   "BSV_GROWTH_DB_URL": "sqlite:///" + str(live)}
+            with patch.object(stage, "ROOT", root), patch.object(stage, "DATA", data), \
+                    patch.object(stage, "service_config", return_value=cfg), \
+                    patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())):
+                receipt = stage.growth_candidate_snapshot(NEW, target)
+                self.assertEqual(receipt["classification"], "ISOLATED_CANDIDATE_ONLY")
+                self.assertEqual(receipt["sha256"], stage.file_sha256(target))
+                self.assertEqual(receipt["integrity"], "QUICK_CHECK_OK")
+                self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+                with sqlite3.connect(target) as read:
+                    self.assertEqual(read.execute("SELECT id FROM synthetic_customer").fetchall(),
+                                     [("C-FAKE",)])
+                with patch.object(stage, "service_config", return_value={"BSV_GROWTH_ENV": "production"}):
+                    with self.assertRaisesRegex(RuntimeError, "isolated"):
+                        stage.growth_candidate_snapshot(NEW, Path(tmp) / "blocked.sqlite3")
+
+    def test_ingress_blank_config_migration_refuses_unknown_changes(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
+                patch.object(stage, "private_file"):
+            config = stage.ROOT / "config"
+            config.mkdir()
+            blank = config / "ingress.env"
+            blank.touch(mode=0o600)
+            blank.chmod(0o600)
+            stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "1"})
+            self.assertIn("BSV_STAGE_GROWTH_ENABLED=1", blank.read_text())
+            stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "1"})
+            with self.assertRaisesRegex(RuntimeError, "Unexpected existing"):
+                stage.upgrade_blank_ingress_environment({"BSV_STAGE_GROWTH_ENABLED": "0"})
+            self.assertIn("BSV_STAGE_GROWTH_ENABLED=1", blank.read_text())
+
     def test_health_evidence_rejects_public_or_unmanaged_listeners(self):
         reported = {port: ["127.0.0.1"] for port in (*stage.PORTS.values(), *stage.LEGACY_UNITS)}
         with patch.object(stage, "listening_ports", return_value=reported), \
