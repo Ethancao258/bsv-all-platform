@@ -530,6 +530,7 @@ def test_hq_layout_browser_drag_save_refresh_and_access_denial(identity_http, tm
                     anonymous = no_session.goto(base + "/hq/stores/layout")
                     assert anonymous.status == 401
                     assert no_session.request.get(base + "/api/hq/layout?store_id=BSVT").status == 401
+                    assert no_session.request.get(base + "/api/hq/layout/revision?store_id=BSVT&revision_id=REV-" + "0"*32).status == 401
 
                     context = browser.new_context(viewport={"width": 1440, "height": 1000}, locale="zh-CN")
                     context.add_cookies([
@@ -546,6 +547,7 @@ def test_hq_layout_browser_drag_save_refresh_and_access_denial(identity_http, tm
                     assert denied.status == 403
                     assert "总部管理 · 门店与座位地图" not in page.locator("body").inner_text()
                     assert page.request.get(base + "/api/hq/layout?store_id=BSVT").status == 403
+                    assert page.request.get(base + "/api/hq/layout/revision?store_id=BSVT&revision_id=REV-" + "0"*32).status == 403
                     assert page.request.post(base + "/api/v1/identity/hq-layout-session", data={}).status == 404
 
                     grant_action(tr, one, two, "hq.layout.read", store=None, role="hq")
@@ -579,8 +581,20 @@ def test_hq_layout_browser_drag_save_refresh_and_access_denial(identity_http, tm
                     page.locator("#save").click()
                     expect(page.locator("#status")).to_contain_text("已确认保存", timeout=10000)
                     expect(page.locator("#history button").filter(has_text="DRAFT")).to_have_count(draft_count_before + 1)
-                    page.locator("#history button").first.click()
-                    expect(page.locator("#status")).to_contain_text("恢复写入暂未开放")
+                    draft_id = page.locator("#history button").filter(has_text="DRAFT").first.get_attribute("data-revision")
+                    assert draft_id and draft_id.startswith("REV-")
+                    revision_url = base + "/api/hq/layout/revision?store_id=BSVT&revision_id=" + draft_id
+                    saved = page.request.get(revision_url)
+                    assert saved.status == 200, saved.text()
+                    saved_body = saved.json()
+                    assert saved_body["revision_id"] == draft_id
+                    assert saved_body["status"] == "DRAFT"
+                    assert saved_body["base_version"] == formal_before["version"]
+                    assert saved_body["layout"] != formal_before["layout"]
+                    assert page.request.get(base + "/api/hq/layout/revision?store_id=BSVT&revision_id=invalid").status == 400
+                    assert page.request.get(base + "/api/hq/layout/revision?store_id=BSVT&revision_id=REV-" + "0"*32).status == 404
+                    # A valid revision ID must never be readable through another store's scope.
+                    assert page.request.get(base + "/api/hq/layout/revision?store_id=BSVM&revision_id=" + draft_id).status == 403
                     draft_posts = [item for item in responses if item[0] == "POST" and "/api/hq/layout/draft" in item[1]]
                     blocked_posts = [item for item in responses if item[0] == "POST" and any(
                         path in item[1] for path in ("/api/hq/layout/publish", "/api/hq/layout/restore",
@@ -593,6 +607,10 @@ def test_hq_layout_browser_drag_save_refresh_and_access_denial(identity_http, tm
                     expect(page.locator("#revision")).to_contain_text(f"V{formal_before['version']}")
                     refreshed_style = page.locator(".seat").first.get_attribute("style")
                     assert refreshed_style == original_style  # a saved draft did not replace the formal map
+                    page.on("dialog", lambda dialog: dialog.accept())
+                    page.locator('#history button[data-revision="' + draft_id + '"]').click()
+                    expect(page.locator("#status")).to_contain_text("已打开已存草稿")
+                    assert page.locator(".seat").first.get_attribute("style") == dragged_style
 
                     current = page.evaluate("async () => (await (await fetch('/api/hq/layout?store_id=BSVT')).json())")
                     assert current["version"] == formal_before["version"]

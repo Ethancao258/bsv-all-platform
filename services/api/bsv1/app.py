@@ -1241,6 +1241,34 @@ class Handler(BaseHTTPRequestHandler):
             if not db.execute("SELECT 1 FROM stores WHERE id=?", (requested_store,)).fetchone():
                 self.send_json({"error": "门店不存在。", "code": "STORE_NOT_FOUND"}, 404)
                 return
+            if path == "/api/hq/layout/revision":
+                # Read one immutable draft only after the same live identity.A store scope check.
+                revision_id = query.get("revision_id", [""])[0]
+                if not re.fullmatch(r"REV-[0-9a-f]{32}", revision_id):
+                    self.send_json({"error": "草稿编号无效。", "code": "REVISION_INVALID"}, 400)
+                    return
+                row = db.execute("""SELECT revision_id,status,base_version,payload_json,sha256
+                    FROM bsv_layout_revisions WHERE store_id=? AND revision_id=?""",
+                    (requested_store, revision_id)).fetchone()
+                if not row:
+                    self.send_json({"error": "未找到本门店草稿。", "code": "REVISION_NOT_FOUND"}, 404)
+                    return
+                if row["status"] != "DRAFT":
+                    self.send_json({"error": "历史正式版本恢复尚未开放。", "code": "REVISION_NOT_DRAFT"}, 409)
+                    return
+                try:
+                    layout = json.loads(row["payload_json"])
+                    valid = (isinstance(layout, dict)
+                             and layout.get("store_id") == requested_store
+                             and bsv_one.digest(layout) == row["sha256"])
+                except (TypeError, ValueError):
+                    valid = False
+                if not valid:
+                    self.send_json({"error": "草稿内容校验失败，禁止读取。", "code": "REVISION_INTEGRITY_ERROR"}, 409)
+                    return
+                self.send_json({"revision_id":revision_id,"status":row["status"],
+                                "base_version":row["base_version"],"layout":layout})
+                return
             if path == "/api/hq/layout":
                 result = bsv_one.current(db, requested_store)
                 result["revisions"] = bsv_one.revisions(db, requested_store)
@@ -1514,7 +1542,7 @@ class Handler(BaseHTTPRequestHandler):
         # Headquarters API: authenticated + separately granted HQ role.
         if (device_required() or os.environ.get("BSV_POS_IDENTITY_REQUIRED") == "1") and path.startswith(('/api/hq/','/hq','/api/reports/','/api/audit')):
             read_only_hq = {"/api/hq/status", "/api/hq/stores", "/api/hq/modules",
-                            "/api/hq/layout", "/api/hq/art", "/api/hq/image"}
+                            "/api/hq/layout", "/api/hq/layout/revision", "/api/hq/art", "/api/hq/image"}
             if path in read_only_hq and self.command == "GET":
                 self.hq_layout_read(path)
                 return

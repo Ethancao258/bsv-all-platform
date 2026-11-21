@@ -1,12 +1,12 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let cur=null,storeId='',selected=null,dragging=null,layoutApproved=false;
+let cur=null,storeId='',selected=null,dragging=null,layoutApproved=false,loadedDraftId=null;
 function say(t,err=false){$('status').textContent=t;$('status').style.color=err?'#b83225':'#294b5c'}
 function identityCsrf(){const part=document.cookie.split(';').map(x=>x.trim()).find(x=>x.startsWith('bsv_csrf='));return part?decodeURIComponent(part.slice('bsv_csrf='.length)):''}
 async function api(path,method='GET',data=null){const headers={};if(data){headers['Content-Type']='application/json';headers['X-CSRF-Token']=identityCsrf()}let r;try{r=await fetch(path,{method,credentials:'same-origin',headers,body:data?JSON.stringify(data):undefined,cache:'no-store'})}catch(error){error.uncertain=true;throw error}let j;try{j=await r.json()}catch{j={}}if(!r.ok){const error=Error(j.error||'请求未成功');error.status=r.status;throw error}return j}
 function active(){return cur?.layout?.seats?.find(s=>s.id===selected)}
-function render(){if(!cur)return;let c=cur.layout; $('revision').textContent=`门店 ${storeId} · ${layoutApproved?'已批准地图 V':'待现场核验底稿 V'}${cur.version} · 地图座位 ${c.seats.length} 个`;
+function render(){if(!cur)return;let c=cur.layout; $('revision').textContent=`门店 ${storeId} · ${layoutApproved?'已批准地图 V':'待现场核验底稿 V'}${cur.version} · 地图座位 ${c.seats.length} 个${loadedDraftId?' · 正在编辑已存草稿 '+loadedDraftId.slice(0,20)+'（未发布）':''}`;
  $('mapArt').src=cur.layout.background_asset_id?`/api/hq/image?store_id=${encodeURIComponent(storeId)}&asset_id=${encodeURIComponent(cur.layout.background_asset_id)}`:`/api/hq/art?store_id=${encodeURIComponent(storeId)}&v=${cur.version}&t=${Date.now()}`;
  $('seatLayer').innerHTML=c.seats.map(s=>`<button class="seat ${s.id===selected?'active':''}" data-id="${esc(s.id)}" style="left:${Math.max(1,Math.min(99,s.x))}%;top:${Math.max(1,Math.min(99,s.y))}%">${esc(s.label)}<small>${esc(s.capacity??'?')}人</small></button>`).join('');
  document.querySelectorAll('.seat').forEach(e=>{
@@ -15,7 +15,21 @@ function render(){if(!cur)return;let c=cur.layout; $('revision').textContent=`�
    e.addEventListener('pointerup',()=>{dragging=null;render();});e.addEventListener('pointercancel',()=>{dragging=null;render();});e.onclick=()=>{selected=e.dataset.id;render()};
  });drawEditor();
  $('history').innerHTML=cur.revisions.map(r=>`<button type="button" data-revision="${esc(r.revision_id)}">${r.status} · ${esc(r.revision_id.slice(0,22))} · ${esc(r.created_at.slice(0,19))}</button>`).join('');
- document.querySelectorAll('#history button').forEach(e=>e.onclick=()=>say('当前仅开放历史记录查看；恢复写入暂未开放。'));
+ document.querySelectorAll('#history button').forEach(e=>e.onclick=async()=>{
+  const rev=cur.revisions.find(r=>r.revision_id===e.dataset.revision);
+  if(!rev||rev.status!=='DRAFT'){say('当前仅支持重新打开已存草稿；历史正式版本恢复写入暂未开放。');return}
+  if(!confirm('打开已存草稿会覆盖本页尚未保存的编辑。它不会修改正式地图。是否继续？'))return;
+  const sid=storeId,rid=rev.revision_id;
+  try{
+   const saved=await api('/api/hq/layout/revision?store_id='+encodeURIComponent(sid)+'&revision_id='+encodeURIComponent(rid));
+   if(sid!==storeId)return;
+   if(saved.status!=='DRAFT'||saved.base_version!==cur.version||saved.layout?.store_id!==sid){
+    say('此草稿基于旧版正式地图，暂不允许继续编辑；请先核对版本。',true);return
+   }
+   cur.layout=saved.layout;selected=null;loadedDraftId=rid;render();
+   say('已打开已存草稿 '+rid+'；仅在浏览器中编辑，保存将生成新的草稿记录，正式地图未变。');
+  }catch(err){if(sid===storeId)say('无法读取已存草稿：'+err.message,true)}
+ });
 }
 function drawEditor(){const s=active();$('editor').hidden=!s;$('noSelection').hidden=!!s;if(!s)return;
  for(const k of ['seatId','label','kind','capacity','order','x','y'])$(k).value=(k==='seatId'?s.id:s[k]??'');
@@ -23,13 +37,13 @@ function drawEditor(){const s=active();$('editor').hidden=!s;$('noSelection').hi
  for(const side of ['left','right']){$(side).innerHTML=options;$(side).value=cur.layout.neighbors[s.id]?.[side]||'';}
 }
 function onForm(){const s=active();if(!s)return;for(const k of ['label','kind'])s[k]=$(k).value.trim();for(const k of ['capacity','order'])s[k]=Number($(k).value);for(const k of ['x','y'])s[k]=Number($(k).value);cur.layout.neighbors[s.id]={left:$('left').value||null,right:$('right').value||null};render()}
-async function load(id){storeId=id;selected=null;cur=await api('/api/hq/layout?store_id='+encodeURIComponent(id));$('store').value=id;
+async function load(id){storeId=id;selected=null;loadedDraftId=null;cur=await api('/api/hq/layout?store_id='+encodeURIComponent(id));$('store').value=id;
  const d=(await api('/api/hq/stores')).stores.find(x=>x.id===id);layoutApproved=!!d?.layout_ready;$('storeInfo').textContent=d?`${d.district} · ${d.name} · ${d.layout_ready?'座位图已发布':'尚未发布地图'}`:'';render();say(`已加载 ${id} · ${layoutApproved?'已批准':'待现场校准'}地图 V${cur.version}`)}
 async function refreshStores(){const all=(await api('/api/hq/stores')).stores;$('store').innerHTML=all.map(s=>`<option value="${esc(s.id)}">${esc(s.id)} · ${esc(s.name)}</option>`).join('');return all;}
 $('store').onchange=()=>load($('store').value).catch(e=>say(e.message,true));
 $('newStore').disabled=true;$('uploadImage').disabled=true;$('publish').disabled=true;
 $('addSeat').onclick=()=>{if(!cur)return;const all=cur.layout.seats;let i=1;while(all.some(x=>x.id===`${storeId}-SEAT-${String(i).padStart(4,'0')}`))i++;
- const id=`${storeId}-SEAT-${String(i).padStart(4,'0')}`,max=Math.max(0,...all.map(x=>x.order||0));all.push({id,label:'新座位'+i,kind:'TABLE',x:50,y:50,order:max+10,capacity:2,group_id:null,is_secondary:false});cur.layout.neighbors[id]={left:null,right:null};selected=id;render();say('新增座位仅存在浏览器编辑草稿，保存后才能审核发布。')};
+ const id=`${storeId}-SEAT-${String(i).padStart(4,'0')}`,max=Math.max(0,...all.map(x=>x.order||0));all.push({id,label:'新座位'+i,kind:'TABLE',x:50,y:50,order:max+10,capacity:2,group_id:null,is_secondary:false});cur.layout.neighbors[id]={left:null,right:null};selected=id;render();say('新增座位仅存在浏览器编辑草稿，保存后不会自动发布。')};
 $('deleteSeat').onclick=()=>{const s=active();if(!s||!confirm(`从新地图移除 ${s.label}？正式ID不可重用；营业中的座位不能移除。`))return;
  cur.layout.seats=cur.layout.seats.filter(x=>x.id!==s.id);delete cur.layout.neighbors[s.id];Object.values(cur.layout.neighbors).forEach(x=>{if(x.left===s.id)x.left=null;if(x.right===s.id)x.right=null;});if(cur.layout.groups.some(g=>g.primary_seat===s.id||g.secondary_seat===s.id)){say('此座位有关联合分桌组，请先处理，暂不修改草稿。',true);return load(storeId);}selected=null;render()};
 $('save').onclick=async()=>{const button=$('save');button.disabled=true;let acknowledged=false;try{onForm();const j=await api('/api/hq/layout/draft','POST',{store_id:storeId,base_version:cur.version,layout:cur.layout});acknowledged=true;await load(storeId);if(!cur.revisions.some(r=>r.revision_id===j.revision_id)){say('草稿请求已返回，但刷新后未找到记录，结果暂未确认；请检查门店历史后再决定是否重试。',true);return}say(`草稿 ${j.revision_id} 已确认保存；正式POS地图仍为 V${cur.version}，未发布。`)}catch(e){if(acknowledged||e.uncertain)say('保存结果暂未确认，请检查当前地图版本和历史后再决定是否重试。',true);else say('草稿未保存：'+e.message,true)}finally{button.disabled=false}};
