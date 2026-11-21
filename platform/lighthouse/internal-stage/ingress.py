@@ -148,7 +148,9 @@ def internal_menu(request):
         return Response(status_code=405)
     page = (ROOT / "apps/guest-web/bsv1/site/cocktail/index.html").read_text(encoding="utf-8")
     menu_link = '<a href="/pos">返回点单台</a>' if request.query_params.get("from") == "pos" else ""
-    nav = '<nav class="private-menu-return" aria-label="内部工作导航"><a href="/">返回工作台</a>' + menu_link + '</nav>'
+    nav = ('<nav class="private-menu-return" aria-label="内部工作导航">'
+           '<a href="/">返回工作台</a><a href="/member/">免费会员</a>'
+           + menu_link + '</nav>')
     page = page.replace('<header class="header">', '<header class="header">' + nav, 1)
     page = page.replace("</head>", '<link rel="stylesheet" href="/menu-internal.css"></head>', 1)
     return HTMLResponse(page, headers={"cache-control": "no-store", "referrer-policy": "no-referrer",
