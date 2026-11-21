@@ -20,7 +20,15 @@ class PredeploySupplementTests(unittest.TestCase):
             "services/api/supply/requirements.lock",
         })
         self.assertEqual(predeploy.EXPECTED_ARCH, {"x86_64": "amd64", "aarch64": "arm64"})
-        self.assertEqual(predeploy.TARGET_SHA, "f00371ccd1c233caf8eea97398bf981cf7d65dd0")
+        self.assertEqual(predeploy.TARGET_SHA, "cb06be66e78d92b8921fc3103b12bdbdc55284f8")
+
+    def test_previous_amd64_wheelhouse_locks_are_byte_identical_at_h(self):
+        proof = predeploy.lock_compatibility(
+            "f00371ccd1c233caf8eea97398bf981cf7d65dd0", predeploy.TARGET_SHA)
+        self.assertEqual(proof["wheelhouse_reuse"], "BYTE_IDENTICAL_LOCKS_ONLY")
+        self.assertEqual(proof["previous_supplement_artifact_id"], 14710029781)
+        self.assertEqual(len(proof["locks"]), 3)
+        self.assertTrue(all(row["identical"] for row in proof["locks"].values()))
 
     def test_supplement_file_inventory_and_tamper_detection(self):
         with tempfile.TemporaryDirectory(prefix="bsv-ops003-supplement-test-") as tmp:
@@ -32,7 +40,7 @@ class PredeploySupplementTests(unittest.TestCase):
             metadata = {"target_sha": predeploy.TARGET_SHA,
                         "source_ci_run_id": predeploy.SOURCE_CI_RUN,
                         "source_artifact_run_id": predeploy.SOURCE_ARTIFACT_RUN,
-                        "host_architecture_confirmed": False,
+                        "host_architecture_confirmed": True,
                         "release_signature": "OFFLINE_SIGNATURE_PASS",
                         "offline_dependencies": "PASS"}
             package = predeploy.pack_supplement(root, arch="amd64", metadata=metadata, output=out)

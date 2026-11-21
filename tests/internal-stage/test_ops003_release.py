@@ -27,7 +27,7 @@ def valid_jobs():
 class ReleaseBundleTests(unittest.TestCase):
     def test_only_exact_successful_ci_run_is_accepted(self):
         proof = release.validate_ci(valid_run(), valid_jobs())
-        self.assertEqual(proof["run_id"], 44894443077)
+        self.assertEqual(proof["run_id"], 44922120417)
         self.assertEqual(len(proof["jobs"]), 9)
         wrong_sha = valid_run()
         wrong_sha["headSha"] = "a" * 40

@@ -9,7 +9,7 @@
     "schema_version": {"const": "1.0"},
     "request_id": {"const": "ISSUE-32"},
     "repository": {"const": "Ethancao258/bsv-all-platform"},
-    "target_sha": {"const": "f00371ccd1c233caf8eea97398bf981cf7d65dd0"},
+    "target_sha": {"const": "cb06be66e78d92b8921fc3103b12bdbdc55284f8"},
     "tree_sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
     "source_manifest": {"type": "object", "required": ["format", "commit", "tree", "entries"]},
     "source_archive": {
@@ -34,13 +34,13 @@
       "type": "object", "additionalProperties": false,
       "required": ["url", "headSha", "event", "status", "conclusion", "workflowName", "run_id", "jobs"],
       "properties": {
-        "url": {"const": "https://github.com/Ethancao258/bsv-all-platform/actions/runs/44894443077"},
-        "headSha": {"const": "f00371ccd1c233caf8eea97398bf981cf7d65dd0"},
+        "url": {"const": "https://github.com/Ethancao258/bsv-all-platform/actions/runs/44922120417"},
+        "headSha": {"const": "cb06be66e78d92b8921fc3103b12bdbdc55284f8"},
         "event": {"const": "pull_request"},
         "status": {"const": "completed"},
         "conclusion": {"const": "success"},
         "workflowName": {"const": "validate-architecture"},
-        "run_id": {"const": 44894443077},
+        "run_id": {"const": 44922120417},
         "jobs": {"type": "array", "minItems": 9, "maxItems": 9}
       }
     },

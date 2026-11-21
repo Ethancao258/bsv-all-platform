@@ -22,8 +22,8 @@ import stage  # noqa: E402
 
 REPOSITORY = "Ethancao258/bsv-all-platform"
 REQUEST_ID = "ISSUE-32"
-TARGET_SHA = "f00371ccd1c233caf8eea97398bf981cf7d65dd0"
-CI_RUN_ID = 44894443077
+TARGET_SHA = "cb06be66e78d92b8921fc3103b12bdbdc55284f8"
+CI_RUN_ID = 44922120417
 CI_RUN_URL = f"https://github.com/{REPOSITORY}/actions/runs/{CI_RUN_ID}"
 REQUIRED_JOBS = {
     "architecture", "bsv1", "menu-v13-1", "supply-v2", "identity-r2",

@@ -23,7 +23,7 @@ import ops003_release  # noqa: E402
 
 TARGET_SHA = ops003_release.TARGET_SHA
 SOURCE_CI_RUN = ops003_release.CI_RUN_ID
-SOURCE_ARTIFACT_RUN = int(os.environ.get("OPS003_SOURCE_ARTIFACT_RUN", "44899535240"))
+SOURCE_ARTIFACT_RUN = int(os.environ.get("OPS003_SOURCE_ARTIFACT_RUN", "0"))
 COSIGN_VERSION = "v2.4.1"
 COSIGN_RELEASE_KEY_SHA256 = "f4cea466e5e887a45da5031757fa1d32655d83420639dc1758749b744179f126"
 REQUIRED_LOCKS = (
@@ -32,8 +32,11 @@ REQUIRED_LOCKS = (
     "services/api/supply/requirements.lock",
 )
 EXPECTED_ARCH = {"x86_64": "amd64", "aarch64": "arm64"}
-MAX_SUPPLEMENT_BYTES = 700 * 1024 * 1024
+MAX_SUPPLEMENT_BYTES = 95 * 1024 * 1024
 SIGSTORE_TUF_URL = "https://tuf-repo-cdn.sigstore.dev"
+WHEELHOUSE_REUSE_SOURCE_RUN = 44913890434
+WHEELHOUSE_REUSE_ARTIFACT_ID = 14710029781
+WHEELHOUSE_REUSE_ARTIFACT_SHA256 = "2b65e83493594d2bc1948e407499169264a44c36ba66510bb498a7515eff750a"
 
 
 class PredeployError(ValueError):
@@ -286,6 +289,32 @@ def wheelhouse_digest(wheelhouse: Path) -> str:
     return digest.hexdigest()
 
 
+def lock_compatibility(base_sha: str, target_sha: str) -> dict:
+    """Prove the signed f003 wheelhouse lock inputs remain byte-identical at H."""
+    if not re.fullmatch(r"[a-f0-9]{40}", base_sha) or target_sha != TARGET_SHA:
+        raise PredeployError("Wheelhouse compatibility proof must target the pinned release SHA")
+    files = {}
+    for relative in REQUIRED_LOCKS:
+        old = _run(["git", "-C", str(REPO), "show", f"{base_sha}:{relative}"]).stdout.encode()
+        path = REPO / relative
+        if path.is_symlink() or not path.is_file():
+            raise PredeployError(f"Missing target dependency lock: {relative}")
+        new = path.read_bytes()
+        old_digest, new_digest = hashlib.sha256(old).hexdigest(), hashlib.sha256(new).hexdigest()
+        if old_digest != new_digest:
+            raise PredeployError(f"Dependency lock changed; wheelhouse cannot be reused: {relative}")
+        files[relative] = {"base_sha256": old_digest, "target_sha256": new_digest, "identical": True}
+    return {
+        "schema_version": "1.0", "base_sha": base_sha, "target_sha": target_sha,
+        "wheelhouse_reuse": "BYTE_IDENTICAL_LOCKS_ONLY",
+        "previous_supplement_run_id": WHEELHOUSE_REUSE_SOURCE_RUN,
+        "previous_supplement_artifact_id": WHEELHOUSE_REUSE_ARTIFACT_ID,
+        "previous_supplement_sha256": WHEELHOUSE_REUSE_ARTIFACT_SHA256,
+        "locks": files,
+        "host_wheelhouse_integrity": "MUST_REVERIFY_PREVIOUS_SIGNED_MANIFEST_AND_FILE_HASHES",
+    }
+
+
 def _inventory(root: Path) -> list[dict]:
     entries = []
     for path in sorted(root.rglob("*"), key=lambda item: item.relative_to(root).as_posix()):
@@ -308,7 +337,7 @@ def pack_supplement(root: Path, *, arch: str, metadata: dict, output: Path) -> d
         raise PredeployError("Invalid target architecture or supplement staging directory")
     if (metadata.get("target_sha") != TARGET_SHA or metadata.get("source_ci_run_id") != SOURCE_CI_RUN
             or metadata.get("source_artifact_run_id") != SOURCE_ARTIFACT_RUN
-            or metadata.get("host_architecture_confirmed") is not False):
+            or metadata.get("host_architecture_confirmed") is not True):
         raise PredeployError("Supplement metadata does not preserve the pinned target boundary")
     entries = _inventory(root)
     if not entries or sum(e["size_bytes"] for e in entries) > MAX_SUPPLEMENT_BYTES:
@@ -317,11 +346,11 @@ def pack_supplement(root: Path, *, arch: str, metadata: dict, output: Path) -> d
                 "target_sha": TARGET_SHA, "source_ci_run_id": SOURCE_CI_RUN,
                 "source_artifact_run_id": SOURCE_ARTIFACT_RUN,
                 "target_os": "Ubuntu 24.04", "python": "3.12", "target_arch": arch,
-                "host_architecture_confirmed": False,
+                "host_architecture_confirmed": True,
                 "cosign_version": COSIGN_VERSION,
                 "cosign_release_key_sha256": COSIGN_RELEASE_KEY_SHA256,
                 "source_artifact_run_id": SOURCE_ARTIFACT_RUN,
-                "source_release_artifact": "bsv-ops-003-f00371ccd1c233caf8eea97398bf981cf7d65dd0",
+                "source_release_artifact": f"bsv-ops-003-{TARGET_SHA}",
                 "contents": entries, "predeploy_evidence": metadata}
     manifest_path = root / "supplement-manifest.json"
     if manifest_path.exists() or manifest_path.is_symlink():
@@ -358,7 +387,7 @@ def verify_supplement_tree(root: Path) -> dict:
     if (manifest.get("schema_version") != "1.0" or manifest.get("request_id") != "ISSUE-32"
             or manifest.get("target_sha") != TARGET_SHA or manifest.get("source_ci_run_id") != SOURCE_CI_RUN
             or manifest.get("source_artifact_run_id") != SOURCE_ARTIFACT_RUN
-            or manifest.get("host_architecture_confirmed") is not False):
+            or manifest.get("host_architecture_confirmed") is not True):
         raise PredeployError("Supplement manifest does not match the pinned target")
     paths = list(root.rglob("*"))
     if any(path.is_symlink() or not (path.is_file() or path.is_dir()) for path in paths):
@@ -414,7 +443,7 @@ def verify_supplement_archive(archive_path: Path) -> dict:
     if (manifest.get("schema_version") != "1.0" or manifest.get("request_id") != "ISSUE-32"
             or manifest.get("target_sha") != TARGET_SHA or manifest.get("source_ci_run_id") != SOURCE_CI_RUN
             or manifest.get("source_artifact_run_id") != SOURCE_ARTIFACT_RUN
-            or manifest.get("host_architecture_confirmed") is not False
+            or manifest.get("host_architecture_confirmed") is not True
             or manifest.get("target_arch") not in {"amd64", "arm64"}):
         raise PredeployError("Supplement archive manifest does not match the pinned target")
     expected = {prefix + entry["path"]: entry for entry in manifest.get("contents", [])}
@@ -459,6 +488,10 @@ def main(argv=None) -> int:
     check.add_argument("--root", type=Path, required=True)
     check_archive = commands.add_parser("verify-supplement-archive")
     check_archive.add_argument("--archive", type=Path, required=True)
+    locks = commands.add_parser("lock-compatibility")
+    locks.add_argument("--base-sha", required=True)
+    locks.add_argument("--target-sha", required=True)
+    locks.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     if args.command == "verify-source":
         result = verify_source_package(args.cosign, args.trusted_root, args.bundle, args.sha256, args.sigstore)
@@ -469,6 +502,11 @@ def main(argv=None) -> int:
         result = fetch_tuf_mirror(args.destination)
     elif args.command == "verify-supplement-tree":
         result = verify_supplement_tree(args.root)
+    elif args.command == "lock-compatibility":
+        result = lock_compatibility(args.base_sha, args.target_sha)
+        if args.output.exists() or args.output.is_symlink():
+            raise PredeployError("Refusing to overwrite wheelhouse compatibility proof")
+        args.output.write_text(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
     else:
         result = verify_supplement_archive(args.archive)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))

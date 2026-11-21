@@ -216,3 +216,10 @@
 - 本轮首次 CI 曾发现 Cosign trusted-root 需要 new bundle format、TUF 镜像要用 versioned/hashes 文件，以及 smoke test 误要求 supply 锁中不存在的 psycopg；均已按最小范围修复，最终两个架构全通过。不是 READY 之前跳过的门禁。
 - `HOST_NOT_RUN` · 没有连接或操作腾讯云。现场 CPU 型号、实际 current/rollback SHA、pending 状态、systemd、监听范围、目录权限/磁盘、PG17/SQLite 加密检查点、HTTP 路由、SSH 隧道浏览器和真实恢复演练均尚未验证。保持旧 8765/8767、现有密钥与数据、回滚目标、数据库 revision；未部署、未触碰 CloudBase、未启用付款。
 - 可交付判定：离线验证和依赖材料已通过，可进入 OrcaTerm 的现场只读状态核对；仅在状态与操作单前置条件完全匹配、经营者此前的隔离发布批准有效且 `bsvctl preflight/verify` 通过后才可执行发布。若现场任一项不同即 STOP；切换后任一验收失败，用现有 `bsvctl rollback`，不得手工改链接或配置。真实主机上线状态仍是 `HOST_NOT_RUN`。
+
+## 2026-11-21｜OPS-003 P0 标准 venv 软链接修复
+
+- PR #35 `<https://github.com/Ethancao258/bsv-all-platform/pull/35>` 的 H 为 `cb06be66e78d92b8921fc3103b12bdbdc55284f8`，以 f003 `f00371ccd1c233caf8eea97398bf981cf7d65dd0` 为父提交。仅改动发布器 `stage.py` 和 `tests/internal-stage/test_deploy.py`。真实 venv 的 `lib64 -> lib` 在旧实现中复现失败，原因为从 releases 根计算出的路径额外包含发布 SHA。新实现从经验证 SHA 命名 release 目录计算相对路径，并由权限规范化和 inventory 共同调用；允许的链接路径与目标值保持不变，任意链接、异常目标、路径穿越和跨 release 目标仍拒绝。
+- PASS_CI_H · 九项门禁由 `validate-architecture` run `44922120417` 成功：<https://github.com/Ethancao258/bsv-all-platform/actions/runs/44922120417>。`lighthouse-internal-stage` 的 Ubuntu 24.04/Python 3.12 实测真实 Identity/Supply venv、权限规范化、inventory、`.built` 与第二次 build；umask 077/022 均通过。该 job 的发布器用例 25 项全通过。修改前回归用例以真实 venv 复现 `False`，修复后通过。
+- 三个依赖锁从 f003 到 H 逐字节一致。PR #34 发布器已改为 H 和 CI run 44922120417；amd64 supplemental 只携带签名源码关联、校验工具、TUF 信任镜像与锁兼容证明，限制小于 100,000,000 字节，不重复打包已上传 wheelhouse。旧补充包只能在主机重新核对签名、SHA、清单、wheel 文件后复用。
+- HOST_NOT_RUN · Codex 未连接或修改 Lighthouse。部署前 CPU 和实时服务状态须现场确认；主机升级、systemd/PostgreSQL/备份/HTTP 验收及回退演练仍未执行。保留 8765/8767、当前 c51、rollback 0e8b3、f003 半成品目录、现有数据和密钥。
