@@ -127,4 +127,6 @@ def install_pos_projection(db) -> None:
                   visit_id TEXT NOT NULL REFERENCES visits(id),
                   store_id TEXT NOT NULL REFERENCES stores(id),
                   customer_id TEXT NOT NULL,
-                  created_at TEXT NOT NULL)""")
+                  action_id TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  UNIQUE(store_id,action_id))""")
