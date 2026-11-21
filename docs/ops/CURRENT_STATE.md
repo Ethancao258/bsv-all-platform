@@ -207,10 +207,12 @@
 - 交付门禁与验证步骤：[`BSV_OPS_003_FASTPATH.md`](BSV_OPS_003_FASTPATH.md)。
 - PR #34：<https://github.com/Ethancao258/bsv-all-platform/pull/34>。部署器与CI修复代码提交 `4593dce1d7700b04940f63697c2511bab1d3c3bf` 的 `validate-architecture` run `44899329498` 九门禁全绿；签名构件 workflow run `44899329551` 成功，COS job 因默认关闭被跳过。随后仅文档记录提交 `b15dde410aaf025b773a9e298b97aa21f5e56839` 也由 `validate-architecture` run `44899535272` 九门禁通过、`bsv-ops-003-release` run `44899535240` 签名构件成功。首轮 run `44899126975` 暴露浅克隆缺少目标 Git 对象，现已对内部阶段 job 设置 `fetch-depth: 0`。真实 COS 上传、TAT、主机部署和隧道浏览器验收仍未运行。
 
-## 2026-11-21｜BSV-OPS-003 目标版本离线预部署材料（CI 待验证）
+## 2026-11-21｜BSV-OPS-003 指定升级包离线验收
 
-- `TARGET_SHA=f00371ccd1c233caf8eea97398bf981cf7d65dd0`；源码签名包沿用 PR #34 发布 run `44899535240`，签名身份限定到 `bsv-ops-003-release.yml@refs/pull/34/merge`；固定源码 CI run `44894443077`，包括九个必需成功 job。
-- c51→f003 文件级审计确认：身份与供货锁定依赖未变；新增增长阶段锁文件含 `qrcode==8.2`、`Pillow==11.3.0`，故补充包按 identity + growth + supply 三份完整锁生成新 venv 所需 wheelhouse；两版数据库迁移文件一致，部署不得更改现有 revision。预部署工作流将分别在 Ubuntu 24.04/Python 3.12 原生 amd64 与 arm64 上进行离线安装和拒绝路径验证，主机架构仍未知。
-- 新增离线发布包验证器、双架构预部署 workflow、定向测试和 OrcaTerm 执行单。验证要求包括官方 Cosign 发布签名、Sigstore TUF root 离线链、精确 PR 工作流身份、包及源 SHA/tree/九 CI 校验、篡改拒绝、全锁 wheelhouse 新 venv + `pip check`、缺 wheel 拒绝和归档文件级哈希。
-- 本地定向检查 PASS：`test_ops003_predeploy.py`（3 通过、真实签名/完整离线依赖用例按 CI 环境跳过）、`test_ops003_release.py` 4 项、`test_ops003_publish.py` 2 项、Python 编译、架构/路由校验和 `git diff --check`。本地没有发布构件附件和双架构 wheelhouse，故未冒充完成离线实际验签/依赖安装。
-- `PREDEPLOY_CI=PENDING` · 新增 Actions 需在两个原生架构真实生成补充包并通过离线验签/安装门禁后，才能将其标记为可交付。`HOST_NOT_RUN` · Codex 未操作 Lighthouse；当前 CPU、systemd 服务、目录、PG/SQLite 检查点、真实运行 SHA、HTTP/SSH 隧道仍须由操作员读取，现有对话状态不得视为现场证据。旧 8765/8767、现有密钥、数据库与回滚版本均未触碰。
+- 目标仍为 PR #27 的 `f00371ccd1c233caf8eea97398bf981cf7d65dd0`；本次交付代码提交 `80546ef2a72c5e78a5192d29a12e757eca89bf23` 位于原 PR #34 分支。固定源 CI run `44894443077` 九门禁均成功；目标源码归档运行 SHA、Git tree 和逐条文件 blob/mode 由签名包验证器复核。
+- 依赖/迁移审计：c51 与 f003 的 identity、supply 锁文件一致；f003 新增 growth stage 锁 `qrcode==8.2`、`Pillow==11.3.0`。补充 wheelhouse 是三份锁全部 pinned wheel，而非只含两个增量包；双架构分别新建 Python 3.12 venv，pip check 和实际包导入通过。c51→f003 的迁移文件一致，无新增 DB revision。主机系统需按当前资料状态现场核对，不假设 x86_64。
+- 最终 GitHub Actions 通过：`validate-architecture` run `44913267030` 九个 job 全绿；release/predeploy run `44913266984` 的精确源签名构件、amd64、arm64 三项均成功，COS 上传按默认关闭被跳过。离线验签使用 Cosign v2.4.1 new bundle format、官方 OIDC issuer/PR #34 workflow identity、TUF root/metadata 本地镜像；源包和 supplement 均实测签名通过、篡改拒绝。官方 Cosign 2.4.1 发布公钥摘要与 openssl 二进制签名校验通过。
+- 补充构件：`bsv-ops-003-host-supplement-amd64-44913266984`（Actions artifact ID `14709864371`，artifact zip 160,056,409 bytes；内部 tar SHA-256 `964d8c8dc623285a9af1eeb1e53fc47e7bc546b574db329b0059c88353cb0714`，221,941,760 bytes）；`bsv-ops-003-host-supplement-arm64-44913266984`（artifact ID `14711075674`，artifact zip 131,803,336 bytes；内部 tar SHA-256 `033eb2ef2dc3eafca7a47d1099a194f7a1d7a7ab960b565b4f8bb1de67772a4d`，192,952,320 bytes）。两份包含外层 `.sha256`、Sigstore bundle、文件清单、TUF metadata、Cosign、离线 wheelhouse、工具和操作单；留存 7 天。Actions 运行页：<https://github.com/Ethancao258/bsv-all-platform/actions/runs/44913266984>。
+- 本轮首次 CI 曾发现 Cosign trusted-root 需要 new bundle format、TUF 镜像要用 versioned/hashes 文件，以及 smoke test 误要求 supply 锁中不存在的 psycopg；均已按最小范围修复，最终两个架构全通过。不是 READY 之前跳过的门禁。
+- `HOST_NOT_RUN` · 没有连接或操作腾讯云。现场 CPU 型号、实际 current/rollback SHA、pending 状态、systemd、监听范围、目录权限/磁盘、PG17/SQLite 加密检查点、HTTP 路由、SSH 隧道浏览器和真实恢复演练均尚未验证。保持旧 8765/8767、现有密钥与数据、回滚目标、数据库 revision；未部署、未触碰 CloudBase、未启用付款。
+- 可交付判定：离线验证和依赖材料已通过，可进入 OrcaTerm 的现场只读状态核对；仅在状态与操作单前置条件完全匹配、经营者此前的隔离发布批准有效且 `bsvctl preflight/verify` 通过后才可执行发布。若现场任一项不同即 STOP；切换后任一验收失败，用现有 `bsvctl rollback`，不得手工改链接或配置。真实主机上线状态仍是 `HOST_NOT_RUN`。
