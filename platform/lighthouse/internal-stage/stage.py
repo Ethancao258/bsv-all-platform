@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Versioned deployment for the private internal stage on a systemd host."""
 import argparse
+import base64
 from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 import fcntl
@@ -233,6 +234,29 @@ def environment(name, values):
     return values
 
 
+def upgrade_blank_ingress_environment(values):
+    path = ROOT / "config" / "ingress.env"
+    payload = "\n".join(f"{key}={shlex.quote(str(value))}" for key, value in sorted(values.items()))
+    if not path.exists():
+        environment("ingress", values)
+        return
+    private_file(path, 0)
+    old = path.read_text().strip()
+    if old == payload:
+        return
+    if old:
+        raise RuntimeError("Unexpected existing ingress.env; refuse automatic rewrite")
+    temp = path.with_name("ingress.env.next")
+    if temp.exists() or temp.is_symlink():
+        raise RuntimeError("Unexpected ingress environment upgrade marker")
+    try:
+        write_secret(temp, payload)
+        temp.replace(path)
+        sync_directory(path.parent)
+    finally:
+        temp.unlink(missing_ok=True)
+
+
 def prepare_config():
     for path, mode in ((ROOT, 0o755), (ROOT / "releases", 0o755), (ROOT / "config", 0o700), (DATA, 0o755)):
         path.mkdir(mode=mode, exist_ok=True)
@@ -291,7 +315,26 @@ def prepare_config():
         "BSV_APP_ENV": "isolated",
     })
     environment("postgres", {"BSV_STAGE_COMPONENT_DATA": str(DATA / "postgres")})
-    environment("ingress", {})
+    # Isolated, synthetic candidate only; no additional public service or authority.
+    # The original ingress.env is an empty, root-owned environment file on older
+    # releases. Only that exact baseline may be upgraded atomically.
+    growth_signing = write_secret(config / "growth-signing-key", secrets.token_urlsafe(40))
+    growth_signature = write_secret(
+        config / "growth-signature-key", base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())
+    ingress_settings = {
+        "BSV_STAGE_GROWTH_ENABLED": "1", "BSV_GROWTH_ENV": "isolated",
+        "BSV_GROWTH_TRUST_IDENTITY": "1",
+        "BSV_GROWTH_DB_URL": "sqlite:///" + str(DATA / "ingress" / "growth-candidate.sqlite3"),
+        "BSV_GROWTH_IDENTITY_ME_URL": "http://127.0.0.1:18761/api/v1/identity/me",
+        "BSV_GROWTH_SIGNING_KEY": growth_signing,
+        "BSV_GROWTH_SIGNATURE_KEY": growth_signature,
+        "BSV_GROWTH_LEGAL_ENTITY_ID": "DEMO_LEGAL",
+        "BSV_GROWTH_STORE_IDS": "BSVT",
+        "BSV_GROWTH_PUBLIC_BASE_URL": "http://127.0.0.1:18760",
+        "BSV_GROWTH_MENU_URL": "/cocktail/",
+        "BSV_GROWTH_PRIVACY_APPROVED": "0",
+    }
+    upgrade_blank_ingress_environment(ingress_settings)
     sources = json.loads((REPO / "config/modules/supply-sources.example.json").read_text())
     for value in sources["sources"].values():
         value["primary"] = value["standby_read"] = ""
@@ -329,6 +372,9 @@ def build(sha):
         run("/usr/bin/python3", "-m", "venv", directory)
         run(directory / "bin/python", "-m", "pip", "--disable-pip-version-check", "install",
             "--no-deps", "-r", source / f"services/api/{name}/requirements.lock")
+        if name == "identity":
+            run(directory / "bin/python", "-m", "pip", "--disable-pip-version-check", "install",
+                "--no-deps", "-r", source / "services/api/customer_growth/requirements.stage.lock")
         run(directory / "bin/python", "-m", "pip", "check")
     (dest / ".built").touch()
     return dest
@@ -643,6 +689,13 @@ def verify():
         ("/api/v1/identity/pos-session", 404), ("/cocktail/", 200), ("/craft/", 404),
         ("/__bsv_unknown_release_route__", 404),
     ]
+    if deployed and (ROOT / "releases" / deployed / "src/services/api/customer_growth/app.py").exists():
+        routes.extend((
+            ("/member/", 200), ("/staff/growth/", 200),
+            ("/api/v1/growth/public/config", 200),
+            ("/api/v1/growth/staff/store-options", 401),
+            ("/api/v1/growth/internal/payment-event", 404),
+        ))
     if deployed and ACADEMY_REVISION in migration_revisions(ROOT / "releases" / deployed / "src"):
         routes.append(("/api/v1/academy/work", 401))
     for _ in range(35):
