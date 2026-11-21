@@ -136,6 +136,7 @@ jobs:
           python tests/internal-stage/test_deploy.py
           python tests/internal-stage/test_ops003_release.py
           python tests/internal-stage/test_ops003_publish.py
+          python tests/internal-stage/test_ops003_predeploy.py
           python tests/internal-stage/test_control.py
           python platform/lighthouse/internal-stage/stage.py --help
           bash -n platform/lighthouse/internal-stage/run.sh

@@ -206,3 +206,11 @@
 - 网页可见还需 V2 隔离主机发布与真实主机验收、然后 V3 同一 SSH 隧道浏览器验收。V2 之前需负责人一次性批准 GitHub Actions OIDC 到受限 Tencent STS 角色：指定实例固定 TAT 命令 + 指定私有 COS 前缀；不得用静态密钥、宽泛 SSH 或生产权限。唯一下一步为该一次性角色/资源范围批准与配置；未经批准保持 STOP。
 - 交付门禁与验证步骤：[`BSV_OPS_003_FASTPATH.md`](BSV_OPS_003_FASTPATH.md)。
 - PR #34：<https://github.com/Ethancao258/bsv-all-platform/pull/34>。部署器与CI修复代码提交 `4593dce1d7700b04940f63697c2511bab1d3c3bf` 的 `validate-architecture` run `44899329498` 九门禁全绿；签名构件 workflow run `44899329551` 成功，COS job 因默认关闭被跳过。随后仅文档记录提交 `b15dde410aaf025b773a9e298b97aa21f5e56839` 也由 `validate-architecture` run `44899535272` 九门禁通过、`bsv-ops-003-release` run `44899535240` 签名构件成功。首轮 run `44899126975` 暴露浅克隆缺少目标 Git 对象，现已对内部阶段 job 设置 `fetch-depth: 0`。真实 COS 上传、TAT、主机部署和隧道浏览器验收仍未运行。
+
+## 2026-11-21｜BSV-OPS-003 目标版本离线预部署材料（CI 待验证）
+
+- `TARGET_SHA=f00371ccd1c233caf8eea97398bf981cf7d65dd0`；源码签名包沿用 PR #34 发布 run `44899535240`，签名身份限定到 `bsv-ops-003-release.yml@refs/pull/34/merge`；固定源码 CI run `44894443077`，包括九个必需成功 job。
+- c51→f003 文件级审计确认：身份与供货锁定依赖未变；新增增长阶段锁文件含 `qrcode==8.2`、`Pillow==11.3.0`，故补充包按 identity + growth + supply 三份完整锁生成新 venv 所需 wheelhouse；两版数据库迁移文件一致，部署不得更改现有 revision。预部署工作流将分别在 Ubuntu 24.04/Python 3.12 原生 amd64 与 arm64 上进行离线安装和拒绝路径验证，主机架构仍未知。
+- 新增离线发布包验证器、双架构预部署 workflow、定向测试和 OrcaTerm 执行单。验证要求包括官方 Cosign 发布签名、Sigstore TUF root 离线链、精确 PR 工作流身份、包及源 SHA/tree/九 CI 校验、篡改拒绝、全锁 wheelhouse 新 venv + `pip check`、缺 wheel 拒绝和归档文件级哈希。
+- 本地定向检查 PASS：`test_ops003_predeploy.py`（3 通过、真实签名/完整离线依赖用例按 CI 环境跳过）、`test_ops003_release.py` 4 项、`test_ops003_publish.py` 2 项、Python 编译、架构/路由校验和 `git diff --check`。本地没有发布构件附件和双架构 wheelhouse，故未冒充完成离线实际验签/依赖安装。
+- `PREDEPLOY_CI=PENDING` · 新增 Actions 需在两个原生架构真实生成补充包并通过离线验签/安装门禁后，才能将其标记为可交付。`HOST_NOT_RUN` · Codex 未操作 Lighthouse；当前 CPU、systemd 服务、目录、PG/SQLite 检查点、真实运行 SHA、HTTP/SSH 隧道仍须由操作员读取，现有对话状态不得视为现场证据。旧 8765/8767、现有密钥、数据库与回滚版本均未触碰。
