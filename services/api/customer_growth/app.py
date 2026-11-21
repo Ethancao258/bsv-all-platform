@@ -638,8 +638,9 @@ def staff_guest_context(request:Request, context:str):
     ctx=read_pos_context(context)
     require_store(ctx['store_id'])
     tr,_=staff_auth(request,ctx['store_id'],action='pos.order.read')
-    if not ISOLATED:
-        # A second authority must prove shift, visit, member linkage and store ownership.
+    if not ISOLATED or TRUST_IDENTITY:
+        # The integrated identity.A stage also requires an independent POS proof.
+        # A valid signature and staff grant alone never prove an active visit.
         if not (POS_VERIFY_URL and POS_VERIFY_TOKEN):
             raise HTTPException(503,'当前无法核验接待权限')
         try:
