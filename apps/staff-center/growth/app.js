@@ -67,12 +67,19 @@
    identity=null;policy=null;removeContext();el('service-tags').replaceChildren();
    try{
      const data=await api('/staff/me?store_id='+encodeURIComponent(selectedStore()));
-     identity=data;el('who').textContent=data.name+' · '+data.actor_tr;el('who-note').textContent='已核对当前门店访问权限';
+     identity=data;el('who').textContent=data.name+' · '+data.actor_tr;
+     const marketing=data.can_marketing!==false;
+     el('who-note').textContent=marketing?'已核对本店营销与接待权限':'已核对本店POS接待权限 · 推广认领需另行授权';
+     for(const item of document.querySelectorAll('[data-view]')){
+       if(item.dataset.view!=='service'){item.hidden=!marketing;item.disabled=!marketing;}
+     }
+     if(!marketing)showView('service');
      el('full-name').value=data.name||'';
      el('signature-status').textContent=data.signature_version?'已保存 · 第'+data.signature_version+'版':'尚未录入';
      el('signature-saved').hidden=!data.signature_version;
      if(data.signature_version)el('saved-image').src='/api/v1/growth/staff/signature-preview?store_id='+encodeURIComponent(selectedStore())+'&v='+data.signature_version;
-     await Promise.all([loadQueue(),loadPolicy(),loadContext()]);
+     if(marketing)await Promise.all([loadQueue(),loadPolicy(),loadContext()]);
+     else {policy=null;el('claim').disabled=true;await loadContext();}
      if(!visitContext)status('');
    }catch(e){el('who').textContent='暂时无法使用客户工作台';el('who-note').textContent='请从员工中心登录，并确认本店岗位权限';el('claim').disabled=true;el('signature-saved').hidden=true;status(e.message,true);}
  }
