@@ -1,7 +1,84 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>文森特会员 · BAR ST. VINCENT</title><link rel="stylesheet" href="/member/styles.css"></head><body><main><header class="mast"><div class="brandmark">V</div><h1>BAR ST. VINCENT</h1><small>文森特 · 会员礼遇</small></header><p class="lead">成为会员，轻松查看返场礼遇。<br>纸质礼遇卡用于提醒，权益以系统记录为准。</p>
-<section class="card" id="login"><h2>快速注册 / 查看会员</h2><p class="small">首次只需完成身份验证，不必填写一堆资料。入会免费，非会员也可以正常消费。</p><button class="wechat" id="wechat">微信授权并继续</button><p class="small" id="wxhint">微信方式需要在已配置的公众号网页授权环境中使用。</p><div id="devbox" class="hidden"><div class="divider"></div><label for="devname">本地演练身份（仅用于测试）</label><input id="devname" type="text" maxlength="24" value="customer-demo-001"><button id="demo">使用测试身份登录</button></div></section>
-<section class="card hidden" id="register"><h2>确认会员资料</h2><label for="nickname">如何称呼您（选填昵称）</label><input id="nickname" type="text" maxlength="32" placeholder="如：小陈" autocomplete="nickname"><p class="small" id="source"></p><label class="check"><input type="checkbox" id="privacy"><span>我已阅读<a href="/member/privacy" target="_blank" rel="noopener">会员信息处理说明</a>，同意为创建账户、会员权益和核销记录处理必要信息。</span></label><label class="check"><input type="checkbox" id="marketing"><span>可选：我愿意接收BSV活动资讯和返场提醒（不同意也可入会）。</span></label><button id="submit">确认免费注册</button><p class="small">注册不代表本次已付款。一次性返场权益将在经核实的首笔有效消费后生效。</p></section>
-<section class="card hidden" id="member"><h2>我的文森特会员</h2><p><span class="pill" id="tier">状态确认中</span></p><div class="small">会员识别码</div><p class="mono" id="customerid"></p><p class="small" id="sourceview"></p><p class="small" id="expiry"></p><div class="divider"></div><p class="small">有效返场权益</p><div id="benefits" class="small"></div><div class="divider"></div><p class="small">纸质礼遇卡不是独立兑换凭证。返场折扣、赠饮资格和次数最终以收银系统中有效的会员权益为准。</p></section>
-<section class="card hidden" id="privacy-control"><h2>我的隐私设置</h2><p class="small" id="marketing-status"></p><div class="actions"><button id="optout">不再接收营销消息</button><button id="delete" class="muted">申请注销会员</button></div><p class="small">注销申请将由专人核实。依法仍需保留的支付及账务证据，会与营销用途分离处理。</p></section><section class="card hidden" id="requests"><h2>有人申请作为我的邀请人</h2><p class="small">请只确认真正向您介绍BSV的员工。若仅是现场接待您，可以拒绝；不影响您成为会员。</p><div id="claims"></div></section>
-<p id="status" class="small" role="status" aria-live="polite"></p><footer class="foot">BSV · 尊重隐私 · 不强制营销<br>本系统不要求提供身份证件或私人微信聊天记录</footer></main>
-<script defer src="/member/app.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f6f1e7">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="BAR ST. VINCENT 文森特会员与返场礼遇。免费加入，查看权益，按喜好发现适合自己的风味。">
+  <title>文森特会员｜BAR ST. VINCENT</title>
+  <link rel="stylesheet" href="/member/styles.css">
+  <script defer src="/member/app.js"></script>
+</head>
+<body>
+ <div class="site-shell">
+  <header class="site-header" aria-label="网站导航">
+    <a class="wordmark" href="/member/" aria-label="文森特会员首页"><span class="crest">V</span><span class="wordmark-text">BAR ST. VINCENT<small>文 森 特</small></span></a>
+    <nav><a href="/cocktail/" id="menu-link">探索酒单 <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main id="main">
+    <div class="eyebrow"><span class="line"></span> THE VINCENT CLUB <span class="line"></span></div>
+    <section class="hero" aria-labelledby="hero-heading">
+      <span class="hero-sun" aria-hidden="true">✦</span>
+      <h1 id="hero-heading">好酒，值得再见。</h1>
+      <p>属于你的文森特时光，从这里开始。</p>
+      <div class="location"><span class="location-dot" aria-hidden="true"></span><span id="source-label">文森特 · 北京</span></div>
+    </section>
+    <p class="live-message" role="status" aria-live="polite" id="status"></p>
+
+    <section class="surface" id="login" aria-labelledby="login-heading">
+      <div class="surface-heading"><div><div class="mini-label">MEMBERSHIP</div><h2 id="login-heading">加入文森特会员</h2></div><span class="free-stamp">免费</span></div>
+      <p class="support">一次注册，跨店使用。返场礼遇存入你的会员账户，无需保管纸质卡。</p>
+      <div class="store-picker hidden" id="store-picker"><label class="field-label" for="store-choice">你从哪里认识文森特？</label><select id="store-choice"><option value="">请选择门店</option></select></div>
+      <button class="action action-wechat" id="wechat" type="button"><span class="wechat-mark" aria-hidden="true">●</span> 使用微信快捷继续 <span aria-hidden="true">→</span></button>
+      <p class="help" id="wxhint">请使用微信打开本页面。</p>
+      <p class="center-foot">不注册也可以正常到店消费</p>
+    </section>
+
+    <section class="surface hidden" id="register" aria-labelledby="register-heading">
+      <div class="mini-label">ALMOST THERE</div><h2 id="register-heading">确认你的会员资料</h2>
+      <p class="support">身份已经验证，再完成一步即可使用会员服务。</p>
+      <label class="field-label" for="nickname">希望我们怎么称呼你？ <span>选填</span></label>
+      <input id="nickname" type="text" maxlength="32" autocomplete="nickname" placeholder="你的昵称">
+      <p class="field-note" id="source">注册来源已记录</p>
+      <label class="agree"><input type="checkbox" id="privacy"><span>我已阅读并同意<a href="/member/privacy" target="_blank" rel="noopener">会员个人信息处理说明</a>，用于会员身份、权益及必要交易关联。</span></label>
+      <label class="agree"><input type="checkbox" id="marketing"><span>愿意收到文森特的活动与返场消息（选填，随时可关闭）。</span></label>
+      <button class="action" id="submit" type="button">免费开通会员 <span aria-hidden="true">→</span></button>
+      <p class="help">权益是否生效以及使用次数，以会员账户和收银核验结果为准。</p>
+    </section>
+
+    <section class="surface hidden" id="member" aria-labelledby="member-heading">
+      <div class="membership-band"><span>VINCENT MEMBER</span><span class="membership-signet" aria-hidden="true">V</span></div>
+      <div class="member-intro"><div><div class="mini-label">YOUR MEMBERSHIP</div><h2 id="member-heading"><span id="display-name">欢迎回来</span></h2></div><span class="member-pill" id="tier">已注册</span></div>
+      <div class="member-details"><div><span>会员编号</span><strong id="customerid" class="code-short">—</strong></div><div><span>会员有效期</span><strong id="expiry">待激活</strong></div></div>
+      <h3 class="section-subtitle">我的返场礼遇</h3><div id="benefits" class="benefits"></div>
+      <p class="help">到店时出示会员账户，门店会核验适用权益。纸卡不作为独立兑换凭证。</p>
+    </section>
+
+    <section class="surface hidden" id="taste" aria-labelledby="taste-heading">
+      <div class="surface-heading"><div><div class="mini-label">YOUR TASTE</div><h2 id="taste-heading">今天想喝什么风味？</h2></div><span class="subtle-icon" aria-hidden="true">✦</span></div>
+      <p class="support">最多选两种喜欢的方向。调酒师会结合你当下的想法推荐，不会替你做决定。</p>
+      <div class="taste-grid" id="taste-options" role="group" aria-label="选择风味偏好">
+        <button type="button" class="taste-option" data-tag="清爽轻盈" aria-pressed="false"><span class="taste-symbol">◌</span><strong>清爽轻盈</strong><small>轻快 · 明亮</small></button>
+        <button type="button" class="taste-option" data-tag="果香酸爽" aria-pressed="false"><span class="taste-symbol">◇</span><strong>果香酸爽</strong><small>果香 · 鲜活</small></button>
+        <button type="button" class="taste-option" data-tag="甜香醇厚" aria-pressed="false"><span class="taste-symbol">◈</span><strong>甜香醇厚</strong><small>柔和 · 丰满</small></button>
+        <button type="button" class="taste-option" data-tag="烈酒本味" aria-pressed="false"><span class="taste-symbol">✧</span><strong>烈酒本味</strong><small>纯粹 · 有层次</small></button>
+      </div>
+      <label class="agree share-check"><input type="checkbox" id="share-taste"><span>到店点单时，允许当班调酒师查看上述风味偏好。仅限本人已关联的消费场次，可随时关闭。</span></label>
+      <button class="action action-outline" type="button" id="save-taste">保存我的风味偏好</button>
+      <p class="help">偏好由你主动填写；过敏、忌口等请在每次点单时另行告知。</p>
+    </section>
+
+    <section class="surface hidden" id="requests" aria-labelledby="requests-heading">
+      <div class="mini-label">INVITATION</div><h2 id="requests-heading">确认邀请关系</h2>
+      <p class="support">有人登记曾邀请你认识文森特。只有确实向你推荐过的员工，才值得确认；此选择不影响会员权益。</p>
+      <div id="claims"></div>
+    </section>
+
+    <details class="account-settings hidden" id="privacy-control"><summary>隐私与账户设置 <span aria-hidden="true">＋</span></summary>
+      <div class="settings-inner"><p id="marketing-status" class="help"></p><button id="optout" class="subtle-button" type="button">关闭活动消息</button><button id="delete" class="subtle-button danger" type="button">申请注销会员</button><p class="help">注销由公司核验处理；依法需保留的交易记录会与营销用途隔离。</p></div>
+    </details>
+  </main>
+  <footer class="site-footer"><div class="foot-monogram">V</div><p>BAR ST. VINCENT</p><small>只在你需要的时候，刚好在这里。</small><div class="footer-links"><a href="/member/privacy">个人信息处理说明</a><span>·</span><a href="/cocktail/" id="footer-menu-link">查看酒单</a></div><small class="age-note">未成年人不得饮酒，请理性饮酒。</small></footer>
+ </div>
+</body></html>

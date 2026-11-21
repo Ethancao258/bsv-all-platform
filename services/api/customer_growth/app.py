@@ -31,6 +31,11 @@ WECHAT_APPID = os.getenv('BSV_WECHAT_APPID', '')
 WECHAT_SECRET = os.getenv('BSV_WECHAT_SECRET', '')
 WECHAT_REDIRECT = os.getenv('BSV_WECHAT_REDIRECT', '')
 PAYMENT_SIGNING_KEY = os.getenv('BSV_GROWTH_PAYMENT_SIGNING_KEY', '')
+POS_CONTEXT_KEY = os.getenv('BSV_GROWTH_POS_CONTEXT_KEY', '')
+POS_VERIFY_URL = os.getenv('BSV_GROWTH_POS_VERIFY_URL', '')
+POS_VERIFY_TOKEN = os.getenv('BSV_GROWTH_POS_VERIFY_TOKEN', '')
+PRIVACY_APPROVED = os.getenv('BSV_GROWTH_PRIVACY_APPROVED', '0') == '1'
+MENU_URL = os.getenv('BSV_GROWTH_MENU_URL', '/cocktail/')
 MEMBER_POLICY_VERSION = os.getenv('BSV_GROWTH_MEMBER_POLICY_VERSION', 'ISOLATED-MEMBER-V1' if ISOLATED else '')
 ALLOWED_ORIGINS = tuple(x.rstrip('/') for x in os.getenv('BSV_GROWTH_ALLOWED_ORIGINS', '').split(',') if x)
 BASE_PATH = '/api/v1/growth'
@@ -45,6 +50,8 @@ if not SIGNATURE_KEY:
     SIGNATURE_KEY = Fernet.generate_key().decode() if ISOLATED else ''
 if ENV == 'production' and not MEMBER_POLICY_VERSION:
     raise RuntimeError('Production requires an approved membership policy version')
+if ENV == 'production' and not PRIVACY_APPROVED:
+    raise RuntimeError('Production requires approved privacy notice and published contact details')
 if ENV == 'production' and not SIGNATURE_KEY:
     raise RuntimeError('Production requires an encryption key for signature templates')
 
@@ -96,6 +103,19 @@ class Customer(Base):
     first_paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     membership_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     membership_policy_version: Mapped[str | None] = mapped_column(String(40))
+
+
+# Customer is authoritative; preference is its own consent-scoped child, not a POS customer master.
+TASTE_TAGS = ('清爽轻盈', '果香酸爽', '甜香醇厚', '烈酒本味')
+
+
+class CustomerTaste(Base):
+    __tablename__ = 'bsv_customer_taste_candidate'
+    customer_id: Mapped[str] = mapped_column(ForeignKey('bsv_growth_customer_candidate.id'), primary_key=True)
+    tags_json: Mapped[str] = mapped_column(Text, default='[]')
+    share_for_service: Mapped[bool] = mapped_column(Boolean, default=False)
+    notice_version: Mapped[str] = mapped_column(String(30), default='2026-11-21')
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
 class CustomerIdentity(Base):
@@ -352,7 +372,7 @@ def set_guest(response: Response, db: Session, provider: str, subject: str, stor
         response.set_cookie(name, value, max_age=7*86400, httponly=http_only, secure=secure, samesite='lax', path='/')
 
 
-def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq=False) -> tuple[str,str]:
+def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq=False, action=None) -> tuple[str,str]:
     if write:
         mutation_origin(request)
     if ISOLATED:
@@ -380,7 +400,7 @@ def staff_auth(request: Request, store_id: str | None = None, *, write=False, hq
         raise HTTPException(503,'人员权限暂时无法验证') from exc
     if not me.get('tr_code') or not me.get('emp_code') or not me.get('active') or LEGAL_ENTITY not in me.get('active_legal_entities',[]):
         raise HTTPException(403, '人员资格不符合要求')
-    action = 'hq.people.read' if hq else 'marketing.task.write'
+    action = action or ('hq.people.read' if hq else 'marketing.task.write')
     if not any(g.get('action') == action and g.get('legal_entity_id') == LEGAL_ENTITY
                and (hq or g.get('store_id') == store_id) for g in me.get('grants',[])):
         raise HTTPException(403, '缺少对应岗位授权')
@@ -432,7 +452,7 @@ def demo_guest_login(data: DemoGuest, request: Request, response: Response):
 @app.get(BASE_PATH + '/public/config')
 def public_config():
     return {'enabled':ENV!='disabled','stores':STORES,'wechat_enabled':bool(WECHAT_APPID and WECHAT_SECRET and WECHAT_REDIRECT),
-            'sms_enabled':False,'privacy_version':'2026-11-21','mode':ENV}
+            'sms_enabled':False,'privacy_version':'2026-11-21','menu_url':MENU_URL,'mode':ENV}
 
 
 @app.get(BASE_PATH + '/auth/wechat/start')
@@ -542,8 +562,126 @@ def guest_me(request: Request):
                             for b in db.scalars(select(Benefit).where(Benefit.customer_id==person.id))
                             if b.status=='AVAILABLE' and utc(b.expires_at)>now()],
                 'marketing_opt_in':person.marketing_opt_in,
+                'taste':read_customer_taste(db,person.id),
                 'referral_status':attr.status if attr else 'NONE',
                 'ticket_id':ticket.id if ticket and ticket.status=='OPEN' else None}
+
+
+def read_customer_taste(db: Session, customer_id: str) -> dict:
+    row=db.get(CustomerTaste,customer_id)
+    if not row:
+        return {'tags':[], 'share_for_service':False}
+    return {'tags':json.loads(row.tags_json),'share_for_service':row.share_for_service}
+
+
+class TasteUpdate(BaseModel):
+    tags: list[str] = Field(default_factory=list, max_length=2)
+    share_for_service: bool = False
+
+
+@app.post(BASE_PATH + '/public/taste')
+def save_taste(body:TasteUpdate, request:Request):
+    # Only the authenticated customer changes their own taste; no staff free-text notes.
+    if len(set(body.tags)) != len(body.tags) or any(tag not in TASTE_TAGS for tag in body.tags):
+        raise HTTPException(422,'请选择最多两种有效风味')
+    with db_session() as db:
+        sess=require_guest(request,db,True)
+        customer=customer_for_session(db,sess)
+        if not customer:
+            raise HTTPException(404,'请先完成会员注册')
+        profile=db.get(CustomerTaste,customer.id)
+        if not profile:
+            profile=CustomerTaste(customer_id=customer.id)
+            db.add(profile)
+        profile.tags_json=json.dumps(body.tags,ensure_ascii=False)
+        profile.share_for_service=body.share_for_service
+        profile.updated_at=now()
+        db.add(Audit(actor='customer:'+customer.id,action='TASTE_PREFERENCE_UPDATED',target=customer.id,
+                     metadata_json=json.dumps({'tag_count':len(body.tags),'shared':body.share_for_service})))
+        db.commit()
+        return {'ok':True,'tags':body.tags,'share_for_service':body.share_for_service}
+
+
+def read_pos_context(context:str) -> dict:
+    if not POS_CONTEXT_KEY or len(POS_CONTEXT_KEY)<32:
+        raise HTTPException(503,'门店接待授权服务尚未连接')
+    try:
+        body,mac=context.split('.',1)
+        expect=hmac.new(POS_CONTEXT_KEY.encode(),body.encode(),hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expect,mac):
+            raise ValueError('bad signature')
+        record=json.loads(base64.urlsafe_b64decode(body+'='*(-len(body)%4)))
+        if not {'customer_id','store_id','visit_id','exp','iat'} <= record.keys():
+            raise ValueError('missing fields')
+        if record['exp'] < time.time() or record['iat'] > time.time()+10 or record['exp']-record['iat']>120:
+            raise ValueError('expired')
+        if any(not isinstance(record[k],str) or not 3<=len(record[k])<=80
+               for k in ('customer_id','store_id','visit_id')):
+            raise ValueError('invalid ids')
+        return record
+    except (ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
+        raise HTTPException(403,'接待授权已失效，请从点单台重新进入') from exc
+
+
+@app.get(BASE_PATH + '/staff/guest-context')
+def staff_guest_context(request:Request, context:str):
+    # The authenticated employee and trusted POS context are independently required.
+    ctx=read_pos_context(context)
+    require_store(ctx['store_id'])
+    tr,_=staff_auth(request,ctx['store_id'],action='pos.order.read')
+    if not ISOLATED:
+        # A second authority must prove shift, visit, member linkage and store ownership.
+        if not (POS_VERIFY_URL and POS_VERIFY_TOKEN):
+            raise HTTPException(503,'当前无法核验接待权限')
+        try:
+            r=httpx.post(POS_VERIFY_URL,json={
+                'actor_tr':tr,'store_id':ctx['store_id'],'visit_id':ctx['visit_id'],
+                'customer_id':ctx['customer_id']},
+                headers={'Authorization':'Bearer '+POS_VERIFY_TOKEN},timeout=4)
+            r.raise_for_status()
+            facts=r.json()
+            if not all(facts.get(k) is True for k in (
+                'allowed','active_shift','customer_linked','store_ownership_verified')):
+                raise ValueError('insufficient permission')
+        except (httpx.HTTPError,ValueError,TypeError) as exc:
+            raise HTTPException(403,'本次接待身份与会员关联未通过核验') from exc
+    with db_session() as db:
+        customer=db.get(Customer,ctx['customer_id'])
+        if not customer:
+            raise HTTPException(404,'该桌未关联有效会员')
+        preference=read_customer_taste(db,customer.id)
+        permitted=preference['share_for_service']
+        return {'view':'ON_VISIT_ONLY','tags':preference['tags'] if permitted else [],
+                'share_for_service':permitted,'customer_hint':'会员已关联',
+                'guidance':'可从对应风味分类询问，最终按顾客现场需求确认' if permitted and preference['tags']
+                    else '请询问顾客今天喜欢的口味，不要依据历史记录推断'}
+
+
+@app.get(BASE_PATH + '/staff/store-options')
+def staff_store_options(request:Request):
+    # Before choosing the first store, discover actual grants instead of guessing BSVM.
+    if ISOLATED:
+        raw=request.cookies.get('bsv_dev_staff','')
+        payload=unsign(raw) if raw else {}
+        if payload.get('role') not in ('staff','hq'):
+            raise HTTPException(401,'请先登录员工中心')
+        allowed=set(payload.get('stores',[])) & set(STORES)
+    else:
+        if not IDENTITY_ME_URL:
+            raise HTTPException(503,'人员身份服务未接通')
+        try:
+            r=httpx.get(IDENTITY_ME_URL,headers={'Cookie':request.headers.get('cookie','')},timeout=5)
+            r.raise_for_status();me=r.json()
+        except Exception as exc:
+            raise HTTPException(503,'无法核验员工门店权限') from exc
+        if (not me.get('tr_code') or not me.get('emp_code') or not me.get('active')
+              or LEGAL_ENTITY not in me.get('active_legal_entities',[])):
+            raise HTTPException(403,'人员身份或任职资格未生效')
+        allowed={g.get('store_id') for g in me.get('grants',[])
+                 if g.get('status','active')=='active' and g.get('legal_entity_id')==LEGAL_ENTITY
+                 and g.get('action') in ('marketing.task.write','pos.order.read')
+                 and g.get('store_id') in STORES}
+    return {'stores':sorted(allowed)}
 
 
 @app.get(BASE_PATH + '/staff/me')
@@ -635,6 +773,23 @@ def enroll_signature(body: SignatureUpload, request: Request, store_id: str):
                      metadata_json=json.dumps({'version':version})))
         db.commit()
         return {'ok':True,'signature_version':version,'notice':'签名母版不等于正式合同签署'}
+
+
+@app.get(BASE_PATH + '/staff/signature-preview')
+def signature_preview(request:Request,store_id:str):
+    require_store(store_id)
+    tr,_=staff_auth(request,store_id)
+    with db_session() as db:
+        sig=latest_signature(db,tr)
+        if not sig:
+            raise HTTPException(404,'尚未保存本人签名')
+        try:
+            image_data=Fernet(SIGNATURE_KEY.encode()).decrypt(sig.ciphertext.encode())
+        except Exception as exc:
+            raise HTTPException(503,'签名资料暂不可读取') from exc
+        return StreamingResponse(BytesIO(image_data),media_type='image/png',
+            headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
+                     'Content-Security-Policy':"default-src 'none'; sandbox"})
 
 
 class ClaimRequest(BaseModel):
@@ -1027,7 +1182,7 @@ def member_asset(asset_name:str):
 
 @app.get('/staff/growth/{asset_name}')
 def staff_asset(asset_name:str):
-    if asset_name not in ('styles.css','app.js'):
+    if asset_name not in ('styles.css','app.js','pos-entry.js'):
         raise HTTPException(404,'Not found')
     return FileResponse(ROOT/'apps/staff-center/growth'/asset_name,media_type='text/css' if asset_name.endswith('.css') else 'application/javascript',headers={'Cache-Control':'no-store'})
 
