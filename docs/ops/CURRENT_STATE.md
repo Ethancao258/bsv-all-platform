@@ -207,3 +207,14 @@
 - POS只读目录API与无订单配方查询正在本分支实现；真实服务器未改动、未验证。
 - CloudBase自动更新仍为 BLOCKED：当前网页版没有可调用的官方CloudBase文件API/OAuth工具；本轮信息没有提供可核验的Bucket ID、对象 fileID/路径或可用服务端身份。未设置匿名公开下载、未添加猜测的定时任务。
 - 本地完整测试尚未执行（当前执行容器写层无可用空间，无法启动本地构建）；最终提交后的GitHub Actions结果将作为CI证据。Lighthouse HOST_NOT_RUN。
+
+
+## 2026-11-23｜统一数据访问架构准备（PR #40）
+
+- **代码提交 `dfce0e7a233239208d5a7330a1191bc478e76b35`** 延续 PR #40 的 `feature/bsv1-excel-catalog`，没有创建新 PR。新增 `config/data-contracts.json`，引用原 `data-ownership.json`、身份 A/B/LOCAL 注册、供货 A–G 注册、POS 领域契约及现有 API 契约；没有复制一套实体所有权。
+- `BSV_DB_URL` 现登记为 PostgreSQL 17 / `bsv_all_prod` 的正式入口；identity A 与 Customer Growth 在明确配置时可读取该 DSN，旧 `BSV_DB_A_URL`、`BSV_GROWTH_DB_URL`、POS `BSV_DB_PATH` 和供货 A–G 配置继续兼容。隔离模式拒绝中心 DSN，POS 当前订单/座位 SQLite 写入源未改变。CloudBase 的10张表仍是 `UNKNOWN_G0`，未连接、未建库或执行 DDL；正式字段字典等待 WorkBuddy 审查。
+- POS 员工界面查询已切换至受会话保护的 `/api/v1/catalog/products` 只读契约；搜索、商品详情和无订单配方接口输出 `contract_version` 与注册表语义字段。旧 API 保留。新适配仍读取当前 POS SQLite/Excel投影，没有声明任何未核实 PG 表或列。
+- 导入版本已有分步候选状态：`archive → preview → validate → commit-candidate → publish → rollback`。发布前只校验并保留私有SHA版本/归档，不修改活动SQLite；`publish` 复用既有事务和回退能力。旧 `stage` 命令改为只归档、校验，不再隐式切换活动内容。私有 Lighthouse 隔离配置增加 `BSV_IMPORT_ROOT` 和 `BSV_PRODUCT_MEDIA_ROOT`；产品图片优先按永久商品ID和原文件名从发布目录外持久路径读取，并拒绝路径穿越/软链接，旧release路径仅作只读回退。
+- **本地验证 PASS** · `bash tests/bsv1/check.sh`：39项POS测试 + 4项数据契约测试通过；`python3 tests/internal-stage/test_deploy.py`：26项部署预检测试通过（1项按既有条件跳过）；`verify_architecture.py`、`verify_change_routing.py`、JSON/语法检查通过。Customer Growth 单元测试因此执行环境未安装 SQLAlchemy/pytest，标记 `LOCAL_NOT_RUN_DEPENDENCY_MISSING`；PR CI 将运行有锁定依赖的对应作业。
+- **未执行** · PostgreSQL正式建表/迁移/导数、真实CloudBase连接与对象下载、Lighthouse配置修改/部署、媒体上传均未执行，主机 `HOST_NOT_RUN`。后续须先通过 WorkBuddy 字段字典、再做真实环境 G0 核验及备份/恢复证明；CloudBase私有对象ID/服务端授权及每天05:00同步仍未实现。
+- GitHub Actions 在上述代码提交之后尚待本次PR运行结果；PR #40 保持 Draft，不自动合并或部署。
