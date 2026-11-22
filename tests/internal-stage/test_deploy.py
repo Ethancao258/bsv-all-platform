@@ -1,6 +1,8 @@
 """Exercise release switching and failure handling without systemd or host mutations."""
 import importlib.util
+import hashlib
 import json
+import os
 from pathlib import Path
 import os
 import sqlite3
@@ -26,8 +28,8 @@ NEW = "2" * 40
 class ReleaseTest(unittest.TestCase):
     def setUp(self):
         original = stage.write_secret
-        fixture_writer = patch.object(stage, "write_secret", side_effect=lambda path, value:
-                                      original(path, value, os.getuid(), os.getgid()))
+        fixture_writer = patch.object(stage, "write_secret", side_effect=lambda path, value, uid=0, gid=0:
+                                      original(path, value, uid or os.getuid(), gid or os.getgid()))
         fixture_writer.start()
         self.addCleanup(fixture_writer.stop)
 
@@ -359,6 +361,99 @@ class ReleaseTest(unittest.TestCase):
                 stage.upgrade_managed_environment(
                     "pos", dict(values, UNREVIEWED_KEY="secret"), set())
             self.assertNotIn("UNREVIEWED_KEY", pos.read_text())
+
+    def test_h_scope_upgrade_requires_approval_preserves_secrets_and_rolls_back(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "root"
+            data = Path(tmp) / "data"
+            root.mkdir()
+            data.mkdir()
+            service_uid = os.geteuid() or 1000
+            service_gid = os.getegid() or 1000
+            users = lambda name: SimpleNamespace(
+                pw_uid=service_uid, pw_gid=service_gid, pw_shell="/usr/sbin/nologin",
+                pw_dir=str(data / name.removeprefix("bsvint-")))
+            real_write = stage.write_secret
+            def local_write(path, value, uid=0, gid=0):
+                if uid == 0 and os.geteuid() != 0:
+                    uid, gid = os.geteuid(), os.getegid()
+                return real_write(path, value, uid, gid)
+            with patch.object(stage, "ROOT", root), patch.object(stage, "DATA", data), \
+                    patch.object(stage.pwd, "getpwnam", side_effect=users), \
+                    patch.object(stage, "private_file"), patch.object(stage, "write_secret", side_effect=local_write), \
+                    patch.object(stage, "run") as run:
+                db = data / "pos" / "synthetic.sqlite3"
+                db.parent.mkdir(mode=0o700)
+                db.write_bytes(b"published-map-and-existing-business-records")
+                db.chmod(0o600)
+                layout_root = stage.REPO / "services/api/bsv1/store_layouts"
+                layout_hashes = {
+                    p.relative_to(layout_root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in layout_root.rglob("*") if p.is_file()
+                }
+                stage.prepare_config()
+                identity_path = root / "config/identity.env"
+                pos_path = root / "config/pos.env"
+                ingress_path = root / "config/ingress.env"
+                secret_bytes = {name: (root / "config" / name).read_bytes()
+                                for name in ("pos-token", "supply-token", "session-key", "privacy-pepper")}
+                identity = stage.service_config("identity")
+                pos = stage.service_config("pos")
+                ingress = stage.service_config("ingress")
+                self.assertEqual(identity["BSV_ACADEMY_STORE_IDS"], "BSVT")
+                self.assertEqual(json.loads(identity["BSV_SERVICE_TOKENS_JSON"])["pos"]["stores"], ["BSVT"])
+                self.assertEqual(json.loads(pos["BSV_POS_STORE_LEGAL_JSON"]), {"BSVT": "DEMO_LEGAL"})
+                self.assertEqual(pos["BSV_POS_G1_TEST_STORES"], "disabled")
+                self.assertEqual(ingress["BSV_GROWTH_STORE_IDS"], "BSVT")
+                default_bytes = {p: p.read_bytes() for p in (identity_path, pos_path, ingress_path)}
+                default_tokens = json.loads(identity["BSV_SERVICE_TOKENS_JSON"])
+                # A normal H-style config pass remains BSVT-only without the explicit switch.
+                stage.prepare_config(approve_synthetic_three_store=False)
+                self.assertEqual({p: p.read_bytes() for p in default_bytes}, default_bytes)
+                stage.prepare_config(approve_synthetic_three_store=True)
+                identity = stage.service_config("identity")
+                pos = stage.service_config("pos")
+                ingress = stage.service_config("ingress")
+                self.assertEqual(identity["BSV_ACADEMY_STORE_IDS"], "BSVM,BSVS,BSVT")
+                tokens = json.loads(identity["BSV_SERVICE_TOKENS_JSON"])
+                self.assertEqual(tokens["pos"]["stores"], ["BSVM", "BSVS", "BSVT"])
+                self.assertEqual(tokens["pos"]["legal_entities"], ["DEMO_LEGAL"])
+                self.assertEqual(tokens["layout-admin"]["stores"], ["BSVT"])
+                self.assertEqual(tokens["supply"]["token"], default_tokens["supply"]["token"])
+                self.assertEqual(json.loads(pos["BSV_POS_STORE_LEGAL_JSON"]),
+                                 {"BSVM": "DEMO_LEGAL", "BSVS": "DEMO_LEGAL", "BSVT": "DEMO_LEGAL"})
+                self.assertEqual(pos["BSV_POS_G1_TEST_STORES"], "BSVM,BSVS,BSVT")
+                self.assertEqual(ingress["BSV_GROWTH_STORE_IDS"], "BSVM,BSVS,BSVT")
+                self.assertEqual({name: (root / "config" / name).read_bytes()
+                                  for name in secret_bytes}, secret_bytes)
+                self.assertEqual(db.read_bytes(), b"published-map-and-existing-business-records")
+                self.assertEqual(layout_hashes, {
+                    p.relative_to(layout_root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in layout_root.rglob("*") if p.is_file()
+                })
+                self.assertFalse(any(call.args and call.args[0] == "systemctl" for call in run.call_args_list))
+                stage.prepare_config(approve_synthetic_three_store=False)
+                self.assertEqual(stage.service_config("identity")["BSV_ACADEMY_STORE_IDS"], "BSVT")
+                self.assertEqual(json.loads(stage.service_config("identity")["BSV_SERVICE_TOKENS_JSON"])["pos"]["stores"], ["BSVT"])
+                self.assertEqual(json.loads(stage.service_config("pos")["BSV_POS_STORE_LEGAL_JSON"]), {"BSVT": "DEMO_LEGAL"})
+                self.assertEqual(stage.service_config("pos")["BSV_POS_G1_TEST_STORES"], "disabled")
+                self.assertEqual(stage.service_config("ingress")["BSV_GROWTH_STORE_IDS"], "BSVT")
+                self.assertEqual({name: (root / "config" / name).read_bytes()
+                                  for name in secret_bytes}, secret_bytes)
+                before_failure = {p: p.read_bytes() for p in (identity_path, pos_path, ingress_path)}
+                with patch.object(stage, "upgrade_blank_ingress_environment",
+                                  side_effect=RuntimeError("injected config write failure")):
+                    with self.assertRaisesRegex(RuntimeError, "injected config write failure"):
+                        stage.prepare_config(approve_synthetic_three_store=True)
+                self.assertEqual({p: p.read_bytes() for p in before_failure}, before_failure)
+                raw = pos_path.read_text()
+                pos_path.write_text(raw.replace('{"BSVT":"DEMO_LEGAL"}', '{"BSVF":"DEMO_LEGAL"}'))
+                drift = pos_path.read_bytes()
+                with self.assertRaisesRegex(RuntimeError, "Unknown or non-synthetic"):
+                    stage.prepare_config(approve_synthetic_three_store=True)
+                self.assertEqual(pos_path.read_bytes(), drift)
+
 
     def test_real_c51_identity_env_migrates_only_layout_admin_token(self):
         """Existing deployed identity.env has POS and supply; preserve both exactly."""

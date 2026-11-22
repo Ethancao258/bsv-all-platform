@@ -85,6 +85,15 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Identity, POS and supply integration
         run: bash tests/identity/check.sh
+        env:
+          BSV_G1_UI_ARTIFACTS: ${{ runner.temp }}/bsv-g1-ui
+      - name: Upload isolated G1 three-store browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g1-three-store-pos-browser
+          path: ${{ runner.temp }}/bsv-g1-ui
+          if-no-files-found: warn
       - name: PostgreSQL 17 migration, concurrency, encrypted recovery
         run: bash tests/identity/pg/check.sh
   db-contract-preflight:

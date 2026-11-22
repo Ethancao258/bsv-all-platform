@@ -21,6 +21,16 @@ async function queues(){
 async function head(){
  const me=await request('/api/v1/identity/me');
  const permissions=me.grants.filter(g=>g.legal_entity_id===entity());
+ const selector=$('#grant-store-scope');
+ const currentStore=$('#grant-form-store').value;
+ const storeIds=[...new Set(permissions.map(g=>g.store_id).filter(Boolean))].sort();
+ selector.replaceChildren(node('option','总部/所属公司范围'));
+ for(const storeId of storeIds){
+   const option=node('option',storeId);
+   option.value=storeId;
+   selector.append(option);
+ }
+ selector.value=storeIds.includes(currentStore)?currentStore:'';
  lines($('#actor-view'),permissions,x=>item(label(x.action,'已授权的管理工作'),label(x.legal_entity_id,'所属公司')+' / '+(x.store_id||'总部')));
  const mayReview=permissions.some(g=>g.action==='hq.people.read');
  if(!mayReview)notice('当前账号无此公司的人事权限。请核对所属公司，或联系总部开通。',true);
@@ -31,6 +41,9 @@ async function head(){
    $('#capacity').replaceChildren(node('span',error.status===403?'当前账号不能查看编号容量。':'暂时无法读取编号容量。'));
  }
 }
+$('#grant-store-scope').addEventListener('change',()=>{
+ $('#grant-form-store').value=$('#grant-store-scope').value;
+});
 action($('#refresh'),'正在刷新待办…',async()=>{await head();return queues();});
 action($('#load-queue'),'正在查看待审核名单…',queues);
 action($('#logout'),'正在退出…',async()=>{await send('/api/v1/auth/logout',{});location.href='/staff';return '已退出。';});

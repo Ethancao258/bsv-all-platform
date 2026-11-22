@@ -237,35 +237,136 @@ def environment(name, values):
     return values
 
 
-def upgrade_managed_environment(name, values, allowed_additions, *, allow_blank=False):
-    """Atomic, strictly additive upgrade of a 0600 root-owned managed env.
+def _read_managed_environment(name):
+    path = ROOT / "config" / f"{name}.env"
+    if path.is_symlink():
+        raise RuntimeError("Unexpected managed environment symlink")
+    if not path.exists():
+        return {}
+    private_file(path, 0)
+    parsed = {}
+    for line in path.read_text().splitlines():
+        if "=" not in line:
+            raise RuntimeError("Managed environment has invalid line")
+        key, value = line.split("=", 1)
+        if key in parsed:
+            raise RuntimeError("Duplicate managed environment key")
+        words = shlex.split(value)
+        if len(words) != 1:
+            raise RuntimeError("Invalid managed environment quoting")
+        parsed[key] = words[0]
+    return parsed
 
-    Do not rewrite arbitrary existing values: previous release configurations
-    are already managed, and their secrets must remain stable across rollouts.
-    """
+
+def _managed_config_snapshot(names=("identity", "pos", "ingress", "postgres", "supply")):
+    snapshot = {}
+    for name in names:
+        path = ROOT / "config" / f"{name}.env"
+        if path.is_symlink():
+            raise RuntimeError("Unexpected managed environment symlink")
+        if not path.exists():
+            snapshot[name] = None
+            continue
+        private_file(path, 0)
+        info = path.stat()
+        snapshot[name] = (path.read_bytes(), info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode))
+    return snapshot
+
+
+def _restore_managed_config(snapshot):
+    errors = []
+    for name, prior in reversed(list(snapshot.items())):
+        path = ROOT / "config" / f"{name}.env"
+        try:
+            if path.is_symlink():
+                raise RuntimeError(f"Managed environment became a symlink: {path}")
+            if prior is None:
+                path.unlink(missing_ok=True)
+                if path.parent.exists():
+                    sync_directory(path.parent)
+                if path.exists():
+                    raise RuntimeError(f"Could not remove new managed environment: {path}")
+                continue
+            data, uid, gid, mode = prior
+            tmp = path.with_name(path.name + ".g1-rollback")
+            if tmp.exists() or tmp.is_symlink():
+                raise RuntimeError(f"Unreviewed config rollback marker: {tmp}")
+            fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0), mode)
+            with os.fdopen(fd, "wb") as stream:
+                if os.geteuid() != uid or os.getegid() != gid:
+                    os.fchown(stream.fileno(), uid, gid)
+                os.fchmod(stream.fileno(), mode)
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(tmp, path)
+            sync_directory(path.parent)
+            if path.read_bytes() != data:
+                raise RuntimeError(f"Managed environment rollback verification failed: {path}")
+        except Exception as exc:
+            errors.append(f"{name}: {exc}")
+    if errors:
+        raise RuntimeError("Managed config rollback failed; keep services stopped: " + "; ".join(errors))
+
+
+def _three_store_scope_change(name, key, target, approved):
+    current = _read_managed_environment(name)
+    if key not in current or current[key] == str(target):
+        return {}
+    old = current[key]
+    triple = "BSVM,BSVS,BSVT"
+    if key == "BSV_POS_STORE_LEGAL_JSON":
+        try:
+            old_map, new_map = json.loads(old), json.loads(str(target))
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("Invalid managed POS store mapping") from exc
+        one = {"BSVT": "DEMO_LEGAL"}
+        three = {"BSVM": "DEMO_LEGAL", "BSVS": "DEMO_LEGAL", "BSVT": "DEMO_LEGAL"}
+        if old_map not in (one, three) or new_map not in (one, three):
+            raise RuntimeError("Unknown or non-synthetic managed POS store mapping")
+        widening = old_map == one and new_map == three
+        narrowing = old_map == three and new_map == one
+    else:
+        allowed = {"BSVT", triple}
+        if key == "BSV_POS_G1_TEST_STORES":
+            allowed.add("disabled")
+        if old not in allowed or str(target) not in allowed:
+            raise RuntimeError("Unknown managed store scope; refuse migration")
+        widening = old != triple and str(target) == triple
+        narrowing = old == triple and str(target) != triple
+        if old == "disabled" and str(target) == "BSVT":
+            raise RuntimeError("Unexpected store scope transition")
+    if widening and not approved:
+        raise RuntimeError("Three-store synthetic scope requires explicit approval")
+    if not widening and not narrowing:
+        raise RuntimeError("Unapproved managed store scope change")
+    return {key: (old, str(target))}
+
+
+def upgrade_managed_environment(name, values, allowed_additions, *, allow_blank=False,
+                                approved_changes=None):
+    """Atomically migrate an exact managed env while preserving all unapproved values."""
     path = ROOT / "config" / f"{name}.env"
     if not path.exists():
         environment(name, values)
         return values
     private_file(path, 0)
     raw = path.read_text().strip()
-    parsed = {}
-    for line in raw.splitlines():
-        if "=" not in line:
-            raise RuntimeError("Managed environment has invalid line")
-        key, value = line.split("=", 1)
-        if key in parsed or key not in values:
-            raise RuntimeError("Unexpected managed environment key")
-        tokens = shlex.split(value)
-        if len(tokens) != 1:
-            raise RuntimeError("Invalid managed environment quoting")
-        parsed[key] = tokens[0]
+    parsed = _read_managed_environment(name)
     if not raw and not allow_blank:
         raise RuntimeError("Unexpected empty managed environment")
-    if any(parsed[key] != str(values[key]) for key in parsed):
-        raise RuntimeError("Existing managed environment has changed; refuse overwrite")
-    if raw and set(values) - set(parsed) - set(allowed_additions):
+    if set(values) - set(parsed) - set(allowed_additions) and raw:
         raise RuntimeError("Unapproved environment keys requested")
+    changed = {}
+    for key, value in parsed.items():
+        if key not in values:
+            raise RuntimeError("Unexpected managed environment key")
+        desired = str(values[key])
+        if value != desired:
+            changed[key] = (value, desired)
+    approved_changes = approved_changes or {}
+    if changed != approved_changes:
+        raise RuntimeError("Existing managed environment has changed; refuse overwrite")
     payload = "\n".join(f"{key}={shlex.quote(str(value))}" for key, value in sorted(values.items()))
     if raw == payload:
         return values
@@ -281,55 +382,73 @@ def upgrade_managed_environment(name, values, allowed_additions, *, allow_blank=
     return values
 
 
-
-def upgrade_identity_environment(values):
-    """Permit only the c51 isolated identity token-map addition for layout read.
-
-    Keep every pre-existing token, account, policy and secret byte-equivalent.
-    Unknown keys or grants are configuration drift, not a reason to rewrite.
-    """
+def upgrade_identity_environment(values, *, approve_synthetic_three_store=False):
+    """Migrate only the approved isolated store-scope transition; retain token secrets."""
     path = ROOT / "config" / "identity.env"
     if not path.exists():
         return environment("identity", values)
-    private_file(path, 0)
-    parsed = {}
-    for line in path.read_text().splitlines():
-        if "=" not in line:
-            raise RuntimeError("Invalid managed identity environment")
-        key, raw_value = line.split("=", 1)
-        if key in parsed or key not in values:
-            raise RuntimeError("Unexpected managed identity environment key")
-        words = shlex.split(raw_value)
-        if len(words) != 1:
-            raise RuntimeError("Malformed managed identity environment")
-        parsed[key] = words[0]
+    parsed = _read_managed_environment("identity")
     desired = {key: str(value) for key, value in values.items()}
-    if set(parsed) != set(desired):
+    # Older callers that only migrate the layout-admin token keep the safe H default.
+    desired.setdefault("BSV_ACADEMY_STORE_IDS", "BSVT")
+    additions = {"BSV_ACADEMY_STORE_IDS"}
+    if set(parsed) - set(desired) or set(desired) - set(parsed) - additions:
         raise RuntimeError("Missing or additional managed identity environment keys")
-    if parsed == desired:
-        return values
+    target_scope = desired.get("BSV_ACADEMY_STORE_IDS", "")
+    if target_scope not in ("BSVT", "BSVM,BSVS,BSVT"):
+        raise RuntimeError("Academy store scope must be the BSVT default or approved synthetic stores")
+    current_scope = parsed.get("BSV_ACADEMY_STORE_IDS")
+    if current_scope is not None and current_scope != target_scope:
+        if current_scope not in ("BSVT", "BSVM,BSVS,BSVT"):
+            raise RuntimeError("Unknown Academy store scope; refuse migration")
+        if target_scope == "BSVM,BSVS,BSVT" and not approve_synthetic_three_store:
+            raise RuntimeError("Academy three-store scope requires explicit approval")
     special = "BSV_SERVICE_TOKENS_JSON"
-    if any(parsed[key] != desired[key] for key in desired if key != special):
-        raise RuntimeError("Existing identity secrets or settings changed; refuse overwrite")
+    for key, value in parsed.items():
+        if key in {special, "BSV_ACADEMY_STORE_IDS"}:
+            continue
+        if value != desired[key]:
+            raise RuntimeError("Existing identity secrets or settings changed; refuse overwrite")
     try:
         old_tokens = json.loads(parsed[special])
         new_tokens = json.loads(desired[special])
-    except (ValueError, TypeError) as exc:
+    except (ValueError, TypeError, KeyError) as exc:
         raise RuntimeError("Invalid managed identity service token map") from exc
     if (not isinstance(old_tokens, dict) or not isinstance(new_tokens, dict)
-            or set(old_tokens) != {"pos", "supply"}
+            or set(old_tokens) not in ({"pos", "supply"}, {"pos", "supply", "layout-admin"})
             or set(new_tokens) != {"pos", "supply", "layout-admin"}
-            or any(old_tokens[key] != new_tokens[key] for key in old_tokens)
-            or new_tokens["layout-admin"].get("actions") != ["hq.layout.read"]
-            or new_tokens["layout-admin"].get("stores") != ["BSVT"]
-            or new_tokens["layout-admin"].get("legal_entities") != ["DEMO_LEGAL"]
-            or len(new_tokens["layout-admin"].get("token", "")) < 32):
+            or old_tokens["supply"] != new_tokens["supply"]):
         raise RuntimeError("Unapproved identity token-map modification")
-    payload = "\n".join(f"{key}={shlex.quote(value)}"
-                        for key, value in sorted(desired.items()))
+    target_stores = target_scope.split(",")
+    old_pos, new_pos = old_tokens["pos"], new_tokens["pos"]
+    if (not isinstance(old_pos, dict) or not isinstance(new_pos, dict)
+            or set(old_pos) != set(new_pos)
+            or {k: v for k, v in old_pos.items() if k != "stores"}
+                != {k: v for k, v in new_pos.items() if k != "stores"}
+            or old_pos.get("legal_entities") != ["DEMO_LEGAL"]
+            or old_pos.get("stores") not in (["BSVT"], ["BSVM", "BSVS", "BSVT"])
+            or new_pos.get("stores") != target_stores):
+        raise RuntimeError("Unapproved identity POS token scope")
+    if old_pos.get("stores") != target_stores:
+        widening = old_pos["stores"] == ["BSVT"] and target_stores == ["BSVM", "BSVS", "BSVT"]
+        narrowing = old_pos["stores"] == ["BSVM", "BSVS", "BSVT"] and target_stores == ["BSVT"]
+        if (widening and not approve_synthetic_three_store) or not (widening or narrowing):
+            raise RuntimeError("Identity POS three-store scope requires explicit approval")
+    if "layout-admin" in old_tokens:
+        if old_tokens["layout-admin"] != new_tokens["layout-admin"]:
+            raise RuntimeError("Existing layout-admin token or scope changed")
+    else:
+        layout = new_tokens["layout-admin"]
+        if (not isinstance(layout, dict) or layout.get("actions") != ["hq.layout.read"]
+                or layout.get("stores") != ["BSVT"] or layout.get("legal_entities") != ["DEMO_LEGAL"]
+                or len(layout.get("token", "")) < 32):
+            raise RuntimeError("Unapproved identity token-map addition")
+    payload = "\n".join(f"{key}={shlex.quote(str(value))}" for key, value in sorted(desired.items()))
+    if path.read_text().strip() == payload:
+        return values
     tmp = path.with_name(path.name + ".next")
     if tmp.exists() or tmp.is_symlink():
-        raise RuntimeError("Unreviewed identity config migration marker")
+        raise RuntimeError("Unreviewed config migration marker")
     try:
         write_secret(tmp, payload)
         tmp.replace(path)
@@ -339,16 +458,29 @@ def upgrade_identity_environment(values):
     return values
 
 
-def upgrade_blank_ingress_environment(values):
-    """Backwards-compatible caller for the original V4.3 blank ingress upgrade."""
+def upgrade_blank_ingress_environment(values, *, approved_changes=None):
+    """Backwards-compatible ingress upgrade with exact approved scope transitions."""
     return upgrade_managed_environment(
         "ingress", values,
         {"BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_LINK_KEY",
          "BSV_GROWTH_POS_VERIFY_TOKEN", "BSV_GROWTH_POS_VERIFY_URL"},
-        allow_blank=True)
+        allow_blank=True, approved_changes=approved_changes)
 
 
-def prepare_config():
+def prepare_config(approve_synthetic_three_store=False):
+    """Apply the complete managed scope transition or restore every env file on failure."""
+    snapshot = _managed_config_snapshot()
+    try:
+        return _prepare_config(approve_synthetic_three_store)
+    except BaseException:
+        try:
+            _restore_managed_config(snapshot)
+        except Exception as rollback_error:
+            raise RuntimeError("Managed config upgrade failed and rollback verification failed") from rollback_error
+        raise
+
+
+def _prepare_config(approve_synthetic_three_store=False):
     for path, mode in ((ROOT, 0o755), (ROOT / "releases", 0o755), (ROOT / "config", 0o700), (DATA, 0o755)):
         path.mkdir(mode=mode, exist_ok=True)
     for name in START_ORDER:
@@ -378,10 +510,13 @@ def prepare_config():
     growth_link = write_secret(config / "growth-link-key", secrets.token_urlsafe(48))
     growth_context = write_secret(config / "growth-pos-context-key", secrets.token_urlsafe(48))
     growth_verify = write_secret(config / "growth-pos-verify-token", secrets.token_urlsafe(48))
-    store_map = {"BSVT": "DEMO_LEGAL"}
+    store_ids = ["BSVM", "BSVS", "BSVT"] if approve_synthetic_three_store else ["BSVT"]
+    store_csv = ",".join(store_ids)
+    store_map = {store_id: "DEMO_LEGAL" for store_id in store_ids}
+    store_map_json = json.dumps(store_map, separators=(",", ":"))
     token_map = {
         "pos": {"token": pos_token, "actions": ["pos.order.read", "pos.order.create"],
-                "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]},
+                "legal_entities": ["DEMO_LEGAL"], "stores": store_ids},
         "layout-admin": {"token": layout_token, "actions": ["hq.layout.read"],
                          "legal_entities": ["DEMO_LEGAL"], "stores": ["BSVT"]},
         "supply": {"token": supply_token, "legal_entity_id": "DEMO_LEGAL",
@@ -397,8 +532,9 @@ def prepare_config():
         "BSV_LOCAL_ARCHIVE_DIR": str(DATA / "identity" / "archives"),
         "BSV_BACKUP_KEY_FILE": str(DATA / "identity" / "archive.key"),
         "BSV_DEMO_ADMIN_1_PASSWORD": reviewer1, "BSV_DEMO_ADMIN_2_PASSWORD": reviewer2,
+        "BSV_ACADEMY_STORE_IDS": store_csv,
         "BSV_SERVICE_TOKENS_JSON": json.dumps(token_map, separators=(",", ":")),
-    })
+    }, approve_synthetic_three_store=approve_synthetic_three_store)
     pos = upgrade_managed_environment("pos", {
         "BSV_MODE": "staging", "BSV_PORT": "18762", "BSV_PRIVATE_SSH_TUNNEL": "1",
         "BSV_DB_PATH": str(DATA / "pos" / "synthetic.sqlite3"),
@@ -406,7 +542,8 @@ def prepare_config():
         "BSV_BACKUP_DIR": str(DATA / "pos" / "backups"),
         "BSV_POS_IDENTITY_REQUIRED": "1", "BSV_POS_IDENTITY_URL": "http://127.0.0.1:18761",
         "BSV_POS_IDENTITY_TOKEN": pos_token, "BSV_POS_INTERNAL_STAGE": "1",
-        "BSV_POS_STORE_LEGAL_JSON": json.dumps(store_map, separators=(",", ":")),
+        "BSV_POS_STORE_LEGAL_JSON": store_map_json,
+        "BSV_POS_G1_TEST_STORES": store_csv if approve_synthetic_three_store else "disabled",
         "BSV_POS_LAYOUT_SERVICE_TOKEN": layout_token, "BSV_POS_LAYOUT_SCOPE_MODE": "isolated-synthetic",
         "BSV_APP_ENV": "isolated",
         "BSV_POS_GROWTH_INTEGRATION": "1",
@@ -415,7 +552,14 @@ def prepare_config():
         "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
     }, {"BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
         "BSV_APP_ENV", "BSV_POS_GROWTH_INTEGRATION", "BSV_GROWTH_LINK_KEY",
-        "BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_POS_VERIFY_TOKEN"})
+        "BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_POS_VERIFY_TOKEN",
+        "BSV_POS_G1_TEST_STORES"}, approved_changes={
+            **_three_store_scope_change("pos", "BSV_POS_STORE_LEGAL_JSON", store_map_json,
+                                       approve_synthetic_three_store),
+            **_three_store_scope_change("pos", "BSV_POS_G1_TEST_STORES",
+                                       store_csv if approve_synthetic_three_store else "disabled",
+                                       approve_synthetic_three_store),
+        })
     environment("postgres", {"BSV_STAGE_COMPONENT_DATA": str(DATA / "postgres")})
     # Isolated, synthetic candidate only; no additional public service or authority.
     # The original ingress.env is an empty, root-owned environment file on older
@@ -435,12 +579,14 @@ def prepare_config():
         "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
         "BSV_GROWTH_POS_VERIFY_URL": "http://127.0.0.1:18762/api/v1/visits/customer-context/verify",
         "BSV_GROWTH_LEGAL_ENTITY_ID": "DEMO_LEGAL",
-        "BSV_GROWTH_STORE_IDS": "BSVT",
+        "BSV_GROWTH_STORE_IDS": store_csv,
         "BSV_GROWTH_PUBLIC_BASE_URL": "http://127.0.0.1:18760",
         "BSV_GROWTH_MENU_URL": "/cocktail/",
         "BSV_GROWTH_PRIVACY_APPROVED": "0",
     }
-    upgrade_blank_ingress_environment(ingress_settings)
+    upgrade_blank_ingress_environment(ingress_settings, approved_changes=
+        _three_store_scope_change("ingress", "BSV_GROWTH_STORE_IDS", store_csv,
+                                  approve_synthetic_three_store))
     sources = json.loads((REPO / "config/modules/supply-sources.example.json").read_text())
     for value in sources["sources"].values():
         value["primary"] = value["standby_read"] = ""
@@ -454,6 +600,27 @@ def prepare_config():
     environment("supply", {"BSV_MODE": "internal-stage", "BSV_SUPPLY_STATE_DIR": str(DATA / "supply"),
                            "BSV_SOURCE_B_TOKEN": supply_token, "BSV_SOURCES_CONFIG": str(supply_config)})
     return identity, pos, dbpw, pin
+
+
+def _restore_default_store_scope_if_enabled():
+    pos_path = ROOT / "config" / "pos.env"
+    if not pos_path.exists():
+        return
+    pos = _read_managed_environment("pos")
+    identity_path = ROOT / "config" / "identity.env"
+    ingress_path = ROOT / "config" / "ingress.env"
+    identity = _read_managed_environment("identity") if identity_path.exists() else {}
+    ingress = _read_managed_environment("ingress") if ingress_path.exists() else {}
+    three_map = {"BSVM": "DEMO_LEGAL", "BSVS": "DEMO_LEGAL", "BSVT": "DEMO_LEGAL"}
+    try:
+        current_map = json.loads(pos.get("BSV_POS_STORE_LEGAL_JSON", "{}"))
+    except (TypeError, ValueError):
+        raise RuntimeError("Invalid POS store map during rollback; keep services stopped")
+    if (pos.get("BSV_POS_G1_TEST_STORES") == "BSVM,BSVS,BSVT"
+            or current_map == three_map
+            or identity.get("BSV_ACADEMY_STORE_IDS") == "BSVM,BSVS,BSVT"
+            or ingress.get("BSV_GROWTH_STORE_IDS") == "BSVM,BSVS,BSVT"):
+        prepare_config(False)
 
 
 def git_blob_sha(data):
@@ -1228,6 +1395,7 @@ def recover_pending():
     if previous and not re.fullmatch(r"[a-f0-9]{40}", previous):
         raise RuntimeError("Invalid managed activation journal")
     switch_services(False)
+    _restore_default_store_scope_if_enabled()
     if previous:
         link("current", previous)
         switch_services(True)
@@ -1251,7 +1419,7 @@ def activation_checkpoint(current, purpose):
     raise RuntimeError("Private PostgreSQL is not accepting connections for backup")
 
 
-def deploy(sha):
+def deploy(sha, *, approve_synthetic_three_store=False):
     recover_pending()
     preflight(sha)
     previous = sha_at(ROOT / "current")
@@ -1261,15 +1429,20 @@ def deploy(sha):
                          or (DATA / "pos" / "synthetic.sqlite3").exists()):
         raise RuntimeError("Existing private data has no managed active release; investigate before deployment")
     dest = build(sha)
-    identity, pos, dbpw, pin = prepare_config()
-    # Fail while the old release still runs if any service cannot read/traverse the candidate.
-    verify_release_access(dest)
-    if not UNIT_FILE.exists():
-        UNIT_FILE.write_bytes((REPO / TOOL / UNIT_FILE.name).read_bytes())
-    run("systemctl", "daemon-reload")
-    if previous == sha and all(active(name) for name in START_ORDER):
-        verify()
-        return
+    config_snapshot = _managed_config_snapshot()
+    try:
+        identity, pos, dbpw, pin = prepare_config(approve_synthetic_three_store)
+        # Fail while the old release still runs if any service cannot read/traverse the candidate.
+        verify_release_access(dest)
+        if not UNIT_FILE.exists():
+            UNIT_FILE.write_bytes((REPO / TOOL / UNIT_FILE.name).read_bytes())
+        run("systemctl", "daemon-reload")
+        if previous == sha and all(active(name) for name in START_ORDER):
+            verify()
+            return
+    except BaseException:
+        _restore_managed_config(config_snapshot)
+        raise
     marker = ROOT / "activation.pending"
     write_secret(marker, previous or "")
     try:
@@ -1284,6 +1457,7 @@ def deploy(sha):
         if previous and previous != sha:
             link("previous", previous)
     except (Exception, KeyboardInterrupt):
+        _restore_managed_config(config_snapshot)
         recover_pending()
         raise
     marker.unlink()
@@ -1306,6 +1480,7 @@ def rollback():
     try:
         activation_checkpoint(current, "pre_rollback")
         switch_services(False)
+        _restore_default_store_scope_if_enabled()
         if previous:
             link("current", previous)
             switch_services(True)
@@ -1330,7 +1505,11 @@ def main():
         group.add_argument("--" + operation, action="store_const", dest="operation", const=operation)
     group.add_argument("--recovery-check", type=Path, metavar="RECEIPT")
     parser.add_argument("--sha")
+    parser.add_argument("--approve-synthetic-three-store", action="store_true",
+                        help="explicitly enable only DEMO_LEGAL BSVM/BSVS/BSVT isolated test scope")
     args = parser.parse_args()
+    if args.approve_synthetic_three_store and args.operation != "deploy":
+        parser.error("--approve-synthetic-three-store is valid only with --deploy")
     if args.operation in {"preflight", "deploy"} and not re.fullmatch(r"[a-f0-9]{40}", args.sha or ""):
         parser.error("A full approved --sha is required")
     if (args.operation in {"deploy", "rollback", "backup"} or args.recovery_check) and os.geteuid() != 0:
@@ -1342,7 +1521,7 @@ def main():
     else:
         with locked():
             if args.operation == "deploy":
-                deploy(args.sha)
+                deploy(args.sha, approve_synthetic_three_store=args.approve_synthetic_three_store)
             elif args.operation == "rollback":
                 rollback()
             elif args.recovery_check:

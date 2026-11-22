@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "scripts"), str(ROOT / "platform/lighthouse/internal-stage")]
-from bsvctl import CI_FIELDS, JOBS, REPO_NAME, export_ci, stage, validate_ci
+from bsvctl import CI_FIELDS, JOBS, REPO_NAME, build_parser, export_ci, stage, validate_ci
 from route_change import route
 
 
@@ -37,6 +37,15 @@ class ControlTests(unittest.TestCase):
             validate_ci(dict(proof, jobs=proof["jobs"][:-1]), sha)
         with self.assertRaises(ValueError):
             validate_ci(dict(proof, url="https://github.com/else/repo/actions/runs/42"), sha)
+
+    def test_three_store_deployment_requires_a_separate_explicit_switch(self):
+        parser = build_parser()
+        common = ["deploy", "--sha", "a" * 40, "--approve-isolated",
+                  "--ci-proof", "-", "--request-id", "ISSUE-37", "--module", "store-pos"]
+        approved = parser.parse_args(common + ["--approve-synthetic-three-store"])
+        default = parser.parse_args(common)
+        self.assertTrue(approved.approve_synthetic_three_store)
+        self.assertFalse(default.approve_synthetic_three_store)
 
     def test_export_fetches_genuine_run_and_minimizes_job_fields(self):
         sha = "a" * 40

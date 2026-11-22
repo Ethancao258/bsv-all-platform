@@ -126,6 +126,9 @@ def deploy(args):
         raise ValueError("Origin must be the BSV ALL repository")
     if not args.approve_isolated or os.geteuid() != 0:
         raise ValueError("Run with sudo and explicit --approve-isolated")
+    approve_three_stores = bool(getattr(args, "approve_synthetic_three_store", False))
+    if approve_three_stores and not args.approve_isolated:
+        raise ValueError("Synthetic three-store scope also requires --approve-isolated")
     if not re.fullmatch(r"(?:ISSUE-[1-9][0-9]*|BSV-CHG-[0-9]{8}-[a-zA-Z0-9-]{1,20})", args.request_id):
         raise ValueError("Specify a versioned request ID")
     if args.ci_proof == "-":
@@ -153,6 +156,7 @@ def deploy(args):
         "config_revision_scope": "tracked change-routing index; runtime credentials excluded",
         "resource_preflight": "PENDING", "expected_units": [stage.unit(x) for x in stage.START_ORDER],
         "rollout_environment": "isolated", "no_payment": True, "no_prod_db": True,
+        "synthetic_store_scope": "BSVM,BSVS,BSVT" if approve_three_stores else "BSVT",
         "backup_snapshot_ref": None, "acceptance_report_ref": None,
         "host_verification": "HOST_NOT_RUN", "state": "RELEASE_APPROVED", **before,
     }
@@ -163,7 +167,7 @@ def deploy(args):
         manifest.update(release_state(), state="DEPLOYING")
         persist(manifest)
         try:
-            stage.deploy(sha)
+            stage.deploy(sha, approve_synthetic_three_store=approve_three_stores)
             manifest.update(release_state(), state="HOST_VERIFIED", host_verification="HEALTH_ONLY",
                             isolated_db_revision=stage.database_revision())
         except (RuntimeError, OSError, subprocess.SubprocessError, KeyboardInterrupt):
@@ -199,7 +203,7 @@ def rollback():
         print("RELEASE_MANIFEST", persist(evidence))
 
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_subparsers(dest="operation", required=True)
     modes.add_parser("status")
@@ -209,12 +213,18 @@ def main():
     release = modes.add_parser("deploy")
     release.add_argument("--sha", required=True)
     release.add_argument("--approve-isolated", action="store_true")
+    release.add_argument("--approve-synthetic-three-store", action="store_true",
+                         help="explicitly allow only DEMO_LEGAL BSVM/BSVS/BSVT isolated test scope")
     release.add_argument("--ci-proof", required=True)
     release.add_argument("--request-id", required=True)
     release.add_argument("--module", required=True, action="append")
     modes.add_parser("verify")
     modes.add_parser("rollback")
-    args = parser.parse_args()
+    return parser
+
+
+def main():
+    args = build_parser().parse_args()
     if args.operation == "status":
         print(json.dumps(release_state(), sort_keys=True))
     elif args.operation == "ci-evidence":
