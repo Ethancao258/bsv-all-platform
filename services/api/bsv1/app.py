@@ -1918,7 +1918,7 @@ class Handler(BaseHTTPRequestHandler):
                             if domain=='READY' and not sellable:continue
                             if record['page']=='M_采购纯饮':
                                 withheld=[k for k in fields if any(word in str(k).casefold()
-                                    for word in ('采购价','成本','供应商','进货价','价格','金额'))]
+                                    for word in ('采购价','成本','供应商','进货价','单价','价格','金额'))]
                                 fields={k:v for k,v in fields.items() if k not in withheld}
                             else:withheld=[]
                             records.append({'id':fixed_id,'name':record['display_name'],'domain':fixed_id[0],
@@ -1939,7 +1939,7 @@ class Handler(BaseHTTPRequestHandler):
                     withheld=[]
                     if page=='M_采购纯饮':
                         withheld=[k for k in fields if any(word in str(k).casefold()
-                            for word in ('采购价','成本','供应商','进货价','价格','金额'))]
+                            for word in ('采购价','成本','供应商','进货价','单价','价格','金额'))]
                         fields={k:v for k,v in fields.items() if k not in withheld}
                     ready=db.execute('SELECT * FROM bsv_products WHERE id=?',(fixed_id,)).fetchone()
                     data={'id':fixed_id,'name':row['display_name'],'fields':fields,
