@@ -373,7 +373,7 @@ class ReleaseTest(unittest.TestCase):
             service_gid = os.getegid() or 1000
             users = lambda name: SimpleNamespace(
                 pw_uid=service_uid, pw_gid=service_gid, pw_shell="/usr/sbin/nologin",
-                pw_dir=str(data / name))
+                pw_dir=str(data / name.removeprefix("bsvint-")))
             real_write = stage.write_secret
             def local_write(path, value, uid=0, gid=0):
                 if uid == 0 and os.geteuid() != 0:
