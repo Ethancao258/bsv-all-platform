@@ -47,7 +47,7 @@ POS_GET_API = {
     "/api/hq/art", "/api/hq/image", "/api/menu-preview", "/api/document",
     "/api/store-layout-art", "/api/reports/checkout-csv",
     "/api/production/photo", "/api/state", "/api/receipt", "/api/history",
-    "/api/audit", "/api/members/search", "/api/catalog/item", "/api/production/recipe",
+    "/api/audit", "/api/members/search", "/api/catalog/item", "/api/catalog/search", "/api/production/recipe",
     "/api/visits/customer-context",
 }
 POS_POST_API = {
