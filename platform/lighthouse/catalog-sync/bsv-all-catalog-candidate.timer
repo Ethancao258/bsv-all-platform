@@ -1,0 +1,11 @@
+[Unit]
+Description=BSV ALL CloudBase catalog candidate pull daily at 04:30 China time
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 Asia/Shanghai
+Persistent=true
+AccuracySec=1min
+Unit=bsv-all-catalog-candidate.service
+
+[Install]
+WantedBy=timers.target

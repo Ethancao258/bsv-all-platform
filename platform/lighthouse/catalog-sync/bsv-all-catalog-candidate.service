@@ -1,0 +1,24 @@
+[Unit]
+Description=BSV ALL CloudBase catalog candidate pull (read-only, no POS publication)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=bsv-all-catalog-sync
+WorkingDirectory=/opt/bsv-all-internal-stage/current/src
+EnvironmentFile=/etc/bsv-all-catalog-sync/catalog.env
+ExecStart=/usr/bin/python3 /opt/bsv-all-internal-stage/current/src/integrations/cloudbase/catalog_daily_pull.py --output-root /var/lib/bsv-all-catalog-sync/candidates
+TimeoutStartSec=240
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectControlGroups=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/bsv-all-catalog-sync
