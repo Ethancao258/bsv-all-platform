@@ -3,6 +3,7 @@ Server is authoritative: no client-generated assignments, locks or amounts.
 """
 from __future__ import annotations
 import json,re,sqlite3,time,uuid
+import os
 from datetime import datetime,timezone
 from pathlib import Path
 
@@ -137,16 +138,29 @@ def tasks_for_store(db,store_id):
  return [dict(r) for r in rows]
 
 def _media_file(product_id, filename):
- """Resolve only trusted DB filenames in dedicated product photo folders."""
+ """Resolve a private product image, preferring durable media outside releases.
+
+    BSV_PRODUCT_MEDIA_ROOT is the persistent root on Lighthouse. The packaged
+    legacy root remains a read-only compatibility fallback for existing assets.
+    """
  if not isinstance(filename,str) or not filename.strip():return None
  name=Path(filename.strip()).name
  if name!=filename.strip() or name in ('.','..') or Path(name).suffix.lower() not in ('.jpg','.jpeg','.png','.webp'):
   return None
  fixed=product_id if isinstance(product_id,str) and re.fullmatch(r'C\d{6}',product_id) else ''
- root=Path(__file__).resolve().parent/'resources'/'product_images'
- candidates=[root/fixed/name,root/name]
+ legacy_root=Path(__file__).resolve().parent/'resources'/'product_images'
+ configured=os.environ.get('BSV_PRODUCT_MEDIA_ROOT','/var/lib/bsv-all/media/products').strip()
+ persistent_root=Path(configured).expanduser() if configured else Path('/var/lib/bsv-all/media/products')
+ candidates=[persistent_root/fixed/name,legacy_root/fixed/name,legacy_root/name]
  for file in candidates:
-  if file.is_file() and file.stat().st_size<=12*1024*1024:return file
+  try:
+   root=file.parents[1] if file.parent.name==fixed else file.parent
+   if root.is_symlink() or file.parent.is_symlink() or file.is_symlink() or not file.is_file():continue
+   resolved=file.resolve(strict=True)
+   if root.resolve() not in resolved.parents:continue
+   if resolved.stat().st_size<=12*1024*1024:return resolved
+  except (OSError,RuntimeError):
+   continue
  return None
 
 def recipe(db,store_id,product_id):

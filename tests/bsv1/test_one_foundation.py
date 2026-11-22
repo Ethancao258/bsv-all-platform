@@ -179,17 +179,33 @@ class Foundation(unittest.TestCase):
             self.assertEqual(code,200);self.assertEqual(json.loads(body)['priced'],52)
             code,_,body=req('GET','/api/catalog/search?q=%E5%90%88%E6%88%90%E5%95%86%E5%93%81&domain=C')
             self.assertEqual(code,401) # employee authentication is required
+            code,_,body=req('GET','/api/v1/catalog/products?q=%E5%90%88%E6%88%90%E5%95%86%E5%93%81&domain=C')
+            self.assertEqual(code,401) # versioned contract keeps existing employee authorization
             code,_,body=req('GET','/api/catalog/search?q=%E5%90%88%E6%88%90%E5%95%86%E5%93%81&domain=C',cookie=cookie)
             self.assertEqual(code,200)
             catalog=json.loads(body)
             self.assertEqual(len(catalog['items']),63)
             self.assertEqual(sum(item['sale_enabled'] for item in catalog['items']),52)
+            code,_,body=req('GET','/api/v1/catalog/products?q=%E5%90%88%E6%88%90%E5%95%86%E5%93%81&domain=C',cookie=cookie)
+            self.assertEqual(code,200)
+            versioned=json.loads(body)
+            self.assertEqual(versioned['contract_version'],'bsv-data-contracts-v1')
+            self.assertEqual(versioned['items'][0]['attributes']['name'],'合成商品 1')
+            self.assertEqual(len(versioned['items'][0]['product_id']),7)
             code,_,body=req('GET','/api/catalog/item?id=C000001',cookie=cookie)
             self.assertEqual(code,200);self.assertEqual(json.loads(body)['fields']['完整制作步骤'],'演练步骤')
+            code,_,body=req('GET','/api/v1/catalog/products/C000001',cookie=cookie)
+            self.assertEqual(code,200)
+            product=json.loads(body)
+            self.assertEqual(product['attributes']['recipe_steps'],'演练步骤')
+            self.assertEqual(product['product_id'],'C000001')
             before=app.db_read()
             with before as db:visits_before=db.execute('SELECT COUNT(*) FROM visits').fetchone()[0]
             code,_,body=req('GET','/api/production/recipe?id=C000001',cookie=cookie)
             self.assertEqual(code,200);self.assertEqual(json.loads(body)['fields']['完整制作步骤'],'演练步骤')
+            code,_,body=req('GET','/api/v1/catalog/products/C000001/recipe',cookie=cookie)
+            self.assertEqual(code,200)
+            self.assertNotIn('sourcing_guide',json.loads(body)['attributes'])
             with app.db_read() as db:visits_after=db.execute('SELECT COUNT(*) FROM visits').fetchone()[0]
             self.assertEqual(visits_after,visits_before) # tutorial lookup did not create an order
             code,_,body=req('GET','/api/hq/stores',cookie=cookie);self.assertEqual(code,200)

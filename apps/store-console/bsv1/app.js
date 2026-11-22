@@ -359,7 +359,7 @@ async function renderCatalogList(){
  if(!term){list.innerHTML='<div class="catalog-empty">输入名称、固定ID或分类开始查询</div>';return;}
  list.innerHTML='<div class="catalog-empty">正在查询Excel资料…</div>';
  try{
-  const result=await getJson('/api/catalog/search?q='+encodeURIComponent(term)+'&domain='+encodeURIComponent(kind));
+  const result=await getJson('/api/v1/catalog/products?q='+encodeURIComponent(term)+'&domain='+encodeURIComponent(kind));
   if(request!==catalogSearchRequest)return;
   list.innerHTML=result.items.length?result.items.map(p=>`<button type="button" class="catalog-item" data-cid="${esc(p.id)}">
    <span class="catalog-item-main"><b>${esc(p.name)}</b><small>${esc(p.id)} · ${esc(p.series||p.domain)}</small></span>
@@ -373,14 +373,16 @@ function catalogFields(fields){
 }
 async function showCatalogItem(id){
  try{
-  const r=await getJson('/api/catalog/item?id='+encodeURIComponent(id));const f=r.fields||{};
+  const r=await getJson('/api/v1/catalog/products/'+encodeURIComponent(id));const f=r.fields||{};
   let tutorial=null;
-  if(id.startsWith('C')){try{tutorial=await getJson('/api/production/recipe?id='+encodeURIComponent(id));}catch(e){tutorial={warning:e.message};}}
+  if(id.startsWith('C')){try{tutorial=await getJson('/api/v1/catalog/products/'+encodeURIComponent(id)+'/recipe');}catch(e){tutorial={warning:e.message};}}
   const source=r.source||{},stamp=source.imported_at||'未导入';
   const sections=[['身份与分类',['商品ID','商品名称','销售系列','英文名称','套餐名称','套餐包含内容','物料名称','类别','规格']],
    ['配方和制作',['配方文字','单品配方','完整制作步骤','寻酒指引','杯具','制作时长（秒）','操作方式','制作要求','产品故事']],
    ['审核状态',['内容审核状态','上架状态','审核状态','销售状态','审批状态','业务审批状态']]];
-  const details=sections.map(([title,keys])=>{const pairs=keys.filter(k=>f[k]!==undefined&&f[k]!==null&&String(f[k]).trim());
+  const semantic=r.attributes||{};
+  const semanticHtml=Object.keys(semantic).length?`<section class="catalog-detail-section"><h3>标准字段</h3>${catalogFields(semantic)}</section>`:'';
+  const details=semanticHtml+sections.map(([title,keys])=>{const pairs=keys.filter(k=>f[k]!==undefined&&f[k]!==null&&String(f[k]).trim());
    return pairs.length?`<section class="catalog-detail-section"><h3>${esc(title)}</h3>${pairs.map(k=>`<div class="catalog-detail-row"><b>${esc(k)}</b><p>${esc(String(f[k]))}</p></div>`).join('')}</section>`:'';}).join('');
   const photos=tutorial?.photos||{};
   const photoHtml=Object.entries(photos).filter(([kind,p])=>p.available&&['materials','final'].includes(kind)).map(([kind,p])=>p.available?`<figure><img loading="lazy" alt="${esc(p.filename||kind)}" src="/api/production/photo?product_id=${encodeURIComponent(id)}&kind=${encodeURIComponent(kind)}"><figcaption>${esc(p.filename)}</figcaption></figure>`:'').join('');

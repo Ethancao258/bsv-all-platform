@@ -1,0 +1,96 @@
+{
+  "contract_version": "bsv-data-contracts-v1",
+  "status": "APPLICATION_CONTRACT_READY_SCHEMA_PENDING",
+  "registry_refs": {
+    "data_ownership": "config/data-ownership.json",
+    "module_data_sources": [
+      "config/modules/identity-data-sources.json",
+      "config/modules/supply-sources.example.json",
+      "config/modules/bsv1-handoff.json"
+    ],
+    "ownership_is_authoritative": true,
+    "do_not_duplicate_entity_owners": true
+  },
+  "database": {
+    "primary_url_env": "BSV_DB_URL",
+    "database_name": "bsv_all_prod",
+    "engine": "PostgreSQL 17",
+    "schema_status": "BLOCKED_WORKBUDDY_FIELD_DICTIONARY_REVIEW",
+    "production_configured": false,
+    "single_authoritative_writer": true,
+    "migration_owner": "cloudbase/migrations",
+    "forbidden_fallbacks": ["bsv_identity_isolated_internal", "SQLite operational databases"],
+    "compatibility": {
+      "pos_operational_sqlite": "BSV_DB_PATH",
+      "supply_sources_registry": "BSV_SOURCES_CONFIG",
+      "growth_database": "BSV_GROWTH_DB_URL"
+    }
+  },
+  "domains": {
+    "catalog": {
+      "owner": "catalog",
+      "current_writer": "BSV1 V9 importer to the existing POS SQLite projection",
+      "current_source": "seven-sheet V9 workbook; source header dictionary is the adapter boundary",
+      "postgres_schema": "PENDING_APPROVED_FIELD_DICTIONARY",
+      "read_api": [
+        "GET /api/v1/catalog/products",
+        "GET /api/v1/catalog/products/{product_id}",
+        "GET /api/v1/catalog/products/{product_id}/recipe"
+      ],
+      "write_api": "controlled import publication only; no direct UI or public-menu writes",
+      "stable_fields": {
+        "product_id": {"sheet": "C_现场成品", "source_header": "商品ID", "source": "fixed_id"},
+        "name": {"sheet": "C_现场成品", "source_header": "商品名称", "source": "display_name"},
+        "series": {"sheet": "C_现场成品", "source_header": "销售系列"},
+        "recipe_text": {"sheet": "C_现场成品", "source_header": "配方文字"},
+        "recipe_steps": {"sheet": "C_现场成品", "source_header": "完整制作步骤"},
+        "sourcing_guide": {"sheet": "C_现场成品", "source_header": "寻酒指引"},
+        "glassware": {"sheet": "C_现场成品", "source_header": "杯具"},
+        "duration_seconds": {"sheet": "C_现场成品", "source_header": "制作时长（秒）"},
+        "method": {"sheet": "C_现场成品", "source_header": "操作方式"},
+        "story": {"sheet": "C_现场成品", "source_header": "产品故事"},
+        "image_materials": {"sheet": "C_现场成品", "source_header": "配方图文件名｜首次确认"},
+        "image_review": {"sheet": "C_现场成品", "source_header": "配方图文件名｜二次复核"},
+        "image_final": {"sheet": "C_现场成品", "source_header": "成品图文件名"}
+      },
+      "sale_authority": "existing approved catalog/quote/store checks only; data presence is not sale approval"
+    },
+    "identity_access": {
+      "owner_ref": "config/data-ownership.json#key_owners.auth_subject_id",
+      "current_source_ref": "config/modules/identity-data-sources.json",
+      "schema_status": "existing isolated test schemas only; no production migration",
+      "api_contract_ref": "contracts/identity/identity.openapi.json"
+    },
+    "workforce": {"owner_ref": "config/data-ownership.json#key_owners.tr_code", "api_contract_ref": "contracts/identity/identity.openapi.json"},
+    "learning": {"owner_ref": "config/data-ownership.json#key_owners.credential_id", "api_contract_ref": "contracts/academy/V4_1.md"},
+    "procurement": {"owner_ref": "config/data-ownership.json#key_owners.supplier_id", "api_contract_ref": "contracts/supply/openapi.json"},
+    "inventory": {"owner_ref": "config/data-ownership.json#key_owners.stock_lot_id", "api_contract_ref": "contracts/supply/openapi.json"},
+    "commerce": {"owner_ref": "config/data-ownership.json#key_owners.order_id", "api_contract_ref": "contracts/API_AND_EVENTS.md"},
+    "event_audit": {"owner_ref": "config/data-ownership.json#key_owners.audit_event_id", "api_contract_ref": "contracts/database/EVENTS.md"},
+    "customer_growth": {"owner_ref": "config/data-ownership.json#key_owners.customer_id", "api_contract_ref": "services/api/customer_growth/README.md"},
+    "public_menu": {"owner_ref": "catalog publication only", "api_contract_ref": "contracts/menu/public-menu-v2.schema.json"}
+  },
+  "media": {
+    "persistent_root_env": "BSV_PRODUCT_MEDIA_ROOT",
+    "default_root": "/var/lib/bsv-all/media/products",
+    "release_tree_is_not_storage": true,
+    "identity": ["product_id", "original_filename"],
+    "public_serving": false
+  },
+  "imports": {
+    "root_env": "BSV_IMPORT_ROOT",
+    "default_root": "/var/lib/bsv-all/imports",
+    "incoming_directory": "${BSV_IMPORT_ROOT}/incoming",
+    "archive_directory": "${BSV_IMPORT_ROOT}/archive",
+    "exports_directory": "/var/lib/bsv-all/exports",
+    "catalog_pipeline": ["archive", "preview", "validate", "commit-candidate", "publish", "rollback"],
+    "publish_updates_content_version_only": true,
+    "failed_validation_changes_active_version": false
+  },
+  "versioning": {
+    "application": "Git commit SHA",
+    "database_schema": "official CloudBase migration version only",
+    "business_content": "immutable source SHA256 and separate active catalog version",
+    "no_implicit_schema_upgrade": true
+  }
+}

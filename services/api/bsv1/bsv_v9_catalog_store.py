@@ -43,6 +43,12 @@ def _private_root(path: Path) -> Path:
     versions.mkdir(mode=0o700, exist_ok=True)
     if versions.stat().st_mode & 0o077:
         raise RuntimeError("Excel版本目录权限必须为0700")
+    candidates = path / "candidates"
+    if candidates.is_symlink():
+        raise RuntimeError("导入候选目录不能是符号链接")
+    candidates.mkdir(mode=0o700, exist_ok=True)
+    if candidates.stat().st_mode & 0o077:
+        raise RuntimeError("导入候选目录权限必须为0700")
     return path
 
 
@@ -147,6 +153,150 @@ def _atomic_state(root: Path, state: dict) -> None:
         _sync_dir(root)
     finally:
         temp.unlink(missing_ok=True)
+
+
+def _candidate_path(root: Path, digest: str) -> Path:
+    if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
+        raise RuntimeError("无效的候选Excel SHA256")
+    path = root / "candidates" / (digest + ".json")
+    if path.is_symlink():
+        raise RuntimeError("候选清单不能是符号链接")
+    return path
+
+
+def _private_import_dirs(catalog_root: Path) -> tuple[Path, Path]:
+    raw = os.environ.get("BSV_IMPORT_ROOT", "").strip()
+    base = Path(raw).expanduser() if raw else catalog_root.parent / "imports"
+    if base.is_symlink():
+        raise RuntimeError("导入根目录不能是符号链接")
+    base.mkdir(mode=0o700, parents=True, exist_ok=True)
+    base = base.resolve()
+    if base.stat().st_mode & 0o077:
+        raise RuntimeError("导入根目录权限必须为0700")
+    paths = (base / "incoming", base / "archive")
+    for path in paths:
+        if path.is_symlink():
+            raise RuntimeError("导入目录不能是符号链接")
+        path.mkdir(mode=0o700, exist_ok=True)
+        if path.stat().st_mode & 0o077:
+            raise RuntimeError("导入子目录权限必须为0700")
+    return paths
+
+
+def _archive_source(source: Path, digest: str, catalog_root: Path) -> Path:
+    _, archive = _private_import_dirs(catalog_root)
+    target = archive / (digest + ".xlsx")
+    if target.is_symlink():
+        raise RuntimeError("归档工作簿不能是符号链接")
+    if target.exists():
+        if not target.is_file() or sha256_file(target) != digest:
+            raise RuntimeError("已有导入归档损坏")
+        return target
+    fd, temp_name = tempfile.mkstemp(prefix=".incoming-", suffix=".xlsx", dir=archive)
+    temp = Path(temp_name)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "wb") as output, Path(source).open("rb") as input_file:
+            shutil.copyfileobj(input_file, output)
+            output.flush(); os.fsync(output.fileno())
+        if sha256_file(temp) != digest:
+            raise RuntimeError("导入归档SHA256不匹配")
+        temp.replace(target); _sync_dir(archive)
+    except BaseException:
+        temp.unlink(missing_ok=True)
+        raise
+    return target
+
+
+def _write_candidate(root: Path, candidate: dict) -> None:
+    path = _candidate_path(root, candidate["sha256"])
+    temp = path.with_suffix(".json.next")
+    if temp.exists() or temp.is_symlink():
+        raise RuntimeError("发现未审核的候选清单临时文件")
+    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(candidate, stream, ensure_ascii=False, sort_keys=True)
+            stream.write("\n"); stream.flush(); os.fsync(stream.fileno())
+        temp.replace(path); _sync_dir(path.parent)
+    finally:
+        temp.unlink(missing_ok=True)
+
+
+def _read_candidate(root: Path, digest: str) -> dict:
+    path = _candidate_path(root, digest)
+    if not path.is_file() or path.stat().st_mode & 0o077:
+        raise RuntimeError("候选清单缺失或权限过宽")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("schema_version") != 1 or data.get("sha256") != digest:
+        raise RuntimeError("候选清单无效")
+    _version_path(root, digest)
+    return data
+
+
+def archive_workbook(source: Path, store_dir: Path) -> dict:
+    """Store an immutable candidate without changing the active POS catalog."""
+    root = _private_root(Path(store_dir))
+    with _store_lock(root):
+        digest, _, summary = _store_version(Path(source), root)
+        _archive_source(Path(source), digest, root)
+        path = _candidate_path(root, digest)
+        if path.exists():
+            prior = _read_candidate(root, digest)
+            return {"status": prior["status"], "sha256": digest, "summary": prior.get("summary", summary)}
+        candidate = {"schema_version": 1, "sha256": digest, "status": "ARCHIVED",
+                     "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                     "summary": summary}
+        _write_candidate(root, candidate)
+        return {"status": candidate["status"], "sha256": digest, "summary": summary}
+
+
+def preview_candidate(digest: str, store_dir: Path) -> dict:
+    root = _private_root(Path(store_dir))
+    with _store_lock(root):
+        candidate = _read_candidate(root, digest)
+        _, _, _, summary = unpack_v9(_version_path(root, digest))
+        return {"status": candidate["status"], "sha256": digest, "summary": summary}
+
+
+def validate_candidate(digest: str, store_dir: Path) -> dict:
+    root = _private_root(Path(store_dir))
+    with _store_lock(root):
+        candidate = _read_candidate(root, digest)
+        _, _, _, summary = unpack_v9(_version_path(root, digest))
+        candidate.update({"status": "VALIDATED", "validated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                          "summary": summary})
+        _write_candidate(root, candidate)
+        return {"status": candidate["status"], "sha256": digest, "summary": summary}
+
+
+def commit_candidate(digest: str, store_dir: Path) -> dict:
+    """Record explicit operator approval; this does not change live SQLite."""
+    root = _private_root(Path(store_dir))
+    with _store_lock(root):
+        candidate = _read_candidate(root, digest)
+        if candidate.get("status") != "VALIDATED":
+            raise RuntimeError("候选Excel必须先通过校验")
+        candidate.update({"status": "COMMITTED", "committed_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+        _write_candidate(root, candidate)
+        return {"status": candidate["status"], "sha256": digest}
+
+
+def publish_candidate(digest: str, database: Path, store_dir: Path) -> dict:
+    root = _private_root(Path(store_dir))
+    with _store_lock(root):
+        candidate = _read_candidate(root, digest)
+        if candidate.get("status") == "PUBLISHED":
+            return {"status": "UNCHANGED", "sha256": digest}
+        if candidate.get("status") != "COMMITTED":
+            raise RuntimeError("候选Excel尚未完成校验和提交审批")
+        workbook = _version_path(root, digest)
+    result = activate_workbook(workbook, database, root, source_mode="manual")
+    with _store_lock(root):
+        candidate = _read_candidate(root, digest)
+        candidate.update({"status": "PUBLISHED", "published_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+        _write_candidate(root, candidate)
+    return {"status": result["status"], "sha256": digest, "activation": result}
 
 
 @contextmanager
@@ -295,10 +445,21 @@ def resume_cloudbase_sync(store_dir: Path) -> dict:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="受控管理BSV V9私有Excel版本")
     sub = parser.add_subparsers(dest="command", required=True)
-    stage = sub.add_parser("stage", help="验证并启用人工上传的Excel")
+    stage = sub.add_parser("stage", help="安全归档并校验候选，不切换活动版本")
     stage.add_argument("source", type=Path)
-    stage.add_argument("--database", required=True, type=Path)
     stage.add_argument("--store-dir", required=True, type=Path)
+    archive = sub.add_parser("archive", help="安全归档上传文件为未启用候选")
+    archive.add_argument("source", type=Path)
+    archive.add_argument("--store-dir", required=True, type=Path)
+    for command, help_text in (("preview", "预览已归档候选"), ("validate", "校验候选且不切换当前版本"),
+                               ("commit-candidate", "记录人工提交审批，不写入现行SQLite")):
+        action = sub.add_parser(command, help=help_text)
+        action.add_argument("sha256")
+        action.add_argument("--store-dir", required=True, type=Path)
+    publish = sub.add_parser("publish", help="发布已审批的候选并同步现有POS SQLite")
+    publish.add_argument("sha256")
+    publish.add_argument("--database", required=True, type=Path)
+    publish.add_argument("--store-dir", required=True, type=Path)
     rollback = sub.add_parser("rollback", help="恢复上一有效Excel并同步原SQLite镜像")
     rollback.add_argument("--database", required=True, type=Path)
     rollback.add_argument("--store-dir", required=True, type=Path)
@@ -308,7 +469,21 @@ def main(argv=None) -> int:
     resume.add_argument("--store-dir", required=True, type=Path)
     args = parser.parse_args(argv)
     if args.command == "stage":
-        result = activate_workbook(args.source, args.database, args.store_dir, source_mode="manual")
+        # Compatibility command name: staging no longer publishes as a side effect.
+        # Operators must explicitly validate, commit-candidate and publish the SHA.
+        result = archive_workbook(args.source, args.store_dir)
+        if result["status"] == "ARCHIVED":
+            result = validate_candidate(result["sha256"], args.store_dir)
+    elif args.command == "archive":
+        result = archive_workbook(args.source, args.store_dir)
+    elif args.command == "preview":
+        result = preview_candidate(args.sha256, args.store_dir)
+    elif args.command == "validate":
+        result = validate_candidate(args.sha256, args.store_dir)
+    elif args.command == "commit-candidate":
+        result = commit_candidate(args.sha256, args.store_dir)
+    elif args.command == "publish":
+        result = publish_candidate(args.sha256, args.database, args.store_dir)
     elif args.command == "rollback":
         result = rollback_catalog(args.database, args.store_dir)
     elif args.command == "status":

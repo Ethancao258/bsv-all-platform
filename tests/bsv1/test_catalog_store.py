@@ -1,11 +1,13 @@
 """Private version store regression tests using only synthetic seven-sheet workbooks."""
 import json
+import io
 import os
 import sqlite3
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -97,6 +99,40 @@ class CatalogVersionStoreTests(unittest.TestCase):
         target.symlink_to(outside)
         with self.assertRaises(RuntimeError):
             store._version_path(root, digest)
+
+    def test_staged_candidate_requires_validate_and_explicit_commit_before_publish(self):
+        archived = store.archive_workbook(self.one, self.store_dir)
+        digest = archived["sha256"]
+        archive_file = self.store_dir.parent / "imports" / "archive" / (digest + ".xlsx")
+        self.assertEqual(archive_file.read_bytes(), self.one.read_bytes())
+        self.assertEqual(archive_file.stat().st_mode & 0o777, 0o600)
+        db = sqlite3.connect(self.db)
+        exists = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bsv_v9_sync'").fetchone()
+        self.assertIsNone(exists)  # archive/preview/validate/commit never publish implicitly
+        db.close()
+        self.assertEqual(archived["status"], "ARCHIVED")
+        with self.assertRaises(RuntimeError):
+            store.commit_candidate(digest, self.store_dir)
+        preview = store.preview_candidate(digest, self.store_dir)
+        self.assertEqual(preview["summary"]["C"], 63)
+        validated = store.validate_candidate(digest, self.store_dir)
+        self.assertEqual(validated["status"], "VALIDATED")
+        committed = store.commit_candidate(digest, self.store_dir)
+        self.assertEqual(committed["status"], "COMMITTED")
+        db = sqlite3.connect(self.db)
+        self.assertIsNone(db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bsv_v9_sync'").fetchone())
+        db.close()
+        published = store.publish_candidate(digest, self.db, self.store_dir)
+        self.assertEqual(published["status"], "ACTIVATED")
+        self.assertEqual(store.status_catalog(self.store_dir)["active_sha256"], digest)
+
+    def test_cli_stage_is_non_publishing(self):
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(store.main(["stage", str(self.one), "--store-dir", str(self.store_dir)]), 0)
+        state = store.status_catalog(self.store_dir)
+        self.assertEqual(state["status"], "NO_MANAGED_VERSION")
+        candidate = next((self.store_dir / "candidates").glob("*.json"))
+        self.assertEqual(json.loads(candidate.read_text())["status"], "VALIDATED")
 
 
 if __name__ == "__main__":

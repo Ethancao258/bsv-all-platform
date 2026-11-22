@@ -1,14 +1,36 @@
 """Read-only recipe lookup by permanent product ID, with no order/task dependency."""
 from pathlib import Path
 import json
+import os
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "services/api/bsv1"))
 import bsv_collab
 
 
 class RecipeReadOnlyLookupTests(unittest.TestCase):
+    def test_product_media_reads_from_persistent_id_directory_and_rejects_symlink(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)/"media"
+            product=root/"C000001"
+            product.mkdir(parents=True)
+            image=product/"glass.jpg"
+            image.write_bytes(b"synthetic image")
+            with patch.dict(os.environ,{"BSV_PRODUCT_MEDIA_ROOT":str(root)}):
+                self.assertEqual(bsv_collab._media_file("C000001","glass.jpg"),image.resolve())
+                self.assertIsNone(bsv_collab._media_file("C000001","../glass.jpg"))
+                outside=Path(temp)/"outside.jpg"
+                outside.write_bytes(b"outside")
+                (product/"escape.jpg").symlink_to(outside)
+                self.assertIsNone(bsv_collab._media_file("C000001","escape.jpg"))
+                external_dir=Path(temp)/"external"
+                external_dir.mkdir();(external_dir/"image.jpg").write_bytes(b"external")
+                (root/"C000002").symlink_to(external_dir,target_is_directory=True)
+                self.assertIsNone(bsv_collab._media_file("C000002","image.jpg"))
+
     def test_recipe_and_operations_resolve_by_exact_catalog_ids_without_order(self):
         import sqlite3
         db = sqlite3.connect(":memory:")

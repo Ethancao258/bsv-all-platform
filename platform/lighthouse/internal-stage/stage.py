@@ -540,6 +540,8 @@ def _prepare_config(approve_synthetic_three_store=False):
         "BSV_DB_PATH": str(DATA / "pos" / "synthetic.sqlite3"),
         "BSV_V9_XLSX": str(DATA / "pos" / "synthetic-v9.xlsx"),
         "BSV_CATALOG_DIR": str(DATA / "pos" / "catalog"),
+        "BSV_IMPORT_ROOT": str(DATA / "pos" / "imports"),
+        "BSV_PRODUCT_MEDIA_ROOT": str(DATA / "pos" / "product-media"),
         "BSV_BACKUP_DIR": str(DATA / "pos" / "backups"),
         "BSV_POS_IDENTITY_REQUIRED": "1", "BSV_POS_IDENTITY_URL": "http://127.0.0.1:18761",
         "BSV_POS_IDENTITY_TOKEN": pos_token, "BSV_POS_INTERNAL_STAGE": "1",
@@ -551,7 +553,7 @@ def _prepare_config(approve_synthetic_three_store=False):
         "BSV_GROWTH_LINK_KEY": growth_link,
         "BSV_GROWTH_POS_CONTEXT_KEY": growth_context,
         "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
-    }, {"BSV_CATALOG_DIR", "BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
+    }, {"BSV_CATALOG_DIR", "BSV_IMPORT_ROOT", "BSV_PRODUCT_MEDIA_ROOT", "BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
         "BSV_APP_ENV", "BSV_POS_GROWTH_INTEGRATION", "BSV_GROWTH_LINK_KEY",
         "BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_POS_VERIFY_TOKEN",
         "BSV_POS_G1_TEST_STORES"}, approved_changes={

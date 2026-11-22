@@ -3,6 +3,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -42,7 +43,17 @@ def load_settings():
         raise RuntimeError("Production refuses test auth bypass")
     if auth not in {"isolated", "cloudbase_jwks"}:
         raise RuntimeError("Unknown authentication provider")
-    a = os.getenv(routes["A"]["primary_url_env"], "sqlite+pysqlite:///./runtime/identity-isolated.db")
+    central_url = os.getenv("BSV_DB_URL", "").strip()
+    if central_url:
+        if env == "isolated":
+            raise RuntimeError("BSV_DB_URL is unavailable in isolated identity mode")
+        parsed = urlsplit(central_url)
+        if parsed.scheme not in {"postgresql+psycopg", "postgresql+psycopg2"} or parsed.path.lstrip("/") != "bsv_all_prod":
+            raise RuntimeError("BSV_DB_URL must use PostgreSQL and target bsv_all_prod")
+        a = central_url
+    else:
+        compatibility_env = routes["A"].get("compatibility_url_env", routes["A"]["primary_url_env"])
+        a = os.getenv(compatibility_env, "sqlite+pysqlite:///./runtime/identity-isolated.db")
     b = os.getenv(routes["B"]["primary_url_env"])
     if env == "production" and not a.startswith("postgresql+psycopg://"):
         raise RuntimeError("Production requires PostgreSQL psycopg primary database A")

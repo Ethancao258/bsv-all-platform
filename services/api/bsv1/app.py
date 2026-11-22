@@ -18,6 +18,8 @@ APPS = ROOT.parents[2] / "apps"
 from bsv_database_config import get_database_path
 from bsv_catalog_config import get_excel_path,SHOW_LOCAL_TRAINING_ITEMS
 from bsv_v9_import import sync_v9, catalog_for_store as v9_catalog_for_store,price_is_current as v9_price_is_current
+from bsv_catalog_contract import semantic_attributes, registry_version
+from bsv_catalog_repository import SQLiteCatalogReadRepository
 import bsv_collab as collab
 from bsv_ledger import checkout_report, checkout_csv_bytes
 import bsv_layouts
@@ -1703,6 +1705,16 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,UnicodeDecodeError):raise UserError('JSON格式错误')
     def do_GET(self):
         path=unquote(urlparse(self.path).path)
+        versioned_catalog=None
+        versioned_id=None
+        if path=="/api/v1/catalog/products":
+            path="/api/catalog/search";versioned_catalog="search"
+        else:
+            match=re.fullmatch(r"/api/v1/catalog/products/([CPMK]\d{6})(/recipe)?",path)
+            if match:
+                versioned_id=match.group(1)
+                versioned_catalog="recipe" if match.group(2) else "item"
+                path="/api/production/recipe" if versioned_catalog=="recipe" else "/api/catalog/item"
         if path in {"/hq/stores/layout", "/hq/stores/layout/assets/app.js",
                     "/hq/stores/layout/assets/style.css"}:
             self.hq_layout_page(path)
@@ -1879,6 +1891,8 @@ class Handler(BaseHTTPRequestHandler):
             if not staff:self.fail_auth('请先登录并确认门店');return
             if path=='/api/state' and not device_required():report_escalations(staff['session_store_id'])
             q=parse_qs(urlparse(self.path).query)
+            if versioned_id:
+                q["id"]=[versioned_id]
             with db_read() as db:
                 if path=='/api/state':data=state(db,staff)
                 elif path=='/api/production/recipe':
@@ -1932,8 +1946,13 @@ class Handler(BaseHTTPRequestHandler):
                     if not re.fullmatch(r'[CPMK]\d{6}',fixed_id):
                         self.send_json({'error':'无效资料固定ID'},400);return
                     page={'C':'C_现场成品','P':'P_预调半成品','M':'M_采购纯饮','K':'K_套餐组合'}[fixed_id[0]]
-                    row=db.execute('''SELECT display_name,fields_json FROM bsv_v9_record WHERE fixed_id=? AND page=?''',
-                                   (fixed_id,page)).fetchone()
+                    if versioned_catalog=='item':
+                        record=SQLiteCatalogReadRepository(db).get_product(fixed_id)
+                        row=({'display_name':record['name'],'fields_json':json.dumps(record['source_fields'],ensure_ascii=False)}
+                             if record else None)
+                    else:
+                        row=db.execute('''SELECT display_name,fields_json FROM bsv_v9_record WHERE fixed_id=? AND page=?''',
+                                       (fixed_id,page)).fetchone()
                     if not row:self.send_json({'error':'资料不存在'},404);return
                     fields=json.loads(row['fields_json'])
                     withheld=[]
@@ -2012,6 +2031,24 @@ class Handler(BaseHTTPRequestHandler):
                     vid=parse_qs(urlparse(self.path).query).get('visit_id',[''])[0]
                     try:data=receipt(db,staff,vid)
                     except UserError as e:self.send_error_json(e);return
+            if versioned_catalog:
+                data["contract_version"]=registry_version()
+                if versioned_catalog=="search":
+                    page_by_domain={"C":"C_现场成品","P":"P_预调半成品","M":"M_采购纯饮","K":"K_套餐组合"}
+                    for item in data.get("items",[]):
+                        item["product_id"]=item["id"]
+                        item["attributes"]=semantic_attributes(page_by_domain[item["domain"]],item.get("fields",{}))
+                        item["source_fields"]=item.get("fields",{})
+                else:
+                    sheet=({"C":"C_现场成品","P":"P_预调半成品","M":"M_采购纯饮","K":"K_套餐组合"}
+                           .get(str(data.get("fixed_id") or data.get("id") or versioned_id)[:1],"C_现场成品"))
+                    source_fields=data.get("fields",{})
+                    data["attributes"]=semantic_attributes(sheet,source_fields)
+                    data["source_fields"]=source_fields
+                    if versioned_catalog=="item":data["product_id"]=data.get("id")
+                    else:
+                        for operation in data.get("recipe_operations",[]):
+                            operation["source_fields"]=operation.get("fields",{})
             self.send_json(data);return
         if path in ('/hq','/hq.html','/hq.js','/hq.css','/menu','/menu.html','/menu.js','/menu.css'):
             staff=self.resolve_auth()

@@ -401,6 +401,8 @@ class ReleaseTest(unittest.TestCase):
                 identity = stage.service_config("identity")
                 pos = stage.service_config("pos")
                 ingress = stage.service_config("ingress")
+                self.assertEqual(pos["BSV_PRODUCT_MEDIA_ROOT"], str(data / "pos" / "product-media"))
+                self.assertEqual(pos["BSV_IMPORT_ROOT"], str(data / "pos" / "imports"))
                 self.assertEqual(identity["BSV_ACADEMY_STORE_IDS"], "BSVT")
                 self.assertEqual(json.loads(identity["BSV_SERVICE_TOKENS_JSON"])["pos"]["stores"], ["BSVT"])
                 self.assertEqual(json.loads(pos["BSV_POS_STORE_LEGAL_JSON"]), {"BSVT": "DEMO_LEGAL"})
