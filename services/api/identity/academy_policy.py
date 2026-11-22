@@ -33,8 +33,29 @@ BUSY_REASON = {
 
 
 def available_stores():
+    """Return only registered, laid-out stores explicitly enabled for Academy.
+
+    The legacy H stage retains its BSVS/BSVT default. Other stores (including
+    BSVM) require an explicit scope and their own POS/legal authorization; this
+    setting alone must never grant POS permissions.
+    """
     records = json.loads(REGISTRY.read_text(encoding="utf-8"))
-    return {row["store_id"]: row["name"] for row in records if row["store_id"] in STORES}
+    configured = os.environ.get("BSV_ACADEMY_STORE_IDS")
+    if configured is None:
+        allowed = STORES
+    else:
+        codes = configured.split(",")
+        if (any(not code or code != code.strip() or not code.isalnum()
+                or not code.isupper() for code in codes)
+                or len(codes) != len(set(codes))):
+            return {}  # Invalid deployment scope must fail closed.
+        allowed = frozenset(codes)
+    registered_ids = [row["store_id"] for row in records]
+    if len(registered_ids) != len(set(registered_ids)):
+        return {}  # An ambiguous company registry must never authorize a store.
+    ready = {row["store_id"]: row["name"] for row in records
+             if row.get("layout_file") and row["store_id"] in allowed}
+    return ready if set(ready) == allowed else {}
 
 
 def media_path(asset):
