@@ -24,7 +24,7 @@ class CatalogVersionStoreTests(unittest.TestCase):
         self.db = self.root / "synthetic.sqlite3"
         self.one = self.root / "one.xlsx"
         self.two = self.root / "two.xlsx"
-        write_fixture(self.one)
+        write_fixture(self.one, approved=False)
         self.two.write_bytes(self.one.read_bytes() + b"\n")
         db = sqlite3.connect(self.db)
         db.executescript("""
@@ -45,7 +45,7 @@ class CatalogVersionStoreTests(unittest.TestCase):
         self.assertEqual(target.name, digest + ".xlsx")
         self.assertEqual(target.stat().st_mode & 0o777, 0o600)
         self.assertEqual((self.store_dir.stat().st_mode & 0o777), 0o700)
-        self.assertEqual(summary["store_ids"], ["BSVM", "BSVS", "BSVT"])
+        self.assertCountEqual(summary["store_ids"], ["BSVM", "BSVS", "BSVT", "BSVF"])
         self.assertEqual(summary["Q"], 0)
         self.assertEqual(summary["C"], 63)
         self.assertEqual(summary["c_sale_eligible"], 0)
@@ -92,8 +92,9 @@ class CatalogVersionStoreTests(unittest.TestCase):
         root = store._private_root(self.store_dir)
         outside = self.root / "outside.xlsx"
         outside.write_bytes(self.one.read_bytes())
-        digest = store.sha256_file(outside)
-        (root / "versions" / (digest + ".xlsx")).symlink_to(outside)
+        digest, target, _ = store._store_version(outside, root)
+        target.unlink()
+        target.symlink_to(outside)
         with self.assertRaises(RuntimeError):
             store._version_path(root, digest)
 
