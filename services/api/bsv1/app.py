@@ -1946,9 +1946,12 @@ class Handler(BaseHTTPRequestHandler):
                           'sale_enabled':bool(ready and price_is_current(db,ready,staff['session_store_id'])),
                           'withheld_fields':withheld,'source':catalog_source(db)}
                     if page=='K_套餐组合':
-                        data['store_research']=[item for x in db.execute(
-                            "SELECT fields_json FROM bsv_v9_extra WHERE section='K_套餐槽位' ORDER BY source_row")
-                            if (item:=json.loads(x['fields_json'])).get('套餐ID')==fixed_id]
+                        data['store_research']=[]
+                        for section in ('K_套餐槽位','K_门店NPS'):
+                            for extra in db.execute("SELECT section,source_row,fields_json FROM bsv_v9_extra WHERE section=? ORDER BY source_row",(section,)):
+                                item=json.loads(extra['fields_json'])
+                                if item.get('套餐ID')==fixed_id:
+                                    data['store_research'].append({'section':section,'source_row':extra['source_row'],'fields':item})
                     if page=='P_预调半成品':
                         data['production_standard_approved']=(str(fields.get('审核状态') or '') in
                             ('已批准','已核准','审核通过'))
