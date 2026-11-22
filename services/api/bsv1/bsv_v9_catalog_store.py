@@ -80,7 +80,9 @@ def _version_path(root: Path, digest: str) -> Path:
         raise RuntimeError("无效的Excel版本SHA256")
     versions = root / "versions"
     path = versions / (digest + ".xlsx")
-    if path.is_symlink() or not path.is_file():
+    if path.is_symlink():
+        raise RuntimeError("私有Excel版本不能是符号链接")
+    if not path.is_file():
         raise FileNotFoundError("私有Excel版本文件不存在：" + digest)
     resolved = path.resolve()
     if resolved.parent != versions.resolve() or sha256_file(resolved) != digest:
