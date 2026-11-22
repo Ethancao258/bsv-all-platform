@@ -46,6 +46,19 @@ def growth_integration():
             and os.environ.get("BSV_POS_GROWTH_INTEGRATION") == "1")
 
 
+def g1_synthetic_store_activation():
+    """Allow the three canonical layouts only in an explicit isolated test stack."""
+    if (MODE != "staging" or os.environ.get("BSV_APP_ENV") != "isolated"
+            or os.environ.get("BSV_POS_INTERNAL_STAGE") != "1"
+            or os.environ.get("BSV_POS_G1_TEST_STORES") != "BSVM,BSVS,BSVT"):
+        return False
+    try:
+        registered = {store["store_id"] for store in bsv_layouts.registry()}
+    except (KeyError, TypeError, ValueError, bsv_layouts.LayoutError):
+        return False
+    return {"BSVM", "BSVS", "BSVT"} <= registered
+
+
 def application_version():
     return "4.1-isolated-device" if device_required() else APP_VERSION
 
@@ -289,7 +302,8 @@ def init_db():
             growth_pos.install_pos_projection(db)
     with tx() as db:
         # 仅新建的规范数据库可在本程序内迭代；拒绝迁移旧V2.x测试库。
-        bsv_layouts.apply_data(db, configs,force=previous_db_version<SCHEMA_VERSION)
+        bsv_layouts.apply_data(db, configs, force=previous_db_version<SCHEMA_VERSION,
+                               activate=g1_synthetic_store_activation())
         # 门店原图与手册也从独立门店档案注册，不再在代码中逐店罗列。
         for entry in bsv_layouts.registry():
             code=entry['store_id']
@@ -613,10 +627,25 @@ ACCEPTANCE_CANCEL_PATH = "/api/visits/cancel"
 def acceptance_run_for(path, data, staff):
     if "acceptance_run" not in data:
         return None
+    # Preserve the original single-store host acceptance principal. Expanding the
+    # synthetic acceptance matrix requires a separately explicit test-only store
+    # list; this switch is never present in the deployed H configuration.
+    legacy_acceptance = (staff["id"] == "SYNTH-STAGE-POS-01"
+                         or staff.get("authority", {}).get("tr_code") == "TRA0001")
+    requested_stores = os.environ.get("BSV_POS_G1_TEST_STORES", "")
+    try:
+        g1_stores = [value.strip() for value in requested_stores.split(",")]
+        g1_acceptance = (bool(requested_stores) and all(g1_stores)
+                         and len(g1_stores) == len(set(g1_stores))
+                         and set(g1_stores) <= {"BSVM", "BSVS", "BSVT"}
+                         and staff["session_store_id"] in g1_stores
+                         and bool(re.fullmatch(r"TR[ABCDEFGHJKLMNPQRSTUVWXYZ][0-9]{4}",
+                                               staff.get("authority", {}).get("tr_code", ""))))
+    except (AttributeError, TypeError):
+        g1_acceptance = False
     if (MODE != "staging" or os.environ.get("BSV_POS_INTERNAL_STAGE") != "1"
             or os.environ.get("BSV_POS_IDENTITY_REQUIRED") != "1"
-            or not (staff["id"] == "SYNTH-STAGE-POS-01" or staff.get("authority", {}).get("tr_code") == "TRA0001")
-            or staff["session_store_id"] != "BSVT"
+            or (not legacy_acceptance and not g1_acceptance)
             or path not in ACCEPTANCE_ORDER_PATHS | {ACCEPTANCE_CANCEL_PATH}):
         raise UserError("仅隔离验收账号可标记本次测试订单", 403)
     value = data["acceptance_run"]
