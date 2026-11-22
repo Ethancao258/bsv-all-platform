@@ -81,6 +81,9 @@ def test_internal_stage_live_ingress(identity_http, tmp_path, monkeypatch):
     if not supply_python or not os.environ.get("BSV_DB_PREFLIGHT_CLIENT_URL"):
         pytest.skip("Run the dedicated isolated PG17 and independent supply-venv job")
     assert api.router.a.dialect.name == "postgresql"
+    from sqlalchemy import inspect
+    assert "bsv_learning_courses" in inspect(api.router.a).get_table_names(), (
+        f"The isolated stage DB {api.router.a.url.database!r} must be upgraded to bsv_academy_0002")
     person, first, second, tr, _ = create_person("internal-stage-user")
     onboard(tr, first, second, bm=True)
     certificate(tr, first, "SUPPLY_SAFETY")
