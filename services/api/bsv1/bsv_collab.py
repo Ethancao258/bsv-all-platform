@@ -173,7 +173,7 @@ def recipe(db,store_id,product_id):
    material_fields=json.loads(material['fields_json']) if material else {}
    if material and material['page']=='M_采购纯饮':
     material_fields={k:v for k,v in material_fields.items()
-     if not any(word in str(k).casefold() for word in ('采购价','成本','供应商','进货价','价格','金额'))}
+     if not any(word in str(k).casefold() for word in ('采购价','成本','供应商','进货价','单价','价格','金额'))}
    operations.append({'record_id':record['fixed_id'],'source_row':record['source_row'],
     'fields':item,'material_id':material_id or None,
     'material_link_status':'LINKED_BY_ID' if material else 'UNRESOLVED_MATERIAL_ID' if material_id else 'NO_MATERIAL_ID',
