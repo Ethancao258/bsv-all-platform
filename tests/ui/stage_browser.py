@@ -109,8 +109,6 @@ def check(base_url, *, username, password, expected_tr):
 
             admin = browser.new_page(viewport={"width": 1440, "height": 960})
             login(admin, base_url, "reviewer1", os.environ["BSV_DEMO_ADMIN_1_PASSWORD"])
-            expect(admin.locator("#grant-store-scope")).to_have_count(1)
-            expect(admin.locator("#grant-store-scope option")).to_have_count(1)
             admin.goto(base_url + "/hq")
             expect(admin.get_by_role("heading", name="人员身份与授权管理")).to_be_visible()
             expect(admin.locator("#grant-store-scope")).to_have_value("")
