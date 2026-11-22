@@ -384,13 +384,13 @@ async function showCatalogItem(id){
    return pairs.length?`<section class="catalog-detail-section"><h3>${esc(title)}</h3>${pairs.map(k=>`<div class="catalog-detail-row"><b>${esc(k)}</b><p>${esc(String(f[k]))}</p></div>`).join('')}</section>`:'';}).join('');
   const photos=tutorial?.photos||{};
   const photoHtml=Object.entries(photos).filter(([kind,p])=>p.available&&['materials','final'].includes(kind)).map(([kind,p])=>p.available?`<figure><img loading="lazy" alt="${esc(p.filename||kind)}" src="/api/production/photo?product_id=${encodeURIComponent(id)}&kind=${encodeURIComponent(kind)}"><figcaption>${esc(p.filename)}</figcaption></figure>`:'').join('');
-  const recipeHtml=tutorial?`<section class="catalog-detail-section"><h3>配方耗用工序（按Excel出品ID关联）</h3>${(tutorial.recipe_operations||[]).map(x=>`<article><b>${esc(x.record_id)} · ${esc(x.material_link_status)}</b>${catalogFields(x.fields)}</article>`).join('')||'<p>暂无通过出品固定ID关联的工序记录。</p>'}</section>
+  const recipeHtml=tutorial?`<section class="catalog-detail-section"><h3>配方耗用工序（按Excel出品ID关联）</h3>${(tutorial.recipe_operations||[]).map(x=>`<article><b>${esc(x.record_id)} · ${esc(x.material_link_status)}</b>${catalogFields(x.fields)}${x.material?'<h4>固定ID物料：'+esc(x.material.id)+' · '+esc(x.material.name)+'</h4>'+catalogFields(x.material.fields):''}</article>`).join('')||'<p>暂无通过出品固定ID关联的工序记录。</p>'}</section>
    <section class="catalog-detail-section"><h3>可用产品图片</h3>${photoHtml||'<p>Excel关联的图片素材当前不可用。</p>'}</section>`: `<section class="catalog-detail-section"><h3>制作指引</h3><p>${esc(tutorial?.warning||'制作资料暂不可用。')}</p></section>`;
   const meta=`<p class="small-muted">Excel版本 SHA256：${esc(source.sha256||'未知')} · 最近导入：${esc(stamp)}</p>`;
   const sale=r.sale_enabled?'已核准可按当前POS规则销售':'资料可查，但当前未获销售授权';
   $('catalogDetailBody').innerHTML=`<p class="eyebrow">BSV ALL · ${esc(id)} · 只读资料</p><h2>${esc(r.name)}</h2><div class="catalog-detail-state">${esc(sale)}</div>${details||catalogFields(f)}
    <details class="catalog-all-fields"><summary>查看Excel全部原始字段（${Object.keys(f).length}项）</summary>${catalogFields(f)}</details>
-   ${r.store_research?.length?'<section class="catalog-detail-section"><h3>套餐门店研究情景（未审批，不自动上架）</h3>'+r.store_research.map(item=>catalogFields(item)).join('')+'</section>':''}
+   ${r.store_research?.length?'<section class="catalog-detail-section"><h3>套餐门店研究情景（未审批，不自动上架）</h3>'+r.store_research.map(item=>'<h4>'+esc(item.section)+' · Excel第'+esc(item.source_row)+'</h4>'+catalogFields(item.fields)).join('')+'</section>':''}
    ${recipeHtml}
    ${r.withheld_fields?.length?'<p class="small-muted">为保护采购权限，以下字段未向普通POS展示：'+esc(r.withheld_fields.join('、'))+'</p>':''}
    ${r.production_standard_approved===false?'<p class="small-muted">该半成品的储存、运输或效期标准尚未核准，不能作为有效操作标准。</p>':''}
