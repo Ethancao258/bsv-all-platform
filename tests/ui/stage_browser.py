@@ -59,6 +59,9 @@ def check(base_url, *, username, password, expected_tr):
 
             desktop.goto(base_url + "/academy")
             expect(desktop.get_by_role("heading", name="我的培训与排班")).to_be_visible()
+            academy_response = desktop.context.request.get(base_url + "/api/v1/academy/work")
+            assert academy_response.status == 200, (
+                f"Academy work API returned {academy_response.status}: {academy_response.text()[:500]}")
             expect(desktop.locator("#academy-status")).to_contain_text("已核对本人培训、资格和班次")
             expect(desktop.locator("a[href='/']")).to_have_text("返回工作台")
 
