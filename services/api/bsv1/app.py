@@ -348,11 +348,20 @@ def price_is_current(db,product,store_id):
     return v9_price_is_current(db,product,store_id)
 
 def catalog_for_store(db,store_id):
-    """全部C现场成品公开展示；有AJ价格的商品在所有门店同价销售。"""
+    """已审核可售商品镜像；资料库查询由独立只读接口提供。"""
     items=v9_catalog_for_store(db,store_id)
     for item in items:
         item['initials']=collab.initials(item['name'])
     return items
+
+def catalog_source(db):
+    row=db.execute('SELECT source_sha,imported_at,summary_json FROM bsv_v9_sync WHERE one=1').fetchone()
+    if not row:return {'status':'NOT_IMPORTED','sha256':None,'imported_at':None,'counts':{}}
+    try:summary=json.loads(row['summary_json'])
+    except (TypeError,ValueError):summary={}
+    return {'status':'SYNCED','sha256':row['source_sha'],'imported_at':row['imported_at'],
+            'counts':{k:summary.get(k,0) for k in ('C','P','M','K','R','Q','T','extras')}}
+
 
 class UserError(Exception):
     def __init__(self,message,status=400,code=None):
@@ -1842,15 +1851,20 @@ class Handler(BaseHTTPRequestHandler):
             staff=self.resolve_auth()
             if not staff:self.fail_auth('请先登录并确认门店');return
             q=parse_qs(urlparse(self.path).query)
-            lid=q.get('line_id',[''])[0];kind=q.get('kind',[''])[0]
+            lid=q.get('line_id',[''])[0];product_id=q.get('product_id',[''])[0];kind=q.get('kind',[''])[0]
             if kind not in ('materials','final'):self.send_json({'error':'图片类型不支持'},400);return
             with db_read() as db:
-                r=db.execute('''SELECT l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
-                    WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
-                if not r:self.send_json({'error':'任务不属于本店'},404);return
-                info=collab.recipe(db,staff['session_store_id'],r['product_id'])
+                if product_id and not lid:
+                    if not re.fullmatch(r'C\d{6}',product_id):
+                        self.send_json({'error':'无效商品固定ID'},400);return
+                else:
+                    r=db.execute('''SELECT l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
+                        WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
+                    if not r:self.send_json({'error':'任务不属于本店'},404);return
+                    product_id=r['product_id']
+                info=collab.recipe(db,staff['session_store_id'],product_id)
                 photo=info.get('photos',{}).get(kind,{})
-                filepath=collab._media_file(r['product_id'],photo.get('filename'))
+                filepath=collab._media_file(product_id,photo.get('filename'))
             if not filepath:self.send_json({'error':'尚未上传此商品的图片文件'},404);return
             from mimetypes import guess_type
             payload=filepath.read_bytes()
@@ -1860,7 +1874,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Length',str(len(payload)))
             self.send_header('X-Content-Type-Options','nosniff')
             self.end_headers();self.wfile.write(payload);return
-        if path in ('/api/state','/api/receipt','/api/history','/api/audit','/api/members/search','/api/catalog/item','/api/production/recipe'):
+        if path in ('/api/state','/api/receipt','/api/history','/api/audit','/api/members/search','/api/catalog/item','/api/catalog/search','/api/production/recipe'):
             staff=self.resolve_auth()
             if not staff:self.fail_auth('请先登录并确认门店');return
             if path=='/api/state' and not device_required():report_escalations(staff['session_store_id'])
@@ -1869,21 +1883,75 @@ class Handler(BaseHTTPRequestHandler):
                 if path=='/api/state':data=state(db,staff)
                 elif path=='/api/production/recipe':
                     lid=q.get('line_id',[''])[0]
-                    task=db.execute('''SELECT t.*,l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
-                        WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
-                    if not task:self.send_json({'error':'制作任务不属于本店'},404);return
-                    data=collab.recipe(db,staff['session_store_id'],task['product_id'])
+                    product_id=q.get('id',[''])[0]
+                    if product_id and not lid:
+                        if not re.fullmatch(r'C\d{6}',product_id):
+                            self.send_json({'error':'无效商品固定ID'},400);return
+                    else:
+                        task=db.execute('''SELECT t.*,l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
+                            WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
+                        if not task:self.send_json({'error':'制作任务不属于本店'},404);return
+                        product_id=task['product_id']
+                    data=collab.recipe(db,staff['session_store_id'],product_id)
+                elif path=='/api/catalog/search':
+                    term=q.get('q',[''])[0].strip().casefold()
+                    domain=q.get('domain',['ALL'])[0]
+                    allowed_domains={'ALL','C','P','M','K','READY'}
+                    if domain not in allowed_domains or len(term)>100:
+                        self.send_json({'error':'无效查询条件'},400);return
+                    if not term:
+                        self.send_json({'items':[],'source':catalog_source(db)});return
+                    page_map={'C':'C_现场成品','P':'P_预调半成品','M':'M_采购纯饮','K':'K_套餐组合'}
+                    pages=[page_map[x] for x in page_map if domain in ('ALL',x) or domain=='READY' and x=='C']
+                    records=[]
+                    for page_name in pages:
+                        for record in db.execute('''SELECT fixed_id,display_name,page,fields_json FROM bsv_v9_record
+                                WHERE page=? ORDER BY source_row LIMIT 1000''',(page_name,)):
+                            fields=json.loads(record['fields_json'])
+                            haystack=' '.join([record['fixed_id'],record['display_name'],
+                                *(str(v) for k,v in fields.items() if any(w in str(k).casefold()
+                                  for w in ('名称','系列','类别','分类','规格','sku')))]).casefold()
+                            if term not in haystack:continue
+                            fixed_id=record['fixed_id']
+                            product=db.execute('SELECT * FROM bsv_products WHERE id=?',(fixed_id,)).fetchone()
+                            sellable=bool(product and price_is_current(db,product,staff['session_store_id']))
+                            if domain=='READY' and not sellable:continue
+                            if record['page']=='M_采购纯饮':
+                                withheld=[k for k in fields if any(word in str(k).casefold()
+                                    for word in ('采购价','成本','供应商','进货价','价格','金额'))]
+                                fields={k:v for k,v in fields.items() if k not in withheld}
+                            else:withheld=[]
+                            records.append({'id':fixed_id,'name':record['display_name'],'domain':fixed_id[0],
+                                'series':str(fields.get('销售系列') or fields.get('类别') or ''),
+                                'sale_enabled':sellable,'fields':fields,'withheld_fields':withheld})
+                            if len(records)>=100:break
+                        if len(records)>=100:break
+                    data={'items':records,'source':catalog_source(db)}
                 elif path=='/api/catalog/item':
                     fixed_id=q.get('id',[''])[0]
-                    if not re.fullmatch(r'[CK]\d{6}',fixed_id):
-                        self.send_json({'error':'无效商品固定ID'},400);return
-                    row=db.execute('''SELECT display_name,fields_json FROM bsv_v9_record
-                         WHERE fixed_id=? AND page IN ('C_现场成品','K_套餐组合')''',(fixed_id,)).fetchone()
-                    if not row:self.send_json({'error':'商品不存在'},404);return
-                    ready=db.execute('''SELECT sale_enabled FROM bsv_products WHERE id=?''',
-                                     (fixed_id,)).fetchone()
-                    data={'id':fixed_id,'name':row['display_name'],'fields':json.loads(row['fields_json']),
-                           'sale_enabled':bool(ready and price_is_current(db,db.execute('SELECT * FROM bsv_products WHERE id=?',(fixed_id,)).fetchone(),staff['session_store_id']))}
+                    if not re.fullmatch(r'[CPMK]\d{6}',fixed_id):
+                        self.send_json({'error':'无效资料固定ID'},400);return
+                    page={'C':'C_现场成品','P':'P_预调半成品','M':'M_采购纯饮','K':'K_套餐组合'}[fixed_id[0]]
+                    row=db.execute('''SELECT display_name,fields_json FROM bsv_v9_record WHERE fixed_id=? AND page=?''',
+                                   (fixed_id,page)).fetchone()
+                    if not row:self.send_json({'error':'资料不存在'},404);return
+                    fields=json.loads(row['fields_json'])
+                    withheld=[]
+                    if page=='M_采购纯饮':
+                        withheld=[k for k in fields if any(word in str(k).casefold()
+                            for word in ('采购价','成本','供应商','进货价','价格','金额'))]
+                        fields={k:v for k,v in fields.items() if k not in withheld}
+                    ready=db.execute('SELECT * FROM bsv_products WHERE id=?',(fixed_id,)).fetchone()
+                    data={'id':fixed_id,'name':row['display_name'],'fields':fields,
+                          'sale_enabled':bool(ready and price_is_current(db,ready,staff['session_store_id'])),
+                          'withheld_fields':withheld,'source':catalog_source(db)}
+                    if page=='K_套餐组合':
+                        data['store_research']=[item for x in db.execute(
+                            "SELECT fields_json FROM bsv_v9_extra WHERE section='K_套餐槽位' ORDER BY source_row")
+                            if (item:=json.loads(x['fields_json'])).get('套餐ID')==fixed_id]
+                    if page=='P_预调半成品':
+                        data['production_standard_approved']=(str(fields.get('审核状态') or '') in
+                            ('已批准','已核准','审核通过'))
                 elif path=='/api/members/search':
                     last4=q.get('last4',[''])[0]
                     if not re.fullmatch(r'\d{4}',last4):
