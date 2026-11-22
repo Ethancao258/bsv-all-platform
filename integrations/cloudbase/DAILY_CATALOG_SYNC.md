@@ -20,11 +20,17 @@
 - CloudBase 实库 schema、RLS、数据权限、套餐/价格/发布版字段语义的实时核验；
 - 服务端 **最小 SELECT 权限**的持久凭证（切勿将 service_role / 管理员 API Key 放入门店或提交 Git）；
 - 从候选包到 POS 可读投影的转换及人工审核/正式发布门禁；
-- 定时运行的 systemd service/timer、连续两天失败告警及密钥轮换；
+- systemd service/timer **模板已提交但未安装或启用**；连续两天失败告警及密钥轮换尚未实现；
 - 门店级有效价格校验、紧急停售的手动即时发布、真实 POS 价目及配方验收；
 - CloudBase Excel 导入在当前 PG 环境的具体方式和差异预览。
 
 截图中的 \`bsv_bundles\` 有 \`approval_status=unreviewed\`、\`is_visible=false\`，**此类商品必须保持不可售**。不能将 \`reference_price\` 当作门店有效收银价。
+
+## 定时模板（当前不可启用）
+
+- `platform/lighthouse/catalog-sync/bsv-all-catalog-candidate.service`、`.timer` 已作为**禁用模板**提交；计划每日北京时间 04:30 启动。
+- 必须先核验凭据的只读权限及有效期、实际 RLS/GRANT、日志告警、服务权限与主机资源，再通过单独批准的运维变更安装并启用。
+- 日更的是 *candidate* 快照；不会把未经审核的商品自动发布到 POS。
 
 ## 只读示例（只在隔离运维端手动运行，勿在公开页面执行）
 \`\`\`bash
