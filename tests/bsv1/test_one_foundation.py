@@ -177,6 +177,21 @@ class Foundation(unittest.TestCase):
             code,_,page=req('GET','/menu',cookie=cookie);self.assertEqual(code,200)
             code,_,body=req('GET','/api/menu-preview?store_id=BSVM',cookie=cookie)
             self.assertEqual(code,200);self.assertEqual(json.loads(body)['priced'],52)
+            code,_,body=req('GET','/api/catalog/search?q=合成商品&domain=C')
+            self.assertEqual(code,401) # employee authentication is required
+            code,_,body=req('GET','/api/catalog/search?q=合成商品&domain=C',cookie=cookie)
+            self.assertEqual(code,200)
+            catalog=json.loads(body)
+            self.assertEqual(len(catalog['items']),63)
+            self.assertEqual(sum(item['sale_enabled'] for item in catalog['items']),52)
+            code,_,body=req('GET','/api/catalog/item?id=C000001',cookie=cookie)
+            self.assertEqual(code,200);self.assertEqual(json.loads(body)['fields']['完整制作步骤'],'演练步骤')
+            before=app.db_read()
+            with before as db:visits_before=db.execute('SELECT COUNT(*) FROM visits').fetchone()[0]
+            code,_,body=req('GET','/api/production/recipe?id=C000001',cookie=cookie)
+            self.assertEqual(code,200);self.assertEqual(json.loads(body)['fields']['完整制作步骤'],'演练步骤')
+            with app.db_read() as db:visits_after=db.execute('SELECT COUNT(*) FROM visits').fetchone()[0]
+            self.assertEqual(visits_after,visits_before) # tutorial lookup did not create an order
             code,_,body=req('GET','/api/hq/stores',cookie=cookie);self.assertEqual(code,200)
             code,_,body=req('POST','/api/hq/stores/create',{'store_id':'BSVH','name':'HTTP测试店','district':'北京','business_type':'鸡尾酒吧','design_max_guests':0},cookie=cookie)
             self.assertEqual(code,403) # must provide CSRF
