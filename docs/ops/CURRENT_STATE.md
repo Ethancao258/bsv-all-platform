@@ -197,3 +197,13 @@
 - 审批边界。隔离环境可验证合成工作流。真实员工试点须由负责人批准最小资料范围、备案/HTTPS、私有访问、扫描、加密备份和恢复。正式营业还缺 CloudBase G0/G1 和 ACL/RLS 修复、真实收款专项批准、D/E 权威写入及五店容量证据。公开鸡尾酒菜单保持原发布物，只有私有同源入口提供工作台返回。
 - `PASS_ISOLATED` · 两轮 PG17 + SQLite 真实 HTTP 验收验证同一 TR 在 BSVT 两台独立注册终端创建未付款订单、重复请求防重、订单审计、设备撤销以及 BSVS 独立培训和班次解锁、撤权失效、跨店排班冲突和北京时间跨午夜。合成旧码保持零写入，追加迁移后复跑 V3 身份服务验证既有记录仍可读取。
 - `PASS_ISOLATED` · Chromium 在 320–1440px 的八个宽度验证工作台和注册终端流程，覆盖浏览器模拟缩放、文字放大、窄高视口及菜单返回；真实移动设备软键盘仍待现场观察。导入预检 7 项、发布控制和部署回归 16 项通过。GitHub 精确 SHA、CI 和截图见 [Issue #11](https://github.com/Ethancao258/bsv-all-platform/issues/11) 的集成 PR。
+
+
+## 2026-11-22｜酒水Excel接入开发（分支 `feature/bsv1-excel-catalog`）
+
+- 已接收原始附件《BSVALL酒水套餐数据库.xlsx》，文件 SHA-256 与提交说明一致：`4ed9bc164981f267997bd146df54d27ae22fbdc9cc1c850776daed83d34c8e82`。原文件未提交 Git。
+- 已用现有 `bsv_v9_import.py` 在本地解析器检查七张工作表。原表记录计数：C 63、P 17、M 419、K 21、R 65、Q 0、T 4；T 中保留 BSVM、BSVS、BSVT、BSVF，Q 无报价记录。C 内容审核/上架状态未达到销售授权条件；Excel里有售价不等于允许POS销售。R 只通过“出品关联ID”关联C，无法由名称补建缺失物料ID。
+- 本分支在现有 POS SQLite 目录下新增受私有权限保护的版本目录配置：`/var/lib/bsv-all-internal-stage/pos/catalog`，位于版本发布目录之外。版本文件以SHA命名，先验证全部工作表，再事务同步SQLite；人工激活锁住版本，CLI支持状态、回退、显式解除锁定。历史订单和门店地图不由导入器改写。
+- POS只读目录API与无订单配方查询正在本分支实现；真实服务器未改动、未验证。
+- CloudBase自动更新仍为 BLOCKED：当前网页版没有可调用的官方CloudBase文件API/OAuth工具；本轮信息没有提供可核验的Bucket ID、对象 fileID/路径或可用服务端身份。未设置匿名公开下载、未添加猜测的定时任务。
+- 本地完整测试尚未执行（当前执行容器写层无可用空间，无法启动本地构建）；最终提交后的GitHub Actions结果将作为CI证据。Lighthouse HOST_NOT_RUN。
