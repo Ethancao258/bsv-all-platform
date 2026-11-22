@@ -28,8 +28,8 @@ NEW = "2" * 40
 class ReleaseTest(unittest.TestCase):
     def setUp(self):
         original = stage.write_secret
-        fixture_writer = patch.object(stage, "write_secret", side_effect=lambda path, value:
-                                      original(path, value, os.getuid(), os.getgid()))
+        fixture_writer = patch.object(stage, "write_secret", side_effect=lambda path, value, uid=0, gid=0:
+                                      original(path, value, uid or os.getuid(), gid or os.getgid()))
         fixture_writer.start()
         self.addCleanup(fixture_writer.stop)
 
