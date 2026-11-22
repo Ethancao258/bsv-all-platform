@@ -16,3 +16,5 @@ for script in tests/bsv1/*.sh platform/lighthouse/bsv1/*.sh; do
     [[ ! -f "$script" ]] || bash -n "$script"
 done
 python3 -m unittest discover -s tests/bsv1 -v
+# CloudBase catalog snapshot tests run without credentials or external network.
+python3 -m unittest discover -s tests/cloudbase -v
