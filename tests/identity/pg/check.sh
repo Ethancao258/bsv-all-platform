@@ -49,9 +49,10 @@ if [[ "${1:-}" == --with-apps ]]; then
         # isolated Academy migration. Keep the field-dictionary DB at the
         # historical identity-only revision used by the existing contract.
         docker exec "$name" createdb -U postgres bsv_identity_isolated_stage
-        export BSV_DB_A_URL="postgresql+psycopg://postgres@127.0.0.1:$port/bsv_identity_isolated_stage"
+        stage_db_url="postgresql+psycopg://postgres@127.0.0.1:$port/bsv_identity_isolated_stage"
+        export BSV_DB_A_URL="$stage_db_url"
         python -m alembic -c platform/lighthouse/identity/alembic.ini upgrade bsv_academy_0002
-        python -m pytest -q -p no:cacheprovider tests/identity/test_internal_stage.py tests/identity/test_acceptance_v3.py
+        BSV_DB_PREFLIGHT_STAGE_URL="$stage_db_url" python -m pytest -q -p no:cacheprovider tests/identity/test_internal_stage.py tests/identity/test_acceptance_v3.py
         export BSV_DB_A_URL="$BSV_DB_PREFLIGHT_CLIENT_URL"
     fi
     python -m pytest -q -p no:cacheprovider tests/db_preflight
