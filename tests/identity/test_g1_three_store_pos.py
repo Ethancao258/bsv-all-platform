@@ -11,14 +11,18 @@ import importlib
 import json
 import os
 import runpy
-import secrets
+import sqlite3
+import socket
+import subprocess
+import sys
 import threading
-from datetime import datetime, timedelta, timezone
+import time
+from datetime import timedelta
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+import httpx
 import uvicorn
 
 from domains.learning.academy_models import AcademyBase
@@ -110,6 +114,7 @@ def test_g1b_three_store_identity_academy_device_pos_http(store_id, monkeypatch,
 
     pos_grants = {action: grant_action(tr, owner, approver, action, store=store_id, role="staff")
                   for action in ("pos.order.read", "pos.order.create")}
+    grant_action(tr, owner, approver, "marketing.task.write", store=store_id, role="staff")
     manager_user, manager_owner, manager_approver, manager_tr, _ = create_person("g1-sched-a-" + store_id.lower())
     onboard(manager_tr, manager_owner, manager_approver, bm=True)
     grant_action(manager_tr, manager_owner, manager_approver, "store.shift.write", store=store_id, role="manager")
@@ -154,6 +159,11 @@ def test_g1b_three_store_identity_academy_device_pos_http(store_id, monkeypatch,
     monkeypatch.setenv("BSV_POS_IDENTITY_TOKEN", "synthetic-g1-service-token")
     monkeypatch.setenv("BSV_POS_STORE_LEGAL_JSON", json.dumps({s: "DEMO_LEGAL" for s in STORES}))
     monkeypatch.setenv("BSV_POS_LAYOUT_SERVICE_TOKEN", "synthetic-unused-layout-token")
+    monkeypatch.setenv("BSV_POS_GROWTH_INTEGRATION", "1")
+    monkeypatch.setenv("BSV_GROWTH_LINK_KEY", "SYNTHETIC-G1-GROWTH-LINK-KEY-0123456789")
+    monkeypatch.setenv("BSV_GROWTH_POS_CONTEXT_KEY", "SYNTHETIC-G1-GROWTH-CONTEXT-KEY-0123456789")
+    verify_token = "SYNTHETIC-G1-POS-VERIFY-TOKEN-0123456789"
+    monkeypatch.setenv("BSV_GROWTH_POS_VERIFY_TOKEN", verify_token)
     monkeypatch.setenv("BSV_DB_PATH", str(tmp_path / "pos.sqlite3"))
     monkeypatch.setenv("BSV_POS_PORT", "0")
     from dataclasses import replace
@@ -199,6 +209,74 @@ def test_g1b_three_store_identity_academy_device_pos_http(store_id, monkeypatch,
                 {"visit_id": opened["visit_id"], "acceptance_run": run, "pay_now": False,
                  "_action_id": "g1-order-" + store_id.lower()}, csrf)
             assert status == 200 and order["payment_verified"] is False and order["pay_now"] is False, order
+            with socket.socket() as probe:
+                probe.bind(("127.0.0.1", 0))
+                growth_port = probe.getsockname()[1]
+            growth_db = tmp_path / "growth.sqlite3"
+            growth_env = {**os.environ, "BSV_GROWTH_ENV": "isolated", "BSV_GROWTH_TRUST_IDENTITY": "1",
+                "BSV_GROWTH_DB_URL": "sqlite:///" + str(growth_db),
+                "BSV_GROWTH_SIGNING_KEY": "SYNTHETIC-G1-GROWTH-SIGNING-KEY-0123456789",
+                "BSV_GROWTH_IDENTITY_ME_URL": identity_http + "/api/v1/identity/me",
+                "BSV_GROWTH_LEGAL_ENTITY_ID": "DEMO_LEGAL", "BSV_GROWTH_STORE_IDS": ",".join(STORES),
+                "BSV_GROWTH_POS_VERIFY_URL": f"http://127.0.0.1:{server.server_port}/api/v1/visits/customer-context/verify",
+                "BSV_GROWTH_POS_VERIFY_TOKEN": verify_token}
+            growth_log_path = tmp_path / "growth.log"
+            with growth_log_path.open("w") as growth_log:
+                growth = subprocess.Popen([sys.executable, "-m", "uvicorn", "services.api.customer_growth.app:app",
+                    "--host", "127.0.0.1", "--port", str(growth_port), "--log-level", "warning"],
+                    cwd=ROOT, env=growth_env, stdout=growth_log, stderr=subprocess.STDOUT)
+                try:
+                    growth_url = f"http://127.0.0.1:{growth_port}"
+                    with httpx.Client(base_url=growth_url, trust_env=False) as guest:
+                        for _ in range(60):
+                            if growth.poll() is not None:
+                                pytest.fail("isolated Growth API did not start: " + growth_log_path.read_text())
+                            try:
+                                guest.get("/api/v1/growth/public/config", timeout=0.2)
+                                break
+                            except httpx.HTTPError:
+                                time.sleep(0.1)
+                        assert guest.post("/api/v1/growth/dev/guest-login",
+                            json={"subject": "g1-guest-" + store_id, "store_id": store_id}).status_code == 200
+                        growth_csrf = guest.cookies["bsv_growth_csrf"]
+                        growth_headers = {"X-Growth-CSRF": growth_csrf}
+                        registration = guest.post("/api/v1/growth/public/register",
+                            json={"display_name": "合成测试会员", "privacy_accepted": True}, headers=growth_headers)
+                        assert registration.status_code == 200, registration.text
+                        taste = guest.post("/api/v1/growth/public/taste",
+                            json={"tags": ["果香酸爽"], "share_for_service": True}, headers=growth_headers)
+                        assert taste.status_code == 200, taste.text
+                        proof = guest.post("/api/v1/growth/public/pos-link", json={"store_id": store_id}, headers=growth_headers)
+                        assert proof.status_code == 200, proof.text
+                        linked = _http_request(server, "POST", "/api/visits/customer-link", cookie, {
+                            "visit_id": opened["visit_id"], "proof": proof.json()["token"],
+                            "_action_id": "g1-growth-link-" + store_id.lower()}, csrf)
+                        assert linked[0] == 200 and linked[2]["linked"] is True, linked
+                        assert _http_request(server, "POST", "/api/visits/customer-link", cookie, {
+                            "visit_id": opened["visit_id"], "proof": proof.json()["token"],
+                            "_action_id": "g1-growth-link-" + store_id.lower()}, csrf)[0] == 200
+                        context = _http_request(server, "GET", "/api/visits/customer-context?visit_id=" + opened["visit_id"], cookie)
+                        assert context[0] == 200, context
+                        staff_headers = {"Cookie": cookie + f"; bsv_growth_sid={guest.cookies['bsv_growth_sid']}; bsv_growth_csrf={growth_csrf}"}
+                        service_view = guest.get("/api/v1/growth/staff/guest-context",
+                            params={"context": context[2]["context"]}, headers=staff_headers)
+                        assert service_view.status_code == 200, service_view.text
+                        assert service_view.json()["view"] == "ON_VISIT_ONLY"
+                        assert service_view.json()["tags"] == ["果香酸爽"] and service_view.json()["share_for_service"] is True
+                        wrong_store = next(value for value in STORES if value != store_id)
+                        foreign_proof = guest.post("/api/v1/growth/public/pos-link",
+                            json={"store_id": wrong_store}, headers=growth_headers)
+                        assert foreign_proof.status_code == 200, foreign_proof.text
+                        cross = _http_request(server, "POST", "/api/visits/customer-link", cookie, {
+                            "visit_id": opened["visit_id"], "proof": foreign_proof.json()["token"],
+                            "_action_id": "g1-growth-cross-" + store_id.lower()}, csrf)
+                        assert cross[0] in (403, 409), cross
+                    with sqlite3.connect(growth_db) as db:
+                        assert db.execute("SELECT COUNT(*) FROM bsv_growth_verified_payment_projection").fetchone()[0] == 0
+                        assert db.execute("SELECT COUNT(*) FROM bsv_operating_finance_commission_candidate").fetchone()[0] == 0
+                finally:
+                    growth.terminate()
+                    growth.wait(timeout=10)
             assert _http_request(server, "POST", "/api/seats/open", cookie,
                 {"seat_id": "BSVT-SEAT-0001" if store_id != "BSVT" else "BSVS-SEAT-0001",
                  "acceptance_run": str(uuid4()), "_action_id": "g1-cross-" + store_id.lower()}, csrf)[0] in (403, 409)
