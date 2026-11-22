@@ -163,6 +163,17 @@ def recipe(db,store_id,product_id):
  for kind,key in [('materials','配方图文件名｜首次确认'),('review','配方图文件名｜二次复核'),('final','成品图文件名')]:
   name=f.get(key)
   photos[kind]={'filename':str(name or ''),'available':bool(_media_file(product_id,name))}
+ operations=[]
+ for record in db.execute("SELECT fixed_id,source_row,fields_json FROM bsv_v9_record WHERE page='R_配方耗用' ORDER BY source_row"):
+  item=json.loads(record['fields_json'])
+  if str(item.get('出品关联ID') or '').strip()==pid:
+   material_id=str(item.get('投入物料ID') or '').strip()
+   operations.append({'record_id':record['fixed_id'],'source_row':record['source_row'],
+    'fields':item,'material_id':material_id or None,
+    'material_link_status':'LINKED_BY_ID' if material_id else 'NO_MATERIAL_ID'})
+ source=db.execute('SELECT source_sha,imported_at FROM bsv_v9_sync WHERE one=1').fetchone()
  return {'name':row['display_name'],'fixed_id':pid,
   'fields':{k:f[k] for k in keys if f.get(k) not in ('',None)},'photos':photos,
-  'warning':'请以当前门店核准配方为准；过敏原或原料资料未核实前，必须人工复核'}
+  'recipe_operations':operations,
+  'source':{'sha256':source['source_sha'],'imported_at':source['imported_at']} if source else None,
+  'warning':'仅供制作资料查询，不代表获准销售。请以核准配方为准；过敏原或原料资料未核实前必须人工复核。'}
