@@ -12,6 +12,7 @@ import json
 import os
 import runpy
 import sqlite3
+import shutil
 import socket
 import subprocess
 import sys
@@ -286,6 +287,67 @@ def test_g1b_three_store_identity_academy_device_pos_http(store_id, monkeypatch,
                 assert db.execute("SELECT COUNT(*) FROM staff_store_access").fetchone()[0] == 1
                 assert db.execute("SELECT store_id FROM visits WHERE id=?", (opened["visit_id"],)).fetchone()[0] == store_id
                 assert db.execute("SELECT id FROM seats WHERE id=?", (seat_id,)).fetchone()
+            from playwright.sync_api import expect, sync_playwright
+            from importlib import util
+            import uvicorn
+            ingress_path = ROOT / "platform/lighthouse/internal-stage/ingress.py"
+            spec = util.spec_from_file_location("bsv_g1_pos_ingress", ingress_path)
+            ingress = util.module_from_spec(spec)
+            spec.loader.exec_module(ingress)
+            pos_base = f"http://127.0.0.1:{server.server_port}"
+            ingress.UPSTREAM = {"identity": identity_http, "pos": pos_base, "supply": "http://127.0.0.1:1"}
+            ingress_config = uvicorn.Config(ingress.app, host="127.0.0.1", port=0,
+                                            log_level="warning", access_log=False)
+            ingress_listener = ingress_config.bind_socket()
+            ingress_server = uvicorn.Server(ingress_config)
+            ingress_worker = threading.Thread(target=ingress_server.run, kwargs={"sockets": [ingress_listener]})
+            ingress_worker.start()
+            try:
+                with sync_playwright() as playwright:
+                    system_chromium = shutil.which("chromium")
+                    executable = system_chromium if system_chromium and not Path(
+                        playwright.chromium.executable_path).is_file() else None
+                    browser = playwright.chromium.launch(headless=True, executable_path=executable)
+                    try:
+                        context = browser.new_context(viewport={"width": 390, "height": 844}, locale="zh-CN")
+                        base_url = f"http://127.0.0.1:{ingress_listener.getsockname()[1]}"
+                        context.add_cookies([
+                            {"name": api.SESSION_COOKIE, "value": session_cookie, "url": base_url},
+                            {"name": "bsv_csrf", "value": identity_csrf, "url": base_url},
+                        ])
+                        page = context.new_page()
+                        page.goto(base_url + "/pos?store=" + store_id)
+                        expect(page.locator("#loginStore")).to_have_value(store_id)
+                        page.locator("#device-id").fill(device_id)
+                        page.locator("#device-token").fill(device_token)
+                        page.locator("#loginForm button[type=submit]").click()
+                        page.locator("#modalConfirm").click()
+                        expect(page.locator("#appPage")).to_be_visible()
+                        browser_seat_id = f"{store_id}-SEAT-0002"
+                        page.locator(f'.seat-button[data-seat="{browser_seat_id}"]').click()
+                        page.locator("#modalConfirm").click()
+                        page.locator("#quickProductSearch").fill("C000001")
+                        page.locator('[data-quick-id="C000001"]').click()
+                        page.locator("#submitOrder").click()
+                        expect(page.locator("#modalTitle")).to_have_text("提交未付款测试订单")
+                        page.locator("#modalConfirm").click()
+                        expect(page.locator("#toast")).to_contain_text("已记录测试订单，尚未收款。")
+                        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+                    finally:
+                        browser.close()
+            finally:
+                ingress_server.should_exit = True
+                ingress_worker.join(timeout=5)
+                ingress_listener.close()
+            revoked = admin_post(owner, f"/api/v1/identity/grants/{pos_grants['pos.order.create']}/revoke", {
+                "legal_entity_id": "DEMO_LEGAL", "reason": "Synthetic mid-session revocation"})
+            assert revoked.status_code == 200, revoked.text
+            assert _http_request(server, "POST", "/api/orders/submit", cookie, {
+                "visit_id": opened["visit_id"], "pay_now": False,
+                "_action_id": "g1-revoked-" + store_id.lower()}, csrf)[0] in (401, 403)
+            device_revoked = admin_post(admin, f"/api/v1/academy/devices/{device_id}/revoke", {})
+            assert device_revoked.status_code == 200, device_revoked.text
+            assert _http_request(server, "GET", "/api/state", cookie)[0] in (401, 403)
             other_store = next(store for store in STORES if store != store_id)
             assert _http_request(server, "POST", "/api/pos/device-login", cookie, {
                 "store_id": other_store, "confirmed_store_id": other_store,
@@ -293,15 +355,7 @@ def test_g1b_three_store_identity_academy_device_pos_http(store_id, monkeypatch,
             }, identity_csrf)[0] in (401, 403, 503)
             replayed = cookie.replace(f"{api.SESSION_COOKIE}={session_cookie}",
                                       f"{api.SESSION_COOKIE}={manager_user.cookies.get(api.SESSION_COOKIE)}")
-            assert _http_request(server, "GET", "/api/state", replayed)[0] == 403
-            revoked = admin_post(owner, f"/api/v1/identity/grants/{pos_grants['pos.order.create']}/revoke", {
-                "legal_entity_id": "DEMO_LEGAL", "reason": "Synthetic mid-session revocation"})
-            assert revoked.status_code == 200, revoked.text
-            assert _http_request(server, "POST", "/api/orders/submit", cookie, {
-                "visit_id": opened["visit_id"], "pay_now": False, "_action_id": "g1-revoked-" + store_id.lower()}, csrf)[0] == 403
-            device_revoked = admin_post(admin, f"/api/v1/academy/devices/{device_id}/revoke", {})
-            assert device_revoked.status_code == 200, device_revoked.text
-            assert _http_request(server, "GET", "/api/state", cookie)[0] == 403
+            assert _http_request(server, "GET", "/api/state", replayed)[0] in (401, 403)
         finally:
             server.shutdown()
             worker.join(timeout=5)

@@ -57,6 +57,23 @@ def check(base_url, *, username, password, expected_tr):
             expect(desktop.locator("#stage-authorization")).to_contain_text("独立督查 · BSVT")
             expect(desktop.get_by_role("button", name="提交快检记录")).to_have_count(0)
 
+            desktop.goto(base_url + "/academy")
+            expect(desktop.get_by_role("heading", name="我的培训与排班")).to_be_visible()
+            expect(desktop.locator("#academy-status")).to_contain_text("已核对本人培训、资格和班次")
+            expect(desktop.locator("a[href='/']")).to_have_text("返回工作台")
+
+            desktop.goto(base_url + "/staff/growth/")
+            expect(desktop.locator("#section-title")).to_have_text("当前接待")
+            expect(desktop.locator("#store")).to_be_enabled()
+            expect(desktop.locator("#store option")).to_have_count(1)
+            expect(desktop.locator("#store")).to_have_value("BSVT")
+
+            desktop.goto(base_url + "/supply-ui/hq/supply")
+            expect(desktop.locator("#mode")).to_have_text("内部演练")
+            expect(desktop.locator("#stage-availability")).to_contain_text("暂未启用")
+            expect(desktop.locator("#stage-availability")).to_contain_text("中央台账尚未连接")
+            expect(desktop.locator("#stage-authorization")).to_contain_text("收货 · BSVT")
+
             desktop.goto(base_url + "/pos")
             expect(desktop.locator(".stage-pos-note")).to_contain_text("先在")
             desktop.locator("#loginDistrict").select_option(index=1)
@@ -89,6 +106,12 @@ def check(base_url, *, username, password, expected_tr):
 
             admin = browser.new_page(viewport={"width": 1440, "height": 960})
             login(admin, base_url, "reviewer1", os.environ["BSV_DEMO_ADMIN_1_PASSWORD"])
+            expect(admin.locator("#grant-store-scope")).to_have_count(1)
+            expect(admin.locator("#grant-store-scope option")).to_have_count(1)
+            admin.goto(base_url + "/hq")
+            expect(admin.get_by_role("heading", name="人员身份与授权管理")).to_be_visible()
+            expect(admin.locator("#grant-store-scope")).to_have_value("")
+            assert admin.locator("#grant-store-scope option").evaluate_all("items => items.map(x => x.value)") == [""]
             admin.goto(base_url + "/hq#audit")
             admin.locator("#people-form-query").fill("TRA0002")
             admin.locator("#people-form button").click()
