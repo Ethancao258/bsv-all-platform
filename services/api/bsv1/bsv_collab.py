@@ -168,9 +168,16 @@ def recipe(db,store_id,product_id):
   item=json.loads(record['fields_json'])
   if str(item.get('出品关联ID') or '').strip()==pid:
    material_id=str(item.get('投入物料ID') or '').strip()
+   material=db.execute("SELECT fixed_id,display_name,fields_json,page FROM bsv_v9_record WHERE fixed_id=? AND page IN ('M_采购纯饮','P_预调半成品')",
+                       (material_id,)).fetchone() if material_id else None
+   material_fields=json.loads(material['fields_json']) if material else {}
+   if material and material['page']=='M_采购纯饮':
+    material_fields={k:v for k,v in material_fields.items()
+     if not any(word in str(k).casefold() for word in ('采购价','成本','供应商','进货价','价格','金额'))}
    operations.append({'record_id':record['fixed_id'],'source_row':record['source_row'],
     'fields':item,'material_id':material_id or None,
-    'material_link_status':'LINKED_BY_ID' if material_id else 'NO_MATERIAL_ID'})
+    'material_link_status':'LINKED_BY_ID' if material else 'UNRESOLVED_MATERIAL_ID' if material_id else 'NO_MATERIAL_ID',
+    'material':({'id':material['fixed_id'],'name':material['display_name'],'fields':material_fields} if material else None)})
  source=db.execute('SELECT source_sha,imported_at FROM bsv_v9_sync WHERE one=1').fetchone()
  return {'name':row['display_name'],'fixed_id':pid,
   'fields':{k:f[k] for k in keys if f.get(k) not in ('',None)},'photos':photos,
