@@ -282,7 +282,8 @@ def _restore_managed_config(snapshot):
                 raise RuntimeError(f"Managed environment became a symlink: {path}")
             if prior is None:
                 path.unlink(missing_ok=True)
-                sync_directory(path.parent)
+                if path.parent.exists():
+                    sync_directory(path.parent)
                 if path.exists():
                     raise RuntimeError(f"Could not remove new managed environment: {path}")
                 continue
@@ -388,6 +389,8 @@ def upgrade_identity_environment(values, *, approve_synthetic_three_store=False)
         return environment("identity", values)
     parsed = _read_managed_environment("identity")
     desired = {key: str(value) for key, value in values.items()}
+    # Older callers that only migrate the layout-admin token keep the safe H default.
+    desired.setdefault("BSV_ACADEMY_STORE_IDS", "BSVT")
     additions = {"BSV_ACADEMY_STORE_IDS"}
     if set(parsed) - set(desired) or set(desired) - set(parsed) - additions:
         raise RuntimeError("Missing or additional managed identity environment keys")
@@ -597,6 +600,27 @@ def _prepare_config(approve_synthetic_three_store=False):
     environment("supply", {"BSV_MODE": "internal-stage", "BSV_SUPPLY_STATE_DIR": str(DATA / "supply"),
                            "BSV_SOURCE_B_TOKEN": supply_token, "BSV_SOURCES_CONFIG": str(supply_config)})
     return identity, pos, dbpw, pin
+
+
+def _restore_default_store_scope_if_enabled():
+    pos_path = ROOT / "config" / "pos.env"
+    if not pos_path.exists():
+        return
+    pos = _read_managed_environment("pos")
+    identity_path = ROOT / "config" / "identity.env"
+    ingress_path = ROOT / "config" / "ingress.env"
+    identity = _read_managed_environment("identity") if identity_path.exists() else {}
+    ingress = _read_managed_environment("ingress") if ingress_path.exists() else {}
+    three_map = {"BSVM": "DEMO_LEGAL", "BSVS": "DEMO_LEGAL", "BSVT": "DEMO_LEGAL"}
+    try:
+        current_map = json.loads(pos.get("BSV_POS_STORE_LEGAL_JSON", "{}"))
+    except (TypeError, ValueError):
+        raise RuntimeError("Invalid POS store map during rollback; keep services stopped")
+    if (pos.get("BSV_POS_G1_TEST_STORES") == "BSVM,BSVS,BSVT"
+            or current_map == three_map
+            or identity.get("BSV_ACADEMY_STORE_IDS") == "BSVM,BSVS,BSVT"
+            or ingress.get("BSV_GROWTH_STORE_IDS") == "BSVM,BSVS,BSVT"):
+        prepare_config(False)
 
 
 def git_blob_sha(data):
@@ -1371,7 +1395,7 @@ def recover_pending():
     if previous and not re.fullmatch(r"[a-f0-9]{40}", previous):
         raise RuntimeError("Invalid managed activation journal")
     switch_services(False)
-    prepare_config(False)
+    _restore_default_store_scope_if_enabled()
     if previous:
         link("current", previous)
         switch_services(True)
@@ -1456,7 +1480,7 @@ def rollback():
     try:
         activation_checkpoint(current, "pre_rollback")
         switch_services(False)
-        prepare_config(False)
+        _restore_default_store_scope_if_enabled()
         if previous:
             link("current", previous)
             switch_services(True)
