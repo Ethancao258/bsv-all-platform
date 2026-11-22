@@ -85,6 +85,7 @@ def test_internal_stage_live_ingress(identity_http, tmp_path, monkeypatch):
     onboard(tr, first, second, bm=True)
     certificate(tr, first, "SUPPLY_SAFETY")
     certificate(tr, first, "QUALITY_INSPECTOR")
+    grant_action(tr, first, second, "learning.course.read", store="BSVT", role="staff")
     pos_grant = grant_action(tr, first, second, "pos.order.read")
     grant_action(tr, first, second, "pos.order.create")
     growth_grant = grant_action(tr, first, second, "marketing.task.write")
