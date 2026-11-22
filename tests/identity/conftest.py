@@ -1,5 +1,7 @@
 """100% synthetic local fixtures; never imports real employee data."""
 import os
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 import pytest
@@ -35,8 +37,31 @@ from services.api.identity.seed_isolated import seed
 @pytest.fixture(autouse=True)
 def reset_db():
     throttle.attempts.clear()
-    IsolatedBase.metadata.drop_all(router.a)
-    Base.metadata.drop_all(router.a)
+    stage_url = os.environ.get("BSV_DB_PREFLIGHT_STAGE_URL")
+    if stage_url:
+        # The stage-only Academy migration adds foreign keys from its tables to
+        # identity tables. Reset this explicitly named loopback test database as
+        # a unit, then replay the migration before seeding synthetic identities.
+        # This branch is unreachable for local SQLite or the clients preflight DB.
+        address = __import__("sqlalchemy.engine", fromlist=["make_url"]).make_url(stage_url)
+        if address.host != "127.0.0.1" or address.database != "bsv_identity_isolated_stage":
+            raise RuntimeError("Refusing schema reset outside the disposable isolated-stage database")
+        with router.a.begin() as connection:
+            connection.exec_driver_sql("DROP SCHEMA public CASCADE")
+            connection.exec_driver_sql("CREATE SCHEMA public")
+        router.a.dispose()
+        root = Path(__file__).resolve().parents[2]
+        env = os.environ.copy()
+        env["BSV_DB_A_URL"] = stage_url
+        subprocess.run(
+            [sys.executable, "-m", "alembic", "-c",
+             str(root / "platform/lighthouse/identity/alembic.ini"),
+             "upgrade", "bsv_academy_0002"],
+            cwd=root, env=env, check=True,
+        )
+    else:
+        IsolatedBase.metadata.drop_all(router.a)
+        Base.metadata.drop_all(router.a)
     Base.metadata.create_all(router.a)
     IsolatedBase.metadata.create_all(router.a)
     with router.session(write=True) as db:
