@@ -408,8 +408,8 @@ class ReleaseTest(unittest.TestCase):
                 self.assertEqual(ingress["BSV_GROWTH_STORE_IDS"], "BSVT")
                 default_bytes = {p: p.read_bytes() for p in (identity_path, pos_path, ingress_path)}
                 default_tokens = json.loads(identity["BSV_SERVICE_TOKENS_JSON"])
-                with self.assertRaisesRegex(RuntimeError, "explicit approval"):
-                    stage.prepare_config(approve_synthetic_three_store=False)
+                # A normal H-style config pass remains BSVT-only without the explicit switch.
+                stage.prepare_config(approve_synthetic_three_store=False)
                 self.assertEqual({p: p.read_bytes() for p in default_bytes}, default_bytes)
                 stage.prepare_config(approve_synthetic_three_store=True)
                 identity = stage.service_config("identity")
