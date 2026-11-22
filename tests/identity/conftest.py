@@ -65,7 +65,8 @@ def reset_db():
     Base.metadata.create_all(router.a)
     IsolatedBase.metadata.create_all(router.a)
     with router.session(write=True) as db:
-        db.add(CodeAllocator(id=1,next_index=0))
+        if db.get(CodeAllocator, 1) is None:
+            db.add(CodeAllocator(id=1,next_index=0))
     seed()
     yield
 
