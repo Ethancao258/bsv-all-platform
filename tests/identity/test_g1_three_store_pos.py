@@ -333,6 +333,12 @@ def test_g1b_three_store_identity_academy_device_pos_http(store_id, monkeypatch,
                         page.locator("#modalConfirm").click()
                         expect(page.locator("#toast")).to_contain_text("已记录测试订单，尚未收款。")
                         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+                        evidence = os.environ.get("BSV_G1_UI_ARTIFACTS")
+                        if evidence:
+                            target = Path(evidence)
+                            target.mkdir(parents=True, exist_ok=True)
+                            page.screenshot(path=str(target / f"pos-{store_id.lower()}-390x844.png"),
+                                            full_page=True)
                     finally:
                         browser.close()
             finally:
