@@ -177,9 +177,9 @@ class Foundation(unittest.TestCase):
             code,_,page=req('GET','/menu',cookie=cookie);self.assertEqual(code,200)
             code,_,body=req('GET','/api/menu-preview?store_id=BSVM',cookie=cookie)
             self.assertEqual(code,200);self.assertEqual(json.loads(body)['priced'],52)
-            code,_,body=req('GET','/api/catalog/search?q=合成商品&domain=C')
+            code,_,body=req('GET','/api/catalog/search?q=%E5%90%88%E6%88%90%E5%95%86%E5%93%81&domain=C')
             self.assertEqual(code,401) # employee authentication is required
-            code,_,body=req('GET','/api/catalog/search?q=合成商品&domain=C',cookie=cookie)
+            code,_,body=req('GET','/api/catalog/search?q=%E5%90%88%E6%88%90%E5%95%86%E5%93%81&domain=C',cookie=cookie)
             self.assertEqual(code,200)
             catalog=json.loads(body)
             self.assertEqual(len(catalog['items']),63)
