@@ -161,7 +161,7 @@ class CatalogPostgres17Tests(unittest.TestCase):
             material = json.loads(connection.getresponse().read())
             self.assertNotIn("采购价", material["fields"])
             with app.db_read() as db:
-                self.assertEqual(db.execute("SELECT COUNT(*) FROM bsv_v9_record").fetchone()[0], 0)
+                self.assertEqual(db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='bsv_v9_record'").fetchone()[0], 0)
             connection.request("GET", "/api/menu-preview?store_id=BSVM", headers={"Cookie":cookie})
             menu = json.loads(connection.getresponse().read())
             self.assertNotIn("C000001", {item["id"] for item in menu["products"]})
@@ -184,6 +184,7 @@ class CatalogPostgres17Tests(unittest.TestCase):
                                  ("22222222-2222-4222-8222-222222222222", broken_sha, "d" * 64, Jsonb({})))
                     conn.execute("INSERT INTO catalog.recipe_step(recipe_step_id,output_link_id,output_product_id,ingest_status,_source_sha256,_excel_row,_source_sheet) VALUES ('R999999','C999999','C999999','IMPORTED_RAW',%s,999,'R')", (broken_sha,))
             self.assertFalse(conn.execute("SELECT 1 FROM audit.import_batch WHERE source_sha256=%s", (broken_sha,)).fetchone())
+            conn.commit()
             next_sha = "e" * 64
             with conn.transaction():
                 conn.execute("INSERT INTO audit.import_batch(batch_id,source_sha256,package_sha256,package_version,status,counts) VALUES (%s,%s,%s,'V2.2','COMMITTED_RAW',%s)",
