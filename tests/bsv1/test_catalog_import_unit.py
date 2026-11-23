@@ -40,6 +40,8 @@ class CatalogImportSafetyTests(unittest.TestCase):
         hardening = importer.MIGRATION.with_name("0002_catalog_reader_least_privilege.sql").read_text(encoding="utf-8")
         self.assertIn("REVOKE ALL ON ALL TABLES", hardening)
         self.assertIn("source_record_confidential", hardening)
+        recipe_read = importer.MIGRATION.with_name("0003_recipe_order_read.sql").read_text(encoding="utf-8")
+        self.assertIn("GRANT SELECT (_excel_row) ON catalog.recipe_step TO bsv_catalog_reader", recipe_read)
 
     def test_signed_package_approval_binds_hashes_contract_and_expiry(self):
         with tempfile.TemporaryDirectory() as root:

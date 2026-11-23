@@ -327,7 +327,8 @@ def migrate(conn) -> str:
         conn.commit()
     states = []
     for version, path in (("0001_workbuddy_v22", MIGRATION),
-                          ("0002_catalog_reader_least_privilege", MIGRATION.with_name("0002_catalog_reader_least_privilege.sql"))):
+                          ("0002_catalog_reader_least_privilege", MIGRATION.with_name("0002_catalog_reader_least_privilege.sql")),
+                          ("0003_recipe_order_read", MIGRATION.with_name("0003_recipe_order_read.sql"))):
         sql = path.read_text(encoding="utf-8")
         checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
         with conn.cursor() as cur:
