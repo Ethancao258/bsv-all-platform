@@ -249,3 +249,10 @@
 - **本地测试** · Python语法编译、4项导入审批/来源安全单元测试通过；`bash tests/bsv1/check.sh` 为46 passed、4 skipped（无本地PG容器）；内部部署与控制面测试31 passed、1 skipped；架构、变更路由、包manifest与 `git diff --check` 通过。完整PG17测试由Actions执行。
 - **实际状态** · `CODE_DONE=YES`（集成代码候选）；`CI_PASS=YES`；`PG17_REAL_V22_IMPORTED=NO`；`HOST_DEPLOYED=NO`；`BROWSER_VERIFIED=NO`；`BACKUP_RESTORED=NO`；`DATA_UPDATE_WITHOUT_CODE=CI_ONLY_NOT_HOST_VERIFIED`；`PRODUCTION_CUTOVER=NO`。本环境没有Lighthouse/TAT/SSH主机操作通道，因此主机状态、容量、服务端PG、备份恢复、导入批次及SSH隧道浏览器验收均 `HOST_NOT_RUN`。未连接CloudBase；未更动订单、身份、会员、支付、生产数据。
 - **下一门禁** · 经营者需在受控执行通道中授权一次性访问现有 Lighthouse 隔离主机，范围限定 `/var/lib/bsv-all-internal-stage/` 和已批准隔离 PostgreSQL；无需在聊天中提交SSH私钥、口令或数据库凭据。授权后先读取主机真实状态、备份并预检，再按审核后的操作流程创建隔离库、导入V2.2并执行浏览器/恢复验收。未经此授权不得标为已部署或已验收。
+
+## 2026-11-23｜PR #40 Lighthouse 首轮部署阻断修复
+
+- **故障来源** · 按PR #40 issue comment `7093073996`（业主提供的TAT回执）记录：受控预检和旧版检查点成功；角色校验中止后，发布器回切旧 `f6d8ce9` 并通过健康核验；新版及WorkBuddy导入未完成。当前Codex没有连接主机，本项为 `HOST_REPORTED`，不是独立主机复验。
+- **代码修复** · `stage.py` 的成员角色查询筛选 `member.rolname`，结果表示“该角色继承哪些被授予角色”。现在 `bsv_catalog_reader` 的预期继承集合为空；runtime/importer/confidential-reader 三个角色仍按既有最小权限图校验，不新增/反向补做GRANT。`as_user()` 默认从可访问的 `/` 启动子进程，显式服务工作目录继续保留。
+- **续跑安全** · 不删除上次失败的 release/work目录、身份或POS检查点、HBA标记、PG角色或 `bsv_all_prod`。现有发布器只在角色/owner/属性与受管HBA校验一致时继续；未知状态拒绝。旧 8765/8767 与身份库不作手工变更。
+- **验证状态** · 新增角色方向图与SQL筛选、runuser私有父目录、默认及显式cwd定向测试；新SHA/CI/重生成的私有TAT包待完成。`PG17_REAL_V22_IMPORTED=NO`、`HOST_DEPLOYED=NO`、`BROWSER_VERIFIED=NO`，直至新的TAT回执验证前维持此状态。

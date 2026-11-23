@@ -34,6 +34,26 @@ class ReleaseTest(unittest.TestCase):
             stage._catalog_hba_target(baseline + "host all all 0.0.0.0/0 trust\n")
         self.assertEqual(stage._catalog_hba_target("# fresh initdb policy\n", fresh_cluster=True), target)
 
+    def test_catalog_role_membership_direction_matches_postgres_grant_graph(self):
+        # Each tuple is (granted role, member). This mirrors pg_auth_members:
+        # roleid is the granted role, member is the account inheriting it.
+        grants = {
+            ("bsv_catalog_reader", "bsv_catalog_confidential_reader"),
+            ("bsv_catalog_reader", "bsv_catalog_runtime"),
+            ("bsv_catalog_confidential_reader", "bsv_catalog_runtime"),
+        }
+        for member, expected in stage.EXPECTED_CATALOG_MEMBERSHIPS.items():
+            actual = ",".join(sorted(granted for granted, recipient in grants if recipient == member))
+            self.assertEqual(actual, expected, member)
+            query = stage._catalog_role_membership_query(member)
+            self.assertIn("string_agg(granted_role.rolname", query)
+            self.assertIn(f"WHERE member.rolname='{member}'", query)
+        reader_members = sorted(member for granted, member in grants if granted == "bsv_catalog_reader")
+        self.assertEqual(reader_members, ["bsv_catalog_confidential_reader", "bsv_catalog_runtime"])
+        self.assertEqual(stage.EXPECTED_CATALOG_MEMBERSHIPS["bsv_catalog_reader"], "")
+        with self.assertRaisesRegex(ValueError, "Unknown managed catalog role"):
+            stage._catalog_role_membership_query("arbitrary_role")
+
     def setUp(self):
         original = stage.write_secret
         fixture_writer = patch.object(stage, "write_secret", side_effect=lambda path, value, uid=0, gid=0:
@@ -755,8 +775,30 @@ class ReleaseTest(unittest.TestCase):
             stage.as_user("identity", "/bin/true", env=restricted_env)
         mock_run.assert_called_once_with(
             "/usr/sbin/runuser", "-u", "bsvint-identity", "--", "/bin/true",
-            env=restricted_env,
+            env=restricted_env, cwd="/",
         )
+
+    def test_runuser_does_not_inherit_untraversable_private_working_directory(self):
+        with tempfile.TemporaryDirectory(prefix="bsv-private-tat-work-") as tmp:
+            private_cwd = Path(tmp) / "root-only"
+            private_cwd.mkdir(mode=0o700)
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(private_cwd)
+                with patch.object(stage, "run") as mock_run:
+                    stage.as_user("identity", "/usr/bin/find", "-P", "/opt/bsv-release/src")
+            finally:
+                os.chdir(original_cwd)
+            args, kwargs = mock_run.call_args
+            self.assertIn("/usr/bin/find", args)
+            self.assertEqual(kwargs["cwd"], "/")
+            self.assertEqual(private_cwd.stat().st_mode & 0o777, 0o700)
+
+    def test_runuser_preserves_explicit_service_working_directory(self):
+        source = Path("/opt/bsv-all-internal-stage/releases") / NEW / "src"
+        with patch.object(stage, "run") as mock_run:
+            stage.as_user("identity", "/bin/true", cwd=source)
+        self.assertEqual(mock_run.call_args.kwargs["cwd"], source)
 
 
     def test_legacy_preview_feedback_is_inline(self):

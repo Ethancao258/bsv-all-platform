@@ -38,6 +38,14 @@ DB_USER = "bsv_internal_app"
 CATALOG_DB = "bsv_all_prod"
 CATALOG_RUNTIME_USER = "bsv_catalog_runtime"
 CATALOG_IMPORT_USER = "bsv_catalog_importer"
+EXPECTED_CATALOG_MEMBERSHIPS = {
+    CATALOG_RUNTIME_USER: "bsv_catalog_confidential_reader,bsv_catalog_reader",
+    CATALOG_IMPORT_USER: "",
+    "bsv_catalog_confidential_reader": "bsv_catalog_reader",
+    # This query lists roles that this role is a member of. The reader role
+    # itself must not inherit another role.
+    "bsv_catalog_reader": "",
+}
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 MIGRATIONS = Path("platform/lighthouse/identity/migrations")
 IDENTITY_REVISION = "bsv_identity_0001"
@@ -71,6 +79,10 @@ def user(name):
 
 
 def as_user(name, *args, **kwargs):
+    # TAT may invoke us from a root-only private package directory. runuser keeps
+    # the caller's cwd by default, and the service account cannot enter that
+    # directory even when every requested path is absolute.
+    kwargs.setdefault("cwd", "/")
     return run("/usr/sbin/runuser", "-u", user(name), "--", *args, **kwargs)
 
 
@@ -1039,6 +1051,19 @@ def _catalog_hba_policies():
     return baseline, catalog
 
 
+def _catalog_role_membership_query(role):
+    """List granted roles for a member role (not members granted this role)."""
+    if role not in EXPECTED_CATALOG_MEMBERSHIPS:
+        raise ValueError("Unknown managed catalog role")
+    return (
+        "SELECT COALESCE(string_agg(granted_role.rolname, ',' ORDER BY granted_role.rolname),'') "
+        "FROM pg_auth_members m "
+        "JOIN pg_roles granted_role ON granted_role.oid=m.roleid "
+        "JOIN pg_roles member ON member.oid=m.member "
+        f"WHERE member.rolname='{role}'"
+    )
+
+
 def _catalog_hba_target(current: str, *, fresh_cluster: bool = False, managed_prior: str | None = None) -> str:
     baseline, target = _catalog_hba_policies()
     if current == target:
@@ -1209,15 +1234,9 @@ GRANT CONNECT ON DATABASE "{CATALOG_DB}" TO "{CATALOG_RUNTIME_USER}", "{CATALOG_
                              stdout=subprocess.PIPE)
         if role_check.stdout.strip() != "t":
             raise RuntimeError(f"Existing catalog role has unsafe or unexpected attributes: {role}")
-    expected_memberships = {
-        CATALOG_RUNTIME_USER: "bsv_catalog_confidential_reader,bsv_catalog_reader",
-        CATALOG_IMPORT_USER: "",
-        "bsv_catalog_confidential_reader": "bsv_catalog_reader",
-        "bsv_catalog_reader": f"bsv_catalog_confidential_reader,{CATALOG_RUNTIME_USER}",
-    }
-    for role, expected in expected_memberships.items():
+    for role, expected in EXPECTED_CATALOG_MEMBERSHIPS.items():
         membership = as_user("postgres", *psql, "-At", "-c",
-            f"SELECT COALESCE(string_agg(r.rolname, ',' ORDER BY r.rolname),'') FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.roleid JOIN pg_roles member ON member.oid=m.member WHERE member.rolname='{role}'",
+            _catalog_role_membership_query(role),
             stdout=subprocess.PIPE)
         if membership.stdout.strip() != expected:
             raise RuntimeError(f"Catalog role has unexpected membership grants: {role}")
