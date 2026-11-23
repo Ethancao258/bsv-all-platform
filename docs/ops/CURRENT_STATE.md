@@ -241,3 +241,11 @@
 - **本地验证** · BSV1 `check.sh`：46 passed、4 skipped（4项PG17测试因无Docker跳过）；合同测试5 passed；Lighthouse内部阶段/控制面31 passed、1 skipped（Ubuntu 24.04系统Python3.12专测）；包清单程序重验通过。额外身份备份pytest未能在本环境加载，因为缺少SQLAlchemy依赖，本地NOT_TESTED；交由CI安装锁定依赖验证。
 - **未执行项** · 当前容器没有Docker daemon/PG17服务，PG17新迁移、最小角色访问、HTTP网页实际读PG尚待GitHub Actions job。当前Codex没有Lighthouse/TAT/SSH操作授权；主机实际版本、服务、磁盘、备份恢复、PG角色与 `127.0.0.1:18760` 浏览器数据来源均 `HOST_NOT_RUN/UNKNOWN`。真实V2.2数据未入库，`CODE_DONE`仅指代码候选；`CI_PASS`待新SHA的Actions；`DATA_IMPORTED=NO`、`HOST_DEPLOYED=NO`、`BUSINESS_VERIFIED=NO`。CloudBase、真实订单/员工/会员数据、上架与收款均未触碰。
 - **本轮回退** · 代码通过PR #40撤回，不合并/不部署。正式隔离数据库创建后，程序版本由受控发布器回退；内容版本只通过签名审批切换 `active_content`，保留两版数据。HBA升级附有原文件受控备份并拒绝未登记漂移。此回退尚无真实主机演练证据。
+
+## 2026-11-23｜PR #40 V3.0 最终代码与验证状态
+
+- **最终代码候选** · `feature/bsv1-excel-catalog` HEAD=`852d8c86bf782ceda4023dab3da9061381e15237`，PR #40 仍为 Draft、未合并。保留基线 `0d814f62587132c78c8ac648981a862ef2b1dd56` 的既有历史。该SHA的 [GitHub Actions主验证 run 45106816835](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45106816835) 九个作业全部成功；[独立API/合同 run 45106816833](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45106816833) 成功。
+- **CI实际覆盖** · `bsv1` 作业使用隔离 PostgreSQL 17 容器，迁移 0001–0003、事务提交/重放、最小角色和受限字段、C/P双类型配方关联、POS HTTP读PG、匿名拒绝、SQLite商品缓存未启用、菜单未上架、PG断连503、导入失败原子回滚、经审批的活动版本切换/回退均通过。此为合成CI数据库证据，不是服务器或真实WorkBuddy数据入库证明。
+- **本地测试** · Python语法编译、4项导入审批/来源安全单元测试通过；`bash tests/bsv1/check.sh` 为46 passed、4 skipped（无本地PG容器）；内部部署与控制面测试31 passed、1 skipped；架构、变更路由、包manifest与 `git diff --check` 通过。完整PG17测试由Actions执行。
+- **实际状态** · `CODE_DONE=YES`（集成代码候选）；`CI_PASS=YES`；`PG17_REAL_V22_IMPORTED=NO`；`HOST_DEPLOYED=NO`；`BROWSER_VERIFIED=NO`；`BACKUP_RESTORED=NO`；`DATA_UPDATE_WITHOUT_CODE=CI_ONLY_NOT_HOST_VERIFIED`；`PRODUCTION_CUTOVER=NO`。本环境没有Lighthouse/TAT/SSH主机操作通道，因此主机状态、容量、服务端PG、备份恢复、导入批次及SSH隧道浏览器验收均 `HOST_NOT_RUN`。未连接CloudBase；未更动订单、身份、会员、支付、生产数据。
+- **下一门禁** · 经营者需在受控执行通道中授权一次性访问现有 Lighthouse 隔离主机，范围限定 `/var/lib/bsv-all-internal-stage/` 和已批准隔离 PostgreSQL；无需在聊天中提交SSH私钥、口令或数据库凭据。授权后先读取主机真实状态、备份并预检，再按审核后的操作流程创建隔离库、导入V2.2并执行浏览器/恢复验收。未经此授权不得标为已部署或已验收。
