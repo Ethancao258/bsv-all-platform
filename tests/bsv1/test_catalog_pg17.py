@@ -107,6 +107,10 @@ class CatalogPostgres17Tests(unittest.TestCase):
         conn = importer._connect()
         try:
             self.assertEqual(importer.migrate(conn), "ALREADY_APPLIED+ALREADY_APPLIED")
+            # Exercise the same non-superuser identity used by the service, rather
+            # than testing grants while still authenticated as the database owner.
+            conn.autocommit = True
+            conn.execute("SET SESSION AUTHORIZATION bsv_catalog_runtime")
             conn.execute("SET ROLE bsv_catalog_reader")
             with self.assertRaises(psycopg.errors.InsufficientPrivilege):
                 conn.execute("UPDATE catalog.product SET name_zh='must fail' WHERE product_id='C000001'")
@@ -127,6 +131,7 @@ class CatalogPostgres17Tests(unittest.TestCase):
 
     def test_pg_api_repository_reads_active_pg_rows_and_both_recipe_targets(self):
         repo = PostgresCatalogReadRepository()
+        self.assertEqual(repo.source()["source"], "postgresql")
         product = repo.get_product("C000001", allow_confidential=True)
         self.assertEqual(product["name"], "边车")
         self.assertEqual(product["attributes"]["recipe_text"], "白兰地45ml")
@@ -203,8 +208,17 @@ class CatalogPostgres17Tests(unittest.TestCase):
             with conn.transaction():
                 conn.execute("INSERT INTO audit.import_batch(batch_id,source_sha256,package_sha256,package_version,status,counts) VALUES (%s,%s,%s,'V2.2','COMMITTED_RAW',%s)",
                              ("33333333-3333-4333-8333-333333333333", next_sha, "f" * 64, Jsonb({})))
-            importer.activate_source_revision(next_sha)
-            importer.activate_source_revision(SHA)
+            fake_approval = {"approval_id": "33333333-3333-4333-8333-333333333334",
+                             "approver": "ci-operator", "change_id": "CI-ROLLBACK",
+                             "hmac_sha256": "0" * 64}
+            with mock.patch.object(importer, "_verified_package", return_value=({"source_sha256": next_sha}, "", {})), \
+                 mock.patch.object(importer, "_verify_approval", return_value={**fake_approval,
+                     "expected_active_source_sha256": SHA}):
+                importer.activate_source_revision(next_sha, Path("/tmp/package"), Path("/tmp/package.zip"), Path("/tmp/approval.json"))
+            with mock.patch.object(importer, "_verified_package", return_value=({"source_sha256": SHA}, "", {})), \
+                 mock.patch.object(importer, "_verify_approval", return_value={**fake_approval,
+                     "expected_active_source_sha256": next_sha}):
+                importer.activate_source_revision(SHA, Path("/tmp/package"), Path("/tmp/package.zip"), Path("/tmp/approval.json"))
             self.assertEqual(PostgresCatalogReadRepository().source()["sha256"], SHA)
         finally:
             conn.close()

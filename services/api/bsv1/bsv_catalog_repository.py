@@ -149,7 +149,7 @@ class PostgresCatalogReadRepository:
         return {k: v for k, v in fields.items() if k not in blocked}, sorted(k for k in fields if k in blocked)
 
     def source(self) -> dict:
-        with self._connection(confidential=allow_confidential) as conn, conn.cursor() as cur:
+        with self._connection() as conn, conn.cursor() as cur:
             active = self._active(cur)
         return {"status": active["status"], "sha256": active["sha256"], "imported_at": active["imported_at"],
                 "content_revision": active["revision"], "package_version": active["version"],
@@ -159,7 +159,7 @@ class PostgresCatalogReadRepository:
         if not isinstance(product_id, str) or not __import__("re").fullmatch(r"[CPMK]\d{6}", product_id):
             return None
         table, id_column, name_column, _series_column = self._entity(product_id[0])
-        with self._connection() as conn, conn.cursor() as cur:
+        with self._connection(confidential=allow_confidential) as conn, conn.cursor() as cur:
             active = self._active(cur)
             from psycopg import sql
             cur.execute(sql.SQL("SELECT {}, {}, ingest_status FROM {} WHERE {}=%s AND _source_sha256=%s").format(
@@ -201,7 +201,7 @@ class PostgresCatalogReadRepository:
             return {"items": [], "source": self.source()}
         prefixes = [domain] if domain != "ALL" else ["C", "P", "M", "K"]
         needle = f"%{term}%"
-        with self._connection(confidential=allow_confidential) as conn, conn.cursor() as cur:
+        with self._connection() as conn, conn.cursor() as cur:
             active = self._active(cur)
             items = []
             for prefix in prefixes:
