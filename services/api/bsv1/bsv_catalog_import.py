@@ -333,6 +333,11 @@ def migrate(conn) -> str:
         with conn.cursor() as cur:
             cur.execute("SELECT checksum FROM bsv_isolated_migration.applied WHERE version=%s", (version,))
             existing = cur.fetchone()
+        # End the read transaction before entering the per-migration transaction.
+        # With psycopg's default autocommit=False, otherwise conn.transaction() is
+        # only a savepoint; callers closing the connection would roll back DDL and
+        # the migration ledger even though this function returned successfully.
+        conn.commit()
         if existing:
             if existing[0].strip() != checksum:
                 raise RuntimeError(f"applied migration {version} checksum differs; refusing to alter prior schema")
