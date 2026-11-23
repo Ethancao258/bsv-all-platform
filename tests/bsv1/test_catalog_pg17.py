@@ -44,7 +44,7 @@ class CatalogPostgres17Tests(unittest.TestCase):
                 with conn.cursor() as cur:
                     cur.execute("INSERT INTO audit.import_batch(batch_id,source_sha256,package_sha256,package_version,status,counts) VALUES (%s,%s,%s,'V2.2','COMMITTED_RAW',%s)",
                                 ("11111111-1111-4111-8111-111111111111", SHA, "b" * 64, Jsonb({"synthetic_test_fixture": True})))
-                    cur.execute("INSERT INTO core.store(store_id,name_zh,ingest_status,_source_sha256,_excel_row,_source_sheet) VALUES ('BSVM','演练店','IMPORTED_RAW',%s,1,'T')", (SHA,))
+                    cur.execute("INSERT INTO core.store(store_id,store_name_zh,ingest_status,_source_sha256,_excel_row,_source_sheet) VALUES ('BSVM','演练店','IMPORTED_RAW',%s,1,'T')", (SHA,))
                     cur.execute("INSERT INTO catalog.product(product_id,name_zh,recipe_text,prep_steps_full,locator_guide,ingest_status,_source_sha256,_excel_row,_source_sheet) VALUES ('C000001','边车','白兰地45ml','摇匀12秒','后酒架一层','IMPORTED_RAW',%s,9,'C')", (SHA,))
                     cur.execute("INSERT INTO catalog.semifinished(semifinished_id,name_zh,storage_condition,transport_condition,review_status,ingest_status,_source_sha256,_excel_row,_source_sheet) VALUES ('P000003','油浸章鱼足备料','待核','待核','待审批','IMPORTED_RAW',%s,48,'P')", (SHA,))
                     cur.execute("INSERT INTO catalog.semifinished(semifinished_id,name_zh,storage_condition,transport_condition,review_status,ingest_status,_source_sha256,_excel_row,_source_sheet) VALUES ('P000004','romesco酱','待核','待核','待审批','IMPORTED_RAW',%s,51,'P')", (SHA,))
