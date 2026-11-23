@@ -582,6 +582,24 @@ def state(db,staff):
     locked=[dict(x) for x in db.execute('''SELECT l.seat_id,l.staff_id,s.staff_code,l.expires_at FROM seat_edit_locks l
         JOIN staff s ON s.id=l.staff_id WHERE l.store_id=? AND l.expires_at>?''',(store_id,timestamp()))]
     tasks=collab.tasks_for_store(db,store_id)
+    # PostgreSQL raw catalog reads are independent from the SQLite POS sale
+    # projection. When V9 synchronization is paused (or a clean POS database
+    # has not built that projection yet), expose no local sale candidates and
+    # do not issue queries against columns/tables that are not present. An
+    # existing, fully migrated SQLite sale projection keeps its prior behavior.
+    v9_table = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bsv_v9_record'").fetchone()
+    v9_sync_table = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bsv_v9_sync'").fetchone()
+    product_columns = {row['name'] for row in db.execute('PRAGMA table_info(bsv_products)')}
+    if v9_table and 'sale_enabled' in product_columns:
+        sale_products=[dict(x) for x in db.execute('''SELECT * FROM bsv_products WHERE
+            (demo_only=0 AND sale_enabled=1 AND (store_id IS NULL OR store_id=?)) OR (demo_only=1 AND ?=1)
+            ORDER BY demo_only,id''',(store_id,int(MODE=='local' and SHOW_LOCAL_TRAINING_ITEMS)))
+            if x['demo_only']==1 or price_is_current(db,x,store_id)]
+        pos_catalog_items=catalog_for_store(db,store_id)
+    else:
+        sale_products=[]
+        pos_catalog_items=[]
+    catalog_sync_row=db.execute('SELECT * FROM bsv_v9_sync WHERE one=1').fetchone() if v9_sync_table else None
     return {'online_staff_count':len(active_staff),'online_staff':[{'id':x,'code':db.execute('SELECT staff_code FROM staff WHERE id=?',(x,)).fetchone()[0]} for x in active_staff],
        'seat_edit_locks':locked,'production_tasks':tasks,'alert_escalations':escalations,'severity_thresholds':{'service_warn':DEFAULT_WARN_SECONDS,
        'service_late':DEFAULT_LATE_SECONDS,'service_critical':DEFAULT_CRITICAL_SECONDS,
@@ -591,13 +609,10 @@ def state(db,staff):
                 **({"shift": staff["authority"]} if staff.get("authority") else {})},
        'store':store,'seats':seats,'visits':visits,'groups':groups,'bathrooms':bathrooms,
        'documents':docs,'layout':bsv_layouts.runtime_layout(db,store_id),
-       'products':[dict(x) for x in db.execute('''SELECT * FROM bsv_products WHERE
-           (demo_only=0 AND sale_enabled=1 AND (store_id IS NULL OR store_id=?)) OR (demo_only=1 AND ?=1)
-           ORDER BY demo_only,id''',(store_id,int(MODE=='local' and SHOW_LOCAL_TRAINING_ITEMS)))
-           if x['demo_only']==1 or price_is_current(db,x,store_id)],
-       'catalog_items':catalog_for_store(db,store_id),
+       'products':sale_products,
+       'catalog_items':pos_catalog_items,
        'catalog_sync':(lambda r: {'source_sha':r['source_sha'],'imported_at':r['imported_at'],
-            'summary':json.loads(r['summary_json'])} if r else None)(db.execute('SELECT * FROM bsv_v9_sync WHERE one=1').fetchone()),
+            'summary':json.loads(r['summary_json'])} if r else None)(catalog_sync_row),
        'audit':audit,'csrf':staff.get('csrf'),'server_time_ms':timestamp()*1000,
        'service_warn_seconds':DEFAULT_WARN_SECONDS,'service_late_seconds':DEFAULT_LATE_SECONDS,
        'payments_enabled':False,'prototype':True,'mode':MODE,'version':application_version()}
