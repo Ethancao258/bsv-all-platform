@@ -164,6 +164,8 @@ class CatalogPostgres17Tests(unittest.TestCase):
                 self.assertEqual(db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='bsv_v9_record'").fetchone()[0], 0)
             connection.request("GET", "/api/menu-preview?store_id=BSVM", headers={"Cookie":cookie})
             menu = json.loads(connection.getresponse().read())
+            self.assertEqual(menu["catalog_publication"], "BLOCKED_RAW_NOT_APPROVED")
+            self.assertEqual(menu["products"], [])
             self.assertNotIn("C000001", {item["id"] for item in menu["products"]})
             with mock.patch.dict(os.environ, {"BSV_DB_URL": "postgresql://postgres@127.0.0.1:1/bsv_all_prod"}):
                 connection.request("GET", "/api/v1/catalog/products/C000001", headers={"Cookie":cookie})

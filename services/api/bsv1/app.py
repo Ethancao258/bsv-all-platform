@@ -1804,8 +1804,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not allowed:self.send_json({'error':'门店未授权'},403);return
                 if not db.execute('SELECT 1 FROM stores WHERE id=?',(sid,)).fetchone():
                     self.send_json({'error':'门店不存在'},404);return
-                rows=catalog_for_store(db,sid)
-            self.send_json({'store_id':sid,'source':'C_现场成品!AJ','scope':'private-preview',
+                rows=[] if postgres_catalog_enabled() else catalog_for_store(db,sid)
+            source = 'postgresql-raw-catalog-not-public' if postgres_catalog_enabled() else 'C_现场成品!AJ'
+            self.send_json({'store_id':sid,'source':source,'scope':'private-preview',
+              'catalog_publication':'BLOCKED_RAW_NOT_APPROVED' if postgres_catalog_enabled() else 'EXISTING_SQLITE_APPROVALS',
               'products':rows,'priced':sum(bool(r['sale_enabled']) for r in rows if r['domain']=='C'),
               'payments_enabled':False});return
         if path=='/api/document':
