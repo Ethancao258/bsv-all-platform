@@ -26,6 +26,14 @@ NEW = "2" * 40
 
 
 class ReleaseTest(unittest.TestCase):
+    def test_catalog_hba_upgrade_is_additive_and_refuses_drift(self):
+        baseline, target = stage._catalog_hba_policies()
+        self.assertEqual(stage._catalog_hba_target(baseline), target)
+        self.assertEqual(stage._catalog_hba_target(target), target)
+        with self.assertRaisesRegex(RuntimeError, "configuration drift"):
+            stage._catalog_hba_target(baseline + "host all all 0.0.0.0/0 trust\n")
+        self.assertEqual(stage._catalog_hba_target("# fresh initdb policy\n", fresh_cluster=True), target)
+
     def setUp(self):
         original = stage.write_secret
         fixture_writer = patch.object(stage, "write_secret", side_effect=lambda path, value, uid=0, gid=0:
@@ -36,7 +44,7 @@ class ReleaseTest(unittest.TestCase):
     def test_success_and_rollback_preserve_state(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
-                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "", "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
                 patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "activation_checkpoint") as checkpoint, patch.object(stage, "host_evidence"), \
@@ -133,7 +141,7 @@ class ReleaseTest(unittest.TestCase):
     def test_failed_verification_recovers_previous_release(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
-                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "", "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
                 patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "migration_compatibility"), \
@@ -167,7 +175,7 @@ class ReleaseTest(unittest.TestCase):
     def test_backup_failure_keeps_current_release(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
-                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "", "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg") as prepare_pg, \
                 patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "migration_compatibility"), \
@@ -397,12 +405,20 @@ class ReleaseTest(unittest.TestCase):
                 pos_path = root / "config/pos.env"
                 ingress_path = root / "config/ingress.env"
                 secret_bytes = {name: (root / "config" / name).read_bytes()
-                                for name in ("pos-token", "supply-token", "session-key", "privacy-pepper")}
+                                for name in ("pos-token", "supply-token", "session-key", "privacy-pepper",
+                                             "catalog-runtime-password", "catalog-import-password", "catalog-approval.key")}
+                catalog_backup_key = (data / "catalog" / "backup.key").read_bytes()
                 identity = stage.service_config("identity")
                 pos = stage.service_config("pos")
                 ingress = stage.service_config("ingress")
                 self.assertEqual(pos["BSV_PRODUCT_MEDIA_ROOT"], str(data / "pos" / "product-media"))
                 self.assertEqual(pos["BSV_IMPORT_ROOT"], str(data / "pos" / "imports"))
+                self.assertRegex(pos["BSV_DB_URL"], r"^postgresql\+psycopg://bsv_catalog_runtime:[A-Za-z0-9_-]+@127\.0\.0\.1:18764/bsv_all_prod$")
+                self.assertEqual(pos["BSV_CATALOG_READ_SOURCE"], "postgres")
+                self.assertNotIn("BSV_DB_URL", identity)
+                importer_config = stage.service_config("catalog-import")
+                self.assertRegex(importer_config["BSV_CATALOG_ADMIN_DB_URL"], r"bsv_catalog_importer:[A-Za-z0-9_-]+@127\.0\.0\.1:18764/bsv_all_prod$")
+                self.assertEqual(importer_config["BSV_CATALOG_APPROVAL_KEY_FILE"], str(root / "config/catalog-approval.key"))
                 self.assertEqual(identity["BSV_ACADEMY_STORE_IDS"], "BSVT")
                 self.assertEqual(json.loads(identity["BSV_SERVICE_TOKENS_JSON"])["pos"]["stores"], ["BSVT"])
                 self.assertEqual(json.loads(pos["BSV_POS_STORE_LEGAL_JSON"]), {"BSVT": "DEMO_LEGAL"})
@@ -429,6 +445,7 @@ class ReleaseTest(unittest.TestCase):
                 self.assertEqual(ingress["BSV_GROWTH_STORE_IDS"], "BSVM,BSVS,BSVT")
                 self.assertEqual({name: (root / "config" / name).read_bytes()
                                   for name in secret_bytes}, secret_bytes)
+                self.assertEqual((data / "catalog" / "backup.key").read_bytes(), catalog_backup_key)
                 self.assertEqual(db.read_bytes(), b"published-map-and-existing-business-records")
                 self.assertEqual(layout_hashes, {
                     p.relative_to(layout_root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
@@ -671,7 +688,7 @@ class ReleaseTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", Path(tmp) / "unit"), patch.object(stage, "run"), \
-                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "", "", "")), \
                 patch.object(stage, "build", return_value=dest), patch.object(stage, "verify_release_access", side_effect=RuntimeError("access denied")), \
                 patch.object(stage, "migration_compatibility"), \
                 patch.object(stage, "switch_services") as services, patch.object(stage, "activation_checkpoint") as checkpoint:

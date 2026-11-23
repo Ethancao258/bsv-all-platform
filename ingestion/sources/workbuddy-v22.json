@@ -13,7 +13,7 @@
   "version": "WorkBuddy V2.2",
   "authority_status": "CANDIDATE_IMPORT_RAW",
   "import_target": "isolated PostgreSQL 17 only; logical database bsv_all_prod; never bsv_identity_isolated_internal or CloudBase production",
-  "processing_status": "SHA_VERIFIED_PACKAGE_47_PASS; PG17_IMPORT_NOT_EXECUTED",
+  "processing_status": "SHA_VERIFIED_PACKAGE_47_PASS; COMPLETE_MANIFEST_REVALIDATED; PG17_IMPORT_NOT_EXECUTED; HOST_NOT_RUN",
   "verified_package_counts": {
     "catalog_product": 63,
     "catalog_semifinished": 17,

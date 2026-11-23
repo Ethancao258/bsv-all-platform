@@ -230,3 +230,14 @@
 - **GitHub CI PASS** · 提交 `5dfebb869df142f011e33508e0c1aa307b1c9e69` 的 [主验证 run 45096723579](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45096723579) 九个 job 全部成功；`bsv1` job 的真实 PostgreSQL 17容器迁移、只读角色、typed C/P recipe、POS HTTP PG读取、SQLite缓存为空、匿名拒绝、菜单隔离、断连503、失败事务原子性和版本指针回退测试通过。另有 [Customer Growth run 45096723576](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45096723576) 成功。PG容器使用合成数据；真实完整WorkBuddy数据导入仍必须在批准的隔离PG执行，CI合成测试不替代实际数据导入回执。
 - **资源/业务状态** · `PG17_FULL_DATA_IMPORT=NOT_RUN`；`HOST_DEPLOYED=NO`；`BUSINESS_VERIFIED=NO`。Lighthouse当前服务、磁盘/内存、隔离PG容量、备份/恢复和浏览器HTTP均未由本轮工具核验；CloudBase G0/官方迁移历史仍UNKNOWN。隔离数据库 `bsv_all_prod`、loopback PG17、备份空间及读写角色创建均待服务器授权和预检，不得复用 `bsv_identity_isolated_internal`。
 - **回退** · 程序按受控发布器退回前一release；原SQLite业务库和媒体不随代码覆盖。PG导入以单事务提交，失败自动回滚；活动资料回退只切换 `catalog.active_content` 指针并保留历史版本。不得用本迁移删除或回滚正式CloudBase数据。
+
+## 2026-11-23｜PR #40 V3.0 数据落地与更新闭环收口
+
+- **基线核对** · `feature/bsv1-excel-catalog` 的本地/远程起始HEAD均为 `0d814f62587132c78c8ac648981a862ef2b1dd56`；PR #40 仍为OPEN Draft，目标分支 `feature/g1-three-store-identity-pos`。未改主架构、永久ID或现有生产数据。
+- **来源实证** · 外层交接ZIP、内层WorkBuddy ZIP和Excel哈希与 `ingestion/sources/workbuddy-v22.json` 一致。内层包本轮重新核验：归档与解压文件完全一致、逐文件SHA/大小与manifest匹配、字段契约381项匹配；清单行数核实为C63/P17/M419/K21/套餐槽21/NPS84/R65/Q0/T4，辅助数据dictionary399/legal449/calc597、映射16815、字段381、公式6275、source_record694。原始包与Excel未提交Git。
+- **导入门禁** · 移除导入程序中绑定V2.2内容的固定ZIP/XLSX SHA和行数；兼容版本以manifest声明、实际文件哈希、字段契约和ID外键核验。导入需root保护密钥签发的24小时审批JSON，绑定包/清单/契约/审批操作者/变更号/预期活动版本，并记录审批字段；审批失效、被篡改或活动版本发生竞态时拒绝。相同来源SHA重复请求保持幂等；资料版本回退也需要独立签名审批。
+- **数据库权限与发布配置** · 增加隔离迁移 `0002_catalog_reader_least_privilege.sql`，撤回原宽表读授权，建立基础/保密过滤视图并禁止POS读取原始审计JSON与受限采购字段。隔离发布器在现有PG17 cluster内预置独立逻辑库 `bsv_all_prod`、runtime/importer角色和分离凭据；只有POS `pos.env` 配置 `BSV_DB_URL`，身份仍使用 `BSV_DB_A_URL`。HBA扩展限127.0.0.1/32，须精确匹配受管旧策略，先保留原策略，校验失败则恢复；实际服务器未执行。
+- **备份准备** · catalog采用独立私有目录/密钥和现有AES-256-GCM备份工具；checkpoint核验会验证catalog加密备份的SHA和无写入解密完整性。真实备份创建、临时PG恢复演练及服务/磁盘/WAL检查未运行，不能据此认定恢复能力已验收。
+- **本地验证** · BSV1 `check.sh`：46 passed、4 skipped（4项PG17测试因无Docker跳过）；合同测试5 passed；Lighthouse内部阶段/控制面31 passed、1 skipped（Ubuntu 24.04系统Python3.12专测）；包清单程序重验通过。额外身份备份pytest未能在本环境加载，因为缺少SQLAlchemy依赖，本地NOT_TESTED；交由CI安装锁定依赖验证。
+- **未执行项** · 当前容器没有Docker daemon/PG17服务，PG17新迁移、最小角色访问、HTTP网页实际读PG尚待GitHub Actions job。当前Codex没有Lighthouse/TAT/SSH操作授权；主机实际版本、服务、磁盘、备份恢复、PG角色与 `127.0.0.1:18760` 浏览器数据来源均 `HOST_NOT_RUN/UNKNOWN`。真实V2.2数据未入库，`CODE_DONE`仅指代码候选；`CI_PASS`待新SHA的Actions；`DATA_IMPORTED=NO`、`HOST_DEPLOYED=NO`、`BUSINESS_VERIFIED=NO`。CloudBase、真实订单/员工/会员数据、上架与收款均未触碰。
+- **本轮回退** · 代码通过PR #40撤回，不合并/不部署。正式隔离数据库创建后，程序版本由受控发布器回退；内容版本只通过签名审批切换 `active_content`，保留两版数据。HBA升级附有原文件受控备份并拒绝未登记漂移。此回退尚无真实主机演练证据。

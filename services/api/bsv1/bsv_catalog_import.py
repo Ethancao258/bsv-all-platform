@@ -6,33 +6,126 @@ from __future__ import annotations
 
 import argparse
 import csv
+import getpass
 import hashlib
+import hmac
 import json
 import os
 import re
+import stat
+import time
 import uuid
+import zipfile
 from decimal import Decimal
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parents[3]
 MIGRATION = ROOT / "platform/lighthouse/bsv1/catalog/isolated_migrations/0001_workbuddy_v22.sql"
-EXPECTED_COUNTS = {
-    "catalog.product": ("catalog_product.jsonl", "product_id", 63),
-    "catalog.semifinished": ("catalog_semifinished.jsonl", "semifinished_id", 17),
-    "catalog.material": ("catalog_material.jsonl", "material_id", 419),
-    "catalog.bundle": ("catalog_bundle.jsonl", "bundle_id", 21),
-    "catalog.bundle_slot": ("catalog_bundle_slot.jsonl", "slot_row_id", 21),
-    "catalog.store_nps": ("catalog_store_nps.jsonl", "nps_row_id", 84),
-    "catalog.recipe_step": ("catalog_recipe_step.jsonl", "recipe_step_id", 65),
-    "catalog.price_quote": ("catalog_price_quote.jsonl", "quote_id", 0),
-    "core.store": ("core_store.jsonl", "store_id", 4),
+PACKAGE_ROWS = {
+    "catalog.product": ("catalog_product.jsonl", "product_id", "catalog_product"),
+    "catalog.semifinished": ("catalog_semifinished.jsonl", "semifinished_id", "catalog_semifinished"),
+    "catalog.material": ("catalog_material.jsonl", "material_id", "catalog_material"),
+    "catalog.bundle": ("catalog_bundle.jsonl", "bundle_id", "catalog_bundle"),
+    "catalog.bundle_slot": ("catalog_bundle_slot.jsonl", "slot_row_id", "catalog_bundle_slot"),
+    "catalog.store_nps": ("catalog_store_nps.jsonl", "nps_row_id", "catalog_store_nps"),
+    "catalog.recipe_step": ("catalog_recipe_step.jsonl", "recipe_step_id", "catalog_recipe_step"),
+    "catalog.price_quote": ("catalog_price_quote.jsonl", "quote_id", "catalog_price_quote"),
+    "core.store": ("core_store.jsonl", "store_id", "core_store"),
 }
-AUDIT_JSONL = {
-    "audit.source_dictionary": ("audit_source_dictionary.jsonl", "dict_row_id", 399),
-    "audit.source_legal_path": ("audit_source_legal_path.jsonl", "legal_row_id", 449),
-    "audit.source_calc": ("audit_source_calc.jsonl", "calc_row_id", 597),
+AUDIT_ROWS = {
+    "audit.source_dictionary": ("audit_source_dictionary.jsonl", "dict_row_id", "audit_source_dictionary"),
+    "audit.source_legal_path": ("audit_source_legal_path.jsonl", "legal_row_id", "audit_source_legal_path"),
+    "audit.source_calc": ("audit_source_calc.jsonl", "calc_row_id", "audit_source_calc"),
 }
+CANONICAL_ROW_ID = {
+    "catalog.product": re.compile(r"C\d{6}"),
+    "catalog.semifinished": re.compile(r"P\d{6}"),
+    "catalog.material": re.compile(r"M\d{6}"),
+    "catalog.bundle": re.compile(r"K\d{6}"),
+    "catalog.recipe_step": re.compile(r"R\d{6}"),
+    "catalog.price_quote": re.compile(r"Q\d{6}"),
+}
+REGISTERED_STORES = {"BSVM", "BSVS", "BSVT", "BSVF"}
+
+
+def _manifest_counts(manifest: dict) -> dict[str, int]:
+    counts = manifest.get("counts", {}).get("counts")
+    if not isinstance(counts, dict) or not counts or any(not isinstance(v, int) or v < 0 for v in counts.values()):
+        raise ValueError("manifest must provide non-negative integer table counts")
+    return counts
+
+
+def _approval_key() -> bytes:
+    path = Path(os.environ.get("BSV_CATALOG_APPROVAL_KEY_FILE", ""))
+    if not path.is_absolute() or path.is_symlink() or not path.is_file():
+        raise PermissionError("a provisioned BSV_CATALOG_APPROVAL_KEY_FILE is required")
+    info = path.stat()
+    if info.st_mode & (stat.S_IRWXG | stat.S_IRWXO) or info.st_uid != os.geteuid():
+        raise PermissionError("approval key must be owned by the executing account and mode 0600 or stricter")
+    key = path.read_bytes()
+    if len(key) < 32:
+        raise PermissionError("approval key must contain at least 32 random bytes")
+    return key
+
+
+def _approval_payload(approval: dict) -> dict:
+    return {k: approval[k] for k in ("approval_id", "action", "archive_sha256", "manifest_sha256", "source_sha256",
+                                      "contract_sha256", "expected_active_source_sha256", "approver",
+                                      "change_id", "issued_at", "expires_at")}
+
+
+def create_approval(package: Path, archive: Path, *, approver: str, change_id: str,
+                    expected_active_source_sha256: str | None, output: Path, action: str = "import") -> dict:
+    manifest, _package_sha, _rows = _verified_package(package, archive)
+    manifest_path = package.resolve() / "manifest.json"
+    if not re.fullmatch(r"[A-Za-z0-9._@-]{3,128}", approver) or not re.fullmatch(r"[A-Za-z0-9._/-]{3,128}", change_id):
+        raise ValueError("approver and change_id must be auditable identifiers")
+    authenticated_operator = os.environ.get("SUDO_USER") or getpass.getuser()
+    if approver != authenticated_operator:
+        raise PermissionError("approver must match the authenticated operating-system account")
+    if expected_active_source_sha256 and not re.fullmatch(r"[0-9a-f]{64}", expected_active_source_sha256):
+        raise ValueError("expected active source SHA must be a 64-character lowercase SHA256 or empty")
+    if action not in {"import", "activate"}:
+        raise ValueError("package approval action must be import or activate")
+    body = {"approval_id": str(uuid.uuid4()), "action": action, "archive_sha256": sha256(archive.resolve()),
+            "manifest_sha256": sha256(manifest_path), "source_sha256": manifest.get("source_sha256"),
+            "contract_sha256": sha256(ROOT / "config/data-contracts.json"),
+            "expected_active_source_sha256": expected_active_source_sha256,
+            "approver": approver, "change_id": change_id,
+            "issued_at": int(time.time()), "expires_at": int(time.time()) + 86400}
+    body["hmac_sha256"] = hmac.new(_approval_key(), json.dumps(body, sort_keys=True, separators=(",", ":")).encode(), hashlib.sha256).hexdigest()
+    fd = os.open(output, os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        stream.write(json.dumps(body, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    return body
+
+
+def _verify_approval(path: Path, package: Path, archive: Path, manifest: dict, *, action: str = "import") -> dict:
+    if path.is_symlink() or not path.is_file():
+        raise PermissionError("approval artifact must be a regular private file")
+    info = path.stat()
+    if info.st_uid != os.geteuid() or info.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+        raise PermissionError("approval artifact must be owned by the executing account and private")
+    approval = json.loads(path.read_text(encoding="utf-8"))
+    supplied = approval.get("hmac_sha256", "")
+    payload = _approval_payload(approval)
+    expected = hmac.new(_approval_key(), json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(supplied, expected):
+        raise PermissionError("package approval signature is invalid")
+    if approval.get("action") != action:
+        raise PermissionError("package approval action does not authorize this operation")
+    now = int(time.time())
+    if not approval.get("issued_at", 0) <= now <= approval.get("expires_at", 0) or approval["expires_at"] - approval["issued_at"] > 86400:
+        raise PermissionError("package approval is expired or has an invalid lifetime")
+    if (approval["archive_sha256"] != sha256(archive.resolve())
+            or approval["manifest_sha256"] != sha256(package.resolve() / "manifest.json")
+            or approval["source_sha256"] != manifest.get("source_sha256")
+            or approval["contract_sha256"] != sha256(ROOT / "config/data-contracts.json")):
+        raise PermissionError("approval does not bind this package and current data contract")
+    return approval
 
 
 def sha256(path: Path) -> str:
@@ -44,51 +137,107 @@ def sha256(path: Path) -> str:
 
 
 def _verified_package(package: Path, archive: Path) -> tuple[dict, str, dict[str, list[dict]]]:
+    if package.is_symlink() or archive.is_symlink():
+        raise ValueError("package directory and archive must not be symlinks")
     package = package.resolve()
     archive = archive.resolve()
     manifest = json.loads((package / "manifest.json").read_text(encoding="utf-8"))
-    if manifest.get("version") != "V2.2":
-        raise ValueError("only WorkBuddy V2.2 packages are accepted")
-    if sha256(archive) != "3f98fbe12eacdca481d1e7b3350a59410da7f1116c74a75a1c7b93fe63a0e5a1":
-        raise ValueError("V2.2 package archive SHA256 does not match the received artifact")
-    for relative, meta in manifest.get("files", {}).items():
+    if manifest.get("package") != "BSV_ALL_Excel标准数据包" or not re.fullmatch(r"V2\.[0-9]+", str(manifest.get("version", ""))):
+        raise ValueError("unsupported catalog package identity or major version")
+    if (manifest.get("target", {}).get("engine") != "PostgreSQL 17"
+            or manifest.get("target", {}).get("database") != "bsv_all_prod (Codex实施)"
+            or manifest.get("target", {}).get("schemas") != ["catalog", "core", "audit"]):
+        raise ValueError("package target differs from the isolated PostgreSQL 17 contract")
+    declared_counts = _manifest_counts(manifest)
+    if manifest.get("counts", {}).get("source_sha256") != manifest.get("source_sha256"):
+        raise ValueError("manifest source revision declarations disagree")
+    declared_files = manifest.get("files")
+    if not isinstance(declared_files, dict) or not declared_files:
+        raise ValueError("manifest file hash inventory is required")
+    actual_files = set()
+    for path in package.rglob("*"):
+        if path.is_symlink():
+            raise ValueError(f"symlinks are not allowed in the package: {path.relative_to(package)}")
+        if path.is_file() and path.name != "manifest.json":
+            actual_files.add(path.relative_to(package).as_posix())
+    normalized_actual_files = set(actual_files)
+    expected_original = [name for name in declared_files if name.startswith("original/") and name.endswith(".xlsx")]
+    if len(expected_original) == 1 and expected_original[0] not in actual_files:
+        candidates = [path for path in (package / "original").glob("*.xlsx") if path.is_file()]
+        meta = declared_files[expected_original[0]]
+        if len(candidates) == 1 and candidates[0].stat().st_size == meta["bytes"] and sha256(candidates[0]) == meta["sha256"]:
+            normalized_actual_files.discard(candidates[0].relative_to(package).as_posix())
+            normalized_actual_files.add(expected_original[0])
+    if normalized_actual_files != set(declared_files):
+        raise ValueError("manifest does not enumerate the exact extracted package file set")
+    for relative, meta in declared_files.items():
+        if Path(relative).is_absolute() or ".." in Path(relative).parts:
+            raise ValueError(f"invalid package path: {relative}")
         target = (package / relative).resolve()
-        if not target.is_file() and relative.startswith("original/") and relative.endswith(".xlsx"):
-            candidates = [path.resolve() for path in (package / "original").glob("*.xlsx")]
-            if len(candidates) == 1:
+        if not target.is_file() and relative in expected_original:
+            candidates = [path.resolve() for path in (package / "original").glob("*.xlsx") if path.is_file()]
+            if len(candidates) == 1 and candidates[0].stat().st_size == meta["bytes"] and sha256(candidates[0]) == meta["sha256"]:
                 target = candidates[0]
         if package not in target.parents or not target.is_file():
             raise ValueError(f"manifest file missing or escapes package: {relative}")
         if target.stat().st_size != meta["bytes"] or sha256(target) != meta["sha256"]:
             raise ValueError(f"manifest hash mismatch: {relative}")
-    if manifest.get("source_sha256") != "4ed9bc164981f267997bd146df54d27ae22fbdc9cc1c850776daed83d34c8e82":
-        raise ValueError("source workbook SHA256 does not match the approved V2.2 source")
+    with zipfile.ZipFile(archive) as zipped:
+        names = zipped.namelist()
+        if len(names) != len(set(names)) or any(Path(name).is_absolute() or ".." in Path(name).parts for name in names):
+            raise ValueError("archive contains duplicate or unsafe paths")
+        if set(names) != set(declared_files) | {"manifest.json"}:
+            raise ValueError("archive file set differs from the extracted manifest inventory")
+        for relative, meta in declared_files.items():
+            payload = zipped.read(relative)
+            if len(payload) != meta["bytes"] or hashlib.sha256(payload).hexdigest() != meta["sha256"]:
+                raise ValueError(f"archive content differs from the package manifest: {relative}")
+        zipped_manifest = json.loads(zipped.read("manifest.json"))
+        if zipped_manifest != manifest:
+            raise ValueError("archive manifest differs from the extracted manifest")
     counts: dict[str, list[dict]] = {}
-    for table, (filename, _id, expected) in EXPECTED_COUNTS.items():
+    for table, (filename, _id, count_key) in PACKAGE_ROWS.items():
+        if count_key not in declared_counts:
+            raise ValueError(f"manifest is missing required row count {count_key}")
+        expected = declared_counts[count_key]
         rows = [json.loads(line) for line in (package / "staging" / filename).read_text(encoding="utf-8").splitlines() if line]
         if len(rows) != expected:
             raise ValueError(f"{table}: expected {expected} rows, received {len(rows)}")
         for row in rows:
             if row.get("_source_sha256") != manifest["source_sha256"] or row.get("ingest_status") != "IMPORTED_RAW":
                 raise ValueError(f"{table}: source revision or raw status mismatch")
+        id_pattern = CANONICAL_ROW_ID.get(table)
+        if id_pattern:
+            ids = [row.get(_id) for row in rows]
+            if any(not isinstance(value, str) or not id_pattern.fullmatch(value) for value in ids) or len(ids) != len(set(ids)):
+                raise ValueError(f"{table}: permanent IDs are malformed or duplicated")
         counts[table] = rows
-    for table, (filename, _id, expected) in AUDIT_JSONL.items():
+    for table, (filename, _id, count_key) in AUDIT_ROWS.items():
+        if count_key not in declared_counts:
+            raise ValueError(f"manifest is missing required auxiliary row count {count_key}")
+        expected = declared_counts[count_key]
         rows = [json.loads(line) for line in (package / "auxiliary" / filename).read_text(encoding="utf-8").splitlines() if line]
         if len(rows) != expected:
             raise ValueError(f"{table}: expected {expected} rows, received {len(rows)}")
         counts[table] = rows
-    for filename, expected in (("catalog_bundle_slot.jsonl", 21), ("catalog_store_nps.jsonl", 84)):
-        if len(counts["catalog." + filename.removeprefix("catalog_").removesuffix(".jsonl")]) != expected:
+    store_ids = [row.get("store_id") for row in counts["core.store"]]
+    if (any(store_id not in REGISTERED_STORES for store_id in store_ids)
+            or len(store_ids) != len(set(store_ids))):
+        raise ValueError("package contains an unregistered or duplicate store ID")
+    for filename, count_key in (("catalog_bundle_slot.jsonl", "catalog_bundle_slot"), ("catalog_store_nps.jsonl", "catalog_store_nps")):
+        if len(counts["catalog." + filename.removeprefix("catalog_").removesuffix(".jsonl")]) != declared_counts[count_key]:
             raise ValueError(f"auxiliary catalog count mismatch: {filename}")
     fields = list(csv.DictReader((package / "field_dictionary.csv").open(encoding="utf-8-sig", newline="")))
     mappings = list(csv.DictReader((package / "source_mapping.csv").open(encoding="utf-8-sig", newline="")))
     formulas = list(csv.DictReader((package / "formula_index.csv").open(encoding="utf-8-sig", newline="")))
-    if len(fields) != 381 or len({r["semantic_key"] for r in fields}) != 381:
-        raise ValueError("field dictionary must contain 381 unique semantic keys")
+    if len(fields) != manifest.get("counts", {}).get("fields") or len({r["semantic_key"] for r in fields}) != len(fields):
+        raise ValueError("field dictionary count or semantic key uniqueness mismatch")
     contract = json.loads((ROOT / "config/data-contracts.json").read_text(encoding="utf-8"))
     registered = contract["domains"]["catalog"].get("postgres_field_dictionary", {})
+    # Compatible content revisions may change values and row totals, but the
+    # semantic-to-physical schema contract must remain exactly registered.
     if len(registered) != len(fields):
-        raise ValueError("config/data-contracts.json does not register all 381 fields")
+        raise ValueError("field dictionary shape differs from the registered semantic contract")
     for field in fields:
         semantic_key = field["semantic_key"]
         expected_field = {"table": field["target_table"], "column": field["column_name"],
@@ -97,20 +246,11 @@ def _verified_package(package: Path, archive: Path) -> tuple[dict, str, dict[str
                           "permission_class": field["permission_class"], "null_meaning": field["null_meaning"]}
         if registered.get(semantic_key) != expected_field:
             raise ValueError(f"field dictionary and unified contract differ for {semantic_key}")
-    if len(mappings) != 16815 or len(formulas) != 6275:
-        raise ValueError("source mapping or formula count mismatch")
-    if sum(str(row["is_array"]).lower() == "true" for row in formulas) != 4978:
-        raise ValueError("array formula count mismatch")
-    if sum(row["cached_type"] == "EMPTY" for row in formulas) != 2692:
-        raise ValueError("formula cache-empty count mismatch")
-    recipes = counts["catalog.recipe_step"]
-    p_links = {row["recipe_step_id"]: row["output_link_id"] for row in recipes if str(row.get("output_link_id", "")).startswith("P")}
-    if p_links != {"R000048": "P000003", "R000051": "P000004"}:
-        raise ValueError("typed recipe output links differ from the accepted V2.2 evidence")
+    if len(mappings) != manifest.get("counts", {}).get("mappings") or len(formulas) != manifest.get("counts", {}).get("formulas"):
+        raise ValueError("source mapping or formula count differs from the package manifest")
     product_ids = {row["product_id"] for row in counts["catalog.product"]}
     semifinished_ids = {row["semifinished_id"] for row in counts["catalog.semifinished"]}
-    if sum(str(row.get("output_link_id", "")).startswith("C") for row in recipes) != 63:
-        raise ValueError("expected 63 C-output recipe links")
+    recipes = counts["catalog.recipe_step"]
     for row in recipes:
         link = row.get("output_link_id")
         valid = product_ids if link and link.startswith("C") else semifinished_ids if link and link.startswith("P") else set()
@@ -124,7 +264,7 @@ def _verified_package(package: Path, archive: Path) -> tuple[dict, str, dict[str
         if table.startswith("audit."):
             continue
         mapping = [f for f in fields if f["target_table"] == table]
-        id_column = EXPECTED_COUNTS[table][1]
+        id_column = PACKAGE_ROWS[table][1]
         for row in rows:
             record = {}
             for field in mapping:
@@ -134,22 +274,27 @@ def _verified_package(package: Path, archive: Path) -> tuple[dict, str, dict[str
             raw_fields[(table, str(row[id_column]))] = record
     counts["audit.source_record"] = [
         {"entity_table": table, "record_id": record_id, "excel_row": next(
-            int(row["_excel_row"]) for row in counts[table] if str(row[EXPECTED_COUNTS[table][1]]) == record_id),
+            int(row["_excel_row"]) for row in counts[table] if str(row[PACKAGE_ROWS[table][1]]) == record_id),
          "raw_fields": raw}
         for (table, record_id), raw in raw_fields.items()
     ]
     return manifest, sha256(archive), counts
 
 
-def _safe_dsn() -> str:
+def _safe_dsn(env_name: str = "BSV_CATALOG_ADMIN_DB_URL") -> str:
     if os.environ.get("BSV_APP_ENV") != "isolated" or os.environ.get("BSV_ALLOW_ISOLATED_CATALOG_IMPORT") != "1":
         raise PermissionError("set BSV_APP_ENV=isolated and BSV_ALLOW_ISOLATED_CATALOG_IMPORT=1 for an approved isolated run")
-    dsn = os.environ.get("BSV_DB_URL", "").strip()
+    dsn = os.environ.get(env_name, "").strip()
     parsed = urlsplit(dsn.replace("postgresql+psycopg://", "postgresql://", 1))
     if parsed.scheme not in {"postgres", "postgresql"} or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
-        raise PermissionError("catalog import only permits a loopback PostgreSQL 17 endpoint")
+        raise PermissionError(f"catalog import only permits a loopback PostgreSQL 17 endpoint via {env_name}")
     if parsed.path.lstrip("/") != "bsv_all_prod":
         raise PermissionError("isolated integration database must be named bsv_all_prod")
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if set(query) - {"sslmode", "connect_timeout", "application_name"}:
+        raise PermissionError("unsupported PostgreSQL connection override")
+    if query.get("sslmode", ["disable"]) != ["disable"]:
+        raise PermissionError("isolated loopback PostgreSQL transport must use sslmode=disable")
     if not re.search(r"(?:^|&)sslmode=disable(?:&|$)", parsed.query) and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
         raise PermissionError("untrusted database transport refused")
     return dsn.replace("postgresql+psycopg://", "postgresql://", 1)
@@ -163,9 +308,14 @@ def _connect():
     return psycopg.connect(_safe_dsn(), connect_timeout=5)
 
 
+def _active_source(conn) -> str | None:
+    with conn.cursor() as cur:
+        cur.execute("SELECT source_sha256 FROM catalog.active_content WHERE singleton_id=1")
+        row = cur.fetchone()
+    return row[0].strip() if row else None
+
+
 def migrate(conn) -> str:
-    sql = MIGRATION.read_text(encoding="utf-8")
-    checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
     with conn.cursor() as cur:
         cur.execute("""SELECT EXISTS (SELECT 1 FROM information_schema.tables
                        WHERE table_schema IN ('catalog','core','audit')
@@ -174,21 +324,29 @@ def migrate(conn) -> str:
         cur.execute("CREATE SCHEMA IF NOT EXISTS bsv_isolated_migration")
         cur.execute("""CREATE TABLE IF NOT EXISTS bsv_isolated_migration.applied (
                      version TEXT PRIMARY KEY, checksum CHAR(64) NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())""")
-        cur.execute("SELECT checksum FROM bsv_isolated_migration.applied WHERE version=%s", ("0001_workbuddy_v22",))
-        existing = cur.fetchone()
         conn.commit()
-    if existing:
-        if existing[0].strip() != checksum:
-            raise RuntimeError("applied migration checksum differs; refusing to alter prior schema")
-        return "ALREADY_APPLIED"
-    if has_domain_tables:
-        raise RuntimeError("catalog/core/audit objects exist without this isolation migration ledger; refusing to overlay")
-    with conn.transaction():
+    states = []
+    for version, path in (("0001_workbuddy_v22", MIGRATION),
+                          ("0002_catalog_reader_least_privilege", MIGRATION.with_name("0002_catalog_reader_least_privilege.sql"))):
+        sql = path.read_text(encoding="utf-8")
+        checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
         with conn.cursor() as cur:
-            cur.execute(sql, prepare=False)
-            cur.execute("INSERT INTO bsv_isolated_migration.applied(version,checksum) VALUES (%s,%s)",
-                        ("0001_workbuddy_v22", checksum))
-    return "APPLIED"
+            cur.execute("SELECT checksum FROM bsv_isolated_migration.applied WHERE version=%s", (version,))
+            existing = cur.fetchone()
+        if existing:
+            if existing[0].strip() != checksum:
+                raise RuntimeError(f"applied migration {version} checksum differs; refusing to alter prior schema")
+            states.append("ALREADY_APPLIED")
+            continue
+        if version == "0001_workbuddy_v22" and has_domain_tables:
+            raise RuntimeError("catalog/core/audit objects exist without this isolation migration ledger; refusing to overlay")
+        with conn.transaction():
+            with conn.cursor() as cur:
+                cur.execute(sql, prepare=False)
+                cur.execute("INSERT INTO bsv_isolated_migration.applied(version,checksum) VALUES (%s,%s)",
+                            (version, checksum))
+        states.append("APPLIED")
+    return "+".join(states)
 
 
 def _columns(conn, table: str) -> dict[str, str]:
@@ -255,8 +413,9 @@ def _insert_rows(conn, table: str, rows: list[dict]) -> None:
             cur.execute(query, tuple(typed[name] for name in names))
 
 
-def import_package(package: Path, archive: Path) -> dict:
+def import_package(package: Path, archive: Path, approval_file: Path) -> dict:
     manifest, package_sha, rows = _verified_package(package, archive)
+    approval = _verify_approval(approval_file, package, archive, manifest)
     conn = _connect()
     try:
         with conn.cursor() as cur:
@@ -264,6 +423,18 @@ def import_package(package: Path, archive: Path) -> dict:
             server_version = cur.fetchone()[0]
         if server_version // 10000 != 17:
             raise RuntimeError(f"PostgreSQL 17 required; connected server version number={server_version}")
+        with conn.cursor() as cur:
+            cur.execute("""SELECT EXISTS (SELECT 1 FROM information_schema.tables
+                           WHERE table_schema='catalog' AND table_name='active_content')""")
+            has_active_table = cur.fetchone()[0]
+            if has_active_table:
+                cur.execute("SELECT source_sha256 FROM catalog.active_content WHERE singleton_id=1")
+                active_before_migration_row = cur.fetchone()
+                active_before_migration = active_before_migration_row[0].strip() if active_before_migration_row else None
+            else:
+                active_before_migration = None
+        if active_before_migration != approval["expected_active_source_sha256"]:
+            raise RuntimeError("active content differs from the package approval; request a new approval")
         migration_state = migrate(conn)
         sha = manifest["source_sha256"]
         with conn.cursor() as cur:
@@ -275,18 +446,29 @@ def import_package(package: Path, archive: Path) -> dict:
             with conn.cursor() as cur:
                 cur.execute("SELECT counts FROM audit.import_batch WHERE source_sha256=%s", (sha,))
                 stored = cur.fetchone()[0]
-            if query_counts(conn, sha) != expected_sql_counts():
+            if query_counts(conn, sha, expected_sql_counts(manifest)) != expected_sql_counts(manifest):
                 raise RuntimeError("repeat import count verification failed")
             return {"status": "IDEMPOTENT_NOOP", "source_sha256": sha,
                     "batch_id": str(prior[0]), "migration": migration_state, "counts": stored}
         batch_id = uuid.uuid4()
         record_counts = {table: len(value) for table, value in rows.items()}
-        record_counts["catalog.main_records"] = sum(record_counts[t] for t in EXPECTED_COUNTS if t != "catalog.bundle_slot" and t != "catalog.store_nps")
+        record_counts["catalog.main_records"] = sum(record_counts[t] for t in PACKAGE_ROWS)
         with conn.transaction():
             from psycopg.types.json import Jsonb
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO audit.import_batch(batch_id,source_sha256,package_sha256,package_version,status,counts) VALUES (%s,%s,%s,%s,'COMMITTED_RAW',%s)",
-                            (batch_id, sha, package_sha, manifest["version"], Jsonb(record_counts)))
+                cur.execute("LOCK TABLE catalog.active_content IN EXCLUSIVE MODE")
+                cur.execute("SELECT source_sha256 FROM catalog.active_content WHERE singleton_id=1")
+                active_row = cur.fetchone()
+                active_source = active_row[0].strip() if active_row else None
+                if active_source != approval["expected_active_source_sha256"]:
+                    raise RuntimeError("active content changed after package approval; request a new approval")
+                cur.execute("""INSERT INTO audit.import_batch(
+                    batch_id,source_sha256,package_sha256,package_version,status,counts,approval_id,approver,
+                    change_id,manifest_sha256,contract_sha256,expected_active_source_sha256,approval_hmac_sha256)
+                    VALUES (%s,%s,%s,%s,'COMMITTED_RAW',%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (batch_id, sha, package_sha, manifest["version"], Jsonb(record_counts), approval["approval_id"],
+                     approval["approver"], approval["change_id"], approval["manifest_sha256"],
+                     approval["contract_sha256"], approval["expected_active_source_sha256"], approval["hmac_sha256"]))
             # Parent rows precede all same-revision foreign key dependants.
             order = ["core.store", "catalog.product", "catalog.semifinished", "catalog.material", "catalog.bundle",
                      "catalog.bundle_slot", "catalog.store_nps", "catalog.recipe_step", "catalog.price_quote",
@@ -310,12 +492,18 @@ def import_package(package: Path, archive: Path) -> dict:
                                VALUES (1,%s,%s,'IMPORTED_RAW') ON CONFLICT(singleton_id) DO UPDATE
                                SET source_sha256=EXCLUDED.source_sha256, content_revision=EXCLUDED.content_revision,
                                    activated_at=now(), activation_status='IMPORTED_RAW'""", (sha, revision))
-            actual = query_counts(conn, sha)
-            expected = expected_sql_counts()
+                cur.execute("""INSERT INTO audit.content_activation_event
+                    (event_id,source_sha256,prior_source_sha256,content_revision,operation,approval_id,approver,change_id,approval_hmac_sha256)
+                    VALUES (%s,%s,%s,%s,'IMPORT_RAW',%s,%s,%s,%s)""",
+                    (uuid.uuid4(), sha, active_source, revision, approval["approval_id"], approval["approver"],
+                     approval["change_id"], approval["hmac_sha256"]))
+            actual = query_counts(conn, sha, expected_sql_counts(manifest))
+            expected = expected_sql_counts(manifest)
             if actual != expected:
                 raise RuntimeError(f"PostgreSQL count validation failed: expected={expected}, actual={actual}")
         return {"status": "COMMITTED_RAW", "source_sha256": sha, "package_sha256": package_sha,
-                "batch_id": str(batch_id), "migration": migration_state, "counts": query_counts(conn, sha)}
+                "batch_id": str(batch_id), "migration": migration_state,
+                "counts": query_counts(conn, sha, expected_sql_counts(manifest))}
     finally:
         conn.close()
 
@@ -338,15 +526,18 @@ def _insert_formula_rows(conn, rows: list[dict], source_sha: str) -> None:
             cur.execute(query, tuple(row[name] for name in names))
 
 
-def expected_sql_counts() -> dict[str, int]:
-    return {**{table: expected for table, (_file, _id, expected) in EXPECTED_COUNTS.items()},
-            **{table: expected for table, (_file, _id, expected) in AUDIT_JSONL.items()},
-            "audit.source_mapping": 16815, "audit.field_dictionary": 381,
-            "audit.excel_formula_index": 6275, "audit.source_record": 694}
+def expected_sql_counts(manifest: dict) -> dict[str, int]:
+    declared = _manifest_counts(manifest)
+    result = {table: declared[key] for table, (_file, _id, key) in PACKAGE_ROWS.items()}
+    result.update({table: declared[key] for table, (_file, _id, key) in AUDIT_ROWS.items()})
+    result.update({"audit.source_mapping": manifest["counts"]["mappings"],
+                   "audit.field_dictionary": manifest["counts"]["fields"],
+                   "audit.excel_formula_index": manifest["counts"]["formulas"],
+                   "audit.source_record": sum(declared[key] for _table, (_file, _id, key) in PACKAGE_ROWS.items())})
+    return result
 
 
-def query_counts(conn, source_sha: str) -> dict[str, int]:
-    expected = expected_sql_counts()
+def query_counts(conn, source_sha: str, expected: dict[str, int]) -> dict[str, int]:
     actual = {}
     with conn.cursor() as cur:
         for table in expected:
@@ -357,9 +548,13 @@ def query_counts(conn, source_sha: str) -> dict[str, int]:
     return actual
 
 
-def activate_source_revision(source_sha: str) -> dict:
+def activate_source_revision(source_sha: str, package: Path, archive: Path, approval_file: Path) -> dict:
     if not re.fullmatch(r"[0-9a-f]{64}", source_sha):
         raise ValueError("source SHA256 must be 64 lowercase hexadecimal characters")
+    manifest, _package_sha, _rows = _verified_package(package, archive)
+    approval = _verify_approval(approval_file, package, archive, manifest, action="activate")
+    if manifest["source_sha256"] != source_sha:
+        raise PermissionError("activation SHA differs from the approved package")
     conn = _connect()
     try:
         with conn.cursor() as cur:
@@ -369,6 +564,12 @@ def activate_source_revision(source_sha: str) -> dict:
             raise RuntimeError("PostgreSQL 17 is required")
         with conn.transaction():
             with conn.cursor() as cur:
+                cur.execute("LOCK TABLE catalog.active_content IN EXCLUSIVE MODE")
+                cur.execute("SELECT source_sha256 FROM catalog.active_content WHERE singleton_id=1")
+                active = cur.fetchone()
+                active_sha = active[0].strip() if active else None
+                if active_sha != approval["expected_active_source_sha256"]:
+                    raise RuntimeError("active content changed after rollback approval; request a new approval")
                 cur.execute("SELECT status FROM audit.import_batch WHERE source_sha256=%s", (source_sha,))
                 batch = cur.fetchone()
                 if not batch or batch[0] != "COMMITTED_RAW":
@@ -379,6 +580,11 @@ def activate_source_revision(source_sha: str) -> dict:
                                VALUES (1,%s,%s,'IMPORTED_RAW') ON CONFLICT(singleton_id) DO UPDATE
                                SET source_sha256=EXCLUDED.source_sha256,content_revision=EXCLUDED.content_revision,
                                    activated_at=now(),activation_status='IMPORTED_RAW'""", (source_sha, revision))
+                cur.execute("""INSERT INTO audit.content_activation_event
+                    (event_id,source_sha256,prior_source_sha256,content_revision,operation,approval_id,approver,change_id,approval_hmac_sha256)
+                    VALUES (%s,%s,%s,%s,'ACTIVATE_RAW',%s,%s,%s,%s)""",
+                    (uuid.uuid4(), source_sha, active_sha, revision, approval["approval_id"], approval["approver"],
+                     approval["change_id"], approval["hmac_sha256"]))
         return {"status": "ACTIVE_RAW_REVISION", "source_sha256": source_sha, "content_revision": revision}
     finally:
         conn.close()
@@ -389,15 +595,35 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--package-dir", type=Path)
     mode.add_argument("--activate-source-sha")
-    parser.add_argument("--archive", type=Path, help="exact verified WorkBuddy V2.2 ZIP")
+    parser.add_argument("--issue-approval", action="store_true", help="sign an expiring approval for one exact package")
+    parser.add_argument("--archive", type=Path, help="exact verified catalog package ZIP")
+    parser.add_argument("--activation-package-dir", type=Path, help="verified package directory for a signed activation")
+    parser.add_argument("--approval", type=Path, help="signed approval JSON required for import")
+    parser.add_argument("--approver")
+    parser.add_argument("--change-id")
+    parser.add_argument("--expected-active-source-sha")
+    parser.add_argument("--approval-output", type=Path)
+    parser.add_argument("--approval-action", choices=("import", "activate"), default="import")
     args = parser.parse_args()
     try:
-        if args.activate_source_sha:
-            result = activate_source_revision(args.activate_source_sha)
+        if args.issue_approval:
+            if not all((args.package_dir, args.archive, args.approver, args.change_id, args.approval_output)):
+                raise ValueError("approval requires --package-dir --archive --approver --change-id --approval-output")
+            result = create_approval(args.package_dir, args.archive, approver=args.approver,
+                                     change_id=args.change_id,
+                                     expected_active_source_sha256=args.expected_active_source_sha,
+                                     output=args.approval_output, action=args.approval_action)
+        elif args.activate_source_sha:
+            if not args.activation_package_dir or not args.archive or not args.approval:
+                raise ValueError("activation requires --activation-package-dir --archive and --approval")
+            result = activate_source_revision(args.activate_source_sha, args.activation_package_dir,
+                                              args.archive, args.approval)
         else:
             if not args.archive:
                 raise ValueError("--archive is required with --package-dir")
-            result = import_package(args.package_dir, args.archive)
+            if not args.approval:
+                raise ValueError("--approval is required; package import is never implicit")
+            result = import_package(args.package_dir, args.archive, args.approval)
     except Exception as exc:
         print(f"IMPORT_REFUSED: {type(exc).__name__}: {exc}")
         return 2

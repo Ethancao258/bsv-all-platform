@@ -95,10 +95,10 @@ class PostgresCatalogReadRepository:
         self._connect = connect
         self._dsn = dsn or _dsn()
 
-    def _connection(self):
+    def _connection(self, *, confidential: bool = False):
         conn = self._connect(self._dsn, connect_timeout=3, autocommit=True)
         try:
-            conn.execute("SET ROLE bsv_catalog_reader")
+            conn.execute("SET ROLE bsv_catalog_confidential_reader" if confidential else "SET ROLE bsv_catalog_reader")
             version = conn.execute("SELECT current_setting('server_version_num')::integer").fetchone()[0]
             if version // 10000 != 17:
                 raise RuntimeError("catalog source must be PostgreSQL 17")
@@ -130,8 +130,9 @@ class PostgresCatalogReadRepository:
                 "status": row[3], "version": row[4]}
 
     @staticmethod
-    def _source_fields(cur, table: str, record_id: str, source_sha: str) -> dict | None:
-        cur.execute("""SELECT raw_fields FROM audit.source_record
+    def _source_fields(cur, table: str, record_id: str, source_sha: str, *, confidential: bool = False) -> dict | None:
+        view = "source_record_confidential" if confidential else "source_record_staff"
+        cur.execute(f"""SELECT raw_fields FROM audit.{view}
                        WHERE entity_table=%s AND record_id=%s AND source_sha256=%s""",
                     (table, record_id, source_sha))
         row = cur.fetchone()
@@ -140,16 +141,15 @@ class PostgresCatalogReadRepository:
     @staticmethod
     def _permission_filter(cur, table: str, source_sha: str, fields: dict,
                            allow_confidential: bool) -> tuple[dict, list[str]]:
-        if allow_confidential:
-            return fields, []
+        permissions = ("RESTRICTED",) if allow_confidential else ("CONFIDENTIAL", "RESTRICTED")
         cur.execute("""SELECT source_header_zh FROM audit.field_dictionary
                        WHERE source_sha256=%s AND target_table=%s
-                         AND permission_class IN ('CONFIDENTIAL','RESTRICTED')""", (source_sha, table))
+                         AND permission_class = ANY(%s)""", (source_sha, table, list(permissions)))
         blocked = {row[0] for row in cur.fetchall() if row[0]}
         return {k: v for k, v in fields.items() if k not in blocked}, sorted(k for k in fields if k in blocked)
 
     def source(self) -> dict:
-        with self._connection() as conn, conn.cursor() as cur:
+        with self._connection(confidential=allow_confidential) as conn, conn.cursor() as cur:
             active = self._active(cur)
         return {"status": active["status"], "sha256": active["sha256"], "imported_at": active["imported_at"],
                 "content_revision": active["revision"], "package_version": active["version"],
@@ -168,7 +168,7 @@ class PostgresCatalogReadRepository:
             row = cur.fetchone()
             if not row:
                 return None
-            fields = self._source_fields(cur, table, product_id, active["sha256"]) or {}
+            fields = self._source_fields(cur, table, product_id, active["sha256"], confidential=allow_confidential) or {}
             fields, withheld = self._permission_filter(cur, table, active["sha256"], fields, allow_confidential)
         page = SHEET_BY_PREFIX[product_id[0]]
         attrs = semantic_attributes(page, fields)
@@ -187,7 +187,7 @@ class PostgresCatalogReadRepository:
 
     def _bundle_research(self, bundle_id: str, source_sha: str) -> list[dict]:
         with self._connection() as conn, conn.cursor() as cur:
-            cur.execute("""SELECT entity_table, record_id, excel_row, raw_fields FROM audit.source_record
+            cur.execute("""SELECT entity_table, record_id, excel_row, raw_fields FROM audit.source_record_staff
                            WHERE source_sha256=%s AND entity_table IN ('catalog.bundle_slot','catalog.store_nps')
                              AND raw_fields->>'套餐ID'=%s ORDER BY excel_row""", (source_sha, bundle_id))
             return [{"section": row[0], "source_row": row[2], "fields": row[3]} for row in cur.fetchall()]
@@ -201,7 +201,7 @@ class PostgresCatalogReadRepository:
             return {"items": [], "source": self.source()}
         prefixes = [domain] if domain != "ALL" else ["C", "P", "M", "K"]
         needle = f"%{term}%"
-        with self._connection() as conn, conn.cursor() as cur:
+        with self._connection(confidential=allow_confidential) as conn, conn.cursor() as cur:
             active = self._active(cur)
             items = []
             for prefix in prefixes:
@@ -216,7 +216,7 @@ class PostgresCatalogReadRepository:
                     sql.Identifier(*table.split(".")), sql.SQL(" OR ").join(terms), sql.Identifier(id_col))
                 cur.execute(query, (active["sha256"], *([needle] * len(search_cols)), limit))
                 for record_id, name, series in cur.fetchall():
-                    fields = self._source_fields(cur, table, record_id, active["sha256"]) or {}
+                    fields = self._source_fields(cur, table, record_id, active["sha256"], confidential=allow_confidential) or {}
                     fields, withheld = self._permission_filter(cur, table, active["sha256"], fields, False)
                     items.append({"id": record_id, "product_id": record_id, "name": name, "domain": prefix,
                                   "series": series or "", "sale_enabled": False, "fields": fields,
@@ -235,7 +235,7 @@ class PostgresCatalogReadRepository:
         if not item or item_id[0] not in {"C", "P"}:
             return None
         active = item["source"]
-        with self._connection() as conn, conn.cursor() as cur:
+        with self._connection(confidential=allow_confidential) as conn, conn.cursor() as cur:
             col = "output_product_id" if item_id.startswith("C") else "output_semifinished_id"
             cur.execute(f"""SELECT recipe_step_id,input_material_id,output_link_id
                            FROM catalog.recipe_step WHERE {col}=%s AND _source_sha256=%s
@@ -243,7 +243,7 @@ class PostgresCatalogReadRepository:
             rows = cur.fetchall()
             operations = []
             for record_id, material_id, output_id in rows:
-                fields = self._source_fields(cur, "catalog.recipe_step", record_id, active["sha256"]) or {}
+                fields = self._source_fields(cur, "catalog.recipe_step", record_id, active["sha256"], confidential=allow_confidential) or {}
                 if not allow_confidential:
                     fields, _ = self._permission_filter(cur, "catalog.recipe_step", active["sha256"], fields, False)
                 material = None

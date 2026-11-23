@@ -38,7 +38,7 @@ class CatalogPostgres17Tests(unittest.TestCase):
             if version // 10000 != 17:
                 raise AssertionError(f"PostgreSQL 17 required, received {version}")
             cls.migration = importer.migrate(conn)
-            if cls.migration not in {"APPLIED", "ALREADY_APPLIED"}:
+            if cls.migration not in {"APPLIED+APPLIED", "ALREADY_APPLIED+ALREADY_APPLIED", "ALREADY_APPLIED+APPLIED"}:
                 raise AssertionError(cls.migration)
             with conn.transaction():
                 with conn.cursor() as cur:
@@ -106,11 +106,22 @@ class CatalogPostgres17Tests(unittest.TestCase):
     def test_migration_replay_and_pg_read_role(self):
         conn = importer._connect()
         try:
-            self.assertEqual(importer.migrate(conn), "ALREADY_APPLIED")
+            self.assertEqual(importer.migrate(conn), "ALREADY_APPLIED+ALREADY_APPLIED")
             conn.execute("SET ROLE bsv_catalog_reader")
             with self.assertRaises(psycopg.errors.InsufficientPrivilege):
                 conn.execute("UPDATE catalog.product SET name_zh='must fail' WHERE product_id='C000001'")
             conn.rollback()
+            with self.assertRaises(psycopg.errors.InsufficientPrivilege):
+                conn.execute("SELECT raw_fields FROM audit.source_record LIMIT 1")
+            conn.rollback()
+            staff_fields = conn.execute("SELECT raw_fields FROM audit.source_record_staff WHERE record_id='C000001'").fetchone()[0]
+            self.assertNotIn("配方文字", staff_fields)
+            self.assertNotIn("采购价", staff_fields)
+            conn.execute("SET ROLE bsv_catalog_confidential_reader")
+            fields = conn.execute("SELECT raw_fields FROM audit.source_record_confidential WHERE record_id='C000001'").fetchone()[0]
+            self.assertIn("配方文字", fields)
+            restricted = conn.execute("SELECT raw_fields FROM audit.source_record_confidential WHERE record_id='M000001'").fetchone()[0]
+            self.assertNotIn("采购价", restricted)
         finally:
             conn.close()
 
@@ -131,7 +142,8 @@ class CatalogPostgres17Tests(unittest.TestCase):
         high = repo.get_product("M000001", allow_confidential=True)
         self.assertNotIn("采购价", low["fields"])
         self.assertIn("采购价", low["withheld_fields"])
-        self.assertEqual(high["fields"]["采购价"], "30元原文")
+        self.assertNotIn("采购价", high["fields"])
+        self.assertIn("采购价", high["withheld_fields"])
 
     def test_real_pos_http_reads_postgres_not_excel_or_sqlite_and_fails_closed(self):
         connection = http.client.HTTPConnection("127.0.0.1", self.http_port, timeout=5)
