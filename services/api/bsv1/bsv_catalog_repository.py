@@ -216,7 +216,7 @@ class PostgresCatalogReadRepository:
                     sql.Identifier(*table.split(".")), sql.SQL(" OR ").join(terms), sql.Identifier(id_col))
                 cur.execute(query, (active["sha256"], *([needle] * len(search_cols)), limit))
                 for record_id, name, series in cur.fetchall():
-                    fields = self._source_fields(cur, table, record_id, active["sha256"], confidential=allow_confidential) or {}
+                    fields = self._source_fields(cur, table, record_id, active["sha256"], confidential=False) or {}
                     fields, withheld = self._permission_filter(cur, table, active["sha256"], fields, False)
                     items.append({"id": record_id, "product_id": record_id, "name": name, "domain": prefix,
                                   "series": series or "", "sale_enabled": False, "fields": fields,

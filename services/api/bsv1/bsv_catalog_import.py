@@ -567,6 +567,9 @@ def activate_source_revision(source_sha: str, package: Path, archive: Path, appr
             server_version = cur.fetchone()[0]
         if server_version // 10000 != 17:
             raise RuntimeError("PostgreSQL 17 is required")
+        # End the implicit read transaction so the activation block is a real
+        # commit, not a savepoint discarded when this short-lived connection closes.
+        conn.commit()
         with conn.transaction():
             with conn.cursor() as cur:
                 cur.execute("LOCK TABLE catalog.active_content IN EXCLUSIVE MODE")
