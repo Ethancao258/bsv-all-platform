@@ -13,6 +13,7 @@ def test_encrypted_snapshot_restore_isolated(monkeypatch):
     key.unlink(missing_ok=True)
     make_key(key)
     path=create_archive(settings)
+    assert path.name.startswith("identity-A-")
     assert path.is_file() and path.read_bytes().startswith(b'BSVIDBACKUP2')
     assert b'TRA0001' not in path.read_bytes()
     decrypt_to_isolated(path,settings,dry_run=True)
@@ -26,6 +27,31 @@ def test_encrypted_snapshot_restore_isolated(monkeypatch):
         assert conn.execute("select count(*) from bsv_identity_people").fetchone()[0]==2
     finally:conn.close()
     dst.unlink()
+
+
+def test_catalog_backup_source_has_separate_filename_and_authenticated_header(monkeypatch, capsys):
+    settings=load_settings()
+    key=Path(settings.backup_key_file)
+    key.unlink(missing_ok=True)
+    make_key(key)
+    monkeypatch.setenv("BSV_BACKUP_SOURCE_LABEL", "catalog")
+    path=create_archive(settings)
+    assert path.name.startswith("catalog-")
+    decrypt_to_isolated(path,settings,dry_run=True)
+    assert '"source": "catalog"' in capsys.readouterr().out
+    path.unlink()
+
+
+def test_backup_source_label_rejects_unknown_alias(monkeypatch):
+    import pytest
+    from services.api.identity.backup import create_archive
+    settings=load_settings()
+    key=Path(settings.backup_key_file)
+    key.unlink(missing_ok=True)
+    make_key(key)
+    monkeypatch.setenv("BSV_BACKUP_SOURCE_LABEL", "identity-A-but-call-it-catalog")
+    with pytest.raises(RuntimeError,match="Invalid backup source label"):
+        create_archive(settings)
 
 
 def test_bad_backup_key_permissions_blocked():

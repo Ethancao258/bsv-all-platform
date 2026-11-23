@@ -1,6 +1,7 @@
 """Run against the dedicated PostgreSQL 17 instance migrated by the test launcher."""
 from concurrent.futures import ThreadPoolExecutor
 import os
+from pathlib import Path
 
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError, DBAPIError
@@ -120,6 +121,8 @@ with router.non_sensitive_reference_connection() as conn:
         raise AssertionError("B accepted a mutation")
 
 from services.api.identity.backup import create_archive, decrypt_to_isolated, make_key
+from dataclasses import replace
+from unittest.mock import patch
 from services.api.identity.config import load_settings
 from sqlalchemy import create_engine
 
@@ -133,4 +136,45 @@ with restored.connect() as conn:
     assert conn.exec_driver_sql("SELECT count(*) FROM bsv_identity_people").scalar_one() == 121
     assert conn.exec_driver_sql("SELECT next_index FROM bsv_identity_code_allocator").scalar_one() == 121
 restored.dispose()
-print("PASS: PostgreSQL 17, 15 domain tables, 120 concurrent persons, retry/rollback, immutable facts, scoped stages/revocation, read-only B and encrypted isolated restore")
+
+# Cross-version catalog backup contract: generate an AES-GCM archive from the
+# dedicated bsv_catalog_importer owner, restore it to a different disposable
+# PostgreSQL 17 database using the real pg_dump/pg_restore binaries, then
+# verify the restored row. No identity or POS database is used for this data.
+catalog_url = os.environ["BSV_CATALOG_PG_URL"]
+catalog_restore_url = os.environ["BSV_CATALOG_PG_RESTORE_URL"]
+catalog_source = create_engine(catalog_url)
+with catalog_source.begin() as conn:
+    conn.exec_driver_sql("CREATE SCHEMA catalog")
+    conn.exec_driver_sql("CREATE TABLE catalog.product (product_id text PRIMARY KEY, name_zh text NOT NULL, ingest_status text NOT NULL)")
+    conn.exec_driver_sql("INSERT INTO catalog.product VALUES ('C000001','合成目录测试','IMPORTED_RAW')")
+catalog_source.dispose()
+
+catalog_archive_dir = Path(settings.backup_dir) / "catalog-test"
+catalog_settings = replace(settings, db_a_url=catalog_url, backup_dir=str(catalog_archive_dir))
+with patch.dict(os.environ, {"BSV_BACKUP_SOURCE_LABEL": "catalog"}):
+    catalog_archive = create_archive(catalog_settings)
+    assert catalog_archive.name.startswith("catalog-") and catalog_archive.suffix == ".bsvenc"
+    decrypt_to_isolated(catalog_archive, catalog_settings, dry_run=True)
+    decrypt_to_isolated(catalog_archive, catalog_settings, catalog_restore_url, dry_run=False)
+
+catalog_restored = create_engine(catalog_restore_url)
+with catalog_restored.connect() as conn:
+    row = conn.exec_driver_sql("SELECT product_id,name_zh,ingest_status FROM catalog.product").one()
+    assert tuple(row) == ("C000001", "合成目录测试", "IMPORTED_RAW"), tuple(row)
+catalog_restored.dispose()
+
+tampered = catalog_archive.with_name("tampered-catalog.bsvenc")
+blob = bytearray(catalog_archive.read_bytes())
+blob[-17] ^= 1
+tampered.write_bytes(blob)
+try:
+    decrypt_to_isolated(tampered, catalog_settings, dry_run=True)
+except Exception:
+    pass
+else:
+    raise AssertionError("Tampered catalog archive passed authentication")
+finally:
+    tampered.unlink(missing_ok=True)
+
+print("PASS: PostgreSQL 17, 15 identity domain tables, 120 concurrent persons, retry/rollback, immutable facts, scoped stages/revocation, read-only B, legacy identity archive, and distinct-database AES-GCM catalog restore/tamper rejection")

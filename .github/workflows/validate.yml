@@ -37,6 +37,10 @@ jobs:
         run: bash tests/bsv1/check.sh
       - name: Install locked PostgreSQL client
         run: python -m pip install psycopg==3.2.13 psycopg-binary==3.2.13
+      - name: Install POS catalog browser test runner
+        run: |
+          python -m pip install playwright==1.62.0
+          python -m playwright install --with-deps chromium
       - name: PostgreSQL 17 catalog migration, protected reads and rollback
         run: bash tests/bsv1/catalog_pg17.sh
       - name: Isolated Lighthouse release simulation

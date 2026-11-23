@@ -82,9 +82,13 @@ def create_archive(settings=None):
         os.chmod(target,0o700)
     timestamp=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     nonce=os.urandom(12)
-    source_label=os.getenv("BSV_BACKUP_SOURCE_LABEL", "A")
-    if not source_label or len(source_label)>20 or not source_label.replace("_", "").replace("-", "").isalnum():
+    # Keep the pre-catalog identity archive filename and authenticated source
+    # metadata stable across f6d8 and newer releases. Catalog is a distinct
+    # source, never an alias for the legacy identity-A archive.
+    source_label=os.getenv("BSV_BACKUP_SOURCE_LABEL", "identity-A")
+    if source_label not in {"identity-A", "catalog"}:
         raise RuntimeError("Invalid backup source label")
+    archive_source = "A" if source_label == "identity-A" else "catalog"
     output=target / f"{source_label}-{timestamp}-{secrets.token_hex(3)}.bsvenc"
     tmp=output.with_suffix(".tmp")
     proc=None
@@ -104,7 +108,7 @@ def create_archive(settings=None):
                                   stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,env=pg_env)
             source_file=proc.stdout
         encryptor=Cipher(algorithms.AES(key),modes.GCM(nonce)).encryptor()
-        head=json.dumps({"created_at":timestamp,"source":source_label,"type":kind,"format":2},sort_keys=True).encode()
+        head=json.dumps({"created_at":timestamp,"source":archive_source,"type":kind,"format":2},sort_keys=True).encode()
         encryptor.authenticate_additional_data(head)
         fd=os.open(tmp,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
         with os.fdopen(fd,"wb") as dest,source_file:
@@ -123,7 +127,7 @@ def create_archive(settings=None):
             while block:=snapshot.read(CHUNK):
                 digester.update(block)
         checksum=digester.hexdigest()
-        print(json.dumps({"archive":str(output),"sha256":checksum,"source":source_label,"encrypted":True},ensure_ascii=False))
+        print(json.dumps({"archive":str(output),"sha256":checksum,"source":archive_source,"encrypted":True},ensure_ascii=False))
         return output
     except Exception:
         tmp.unlink(missing_ok=True)

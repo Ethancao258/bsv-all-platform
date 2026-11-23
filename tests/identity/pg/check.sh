@@ -13,13 +13,18 @@ export BSV_APP_ENV=isolated BSV_AUTH_PROVIDER=isolated BSV_DB_SSLMODE=disable BS
 export BSV_DB_A_URL="postgresql+psycopg://postgres@127.0.0.1:$port/bsv_identity_isolated"
 export BSV_DB_B_READONLY_URL="postgresql+psycopg://bsv_reference@127.0.0.1:$port/bsv_identity_isolated"
 export BSV_IDENTITY_PG_RESTORE_URL="postgresql+psycopg://postgres@127.0.0.1:$port/bsv_identity_isolated_restore"
+export BSV_CATALOG_PG_URL="postgresql+psycopg://bsv_catalog_importer@127.0.0.1:$port/bsv_all_prod"
+export BSV_CATALOG_PG_RESTORE_URL="postgresql+psycopg://bsv_catalog_importer@127.0.0.1:$port/bsv_identity_isolated_catalog_restore"
 export BSV_LOCAL_ARCHIVE_DIR="$tmp/archives" BSV_BACKUP_KEY_FILE="$tmp/key"
 unset BSV_DATA_SOURCES_FILE
 for attempt in {1..40}; do
     if docker exec "$name" pg_isready -h 127.0.0.1 -U postgres -d bsv_identity_isolated >/dev/null; then break; fi
     sleep 0.5
 done
-docker exec "$name" createdb -U postgres bsv_identity_isolated_restore
+docker exec "$name" createdb -U postgres -T template0 bsv_identity_isolated_restore
+docker exec "$name" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE ROLE bsv_catalog_importer LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;'
+docker exec "$name" createdb -U postgres -T template0 -O bsv_catalog_importer bsv_all_prod
+docker exec "$name" createdb -U postgres -T template0 -O bsv_catalog_importer bsv_identity_isolated_catalog_restore
 docker exec "$name" psql -U postgres -d bsv_identity_isolated -v ON_ERROR_STOP=1 \
     -c 'CREATE ROLE bsv_reference LOGIN; ALTER ROLE bsv_reference SET default_transaction_read_only = on;'
 python -m alembic -c platform/lighthouse/identity/alembic.ini upgrade bsv_identity_0001

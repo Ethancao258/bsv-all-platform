@@ -194,6 +194,40 @@ class CatalogPostgres17Tests(unittest.TestCase):
         finally:
             connection.close()
 
+    def test_real_employee_browser_reads_pg_catalog_without_order_creation(self):
+        """The employee catalog screen renders PG17 API data through the real POS page."""
+        import shutil
+        from playwright.sync_api import expect, sync_playwright
+
+        with sync_playwright() as playwright:
+            chromium = shutil.which("chromium")
+            executable = chromium if chromium else None
+            browser = playwright.chromium.launch(headless=True, executable_path=executable)
+            try:
+                page = browser.new_page(viewport={"width": 1280, "height": 900}, locale="zh-CN")
+                page.goto(f"http://127.0.0.1:{self.http_port}/")
+                page.locator("#loginDistrict").select_option("北京市密云区")
+                page.locator("#loginStore").select_option("BSVM")
+                page.locator("#staffCode").fill("PG-CATALOG-STAFF")
+                page.locator("#staffPin").fill("975310")
+                page.locator("#loginForm button[type=submit]").click()
+                page.locator("#modalConfirm").click()
+                expect(page.locator("#storeIdentity")).to_contain_text("BSVM")
+                page.get_by_role("button", name="商品资料库").click()
+                page.get_by_role("textbox", name="搜索商品").fill("C000001")
+                product = page.locator('[data-cid="C000001"]')
+                expect(product).to_be_visible()
+                expect(page.locator("#catalogSummary")).to_contain_text("PostgreSQL 17")
+                product.click()
+                expect(page.locator("#catalogDetailModal")).to_contain_text("边车")
+                expect(page.locator("#catalogDetailModal")).to_contain_text("白兰地45ml")
+                expect(page.locator("#catalogDetailModal")).to_contain_text("摇匀12秒")
+                expect(page.locator("#catalogDetailModal")).to_contain_text("后酒架一层")
+                with app.db_read() as db:
+                    self.assertEqual(db.execute("SELECT COUNT(*) FROM orders").fetchone()[0], 0)
+            finally:
+                browser.close()
+
     def test_failed_import_transaction_is_atomic_and_revision_activation_rolls_back(self):
         conn = importer._connect()
         try:

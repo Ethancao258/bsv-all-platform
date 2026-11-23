@@ -1296,6 +1296,39 @@ def file_sha256(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def verified_release_directory(directory):
+    """Return an immutable, verified release path and commit SHA.
+
+    Catalog backups must use the exact candidate release that was built and
+    verified for the pending upgrade. Do not infer a generator from the active
+    symlink: during pre-deploy backup that symlink intentionally points to the
+    old release, and after rollback it points back to the old release again.
+    """
+    directory = Path(directory)
+    if directory.is_symlink() or directory.parent != ROOT / "releases" \
+            or not re.fullmatch(r"[a-f0-9]{40}", directory.name):
+        raise RuntimeError("Catalog backup generator is not a managed release directory")
+    if not directory.is_dir():
+        raise RuntimeError("Catalog backup generator release is unavailable")
+    marker = directory / ".built"
+    private_file(marker, 0)
+    try:
+        attestation = json.loads(marker.read_text(encoding="utf-8"))
+        manifest = verified_source_manifest(directory.name)
+        inventory = attestation.get("inventory_sha256")
+        if (set(attestation) != {"manifest", "inventory_sha256"}
+                or attestation.get("manifest") != manifest
+                or not isinstance(inventory, str)
+                or not re.fullmatch(r"[a-f0-9]{64}", inventory)):
+            raise RuntimeError("Catalog backup generator build attestation is invalid")
+        verify_source_tree(directory / "src", manifest)
+        if release_inventory_sha256(directory) != inventory:
+            raise RuntimeError("Catalog backup generator inventory does not match its attestation")
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError("Catalog backup generator release could not be verified") from error
+    return directory, directory.name, manifest
+
+
 def service_config(name):
     config = ROOT / "config" / f"{name}.env"
     private_file(config, 0)
@@ -1306,7 +1339,7 @@ def service_config(name):
     return parsed
 
 
-def postgres_snapshot(current):
+def postgres_snapshot(current, catalog_generator_release=None):
     if not active("postgres"):
         raise RuntimeError("Start the managed private PostgreSQL service before backup")
     identity = service_config("identity")
@@ -1353,13 +1386,21 @@ def postgres_snapshot(current):
         return {"archive": str(archive), "sha256": report["sha256"], "key_file": str(archive_key),
                 "integrity": "AES_GCM_VERIFIED", "restore_rehearsal": "DRY_RUN_NO_WRITE",
                 "catalog": {"status": "NOT_CREATED_NO_CATALOG_DATABASE_TO_BACK_UP"}}
+    catalog_release = Path(catalog_generator_release) if catalog_generator_release else ROOT / "releases" / current
+    catalog_release, catalog_generator_sha, catalog_manifest = verified_release_directory(catalog_release)
+    catalog_url = catalog_config.get("BSV_CATALOG_ADMIN_DB_URL", "")
+    if not re.fullmatch(
+            rf"postgresql\+psycopg://{CATALOG_IMPORT_USER}:[A-Za-z0-9_-]+@127\.0\.0\.1:{PORTS['postgres']}/{CATALOG_DB}",
+            catalog_url) or catalog_config.get("BSV_APP_ENV") != "isolated":
+        raise RuntimeError("Catalog backup requires the isolated loopback bsv_all_prod database")
     catalog_settings = {**identity,
-        "BSV_DB_A_URL": catalog_config.get("BSV_CATALOG_ADMIN_DB_URL", ""),
+        "BSV_DB_A_URL": catalog_url,
         "BSV_LOCAL_ARCHIVE_DIR": str(catalog_archives),
         "BSV_BACKUP_KEY_FILE": str(catalog_key),
         "BSV_BACKUP_SOURCE_LABEL": "catalog",
     }
-    created_catalog = identity_tool(dest, catalog_settings, *module, "create", stdout=subprocess.PIPE, timeout=120)
+    created_catalog = identity_tool(catalog_release, catalog_settings, *module, "create",
+                                    stdout=subprocess.PIPE, timeout=120)
     catalog_report = json.loads(created_catalog.stdout)
     catalog_archive = Path(catalog_report["archive"])
     if (catalog_archive.parent != catalog_archives
@@ -1369,18 +1410,22 @@ def postgres_snapshot(current):
     if catalog_report.get("encrypted") is not True or catalog_report.get("source") != "catalog" \
             or catalog_report.get("sha256") != file_sha256(catalog_archive):
         raise RuntimeError("Catalog backup checksum or encryption metadata mismatch")
-    checked_catalog = identity_tool(dest, catalog_settings, *module, "restore", "--archive", catalog_archive,
+    checked_catalog = identity_tool(catalog_release, catalog_settings, *module, "restore", "--archive", catalog_archive,
                                    stdout=subprocess.PIPE, timeout=120)
     catalog_integrity = json.loads(checked_catalog.stdout)
     if (catalog_integrity.get("integrity") != "AES_GCM_VERIFIED"
             or catalog_integrity.get("restore") != "DRY_RUN_NO_WRITE"
             or catalog_integrity.get("meta", {}).get("source") != "catalog"
-            or catalog_integrity.get("meta", {}).get("type") != "postgresql"):
+            or catalog_integrity.get("meta", {}).get("type") != "postgresql"
+            or catalog_integrity.get("meta", {}).get("format") != 2):
         raise RuntimeError("Catalog checkpoint integrity check did not confirm encrypted PostgreSQL ciphertext")
     sync_directory(catalog_archives)
     return {"archive": str(archive), "sha256": report["sha256"], "key_file": str(archive_key),
             "integrity": "AES_GCM_VERIFIED", "restore_rehearsal": "DRY_RUN_NO_WRITE",
             "catalog": {"archive": str(catalog_archive), "sha256": catalog_report["sha256"],
+                        "source": "catalog", "database": CATALOG_DB,
+                        "generator_sha": catalog_generator_sha,
+                        "generator_tree": catalog_manifest["tree"],
                         "key_file": str(catalog_key), "integrity": "AES_GCM_VERIFIED",
                         "restore_rehearsal": "DRY_RUN_NO_WRITE"}}
 
@@ -1477,7 +1522,7 @@ def academy_media_snapshot(directory):
     return result
 
 
-def backup(current=None, purpose="manual"):
+def backup(current=None, purpose="manual", catalog_generator_release=None):
     if DATA.is_symlink() or DATA.stat().st_uid != 0 or DATA.stat().st_mode & 0o022:
         raise RuntimeError("Unsafe private data directory")
     current = current or sha_at(ROOT / "current")
@@ -1489,7 +1534,7 @@ def backup(current=None, purpose="manual"):
     stamp = datetime.now(timezone.utc)
     dest = recovery / f"{stamp:%Y%m%dT%H%M%SZ}-{secrets.token_hex(5)}"
     dest.mkdir(mode=0o700)
-    postgres = postgres_snapshot(current)
+    postgres = postgres_snapshot(current, catalog_generator_release)
     pos = sqlite_snapshot(current, dest / "pos.sqlite3")
     growth = growth_candidate_snapshot(current, dest / "growth-candidate.sqlite3")
     media = academy_media_snapshot(dest / "academy-media")
@@ -1560,18 +1605,35 @@ def recovery_check(receipt):
         private_file(catalog_key, owner)
         if catalog_backup.get("sha256") != file_sha256(catalog_archive):
             raise RuntimeError("Catalog checkpoint checksum mismatch")
+        if catalog_backup.get("source") != "catalog" or catalog_backup.get("database") != CATALOG_DB:
+            raise RuntimeError("Catalog checkpoint lacks its authenticated source/database labels")
+        generator_sha = catalog_backup.get("generator_sha")
+        if not isinstance(generator_sha, str) or not re.fullmatch(r"[a-f0-9]{40}", generator_sha):
+            raise RuntimeError("Catalog checkpoint lacks its verified generator release SHA")
+        generator_release, verified_sha, generator_manifest = verified_release_directory(
+            ROOT / "releases" / generator_sha)
+        if (verified_sha != generator_sha
+                or catalog_backup.get("generator_tree") != generator_manifest.get("tree")):
+            raise RuntimeError("Catalog checkpoint generator commit/tree evidence mismatch")
         catalog_config = service_config("catalog-import")
+        catalog_url = catalog_config.get("BSV_CATALOG_ADMIN_DB_URL", "")
+        if not re.fullmatch(
+                rf"postgresql\+psycopg://{CATALOG_IMPORT_USER}:[A-Za-z0-9_-]+@127\.0\.0\.1:{PORTS['postgres']}/{CATALOG_DB}",
+                catalog_url) or catalog_config.get("BSV_APP_ENV") != "isolated":
+            raise RuntimeError("Catalog recovery requires the isolated loopback bsv_all_prod database")
         catalog_settings = {**identity,
-            "BSV_DB_A_URL": catalog_config.get("BSV_CATALOG_ADMIN_DB_URL", ""),
+            "BSV_DB_A_URL": catalog_url,
             "BSV_LOCAL_ARCHIVE_DIR": str(catalog_archives),
             "BSV_BACKUP_KEY_FILE": str(catalog_key),
             "BSV_BACKUP_SOURCE_LABEL": "catalog",
         }
-        checked = identity_tool(ROOT / "releases" / current, catalog_settings, "-m", "services.api.identity.backup",
+        checked = identity_tool(generator_release, catalog_settings, "-m", "services.api.identity.backup",
                                 "restore", "--archive", catalog_archive, stdout=subprocess.PIPE, timeout=120)
         result = json.loads(checked.stdout)
         if (result.get("integrity") != "AES_GCM_VERIFIED" or result.get("restore") != "DRY_RUN_NO_WRITE"
-                or result.get("meta", {}).get("source") != "catalog"):
+                or result.get("meta", {}).get("source") != "catalog"
+                or result.get("meta", {}).get("type") != "postgresql"
+                or result.get("meta", {}).get("format") != 2):
             raise RuntimeError("Catalog archive failed authenticated no-write recovery verification")
         catalog_integrity_status = "AES_GCM_VERIFIED"
     pos = receipt.parent / "pos.sqlite3"
@@ -1688,7 +1750,7 @@ def recover_pending():
     marker.unlink()
 
 
-def activation_checkpoint(current, purpose):
+def activation_checkpoint(current, purpose, catalog_generator_release=None):
     switch_services(False, keep_postgres=True)
     if not active("postgres"):
         run("systemctl", "start", unit("postgres"))
@@ -1696,7 +1758,7 @@ def activation_checkpoint(current, purpose):
         probe = subprocess.run((PG / "pg_isready", "-h", "127.0.0.1", "-p", str(PORTS["postgres"]),
                                 "-t", "1", "-q"))
         if probe.returncode == 0:
-            backup(current, purpose)
+            backup(current, purpose, catalog_generator_release)
             return
         time.sleep(1)
     raise RuntimeError("Private PostgreSQL is not accepting connections for backup")
@@ -1730,7 +1792,10 @@ def deploy(sha, *, approve_synthetic_three_store=False):
     write_secret(marker, previous or "")
     try:
         if previous:
-            activation_checkpoint(previous, "pre_deploy")
+            # The identity snapshot is generated by the active old release for
+            # its backwards-compatible identity contract. Catalog is generated
+            # by this already-built and attested candidate release.
+            activation_checkpoint(previous, "pre_deploy", dest)
         switch_services(False)
         link("current", sha)
         prepare_pg(dbpw, catalog_runtime_pw, catalog_import_pw)
@@ -1761,7 +1826,9 @@ def rollback():
     marker = ROOT / "activation.pending"
     write_secret(marker, current)
     try:
-        activation_checkpoint(current, "pre_rollback")
+        # Before switching back, use the currently verified new release for
+        # both archive generation and the source-labelled catalog verifier.
+        activation_checkpoint(current, "pre_rollback", ROOT / "releases" / current)
         switch_services(False)
         _restore_default_store_scope_if_enabled()
         if previous:
