@@ -255,4 +255,6 @@
 - **故障来源** · 按PR #40 issue comment `7093073996`（业主提供的TAT回执）记录：受控预检和旧版检查点成功；角色校验中止后，发布器回切旧 `f6d8ce9` 并通过健康核验；新版及WorkBuddy导入未完成。当前Codex没有连接主机，本项为 `HOST_REPORTED`，不是独立主机复验。
 - **代码修复** · `stage.py` 的成员角色查询筛选 `member.rolname`，结果表示“该角色继承哪些被授予角色”。现在 `bsv_catalog_reader` 的预期继承集合为空；runtime/importer/confidential-reader 三个角色仍按既有最小权限图校验，不新增/反向补做GRANT。`as_user()` 默认从可访问的 `/` 启动子进程，显式服务工作目录继续保留。
 - **续跑安全** · 不删除上次失败的 release/work目录、身份或POS检查点、HBA标记、PG角色或 `bsv_all_prod`。现有发布器只在角色/owner/属性与受管HBA校验一致时继续；未知状态拒绝。旧 8765/8767 与身份库不作手工变更。
-- **验证状态** · 新增角色方向图与SQL筛选、runuser私有父目录、默认及显式cwd定向测试；新SHA/CI/重生成的私有TAT包待完成。`PG17_REAL_V22_IMPORTED=NO`、`HOST_DEPLOYED=NO`、`BROWSER_VERIFIED=NO`，直至新的TAT回执验证前维持此状态。
+- **定向与集成验证** · 新增角色方向图与SQL筛选、runuser私有父目录、默认及显式cwd测试全部通过。内部阶段除本地磁盘不足导致的完整归档解包用例未能运行外，其余29项通过、1项按环境条件跳过；GitHub 托管 runner 的完整 `lighthouse-internal-stage` job 通过。`git diff --check`、Python编译与 Bash语法检查通过。
+- **代码与CI** · 故障修复提交 `18fa7e1ebf831032666ecffa36e65feb28bd5fa3`；该SHA的主验证 [run 45124215553](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45124215553) 九个作业通过，独立 [run 45124215624](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45124215624) 通过。发布包待绑定最终文档SHA重新生成。
+- **真实状态** · 业主TAT报告旧版已恢复；本次Codex无TAT/SSH写入通道。`PG17_REAL_V22_IMPORTED=NO`、`HOST_DEPLOYED=NO`、`BROWSER_VERIFIED=NO`。之前失败留下的role/database/HBA及build目录由受管发布器精确核对续跑；本轮不手动改权限、不删除或覆盖历史文件。
