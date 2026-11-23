@@ -146,7 +146,10 @@ class PostgresCatalogReadRepository:
                        WHERE source_sha256=%s AND target_table=%s
                          AND permission_class = ANY(%s)""", (source_sha, table, list(permissions)))
         blocked = {row[0] for row in cur.fetchall() if row[0]}
-        return {k: v for k, v in fields.items() if k not in blocked}, sorted(k for k in fields if k in blocked)
+        # The filtered source-record view intentionally removes protected values.
+        # Keep the dictionary's field names as withholding metadata so clients can
+        # explain the omission without reading the restricted source payload.
+        return {k: v for k, v in fields.items() if k not in blocked}, sorted(blocked)
 
     def source(self) -> dict:
         with self._connection() as conn, conn.cursor() as cur:
