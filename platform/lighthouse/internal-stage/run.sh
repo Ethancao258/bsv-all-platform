@@ -16,7 +16,9 @@ case "$1" in
     exec "$release/identity/bin/python" -m uvicorn services.api.identity.api:app --host 127.0.0.1 --port 18761 --no-proxy-headers --no-access-log ;;
   pos)
     export BSV_POS_DEVICE_REQUIRED=1
-    exec /usr/bin/python3 services/api/bsv1/app.py ;;
+    # The locked identity environment includes psycopg for the opt-in isolated
+    # PostgreSQL catalog reader; SQLite order/seat storage remains unchanged.
+    exec "$release/identity/bin/python" services/api/bsv1/app.py ;;
   supply)
     exec "$release/supply/bin/python" -m uvicorn services.api.supply.main:app --host 127.0.0.1 --port 18763 --no-proxy-headers --no-access-log ;;
   ingress)

@@ -351,16 +351,24 @@ function renderCatalogSummary(){
  const imported=sync?.imported_at?new Date(sync.imported_at).toLocaleString('zh-CN'):'暂无更新时间';
  $('catalogSummary').innerHTML=`<span>资料来源 <b>${esc(version)}</b></span><span>最近导入 <b>${esc(imported)}</b></span><span>资料可查不代表允许销售</span>`;
 }
+function renderCatalogSource(source){
+ if(!source)return;
+ const version=source.sha256?String(source.sha256).slice(0,12):'未知';
+ const imported=source.imported_at?new Date(source.imported_at).toLocaleString('zh-CN'):'暂无更新时间';
+ const label=source.source==='postgresql'?'PostgreSQL 17':'SQLite兼容资料';
+ $('catalogSummary').innerHTML=`<span>资料读取自 <b>${esc(label)} · ${esc(version)}</b></span><span>最近导入 <b>${esc(imported)}</b></span><span>导入原始资料不代表允许销售</span>`;
+}
 let catalogSearchRequest=0;
 async function renderCatalogList(){
  if(!data)return;
  const term=($('catalogSearch').value||'').trim(),kind=$('catalogDomain').value,request=++catalogSearchRequest;
  const list=$('catalogList');
  if(!term){list.innerHTML='<div class="catalog-empty">输入名称、固定ID或分类开始查询</div>';return;}
- list.innerHTML='<div class="catalog-empty">正在查询Excel资料…</div>';
+ list.innerHTML='<div class="catalog-empty">正在查询集团酒水资料…</div>';
  try{
   const result=await getJson('/api/v1/catalog/products?q='+encodeURIComponent(term)+'&domain='+encodeURIComponent(kind));
   if(request!==catalogSearchRequest)return;
+  renderCatalogSource(result.source);
   list.innerHTML=result.items.length?result.items.map(p=>`<button type="button" class="catalog-item" data-cid="${esc(p.id)}">
    <span class="catalog-item-main"><b>${esc(p.name)}</b><small>${esc(p.id)} · ${esc(p.series||p.domain)}</small></span>
    <span class="catalog-item-status ${p.sale_enabled?'ready':'pending'}">${p.sale_enabled?'已获准销售':'资料可查 · 未获销售授权'}</span></button>`).join(''):'<div class="catalog-empty">没有符合条件的资料</div>';
@@ -375,7 +383,7 @@ async function showCatalogItem(id){
  try{
   const r=await getJson('/api/v1/catalog/products/'+encodeURIComponent(id));const f=r.fields||{};
   let tutorial=null;
-  if(id.startsWith('C')){try{tutorial=await getJson('/api/v1/catalog/products/'+encodeURIComponent(id)+'/recipe');}catch(e){tutorial={warning:e.message};}}
+  if(id.startsWith('C')||id.startsWith('P')){try{tutorial=await getJson('/api/v1/catalog/products/'+encodeURIComponent(id)+'/recipe');}catch(e){tutorial={warning:e.message};}}
   const source=r.source||{},stamp=source.imported_at||'未导入';
   const sections=[['身份与分类',['商品ID','商品名称','销售系列','英文名称','套餐名称','套餐包含内容','物料名称','类别','规格']],
    ['配方和制作',['配方文字','单品配方','完整制作步骤','寻酒指引','杯具','制作时长（秒）','操作方式','制作要求','产品故事']],
@@ -388,7 +396,7 @@ async function showCatalogItem(id){
   const photoHtml=Object.entries(photos).filter(([kind,p])=>p.available&&['materials','final'].includes(kind)).map(([kind,p])=>p.available?`<figure><img loading="lazy" alt="${esc(p.filename||kind)}" src="/api/production/photo?product_id=${encodeURIComponent(id)}&kind=${encodeURIComponent(kind)}"><figcaption>${esc(p.filename)}</figcaption></figure>`:'').join('');
   const recipeHtml=tutorial?`<section class="catalog-detail-section"><h3>配方耗用工序（按Excel出品ID关联）</h3>${(tutorial.recipe_operations||[]).map(x=>`<article><b>${esc(x.record_id)} · ${esc(x.material_link_status)}</b>${catalogFields(x.fields)}${x.material?'<h4>固定ID物料：'+esc(x.material.id)+' · '+esc(x.material.name)+'</h4>'+catalogFields(x.material.fields):''}</article>`).join('')||'<p>暂无通过出品固定ID关联的工序记录。</p>'}</section>
    <section class="catalog-detail-section"><h3>可用产品图片</h3>${photoHtml||'<p>Excel关联的图片素材当前不可用。</p>'}</section>`: `<section class="catalog-detail-section"><h3>制作指引</h3><p>${esc(tutorial?.warning||'制作资料暂不可用。')}</p></section>`;
-  const meta=`<p class="small-muted">Excel版本 SHA256：${esc(source.sha256||'未知')} · 最近导入：${esc(stamp)}</p>`;
+  const meta=`<p class="small-muted">资料源版本 SHA256：${esc(source.sha256||'未知')} · 最近导入：${esc(stamp)}</p>`;
   const sale=r.sale_enabled?'已核准可按当前POS规则销售':'资料可查，但当前未获销售授权';
   $('catalogDetailBody').innerHTML=`<p class="eyebrow">BSV ALL · ${esc(id)} · 只读资料</p><h2>${esc(r.name)}</h2><div class="catalog-detail-state">${esc(sale)}</div>${details||catalogFields(f)}
    <details class="catalog-all-fields"><summary>查看Excel全部原始字段（${Object.keys(f).length}项）</summary>${catalogFields(f)}</details>

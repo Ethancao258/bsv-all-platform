@@ -19,7 +19,8 @@ from bsv_database_config import get_database_path
 from bsv_catalog_config import get_excel_path,SHOW_LOCAL_TRAINING_ITEMS
 from bsv_v9_import import sync_v9, catalog_for_store as v9_catalog_for_store,price_is_current as v9_price_is_current
 from bsv_catalog_contract import semantic_attributes, registry_version
-from bsv_catalog_repository import SQLiteCatalogReadRepository
+from bsv_catalog_repository import (SQLiteCatalogReadRepository, PostgresCatalogReadRepository,
+                                    postgres_catalog_enabled)
 import bsv_collab as collab
 from bsv_ledger import checkout_report, checkout_csv_bytes
 import bsv_layouts
@@ -334,9 +335,12 @@ def init_db():
     with tx() as db:
         bsv_one.seed_revisions(db)
     # V9只是源文件；生产订单/价格快照和事务仍存储在SQLite。任一源文件损坏则阻止本地启动.
-    from bsv_v9_import import sync_v9
-    report=sync_v9(DB_PATH,get_excel_path(ROOT))
-    print('BSV ALL V9同步：', {k:v for k,v in report.items() if k in ('C','P','M','K','R','Q','T','eligible_quotes','unchanged')})
+    if postgres_catalog_enabled():
+        print('BSV ALL catalog read source: PostgreSQL 17 (isolated opt-in); SQLite V9 import is paused.')
+    else:
+        from bsv_v9_import import sync_v9
+        report=sync_v9(DB_PATH,get_excel_path(ROOT))
+        print('BSV ALL V9同步：', {k:v for k,v in report.items() if k in ('C','P','M','K','R','Q','T','eligible_quotes','unchanged')})
     with tx() as db:
         # AJ统一售价为唯一有效价格源，不再读取旧版门店临时价格。
         # Legacy pending records are represented without modifying source history.
@@ -1874,9 +1878,21 @@ class Handler(BaseHTTPRequestHandler):
                         WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
                     if not r:self.send_json({'error':'任务不属于本店'},404);return
                     product_id=r['product_id']
-                info=collab.recipe(db,staff['session_store_id'],product_id)
-                photo=info.get('photos',{}).get(kind,{})
-                filepath=collab._media_file(product_id,photo.get('filename'))
+                if postgres_catalog_enabled():
+                    try:
+                        product=PostgresCatalogReadRepository().get_product(product_id,allow_confidential=True)
+                    except Exception as error:
+                        if not isinstance(error,(ValueError,RuntimeError,OSError)) and not error.__class__.__module__.startswith('psycopg'):
+                            raise
+                        self.send_json({'error':'PostgreSQL资料源暂不可用。POS订单和座位数据未受影响。',
+                                        'code':'CATALOG_SOURCE_UNAVAILABLE'},503);return
+                    if not product:self.send_json({'error':'资料不存在'},404);return
+                    field={'materials':'配方图文件名｜首次确认','final':'成品图文件名'}[kind]
+                    filepath=collab._media_file(product_id,product.get('source_fields',{}).get(field))
+                else:
+                    info=collab.recipe(db,staff['session_store_id'],product_id)
+                    photo=info.get('photos',{}).get(kind,{})
+                    filepath=collab._media_file(product_id,photo.get('filename'))
             if not filepath:self.send_json({'error':'尚未上传此商品的图片文件'},404);return
             from mimetypes import guess_type
             payload=filepath.read_bytes()
@@ -1895,18 +1911,54 @@ class Handler(BaseHTTPRequestHandler):
                 q["id"]=[versioned_id]
             with db_read() as db:
                 if path=='/api/state':data=state(db,staff)
+                elif versioned_catalog and postgres_catalog_enabled():
+                    try:
+                        repository = PostgresCatalogReadRepository()
+                        hq_reader = bsv_one.is_hq(db, staff)
+                        if versioned_catalog == 'search':
+                            term = q.get('q',[''])[0].strip()
+                            domain = q.get('domain',['ALL'])[0]
+                            if len(term) > 100 or domain not in {'ALL','C','P','M','K','READY'}:
+                                self.send_json({'error':'无效查询条件'},400);return
+                            data = repository.search(term, domain, 100)
+                        elif versioned_catalog == 'item':
+                            data = repository.get_product(versioned_id, allow_confidential=(versioned_id[0] in {'C','P'} or hq_reader))
+                            if not data:
+                                self.send_json({'error':'资料不存在'},404);return
+                            if versioned_id[0] == 'M' and not hq_reader:
+                                data['withheld_fields'] = sorted(set(data.get('withheld_fields',[])) | {
+                                    key for key in data.get('source_fields',{})
+                                    if any(word in key for word in ('采购价','成本','供应商','进货价','单价','金额'))})
+                        else:
+                            data = repository.recipe(versioned_id, allow_confidential=True)
+                            if not data:
+                                self.send_json({'error':'制作资料不存在'},404);return
+                    except Exception as error:
+                        if not isinstance(error, (ValueError, RuntimeError, OSError)) and not error.__class__.__module__.startswith('psycopg'):
+                            raise
+                        self.send_json({'error':'PostgreSQL资料源暂不可用。POS订单和座位数据未受影响。',
+                                        'code':'CATALOG_SOURCE_UNAVAILABLE'},503);return
                 elif path=='/api/production/recipe':
                     lid=q.get('line_id',[''])[0]
                     product_id=q.get('id',[''])[0]
-                    if product_id and not lid:
-                        if not re.fullmatch(r'C\d{6}',product_id):
-                            self.send_json({'error':'无效商品固定ID'},400);return
-                    else:
+                    if product_id and not lid and not re.fullmatch(r'C\d{6}',product_id):
+                        self.send_json({'error':'无效商品固定ID'},400);return
+                    if not (product_id and not lid):
                         task=db.execute('''SELECT t.*,l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
                             WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
                         if not task:self.send_json({'error':'制作任务不属于本店'},404);return
                         product_id=task['product_id']
-                    data=collab.recipe(db,staff['session_store_id'],product_id)
+                    if postgres_catalog_enabled():
+                        try:
+                            data=PostgresCatalogReadRepository().recipe(product_id,allow_confidential=True)
+                        except Exception as error:
+                            if not isinstance(error,(ValueError,RuntimeError,OSError)) and not error.__class__.__module__.startswith('psycopg'):
+                                raise
+                            self.send_json({'error':'PostgreSQL资料源暂不可用。POS订单和座位数据未受影响.',
+                                            'code':'CATALOG_SOURCE_UNAVAILABLE'},503);return
+                        if not data:self.send_json({'error':'制作资料不存在'},404);return
+                    else:
+                        data=collab.recipe(db,staff['session_store_id'],product_id)
                 elif path=='/api/catalog/search':
                     term=q.get('q',[''])[0].strip().casefold()
                     domain=q.get('domain',['ALL'])[0]

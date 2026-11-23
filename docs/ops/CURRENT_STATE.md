@@ -218,3 +218,15 @@
 - **本地验证 PASS** · `bash tests/bsv1/check.sh`：39项POS测试 + 4项数据契约测试通过；`python3 tests/internal-stage/test_deploy.py`：26项部署预检测试通过（1项按既有条件跳过）；`verify_architecture.py`、`verify_change_routing.py`、JSON/语法检查通过。Customer Growth 单元测试因此执行环境未安装 SQLAlchemy/pytest，标记 `LOCAL_NOT_RUN_DEPENDENCY_MISSING`；PR CI 将运行有锁定依赖的对应作业。
 - **未执行** · PostgreSQL正式建表/迁移/导数、真实CloudBase连接与对象下载、Lighthouse配置修改/部署、媒体上传均未执行，主机 `HOST_NOT_RUN`。后续须先通过 WorkBuddy 字段字典、再做真实环境 G0 核验及备份/恢复证明；CloudBase私有对象ID/服务端授权及每天05:00同步仍未实现。
 - **GitHub CI PASS** · commit `8b78c51b1a5a13939992aa436f90e252586b38c6` 的 [主验证 run 45084992980](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45084992980) 九项全部通过；[Customer Growth run 45084992992](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45084992992) 通过，弥补本地缺少依赖的未运行项。当前分支在该提交后仅有本状态记录变更，PR #40 保持 Draft，不自动合并或部署。
+
+
+## 2026-11-23｜WorkBuddy V2.2 PostgreSQL 17 隔离接入（PR #40）
+
+- **基线已核对** · PR #40 分支 `feature/bsv1-excel-catalog` 从 `6bfa47fde3da4469b6b923c0e134445c06944fbf` 开始，工作树原先干净；Draft PR 和基底均保持不变。本轮未操作 CloudBase、Lighthouse、正式数据库或生产服务。
+- **来源验证** · 外层交接 ZIP SHA-256 `d0b40f376880791a4feab9d8dff165c6b1a401db823781cb10da7da46cb95d3d`；内层 WorkBuddy ZIP `3f98fbe12eacdca481d1e7b3350a59410da7f1116c74a75a1c7b93fe63a0e5a1`；源 Excel `4ed9bc164981f267997bd146dfd54d27ae22fbdc9cc1c850776daed83d34c8e82`。WorkBuddy 包验收工具实际输出 `47 PASS / 0 FAIL`。字典381唯一字段与统一注册表逐项比较；来源映射16,815、公式6,275（数组公式4,978、空缓存2,692）；原始输入记录589、辅助来源记录、21套餐槽位、84门店研究及C/P typed recipe links均经包内数据验证。R页链接为63条C及 `R000048→P000003`、`R000051→P000004`。这是来源包静态证据，不是数据库入库回执。
+- **代码候选** · 扩展唯一 `config/data-contracts.json` 的381字段映射，命名空间为 `catalog/core/audit`；完成 WorkBuddy 隔离编号迁移、事务导入器、同SHA幂等、完整来源记录/字段/公式/映射导入、raw 状态保护、失败事务回滚与版本指针回退。正式 `cloudbase/migrations/` 未改动，WorkBuddy 原始数据未入Git。
+- **读取边界** · POS既有 `/api/v1/catalog/products` 与配方路径增加显式隔离 PostgreSQL 17 只读适配，查询经稳定语义键映射；在设置 `BSV_APP_ENV=isolated`、`BSV_CATALOG_READ_SOURCE=postgres` 和loopback `BSV_DB_URL` 时读取活动PG资料，PG故障返回503而不回退Excel/SQLite。POS订单、座位和付款快照仍只由原SQLite写入。PG原始资料全部标记 `IMPORTED_RAW`、`sale_enabled=false`；菜单公开预览不读该私有PG目录；采购/成本字段按字典隐藏。媒体仍从持久目录读取，不从release目录提供。
+- **本地验证 PASS** · 合同测试5/5、导入安全测试2/2、POS回归45/45（PG容器专属4项在本机因无PG服务而跳过）；`verify_architecture.py`、`verify_change_routing.py`、Lighthouse隔离部署模拟26项（1项原有条件跳过）、Python/JS/Bash语法和 `git diff --check` 通过。包验收工具47/47。执行环境无运行中Docker daemon、PostgreSQL服务/客户端且空间不足，因此本机没有真实执行PG DDL或导入。
+- **CI证据待产生** · 本轮新增GitHub Actions PostgreSQL 17容器步骤，覆盖迁移重放/只读角色、typed C/P recipe读取、POS HTTP从PG返回而SQLite目录为空、匿名拒绝、公开菜单隔离、断连503、失败事务原子性及活动版本回退；使用合成数据。真实完整WorkBuddy数据导入必须在批准的隔离PG执行，CI合成测试不能替代该导入回执。
+- **资源/业务状态** · `PG17_FULL_DATA_IMPORT=NOT_RUN`；`HOST_DEPLOYED=NO`；`BUSINESS_VERIFIED=NO`。Lighthouse当前服务、磁盘/内存、隔离PG容量、备份/恢复和浏览器HTTP均未由本轮工具核验；CloudBase G0/官方迁移历史仍UNKNOWN。隔离数据库 `bsv_all_prod`、loopback PG17、备份空间及读写角色创建均待服务器授权和预检，不得复用 `bsv_identity_isolated_internal`。
+- **回退** · 程序按受控发布器退回前一release；原SQLite业务库和媒体不随代码覆盖。PG导入以单事务提交，失败自动回滚；活动资料回退只切换 `catalog.active_content` 指针并保留历史版本。不得用本迁移删除或回滚正式CloudBase数据。

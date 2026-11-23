@@ -18,7 +18,10 @@ class DataContractTests(unittest.TestCase):
         registry = data_contracts.load_registry()
         self.assertEqual(registry["database"]["primary_url_env"], "BSV_DB_URL")
         self.assertEqual(registry["database"]["database_name"], "bsv_all_prod")
-        self.assertEqual(registry["database"]["schema_status"], "BLOCKED_WORKBUDDY_FIELD_DICTIONARY_REVIEW")
+        self.assertEqual(registry["database"]["schema_status"], "ISOLATED_PG17_CANDIDATE_ONLY_CLOUDBASE_HISTORY_UNVERIFIED")
+        self.assertEqual(registry["domains"]["catalog"]["postgres_namespaces"], ["catalog", "core", "audit"])
+        self.assertEqual(registry["domains"]["catalog"]["candidate_schema_status"],
+                         "ISOLATED_ONLY_NOT_OFFICIAL_CLOUDBASE_DDL")
         self.assertTrue(registry["registry_refs"]["ownership_is_authoritative"])
         identity_sources = json.loads((ROOT / "config/modules/identity-data-sources.json").read_text())
         self.assertEqual(identity_sources["routes"]["A"]["primary_url_env"], "BSV_DB_URL")
@@ -57,6 +60,17 @@ class DataContractTests(unittest.TestCase):
         self.assertEqual(mapped["recipe_text"], "朗姆酒 30ml")
         self.assertEqual(mapped["recipe_steps"], "摇匀")
         self.assertNotIn("excel_column", json.dumps(mapped))
+
+    def test_workbuddy_dictionary_is_registered_without_replacing_semantic_api_keys(self):
+        registry = data_contracts.load_registry()
+        fields = registry["domains"]["catalog"]["postgres_field_dictionary"]
+        self.assertEqual(len(fields), 381)
+        self.assertEqual(fields["catalog.product.product_id"]["column"], "product_id")
+        self.assertEqual(fields["catalog.product.recipe_text"]["permission_class"], "CONFIDENTIAL")
+        self.assertEqual(fields["catalog.material.purchase_price_raw"]["permission_class"], "CONFIDENTIAL")
+        from bsv_catalog_contract import postgres_field
+        self.assertEqual(postgres_field("catalog.product.name_zh")["column"], "name_zh")
+        self.assertEqual(registry["domains"]["catalog"]["stable_fields"]["name"]["source_header"], "商品名称")
 
     def test_identity_a_uses_central_dsn_when_set_and_keeps_legacy_alias(self):
         central = "postgresql+psycopg://service:secret@localhost/bsv_all_prod"

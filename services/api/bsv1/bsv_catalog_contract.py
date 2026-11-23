@@ -31,3 +31,11 @@ def semantic_attributes(sheet: str, source_fields: dict) -> dict:
 
 def registry_version() -> str:
     return _registry()["contract_version"]
+
+
+def postgres_field(semantic_key: str) -> dict:
+    """Resolve a trusted semantic field through the single registered PG map."""
+    field = _registry().get("domains", {}).get("catalog", {}).get("postgres_field_dictionary", {}).get(semantic_key)
+    if not isinstance(field, dict) or not field.get("table") or not field.get("column"):
+        raise KeyError(f"PostgreSQL catalog semantic key is not registered: {semantic_key}")
+    return field
