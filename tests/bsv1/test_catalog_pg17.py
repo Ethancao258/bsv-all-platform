@@ -38,7 +38,8 @@ class CatalogPostgres17Tests(unittest.TestCase):
             if version // 10000 != 17:
                 raise AssertionError(f"PostgreSQL 17 required, received {version}")
             cls.migration = importer.migrate(conn)
-            if cls.migration not in {"APPLIED+APPLIED", "ALREADY_APPLIED+ALREADY_APPLIED", "ALREADY_APPLIED+APPLIED"}:
+            if cls.migration not in {"APPLIED+APPLIED+APPLIED", "ALREADY_APPLIED+ALREADY_APPLIED+ALREADY_APPLIED",
+                                     "ALREADY_APPLIED+ALREADY_APPLIED+APPLIED"}:
                 raise AssertionError(cls.migration)
             with conn.transaction():
                 with conn.cursor() as cur:
@@ -106,7 +107,7 @@ class CatalogPostgres17Tests(unittest.TestCase):
     def test_migration_replay_and_pg_read_role(self):
         conn = importer._connect()
         try:
-            self.assertEqual(importer.migrate(conn), "ALREADY_APPLIED+ALREADY_APPLIED")
+            self.assertEqual(importer.migrate(conn), "ALREADY_APPLIED+ALREADY_APPLIED+ALREADY_APPLIED")
             # Exercise the same non-superuser identity used by the service, rather
             # than testing grants while still authenticated as the database owner.
             conn.autocommit = True
