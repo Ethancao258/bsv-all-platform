@@ -1,5 +1,6 @@
 name: customer-growth-isolated-tests
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "apps/guest-web/member/**"
