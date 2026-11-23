@@ -354,7 +354,8 @@ class ReleaseTest(unittest.TestCase):
             identity_dir = data / "identity" / "archives"
             catalog_dir = data / "catalog" / "archives"
             identity_dir.mkdir(parents=True, mode=0o700)
-            catalog_dir.mkdir(parents=True, mode=0o700)
+            (data / "catalog").mkdir(mode=0o700)
+            catalog_dir.mkdir(mode=0o700)
             identity_key = data / "identity" / "archive.key"
             catalog_key = data / "catalog" / "backup.key"
             identity_backup.make_key(identity_key)

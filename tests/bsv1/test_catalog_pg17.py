@@ -212,7 +212,7 @@ class CatalogPostgres17Tests(unittest.TestCase):
                 page.locator("#staffPin").fill("975310")
                 page.locator("#loginForm button[type=submit]").click()
                 page.locator("#modalConfirm").click()
-                expect(page.locator("#storeIdentity")).to_contain_text("BSVM")
+                expect(page.locator("#staffIdentity")).to_contain_text("BSVM")
                 page.get_by_role("button", name="商品资料库").click()
                 page.get_by_role("textbox", name="搜索商品").fill("C000001")
                 product = page.locator('[data-cid="C000001"]')
