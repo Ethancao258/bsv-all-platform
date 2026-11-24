@@ -85,7 +85,10 @@ def build(sha: str, workbuddy: Path, proof_file: Path, output: Path) -> str:
 
     with tempfile.TemporaryDirectory(prefix="pr40-candidate-") as temp:
         bundle = Path(temp) / "repo.bundle"
-        subprocess.run(["git", "bundle", "create", str(bundle), sha], cwd=ROOT, check=True)
+        # The exact, clean HEAD was checked above. A raw object ID is not an
+        # advertised bundle ref on every Git version, so export the verified
+        # HEAD ref to keep a complete, cloneable bundle.
+        subprocess.run(["git", "bundle", "create", str(bundle), "HEAD"], cwd=ROOT, check=True)
         files: dict[str, bytes] = {
             "repo.bundle": bundle.read_bytes(),
             "ci-proof.json": proof_bytes,

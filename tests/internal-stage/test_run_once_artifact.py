@@ -87,6 +87,8 @@ class RunOnceArtifactTests(unittest.TestCase):
         self.assertIn("candidateStatus", script)
         self.assertIn("UNAPPROVED_TEST_CANDIDATE", script)
         compile(BUILDER.read_text(encoding="utf-8"), str(BUILDER), "exec")
+        self.assertIn('"git", "bundle", "create", str(bundle), "HEAD"',
+                      BUILDER.read_text(encoding="utf-8"))
         self.assertIn("--audit-existing --approvals-dir", script)
         self.assertIn("CATALOG_CONTENT_ROLLBACK=NOT_PERFORMED", script)
         self.assertIn("Post-deploy failure/interruption", script)
