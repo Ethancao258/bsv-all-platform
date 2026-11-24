@@ -1,6 +1,7 @@
 """Exercise release switching and failure handling without systemd or host mutations."""
 import importlib.util
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -13,8 +14,14 @@ from subprocess import CompletedProcess
 from types import SimpleNamespace
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from types import SimpleNamespace
 from unittest.mock import call, patch
 import venv
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from services.api.identity import backup as identity_backup
 
 path = Path(__file__).resolve().parents[2] / "platform/lighthouse/internal-stage/stage.py"
 spec = importlib.util.spec_from_file_location("internal_stage", path)
@@ -26,6 +33,117 @@ NEW = "2" * 40
 
 
 class ReleaseTest(unittest.TestCase):
+    def test_catalog_readonly_preflight_checks_existing_policy_before_classifying_empty(self):
+        with tempfile.TemporaryDirectory(prefix="bsv-catalog-readonly-preflight-") as tmp:
+            data = Path(tmp)
+            cluster = data / "postgres" / "pg"
+            cluster.mkdir(parents=True)
+            expected_hba = stage._catalog_hba_policies()[1]
+            hba = cluster / "pg_hba.conf"
+            hba.write_text(expected_hba, encoding="utf-8")
+            hba.chmod(0o600)
+            marker = data / "postgres" / ".catalog-hba-initialized"
+            marker.write_text(hashlib.sha256(expected_hba.encode()).hexdigest())
+            marker.chmod(0o600)
+            baseline_marker = data / "postgres" / ".hba-initialized"
+            baseline_marker.write_text("managed")
+            baseline_marker.chmod(0o600)
+            backup = data / "postgres" / "pg_hba.pre-catalog.bsv-backup"
+            backup.write_text(stage._catalog_hba_policies()[0])
+            backup.chmod(0o600)
+            responses = {
+                "SHOW server_version_num": "170012",
+                "SHOW max_identifier_length": "63",
+                "FROM pg_database WHERE datname='bsv_all_prod'": "bsv_catalog_importer",
+                "pg_hba_file_rules WHERE error IS NOT NULL": "0",
+                "FROM pg_roles WHERE rolname='bsv_catalog_runtime'": "t|f|f|f|f|f|f",
+                "FROM pg_roles WHERE rolname='bsv_catalog_importer'": "t|f|f|f|f|f|f",
+                "FROM pg_roles WHERE rolname='bsv_catalog_reader'": "f|f|f|f|f|t|f",
+                "FROM pg_roles WHERE rolname='bsv_catalog_confidential_reader'": "f|f|f|f|f|t|f",
+                "WHERE member.rolname='bsv_catalog_runtime'": "bsv_catalog_confidential_reader,bsv_catalog_reader",
+                "WHERE member.rolname='bsv_catalog_importer'": "",
+                "WHERE member.rolname='bsv_catalog_reader'": "",
+                "WHERE member.rolname='bsv_catalog_confidential_reader'": "bsv_catalog_reader",
+                "granted_role.rolname||'>'||member.rolname": ",".join(stage.EXPECTED_CATALOG_ROLE_GRAPH),
+                "has_database_privilege": "t",
+                "a.grantee=0": "f",
+                "FROM pg_namespace ": "public",
+                "AND t.typrelid=0 AND t.typelem=0)": "0",
+            }
+
+            def query(_database, sql):
+                for fragment, value in responses.items():
+                    if fragment in sql:
+                        return value
+                raise AssertionError(f"unexpected preflight query: {sql}")
+
+            with patch.object(stage, "ROOT", Path(tmp) / "repo"), \
+                    patch.object(stage, "DATA", data), \
+                    patch.object(stage, "PG", Path("/usr/lib/postgresql/17/bin")), \
+                    patch.object(stage, "active", return_value=True), \
+                    patch.object(stage, "output", return_value=NEW), \
+                    patch.object(stage, "_catalog_peer_psql", side_effect=query), \
+                    patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())), \
+                    patch.object(stage, "user", return_value="bsvint-postgres"):
+                result = stage.catalog_database_preflight(NEW)
+                responses["a.grantee=0"] = "t"
+                with self.assertRaisesRegex(RuntimeError, "connectable by PUBLIC"):
+                    stage.catalog_database_preflight(NEW)
+                responses["a.grantee=0"] = "f"
+                responses["granted_role.rolname||'>'||member.rolname"] = (
+                    "bsv_catalog_reader>bsv_catalog_runtime,unexpected_role>bsv_catalog_runtime")
+                with self.assertRaisesRegex(RuntimeError, "unregistered membership"):
+                    stage.catalog_database_preflight(NEW)
+            self.assertEqual(result["data_state"], "EMPTY")
+            self.assertEqual(result["hba"], "MANAGED_EXACT")
+
+    def test_catalog_readonly_preflight_stops_on_unknown_database_owner(self):
+        with patch.object(stage, "output", return_value=NEW), \
+                patch.object(stage, "active", return_value=True), \
+                patch.object(stage, "_catalog_peer_psql", side_effect=("170012", "63", "unknown_owner")):
+            with self.assertRaisesRegex(RuntimeError, "owner is unexpected"):
+                stage.catalog_database_preflight(NEW)
+
+    def test_catalog_restore_database_name_respects_supplied_server_limit(self):
+        for limit in (63, 48):
+            name = stage.catalog_restore_database_name(
+                NEW, limit, timestamp="20261124123456", nonce="0123456789abcdef")
+            self.assertLessEqual(len(name.encode("ascii")), limit)
+            self.assertRegex(name, r"^bsvr_2{8}_20261124123456_0123456789abcdef$")
+        with self.assertRaisesRegex(RuntimeError, "max_identifier_length"):
+            stage.catalog_restore_database_name(
+                NEW, 12, timestamp="20261124123456", nonce="0123456789abcdef")
+        with self.assertRaisesRegex(ValueError, "full lowercase Git SHA"):
+            stage.catalog_restore_database_name("ABC", 63)
+
+    def test_catalog_hba_upgrade_is_additive_and_refuses_drift(self):
+        baseline, target = stage._catalog_hba_policies()
+        self.assertEqual(stage._catalog_hba_target(baseline), target)
+        self.assertEqual(stage._catalog_hba_target(target), target)
+        with self.assertRaisesRegex(RuntimeError, "configuration drift"):
+            stage._catalog_hba_target(baseline + "host all all 0.0.0.0/0 trust\n")
+        self.assertEqual(stage._catalog_hba_target("# fresh initdb policy\n", fresh_cluster=True), target)
+
+    def test_catalog_role_membership_direction_matches_postgres_grant_graph(self):
+        # Each tuple is (granted role, member). This mirrors pg_auth_members:
+        # roleid is the granted role, member is the account inheriting it.
+        grants = {
+            ("bsv_catalog_reader", "bsv_catalog_confidential_reader"),
+            ("bsv_catalog_reader", "bsv_catalog_runtime"),
+            ("bsv_catalog_confidential_reader", "bsv_catalog_runtime"),
+        }
+        for member, expected in stage.EXPECTED_CATALOG_MEMBERSHIPS.items():
+            actual = ",".join(sorted(granted for granted, recipient in grants if recipient == member))
+            self.assertEqual(actual, expected, member)
+            query = stage._catalog_role_membership_query(member)
+            self.assertIn("string_agg(granted_role.rolname", query)
+            self.assertIn(f"WHERE member.rolname='{member}'", query)
+        reader_members = sorted(member for granted, member in grants if granted == "bsv_catalog_reader")
+        self.assertEqual(reader_members, ["bsv_catalog_confidential_reader", "bsv_catalog_runtime"])
+        self.assertEqual(stage.EXPECTED_CATALOG_MEMBERSHIPS["bsv_catalog_reader"], "")
+        with self.assertRaisesRegex(ValueError, "Unknown managed catalog role"):
+            stage._catalog_role_membership_query("arbitrary_role")
+
     def setUp(self):
         original = stage.write_secret
         fixture_writer = patch.object(stage, "write_secret", side_effect=lambda path, value, uid=0, gid=0:
@@ -36,8 +154,9 @@ class ReleaseTest(unittest.TestCase):
     def test_success_and_rollback_preserve_state(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
-                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
-                patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "", "", "")), \
+                patch.object(stage, "build", return_value=Path(tmp) / "releases" / NEW), \
+                patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
                 patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "activation_checkpoint") as checkpoint, patch.object(stage, "host_evidence"), \
                 patch.object(stage, "switch_services") as services, patch.object(stage, "verify"):
@@ -58,7 +177,10 @@ class ReleaseTest(unittest.TestCase):
             self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
             self.assertEqual(preserved.read_bytes(), b"existing")
             self.assertEqual([entry.args for entry in services.call_args_list], [(False,), (True,)] * 2)
-            self.assertEqual(checkpoint.call_args_list, [call(OLD, "pre_deploy"), call(NEW, "pre_rollback")])
+            self.assertEqual(checkpoint.call_args_list, [
+                call(OLD, "pre_deploy", stage.ROOT / "releases" / NEW),
+                call(NEW, "pre_rollback", stage.ROOT / "releases" / NEW),
+            ])
 
     def test_real_venv_lib64_link_is_allowed_inside_managed_release(self):
         """Regression proof: the release SHA prefix must not invalidate a standard venv link."""
@@ -102,6 +224,32 @@ class ReleaseTest(unittest.TestCase):
                 finally:
                     os.umask(previous_mask)
 
+    def test_catalog_generator_requires_exact_managed_build_attestation(self):
+        with tempfile.TemporaryDirectory(prefix="bsv-catalog-generator-") as tmp:
+            root = Path(tmp)
+            dest = root / "releases" / NEW
+            (dest / "src").mkdir(parents=True)
+            marker = dest / ".built"
+            manifest = {"commit": NEW, "tree": "a" * 40, "entries": {}}
+            marker.write_text(json.dumps({"manifest": manifest, "inventory_sha256": "b" * 64}))
+            marker.chmod(0o600)
+            with patch.object(stage, "ROOT", root), \
+                    patch.object(stage, "private_file"), \
+                    patch.object(stage, "verified_source_manifest", return_value=manifest), \
+                    patch.object(stage, "verify_source_tree") as verify_source, \
+                    patch.object(stage, "release_inventory_sha256", return_value="b" * 64):
+                path, sha, actual = stage.verified_release_directory(dest)
+            self.assertEqual((path, sha, actual), (dest, NEW, manifest))
+            verify_source.assert_called_once_with(dest / "src", manifest)
+            marker.write_text(json.dumps({"manifest": manifest, "inventory_sha256": "c" * 64}))
+            with patch.object(stage, "ROOT", root), \
+                    patch.object(stage, "private_file"), \
+                    patch.object(stage, "verified_source_manifest", return_value=manifest), \
+                    patch.object(stage, "verify_source_tree"), \
+                    patch.object(stage, "release_inventory_sha256", return_value="b" * 64):
+                with self.assertRaisesRegex(RuntimeError, "inventory does not match"):
+                    stage.verified_release_directory(dest)
+
     def test_venv_symlink_allowlist_rejects_unmanaged_or_unexpected_links(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -133,8 +281,9 @@ class ReleaseTest(unittest.TestCase):
     def test_failed_verification_recovers_previous_release(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
-                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
-                patch.object(stage, "build"), patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "", "", "")), \
+                patch.object(stage, "build", return_value=Path(tmp) / "releases" / NEW), \
+                patch.object(stage, "prepare_pg"), patch.object(stage, "bootstrap"), \
                 patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "migration_compatibility"), \
                 patch.object(stage, "activation_checkpoint") as checkpoint, patch.object(stage, "host_evidence"), \
@@ -148,7 +297,8 @@ class ReleaseTest(unittest.TestCase):
             self.assertEqual(stage.sha_at(stage.ROOT / "current"), OLD)
             self.assertIsNone(stage.sha_at(stage.ROOT / "previous"))
             self.assertEqual([entry.args for entry in services.call_args_list], [(False,), (True,)] * 2)
-            self.assertEqual(checkpoint.call_args_list, [call(OLD, "pre_deploy")])
+            self.assertEqual(checkpoint.call_args_list, [
+                call(OLD, "pre_deploy", Path(tmp) / "releases" / NEW)])
 
     def test_interrupted_activation_recovers_previous_version(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
@@ -167,7 +317,7 @@ class ReleaseTest(unittest.TestCase):
     def test_backup_failure_keeps_current_release(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", path), patch.object(stage, "run"), \
-                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "", "", "")), \
                 patch.object(stage, "build"), patch.object(stage, "prepare_pg") as prepare_pg, \
                 patch.object(stage, "verify_release_access"), \
                 patch.object(stage, "migration_compatibility"), \
@@ -262,7 +412,214 @@ class ReleaseTest(unittest.TestCase):
                 patch.object(stage, "backup") as backup:
             stage.activation_checkpoint(OLD, "pre_deploy")
             services.assert_called_once_with(False, keep_postgres=True)
-            backup.assert_called_once_with(OLD, "pre_deploy")
+            backup.assert_called_once_with(OLD, "pre_deploy", None)
+
+    def test_cross_version_checkpoint_keeps_identity_old_and_catalog_candidate_generator(self):
+        """Model old f6d8 as the identity writer and the attested candidate as catalog writer."""
+        class DumpProcess:
+            def __init__(self, *args, **kwargs):
+                self.stdout = io.BytesIO(b"synthetic pg_dump payload")
+
+            def wait(self):
+                return 0
+
+            def poll(self):
+                return 0
+
+            def kill(self):
+                return None
+
+        with tempfile.TemporaryDirectory(prefix="bsv-cross-version-backup-") as tmp:
+            root = Path(tmp) / "managed"
+            data = Path(tmp) / "data"
+            candidate = root / "releases" / NEW
+            candidate.mkdir(parents=True)
+            identity_dir = data / "identity" / "archives"
+            catalog_dir = data / "catalog" / "archives"
+            identity_dir.mkdir(parents=True, mode=0o700)
+            (data / "catalog").mkdir(mode=0o700)
+            catalog_dir.mkdir(mode=0o700)
+            identity_key = data / "identity" / "archive.key"
+            catalog_key = data / "catalog" / "backup.key"
+            identity_backup.make_key(identity_key)
+            identity_backup.make_key(catalog_key)
+            for key in (identity_key, catalog_key):
+                key.chmod(0o600)
+            identity_cfg = {
+                "BSV_DB_A_URL": "postgresql+psycopg://bsv_internal_app:secret@127.0.0.1:18764/bsv_identity_isolated_internal",
+                "BSV_APP_ENV": "isolated", "BSV_AUTH_PROVIDER": "isolated",
+                "BSV_LOCAL_ARCHIVE_DIR": str(identity_dir), "BSV_BACKUP_KEY_FILE": str(identity_key),
+            }
+            catalog_cfg = {
+                "BSV_APP_ENV": "isolated",
+                "BSV_CATALOG_ADMIN_DB_URL": "postgresql+psycopg://bsv_catalog_importer:secret@127.0.0.1:18764/bsv_all_prod",
+            }
+
+            def create_or_verify(dest, settings, *argv, **kwargs):
+                settings_obj = SimpleNamespace(env="isolated", db_a_url=settings["BSV_DB_A_URL"],
+                                               backup_dir=settings["BSV_LOCAL_ARCHIVE_DIR"],
+                                               backup_key_file=settings["BSV_BACKUP_KEY_FILE"])
+                if argv[-1] == "create":
+                    captured = io.StringIO()
+                    label = settings.get("BSV_BACKUP_SOURCE_LABEL", "identity-A")
+                    with patch.object(identity_backup.shutil, "which", return_value="/usr/bin/pg_dump"), \
+                            patch.object(identity_backup.subprocess, "Popen", DumpProcess), \
+                            patch.dict(os.environ, {"BSV_BACKUP_SOURCE_LABEL": label}), \
+                            redirect_stdout(captured):
+                        identity_backup.create_archive(settings_obj)
+                    return CompletedProcess([], 0, stdout=captured.getvalue())
+                archive = Path(argv[argv.index("--archive") + 1])
+                captured = io.StringIO()
+                with redirect_stdout(captured):
+                    identity_backup.decrypt_to_isolated(archive, settings_obj, dry_run=True)
+                return CompletedProcess([], 0, stdout=captured.getvalue())
+
+            def fake_verified_release(path):
+                self.assertEqual(Path(path), candidate)
+                return candidate, NEW, {"tree": "a" * 40}
+
+            calls = []
+            original_tool = create_or_verify
+
+            def recorded_tool(dest, settings, *argv, **kwargs):
+                calls.append((Path(dest), "create" if "create" in argv else "restore"))
+                return original_tool(dest, settings, *argv, **kwargs)
+
+            with patch.object(stage, "ROOT", root), patch.object(stage, "DATA", data), \
+                    patch.object(stage, "service_config", side_effect=lambda name:
+                                  identity_cfg if name == "identity" else catalog_cfg), \
+                    patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())), \
+                    patch.object(stage, "verified_release_directory", side_effect=fake_verified_release), \
+                    patch.object(stage, "identity_tool", side_effect=recorded_tool), \
+                    patch.object(stage, "as_user", return_value=CompletedProcess([], 0, stdout="t\n")), \
+                    patch.object(stage, "active", return_value=True):
+                report = stage.postgres_snapshot(OLD, candidate)
+
+            self.assertEqual(calls[0], (root / "releases" / OLD, "create"))
+            self.assertEqual(calls[1], (root / "releases" / OLD, "restore"))
+            self.assertEqual(calls[2], (candidate, "create"))
+            self.assertEqual(calls[3], (candidate, "restore"))
+            self.assertTrue(report["archive"].endswith(".bsvenc"))
+            catalog = report["catalog"]
+            self.assertEqual(catalog["source"], "catalog")
+            self.assertEqual(catalog["database"], "bsv_all_prod")
+            self.assertEqual(catalog["generator_sha"], NEW)
+            self.assertEqual(catalog["generator_tree"], "a" * 40)
+            self.assertEqual(catalog["integrity"], "AES_GCM_VERIFIED")
+
+    def test_catalog_recovery_after_rollback_uses_pinned_candidate_backup_module(self):
+        """A rollback makes old code active; recovery must still use the new pinned verifier."""
+        class DumpProcess:
+            def __init__(self, *args, **kwargs):
+                self.stdout = io.BytesIO(b"synthetic pg_dump payload")
+
+            def wait(self):
+                return 0
+
+            def poll(self):
+                return 0
+
+            def kill(self):
+                return None
+
+        with tempfile.TemporaryDirectory(prefix="bsv-catalog-recovery-") as tmp:
+            data = Path(tmp) / "data"
+            root = Path(tmp) / "managed"
+            candidate = root / "releases" / NEW
+            candidate.mkdir(parents=True)
+            identity_archives = data / "identity" / "archives"
+            identity_archives.mkdir(parents=True, mode=0o700)
+            identity_key = data / "identity" / "archive.key"
+            identity_backup.make_key(identity_key)
+            identity_key.chmod(0o600)
+            archives = data / "catalog" / "archives"
+            archives.mkdir(parents=True, mode=0o700)
+            key = data / "catalog" / "backup.key"
+            identity_backup.make_key(key)
+            key.chmod(0o600)
+            settings = SimpleNamespace(env="isolated",
+                db_a_url="postgresql+psycopg://bsv_catalog_importer:secret@127.0.0.1:18764/bsv_all_prod",
+                backup_dir=str(archives), backup_key_file=str(key))
+            identity_settings = SimpleNamespace(env="isolated",
+                db_a_url="postgresql+psycopg://bsv_identity_app:secret@127.0.0.1:18764/bsv_identity_isolated_internal",
+                backup_dir=str(identity_archives), backup_key_file=str(identity_key))
+            with patch.object(identity_backup.shutil, "which", return_value="/usr/bin/pg_dump"), \
+                    patch.object(identity_backup.subprocess, "Popen", DumpProcess), \
+                    patch.dict(os.environ, {"BSV_BACKUP_SOURCE_LABEL": "identity-A"}):
+                identity_archive = identity_backup.create_archive(identity_settings)
+            with patch.object(identity_backup.shutil, "which", return_value="/usr/bin/pg_dump"), \
+                    patch.object(identity_backup.subprocess, "Popen", DumpProcess), \
+                    patch.dict(os.environ, {"BSV_BACKUP_SOURCE_LABEL": "catalog"}):
+                catalog_archive = identity_backup.create_archive(settings)
+            identity_archive.chmod(0o600)
+            catalog_archive.chmod(0o600)
+            snapshot = data / "recovery" / "20261123T000000Z-0123456789"
+            snapshot.mkdir(parents=True, mode=0o700)
+            pos_snapshot = snapshot / "pos.sqlite3"
+            with sqlite3.connect(pos_snapshot) as db:
+                db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY)")
+                db.execute("INSERT INTO orders VALUES (1)")
+            pos_snapshot.chmod(0o600)
+            receipt = snapshot / "receipt.json"
+            receipt.write_text(json.dumps({
+                "version": 2, "mode": "isolated", "status": "CHECKPOINT_READY", "checkpoint": str(receipt),
+                "postgres": {"archive": str(identity_archive), "sha256": stage.file_sha256(identity_archive),
+                             "catalog": {"archive": str(catalog_archive),
+                                         "sha256": stage.file_sha256(catalog_archive), "source": "catalog",
+                                         "database": "bsv_all_prod", "generator_sha": NEW,
+                                         "generator_tree": "a" * 40}},
+                "pos_sqlite": {"sha256": stage.file_sha256(pos_snapshot)},
+            }))
+            receipt.chmod(0o600)
+            identity_cfg = {"BSV_APP_ENV": "isolated", "BSV_DB_A_URL": identity_settings.db_a_url,
+                            "BSV_LOCAL_ARCHIVE_DIR": str(identity_archives),
+                            "BSV_BACKUP_KEY_FILE": str(identity_key)}
+            catalog_cfg = {"BSV_APP_ENV": "isolated",
+                           "BSV_CATALOG_ADMIN_DB_URL": "postgresql+psycopg://bsv_catalog_importer:secret@127.0.0.1:18764/bsv_all_prod"}
+            catalog_calls = []
+
+            def verify_archive(dest, config, *argv, **kwargs):
+                archive = Path(argv[argv.index("--archive") + 1])
+                if archive == catalog_archive:
+                    catalog_calls.append(Path(dest))
+                archive_settings = SimpleNamespace(env="isolated", db_a_url=config["BSV_DB_A_URL"],
+                                                   backup_dir=config["BSV_LOCAL_ARCHIVE_DIR"],
+                                                   backup_key_file=config["BSV_BACKUP_KEY_FILE"])
+                captured = io.StringIO()
+                with redirect_stdout(captured):
+                    identity_backup.decrypt_to_isolated(archive, archive_settings, dry_run=True)
+                return CompletedProcess([], 0, stdout=captured.getvalue())
+
+            stdout = io.StringIO()
+            with patch.object(stage, "ROOT", root), patch.object(stage, "DATA", data), \
+                    patch.object(stage, "sha_at", return_value=OLD), patch.object(stage, "private_directory"), \
+                    patch.object(stage, "private_file"), \
+                    patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())), \
+                    patch.object(stage, "verified_release_directory",
+                                 return_value=(candidate, NEW, {"tree": "a" * 40})), \
+                    patch.object(stage, "service_config", side_effect=lambda name:
+                                 identity_cfg if name == "identity" else catalog_cfg), \
+                    patch.object(stage, "identity_tool", side_effect=verify_archive), \
+                    redirect_stdout(stdout):
+                stage.recovery_check(receipt)
+            self.assertEqual(catalog_calls, [candidate])
+            self.assertEqual(json.loads(stdout.getvalue())["catalog_postgres"], "AES_GCM_VERIFIED")
+
+            record = json.loads(receipt.read_text())
+            record["postgres"]["catalog"]["source"] = "A"
+            receipt.write_text(json.dumps(record))
+            with patch.object(stage, "ROOT", root), patch.object(stage, "DATA", data), \
+                    patch.object(stage, "sha_at", return_value=OLD), patch.object(stage, "private_directory"), \
+                    patch.object(stage, "private_file"), \
+                    patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())), \
+                    patch.object(stage, "verified_release_directory",
+                                 return_value=(candidate, NEW, {"tree": "a" * 40})), \
+                    patch.object(stage, "service_config", side_effect=lambda name:
+                                 identity_cfg if name == "identity" else catalog_cfg), \
+                    patch.object(stage, "identity_tool", side_effect=verify_archive) as verifier:
+                with self.assertRaisesRegex(RuntimeError, "source/database labels"):
+                    stage.recovery_check(receipt)
+            self.assertEqual(verifier.call_count, 1, "only the identity archive may be checked before source rejection")
 
     def test_sqlite_checkpoint_permits_existing_private_app_file_mode(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "DATA", Path(tmp)):
@@ -397,10 +754,20 @@ class ReleaseTest(unittest.TestCase):
                 pos_path = root / "config/pos.env"
                 ingress_path = root / "config/ingress.env"
                 secret_bytes = {name: (root / "config" / name).read_bytes()
-                                for name in ("pos-token", "supply-token", "session-key", "privacy-pepper")}
+                                for name in ("pos-token", "supply-token", "session-key", "privacy-pepper",
+                                             "catalog-runtime-password", "catalog-import-password", "catalog-approval.key")}
+                catalog_backup_key = (data / "catalog" / "backup.key").read_bytes()
                 identity = stage.service_config("identity")
                 pos = stage.service_config("pos")
                 ingress = stage.service_config("ingress")
+                self.assertEqual(pos["BSV_PRODUCT_MEDIA_ROOT"], str(data / "pos" / "product-media"))
+                self.assertEqual(pos["BSV_IMPORT_ROOT"], str(data / "pos" / "imports"))
+                self.assertRegex(pos["BSV_DB_URL"], r"^postgresql\+psycopg://bsv_catalog_runtime:[A-Za-z0-9_-]+@127\.0\.0\.1:18764/bsv_all_prod$")
+                self.assertEqual(pos["BSV_CATALOG_READ_SOURCE"], "postgres")
+                self.assertNotIn("BSV_DB_URL", identity)
+                importer_config = stage.service_config("catalog-import")
+                self.assertRegex(importer_config["BSV_CATALOG_ADMIN_DB_URL"], r"bsv_catalog_importer:[A-Za-z0-9_-]+@127\.0\.0\.1:18764/bsv_all_prod$")
+                self.assertEqual(importer_config["BSV_CATALOG_APPROVAL_KEY_FILE"], str(root / "config/catalog-approval.key"))
                 self.assertEqual(identity["BSV_ACADEMY_STORE_IDS"], "BSVT")
                 self.assertEqual(json.loads(identity["BSV_SERVICE_TOKENS_JSON"])["pos"]["stores"], ["BSVT"])
                 self.assertEqual(json.loads(pos["BSV_POS_STORE_LEGAL_JSON"]), {"BSVT": "DEMO_LEGAL"})
@@ -427,6 +794,7 @@ class ReleaseTest(unittest.TestCase):
                 self.assertEqual(ingress["BSV_GROWTH_STORE_IDS"], "BSVM,BSVS,BSVT")
                 self.assertEqual({name: (root / "config" / name).read_bytes()
                                   for name in secret_bytes}, secret_bytes)
+                self.assertEqual((data / "catalog" / "backup.key").read_bytes(), catalog_backup_key)
                 self.assertEqual(db.read_bytes(), b"published-map-and-existing-business-records")
                 self.assertEqual(layout_hashes, {
                     p.relative_to(layout_root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
@@ -669,7 +1037,7 @@ class ReleaseTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp, patch.object(stage, "ROOT", Path(tmp)), \
                 patch.object(stage, "UNIT_FILE", Path(tmp) / "unit"), patch.object(stage, "run"), \
-                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "")), \
+                patch.object(stage, "preflight"), patch.object(stage, "prepare_config", return_value=({}, {}, "", "", "", "")), \
                 patch.object(stage, "build", return_value=dest), patch.object(stage, "verify_release_access", side_effect=RuntimeError("access denied")), \
                 patch.object(stage, "migration_compatibility"), \
                 patch.object(stage, "switch_services") as services, patch.object(stage, "activation_checkpoint") as checkpoint:
@@ -736,8 +1104,30 @@ class ReleaseTest(unittest.TestCase):
             stage.as_user("identity", "/bin/true", env=restricted_env)
         mock_run.assert_called_once_with(
             "/usr/sbin/runuser", "-u", "bsvint-identity", "--", "/bin/true",
-            env=restricted_env,
+            env=restricted_env, cwd="/",
         )
+
+    def test_runuser_does_not_inherit_untraversable_private_working_directory(self):
+        with tempfile.TemporaryDirectory(prefix="bsv-private-tat-work-") as tmp:
+            private_cwd = Path(tmp) / "root-only"
+            private_cwd.mkdir(mode=0o700)
+            original_cwd = Path.cwd()
+            try:
+                os.chdir(private_cwd)
+                with patch.object(stage, "run") as mock_run:
+                    stage.as_user("identity", "/usr/bin/find", "-P", "/opt/bsv-release/src")
+            finally:
+                os.chdir(original_cwd)
+            args, kwargs = mock_run.call_args
+            self.assertIn("/usr/bin/find", args)
+            self.assertEqual(kwargs["cwd"], "/")
+            self.assertEqual(private_cwd.stat().st_mode & 0o777, 0o700)
+
+    def test_runuser_preserves_explicit_service_working_directory(self):
+        source = Path("/opt/bsv-all-internal-stage/releases") / NEW / "src"
+        with patch.object(stage, "run") as mock_run:
+            stage.as_user("identity", "/bin/true", cwd=source)
+        self.assertEqual(mock_run.call_args.kwargs["cwd"], source)
 
 
     def test_legacy_preview_feedback_is_inline(self):

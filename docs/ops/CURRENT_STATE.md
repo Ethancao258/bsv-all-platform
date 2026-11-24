@@ -197,3 +197,87 @@
 - 审批边界。隔离环境可验证合成工作流。真实员工试点须由负责人批准最小资料范围、备案/HTTPS、私有访问、扫描、加密备份和恢复。正式营业还缺 CloudBase G0/G1 和 ACL/RLS 修复、真实收款专项批准、D/E 权威写入及五店容量证据。公开鸡尾酒菜单保持原发布物，只有私有同源入口提供工作台返回。
 - `PASS_ISOLATED` · 两轮 PG17 + SQLite 真实 HTTP 验收验证同一 TR 在 BSVT 两台独立注册终端创建未付款订单、重复请求防重、订单审计、设备撤销以及 BSVS 独立培训和班次解锁、撤权失效、跨店排班冲突和北京时间跨午夜。合成旧码保持零写入，追加迁移后复跑 V3 身份服务验证既有记录仍可读取。
 - `PASS_ISOLATED` · Chromium 在 320–1440px 的八个宽度验证工作台和注册终端流程，覆盖浏览器模拟缩放、文字放大、窄高视口及菜单返回；真实移动设备软键盘仍待现场观察。导入预检 7 项、发布控制和部署回归 16 项通过。GitHub 精确 SHA、CI 和截图见 [Issue #11](https://github.com/Ethancao258/bsv-all-platform/issues/11) 的集成 PR。
+
+
+## 2026-11-22｜酒水Excel接入开发（分支 `feature/bsv1-excel-catalog`）
+
+- 已接收原始附件《BSVALL酒水套餐数据库.xlsx》，文件 SHA-256 与提交说明一致：`4ed9bc164981f267997bd146df54d27ae22fbdc9cc1c850776daed83d34c8e82`。原文件未提交 Git。
+- 已用现有 `bsv_v9_import.py` 在本地解析器检查七张工作表。原表记录计数：C 63、P 17、M 419、K 21、R 65、Q 0、T 4；T 中保留 BSVM、BSVS、BSVT、BSVF，Q 无报价记录。C 内容审核/上架状态未达到销售授权条件；Excel里有售价不等于允许POS销售。R 只通过“出品关联ID”关联C，无法由名称补建缺失物料ID。
+- 本分支在现有 POS SQLite 目录下新增受私有权限保护的版本目录配置：`/var/lib/bsv-all-internal-stage/pos/catalog`，位于版本发布目录之外。版本文件以SHA命名，先验证全部工作表，再事务同步SQLite；人工激活锁住版本，CLI支持状态、回退、显式解除锁定。历史订单和门店地图不由导入器改写。
+- POS只读目录API与无订单配方查询正在本分支实现；真实服务器未改动、未验证。
+- CloudBase自动更新仍为 BLOCKED：当前网页版没有可调用的官方CloudBase文件API/OAuth工具；本轮信息没有提供可核验的Bucket ID、对象 fileID/路径或可用服务端身份。未设置匿名公开下载、未添加猜测的定时任务。
+- 本地完整测试尚未执行（当前执行容器写层无可用空间，无法启动本地构建）；最终提交后的GitHub Actions结果将作为CI证据。Lighthouse HOST_NOT_RUN。
+
+
+## 2026-11-23｜统一数据访问架构准备（PR #40）
+
+- **代码提交 `dfce0e7a233239208d5a7330a1191bc478e76b35`** 延续 PR #40 的 `feature/bsv1-excel-catalog`，没有创建新 PR。新增 `config/data-contracts.json`，引用原 `data-ownership.json`、身份 A/B/LOCAL 注册、供货 A–G 注册、POS 领域契约及现有 API 契约；没有复制一套实体所有权。
+- `BSV_DB_URL` 现登记为 PostgreSQL 17 / `bsv_all_prod` 的正式入口；identity A 与 Customer Growth 在明确配置时可读取该 DSN，旧 `BSV_DB_A_URL`、`BSV_GROWTH_DB_URL`、POS `BSV_DB_PATH` 和供货 A–G 配置继续兼容。隔离模式拒绝中心 DSN，POS 当前订单/座位 SQLite 写入源未改变。CloudBase 的10张表仍是 `UNKNOWN_G0`，未连接、未建库或执行 DDL；正式字段字典等待 WorkBuddy 审查。
+- POS 员工界面查询已切换至受会话保护的 `/api/v1/catalog/products` 只读契约；搜索、商品详情和无订单配方接口输出 `contract_version` 与注册表语义字段。旧 API 保留。新适配仍读取当前 POS SQLite/Excel投影，没有声明任何未核实 PG 表或列。
+- 导入版本已有分步候选状态：`archive → preview → validate → commit-candidate → publish → rollback`。发布前只校验并保留私有SHA版本/归档，不修改活动SQLite；`publish` 复用既有事务和回退能力。旧 `stage` 命令改为只归档、校验，不再隐式切换活动内容。私有 Lighthouse 隔离配置增加 `BSV_IMPORT_ROOT` 和 `BSV_PRODUCT_MEDIA_ROOT`；产品图片优先按永久商品ID和原文件名从发布目录外持久路径读取，并拒绝路径穿越/软链接，旧release路径仅作只读回退。
+- **本地验证 PASS** · `bash tests/bsv1/check.sh`：39项POS测试 + 4项数据契约测试通过；`python3 tests/internal-stage/test_deploy.py`：26项部署预检测试通过（1项按既有条件跳过）；`verify_architecture.py`、`verify_change_routing.py`、JSON/语法检查通过。Customer Growth 单元测试因此执行环境未安装 SQLAlchemy/pytest，标记 `LOCAL_NOT_RUN_DEPENDENCY_MISSING`；PR CI 将运行有锁定依赖的对应作业。
+- **未执行** · PostgreSQL正式建表/迁移/导数、真实CloudBase连接与对象下载、Lighthouse配置修改/部署、媒体上传均未执行，主机 `HOST_NOT_RUN`。后续须先通过 WorkBuddy 字段字典、再做真实环境 G0 核验及备份/恢复证明；CloudBase私有对象ID/服务端授权及每天05:00同步仍未实现。
+- **GitHub CI PASS** · commit `8b78c51b1a5a13939992aa436f90e252586b38c6` 的 [主验证 run 45084992980](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45084992980) 九项全部通过；[Customer Growth run 45084992992](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45084992992) 通过，弥补本地缺少依赖的未运行项。当前分支在该提交后仅有本状态记录变更，PR #40 保持 Draft，不自动合并或部署。
+
+
+## 2026-11-23｜WorkBuddy V2.2 PostgreSQL 17 隔离接入（PR #40）
+
+- **基线已核对** · PR #40 分支 `feature/bsv1-excel-catalog` 从 `6bfa47fde3da4469b6b923c0e134445c06944fbf` 开始，工作树原先干净；Draft PR 和基底均保持不变。本轮未操作 CloudBase、Lighthouse、正式数据库或生产服务。
+- **来源验证** · 外层交接 ZIP SHA-256 `d0b40f376880791a4feab9d8dff165c6b1a401db823781cb10da7da46cb95d3d`；内层 WorkBuddy ZIP `3f98fbe12eacdca481d1e7b3350a59410da7f1116c74a75a1c7b93fe63a0e5a1`；源 Excel `4ed9bc164981f267997bd146dfd54d27ae22fbdc9cc1c850776daed83d34c8e82`。WorkBuddy 包验收工具实际输出 `47 PASS / 0 FAIL`。字典381唯一字段与统一注册表逐项比较；来源映射16,815、公式6,275（数组公式4,978、空缓存2,692）；原始输入记录589、辅助来源记录、21套餐槽位、84门店研究及C/P typed recipe links均经包内数据验证。R页链接为63条C及 `R000048→P000003`、`R000051→P000004`。这是来源包静态证据，不是数据库入库回执。
+- **代码候选** · 扩展唯一 `config/data-contracts.json` 的381字段映射，命名空间为 `catalog/core/audit`；完成 WorkBuddy 隔离编号迁移、事务导入器、同SHA幂等、完整来源记录/字段/公式/映射导入、raw 状态保护、失败事务回滚与版本指针回退。正式 `cloudbase/migrations/` 未改动，WorkBuddy 原始数据未入Git。
+- **读取边界** · POS既有 `/api/v1/catalog/products` 与配方路径增加显式隔离 PostgreSQL 17 只读适配，查询经稳定语义键映射；在设置 `BSV_APP_ENV=isolated`、`BSV_CATALOG_READ_SOURCE=postgres` 和loopback `BSV_DB_URL` 时读取活动PG资料，PG故障返回503而不回退Excel/SQLite。POS订单、座位和付款快照仍只由原SQLite写入。PG原始资料全部标记 `IMPORTED_RAW`、`sale_enabled=false`；菜单公开预览不读该私有PG目录；采购/成本字段按字典隐藏。媒体仍从持久目录读取，不从release目录提供。
+- **本地验证 PASS** · 合同测试5/5、导入安全测试2/2、POS回归45/45（PG容器专属4项在本机因无PG服务而跳过）；`verify_architecture.py`、`verify_change_routing.py`、Lighthouse隔离部署模拟26项（1项原有条件跳过）、Python/JS/Bash语法和 `git diff --check` 通过。包验收工具47/47。执行环境无运行中Docker daemon、PostgreSQL服务/客户端且空间不足，因此本机没有真实执行PG DDL或导入。
+- **GitHub CI PASS** · 提交 `5dfebb869df142f011e33508e0c1aa307b1c9e69` 的 [主验证 run 45096723579](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45096723579) 九个 job 全部成功；`bsv1` job 的真实 PostgreSQL 17容器迁移、只读角色、typed C/P recipe、POS HTTP PG读取、SQLite缓存为空、匿名拒绝、菜单隔离、断连503、失败事务原子性和版本指针回退测试通过。另有 [Customer Growth run 45096723576](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45096723576) 成功。PG容器使用合成数据；真实完整WorkBuddy数据导入仍必须在批准的隔离PG执行，CI合成测试不替代实际数据导入回执。
+- **资源/业务状态** · `PG17_FULL_DATA_IMPORT=NOT_RUN`；`HOST_DEPLOYED=NO`；`BUSINESS_VERIFIED=NO`。Lighthouse当前服务、磁盘/内存、隔离PG容量、备份/恢复和浏览器HTTP均未由本轮工具核验；CloudBase G0/官方迁移历史仍UNKNOWN。隔离数据库 `bsv_all_prod`、loopback PG17、备份空间及读写角色创建均待服务器授权和预检，不得复用 `bsv_identity_isolated_internal`。
+- **回退** · 程序按受控发布器退回前一release；原SQLite业务库和媒体不随代码覆盖。PG导入以单事务提交，失败自动回滚；活动资料回退只切换 `catalog.active_content` 指针并保留历史版本。不得用本迁移删除或回滚正式CloudBase数据。
+
+## 2026-11-23｜PR #40 V3.0 数据落地与更新闭环收口
+
+- **基线核对** · `feature/bsv1-excel-catalog` 的本地/远程起始HEAD均为 `0d814f62587132c78c8ac648981a862ef2b1dd56`；PR #40 仍为OPEN Draft，目标分支 `feature/g1-three-store-identity-pos`。未改主架构、永久ID或现有生产数据。
+- **来源实证** · 外层交接ZIP、内层WorkBuddy ZIP和Excel哈希与 `ingestion/sources/workbuddy-v22.json` 一致。内层包本轮重新核验：归档与解压文件完全一致、逐文件SHA/大小与manifest匹配、字段契约381项匹配；清单行数核实为C63/P17/M419/K21/套餐槽21/NPS84/R65/Q0/T4，辅助数据dictionary399/legal449/calc597、映射16815、字段381、公式6275、source_record694。原始包与Excel未提交Git。
+- **导入门禁** · 移除导入程序中绑定V2.2内容的固定ZIP/XLSX SHA和行数；兼容版本以manifest声明、实际文件哈希、字段契约和ID外键核验。导入需root保护密钥签发的24小时审批JSON，绑定包/清单/契约/审批操作者/变更号/预期活动版本，并记录审批字段；审批失效、被篡改或活动版本发生竞态时拒绝。相同来源SHA重复请求保持幂等；资料版本回退也需要独立签名审批。
+- **数据库权限与发布配置** · 增加隔离迁移 `0002_catalog_reader_least_privilege.sql`，撤回原宽表读授权，建立基础/保密过滤视图并禁止POS读取原始审计JSON与受限采购字段。隔离发布器在现有PG17 cluster内预置独立逻辑库 `bsv_all_prod`、runtime/importer角色和分离凭据；只有POS `pos.env` 配置 `BSV_DB_URL`，身份仍使用 `BSV_DB_A_URL`。HBA扩展限127.0.0.1/32，须精确匹配受管旧策略，先保留原策略，校验失败则恢复；实际服务器未执行。
+- **备份准备** · catalog采用独立私有目录/密钥和现有AES-256-GCM备份工具；checkpoint核验会验证catalog加密备份的SHA和无写入解密完整性。真实备份创建、临时PG恢复演练及服务/磁盘/WAL检查未运行，不能据此认定恢复能力已验收。
+- **本地验证** · BSV1 `check.sh`：46 passed、4 skipped（4项PG17测试因无Docker跳过）；合同测试5 passed；Lighthouse内部阶段/控制面31 passed、1 skipped（Ubuntu 24.04系统Python3.12专测）；包清单程序重验通过。额外身份备份pytest未能在本环境加载，因为缺少SQLAlchemy依赖，本地NOT_TESTED；交由CI安装锁定依赖验证。
+- **未执行项** · 当前容器没有Docker daemon/PG17服务，PG17新迁移、最小角色访问、HTTP网页实际读PG尚待GitHub Actions job。当前Codex没有Lighthouse/TAT/SSH操作授权；主机实际版本、服务、磁盘、备份恢复、PG角色与 `127.0.0.1:18760` 浏览器数据来源均 `HOST_NOT_RUN/UNKNOWN`。真实V2.2数据未入库，`CODE_DONE`仅指代码候选；`CI_PASS`待新SHA的Actions；`DATA_IMPORTED=NO`、`HOST_DEPLOYED=NO`、`BUSINESS_VERIFIED=NO`。CloudBase、真实订单/员工/会员数据、上架与收款均未触碰。
+- **本轮回退** · 代码通过PR #40撤回，不合并/不部署。正式隔离数据库创建后，程序版本由受控发布器回退；内容版本只通过签名审批切换 `active_content`，保留两版数据。HBA升级附有原文件受控备份并拒绝未登记漂移。此回退尚无真实主机演练证据。
+
+## 2026-11-23｜PR #40 V3.0 最终代码与验证状态
+
+- **最终代码候选** · `feature/bsv1-excel-catalog` HEAD=`852d8c86bf782ceda4023dab3da9061381e15237`，PR #40 仍为 Draft、未合并。保留基线 `0d814f62587132c78c8ac648981a862ef2b1dd56` 的既有历史。该SHA的 [GitHub Actions主验证 run 45106816835](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45106816835) 九个作业全部成功；[独立API/合同 run 45106816833](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45106816833) 成功。
+- **CI实际覆盖** · `bsv1` 作业使用隔离 PostgreSQL 17 容器，迁移 0001–0003、事务提交/重放、最小角色和受限字段、C/P双类型配方关联、POS HTTP读PG、匿名拒绝、SQLite商品缓存未启用、菜单未上架、PG断连503、导入失败原子回滚、经审批的活动版本切换/回退均通过。此为合成CI数据库证据，不是服务器或真实WorkBuddy数据入库证明。
+- **本地测试** · Python语法编译、4项导入审批/来源安全单元测试通过；`bash tests/bsv1/check.sh` 为46 passed、4 skipped（无本地PG容器）；内部部署与控制面测试31 passed、1 skipped；架构、变更路由、包manifest与 `git diff --check` 通过。完整PG17测试由Actions执行。
+- **实际状态** · `CODE_DONE=YES`（集成代码候选）；`CI_PASS=YES`；`PG17_REAL_V22_IMPORTED=NO`；`HOST_DEPLOYED=NO`；`BROWSER_VERIFIED=NO`；`BACKUP_RESTORED=NO`；`DATA_UPDATE_WITHOUT_CODE=CI_ONLY_NOT_HOST_VERIFIED`；`PRODUCTION_CUTOVER=NO`。本环境没有Lighthouse/TAT/SSH主机操作通道，因此主机状态、容量、服务端PG、备份恢复、导入批次及SSH隧道浏览器验收均 `HOST_NOT_RUN`。未连接CloudBase；未更动订单、身份、会员、支付、生产数据。
+- **下一门禁** · 经营者需在受控执行通道中授权一次性访问现有 Lighthouse 隔离主机，范围限定 `/var/lib/bsv-all-internal-stage/` 和已批准隔离 PostgreSQL；无需在聊天中提交SSH私钥、口令或数据库凭据。授权后先读取主机真实状态、备份并预检，再按审核后的操作流程创建隔离库、导入V2.2并执行浏览器/恢复验收。未经此授权不得标为已部署或已验收。
+
+## 2026-11-23｜PR #40 Lighthouse 首轮部署阻断修复
+
+- **故障来源** · 按PR #40 issue comment `7093073996`（业主提供的TAT回执）记录：受控预检和旧版检查点成功；角色校验中止后，发布器回切旧 `f6d8ce9` 并通过健康核验；新版及WorkBuddy导入未完成。当前Codex没有连接主机，本项为 `HOST_REPORTED`，不是独立主机复验。
+- **代码修复** · `stage.py` 的成员角色查询筛选 `member.rolname`，结果表示“该角色继承哪些被授予角色”。现在 `bsv_catalog_reader` 的预期继承集合为空；runtime/importer/confidential-reader 三个角色仍按既有最小权限图校验，不新增/反向补做GRANT。`as_user()` 默认从可访问的 `/` 启动子进程，显式服务工作目录继续保留。
+- **续跑安全** · 不删除上次失败的 release/work目录、身份或POS检查点、HBA标记、PG角色或 `bsv_all_prod`。现有发布器只在角色/owner/属性与受管HBA校验一致时继续；未知状态拒绝。旧 8765/8767 与身份库不作手工变更。
+- **定向与集成验证** · 新增角色方向图与SQL筛选、runuser私有父目录、默认及显式cwd测试全部通过。内部阶段除本地磁盘不足导致的完整归档解包用例未能运行外，其余29项通过、1项按环境条件跳过；GitHub 托管 runner 的完整 `lighthouse-internal-stage` job 通过。`git diff --check`、Python编译与 Bash语法检查通过。
+- **代码与CI** · 故障修复提交 `18fa7e1ebf831032666ecffa36e65feb28bd5fa3`；该SHA的主验证 [run 45124215553](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45124215553) 九个作业通过，独立 [run 45124215624](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45124215624) 通过。发布包待绑定最终文档SHA重新生成。
+- **真实状态** · 业主TAT报告旧版已恢复；本次Codex无TAT/SSH写入通道。`PG17_REAL_V22_IMPORTED=NO`、`HOST_DEPLOYED=NO`、`BROWSER_VERIFIED=NO`。之前失败留下的role/database/HBA及build目录由受管发布器精确核对续跑；本轮不手动改权限、不删除或覆盖历史文件。
+
+## 2026-11-24｜BSV-A 恢复认证门禁修复与 BSV-B 预览切片
+
+- **BSV-A 代码** · 在 PR #40 继续修复隔离PG17的恢复闭环：恢复专用临时库只允许使用 OS/PG `bsvint-postgres` peer 身份、受管PG17 socket目录及端口 `18764`；拒绝非唯一隔离恢复库或其他端口。run-once恢复后校验与查询改用受管 postgres OS 用户，避开 root→peer身份不匹配；不增加恢复数据库的TCP/HBA白名单。CI测试取消 `trust`，用精确DB/role的SCRAM TCP规则和 `local all all peer`，并检查临时恢复库没有TCP例外。
+- **安全验证状态** · Python编译、Bash语法与 `git diff --check` 已通过。此执行环境缺少 pytest、SQLAlchemy、psycopg及可用PG测试环境，新增真实PG17/peer/SCRAM测试尚未本地运行，等PR CI；不得将其记为PASS。实际Lighthouse仍为 `HOST_NOT_RUN`，WorkBuddy V2.2真实导入、网页查询、备份恢复及旧版保护未在主机复验。
+- **BSV-B 独立交付** · PR #42 `feature/bsv-b-excel-ingestion` 已交付受控Excel七表字段校验、来源哈希/ID关系检查及差异预览；5项新增测试与本地既有BSV1测试通过，PR CI run `45304293209` 九项通过。状态为 `PREVIEW_ONLY`：Excel→批准签名数据包转换、双人审批与PG事务提交/版本回退未实现，不能导入生产或替代PR #40。
+- **交付边界** · PR #40仍未合并，PR #42以PR #40分支为base。两者均未部署；旧版8765/8767、CloudBase、真实订单、员工身份及支付均未触碰。新SHA的完整CI与主机部署结果必须以本记录后续更新为准。
+- **CI定向修复** · `cab7b8c` 的首次CI将真实服务角色测试错误设为 `SET SESSION AUTHORIZATION`，并且恢复测试DSN未使用受管端口；已在 `9c8fbfe` 改为真实runtime SCRAM登录和固定端口。`bcd43af` 移除 `pg_restore` 标准输入调用中的伪文件名。`b5fd72a` 后的新CI又确认拒绝测试需导入 psycopg 并把SQLAlchemy DSN scheme转成psycopg原生URI；当前已修正。中间SHA存在失败作业，不作为放行证据。
+
+## 2026-11-24｜PR #40 数据库状态只读部署门禁
+
+- **主机依据** · 采用负责人提供的PR评论 [7122345954](https://github.com/Ethancao258/bsv-all-platform/pull/40#issuecomment-7122345954)：Lighthouse Ubuntu 24.04.4、4 vCPU、可用内存约2.77 GiB、磁盘剩余26G、隔离服务5/5 active、旧8765/8767正常、Unix socket PG17可连、identifier limit 63。当前仍是旧release `f6d8ce9b9c027baeaa0bdd5b62457fea40adeb27`；`bsv_all_prod`存在，但其owner/角色/HBA/数据/迁移状态均未由该回执确认。本轮Codex没有连接或写入真实主机。
+- **代码变更** · 在PR #40分支增加变更前 `stage.py --catalog-preflight`：只读检查PG17、owner、受管HBA证据、角色属性/完整成员关系图、PUBLIC连接权限及非系统对象；不修复或创建主机配置。非空库还要求导入器只读核验全库schema/对象、全部迁移校验和、导入批次/行数、活动内容与原始HMAC审批，结果只能为精确空/同包安全NOOP；部分或未知状态停止。导入器在执行DDL前先核验布局，避免创建迁移账本污染未知数据库。
+- **本地测试** · `tests/internal-stage/test_deploy.py`：36通过、1项因缺Ubuntu 24.04/Python 3.12环境跳过；`tests/internal-stage/test_run_once_artifact.py`：2通过、sudo真实调用场景在root执行环境跳过。Python编译、Bash语法、内嵌Python AST/Ruff F821及`git diff --check`通过。
+- **未运行/未交付** · PostgreSQL 17隔离容器未能创建：Docker VFS返回 `no space left on device`；最终精确签名部署包及完整包实际安装演练因此未运行/未生成。真实主机部署、员工浏览器、备份独立恢复与回切均 `HOST_NOT_RUN`。没有替换Drive文件。旧fa192385与1fda85e0包已过期，禁止运行。
+
+## 2026-11-24｜PR #40 M1 序列白名单与 M2 候选包收口
+
+- **M1 修复** · 迁移 `0001_workbuddy_v22.sql` 中 `audit.excel_formula_index.formula_id BIGSERIAL` 产生的唯一合法序列 `audit.excel_formula_index_formula_id_seq` 已纳入精确对象清单，并校验 PostgreSQL `pg_depend` 将它归属到指定表列。额外未知序列仍触发拒绝且测试确认对象保留；完整对象清单继续严格比较，不忽略任何 `relkind=S`。
+- **M1 验证** · 本地 `test_run_once_artifact.py` 新增候选包状态覆盖通过，2项环境门禁跳过；本地PG17集成类的7项测试因无容器均跳过，不能据此报告本地PG17通过。最终结果以本提交精确SHA的GitHub Actions 9项主CI和独立API/契约检查为准。
+- **M2 构建能力** · 新增固定SHA候选包构建脚本，只接受干净精确HEAD、固定哈希WorkBuddy ZIP与已通过的九项PR CI证明；输出标记 `UNAPPROVED_TEST_CANDIDATE`，运行器拒绝缺少该标记的归档，构建器不覆盖旧文件。
+- **M2 验收边界** · 候选包生成和包内散列/源码bundle验证完成后，再记录其私有候选资产SHA。最终包的 root runner 全流程、f6d8 systemd升级、整包数据导入、主机HTTP/浏览器、加密备份独立恢复与回切没有完整模拟环境时均标 `NOT_RUN`；GitHub PG17作业不是主机验收。未触碰真实Lighthouse或Google Drive。
+- **业务边界** · 本轮只修复PR #40合法序列白名单并收口第一阶段测试候选；不推进PR #42/Issue #41的Excel管理、员工注册、会员、正式POS经营功能。PR #40仍为Draft，候选包未经负责人对精确SHA的M3授权不得执行。

@@ -1,7 +1,10 @@
 """Run against the dedicated PostgreSQL 17 instance migrated by the test launcher."""
 from concurrent.futures import ThreadPoolExecutor
 import os
+from pathlib import Path
+import subprocess
 
+import psycopg
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError, DBAPIError
 
@@ -120,6 +123,8 @@ with router.non_sensitive_reference_connection() as conn:
         raise AssertionError("B accepted a mutation")
 
 from services.api.identity.backup import create_archive, decrypt_to_isolated, make_key
+from dataclasses import replace
+from unittest.mock import patch
 from services.api.identity.config import load_settings
 from sqlalchemy import create_engine
 
@@ -133,4 +138,68 @@ with restored.connect() as conn:
     assert conn.exec_driver_sql("SELECT count(*) FROM bsv_identity_people").scalar_one() == 121
     assert conn.exec_driver_sql("SELECT next_index FROM bsv_identity_code_allocator").scalar_one() == 121
 restored.dispose()
-print("PASS: PostgreSQL 17, 15 domain tables, 120 concurrent persons, retry/rollback, immutable facts, scoped stages/revocation, read-only B and encrypted isolated restore")
+
+# Cross-version catalog backup contract: generate an AES-GCM archive from the
+# dedicated bsv_catalog_importer owner, restore it to a different disposable
+# PostgreSQL 17 database using the real pg_dump/pg_restore binaries, then
+# verify the restored row. No identity or POS database is used for this data.
+catalog_url = os.environ["BSV_CATALOG_PG_URL"]
+catalog_restore_url = os.environ["BSV_CATALOG_PG_RESTORE_URL"]
+catalog_source = create_engine(catalog_url)
+with catalog_source.begin() as conn:
+    conn.exec_driver_sql("CREATE SCHEMA catalog")
+    conn.exec_driver_sql("CREATE TABLE catalog.product (product_id text PRIMARY KEY, name_zh text NOT NULL, ingest_status text NOT NULL)")
+    conn.exec_driver_sql("INSERT INTO catalog.product VALUES ('C000001','合成目录测试','IMPORTED_RAW')")
+catalog_source.dispose()
+
+catalog_archive_dir = Path(settings.backup_dir) / "catalog-test"
+catalog_settings = replace(settings, db_a_url=catalog_url, backup_dir=str(catalog_archive_dir))
+with patch.dict(os.environ, {"BSV_BACKUP_SOURCE_LABEL": "catalog"}):
+    catalog_archive = create_archive(catalog_settings)
+    assert catalog_archive.name.startswith("catalog-") and catalog_archive.suffix == ".bsvenc"
+    decrypt_to_isolated(catalog_archive, catalog_settings, dry_run=True)
+    import services.api.identity.backup as backup
+    backup.MANAGED_PG_RESTORE_SOCKET_DIR = Path(os.environ["BSV_PG_RESTORE_TEST_SOCKET"])
+    backup.MANAGED_PG_RESTORE_BINARY = Path(os.environ["BSV_PG_RESTORE_TEST_BINARY"])
+    decrypt_to_isolated(catalog_archive, catalog_settings, catalog_restore_url, dry_run=False,
+                        managed_peer_restore=True)
+
+catalog_restore_db = catalog_restore_url.rsplit("/", 1)[1]
+row = subprocess.check_output([
+    "docker", "exec", "--user", "postgres", os.environ["BSV_PG_TEST_CONTAINER"],
+    "psql", "-XAt", "-F", "|", "-U", "postgres", "-d", catalog_restore_db,
+    "-v", "ON_ERROR_STOP=1", "-c",
+    "SELECT product_id,name_zh,ingest_status FROM catalog.product WHERE product_id='C000001'"],
+    text=True).strip().split("|")
+assert row == ["C000001", "合成目录测试", "IMPORTED_RAW"], row
+hba = subprocess.check_output([
+    "docker", "exec", "--user", "postgres", os.environ["BSV_PG_TEST_CONTAINER"],
+    "psql", "-XAt", "-U", "postgres", "-d", "postgres", "-c",
+    "SELECT (count(*) FILTER (WHERE type='local' AND auth_method='peer'))::text || '|' || "
+    "(count(*) FILTER (WHERE type='host' AND auth_method='trust'))::text || '|' || "
+    "(count(*) FILTER (WHERE type='host' AND ('all'=ANY(database) OR 'all'=ANY(user_name))))::text || '|' || "
+    "(count(*) FILTER (WHERE type='host' AND array_to_string(database,',') LIKE '%catalog_restore%'))::text "
+    "FROM pg_hba_file_rules"], text=True).strip()
+assert hba == "1|0|0|0", hba
+try:
+    tcp_probe_url = catalog_restore_url.replace(":18764/", f":{os.environ['BSV_PG_TEST_PORT']}/")
+    psycopg.connect(tcp_probe_url.replace("postgresql+psycopg://", "postgresql://", 1), connect_timeout=3)
+except psycopg.OperationalError as exc:
+    assert "no pg_hba.conf entry" in str(exc), str(exc)
+else:
+    raise AssertionError("temporary recovery database unexpectedly gained a TCP/HBA exception")
+
+tampered = catalog_archive.with_name("tampered-catalog.bsvenc")
+blob = bytearray(catalog_archive.read_bytes())
+blob[-17] ^= 1
+tampered.write_bytes(blob)
+try:
+    decrypt_to_isolated(tampered, catalog_settings, dry_run=True)
+except Exception:
+    pass
+else:
+    raise AssertionError("Tampered catalog archive passed authentication")
+finally:
+    tampered.unlink(missing_ok=True)
+
+print("PASS: PostgreSQL 17 with local peer + loopback SCRAM, 15 identity domain tables, 120 concurrent persons, retry/rollback, immutable facts, scoped stages/revocation, read-only B, legacy identity archive, and isolated catalog restore over local peer without HBA expansion")

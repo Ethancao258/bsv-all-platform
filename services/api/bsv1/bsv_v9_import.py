@@ -206,11 +206,20 @@ def unpack_v9(path:Path):
     c_missing=[{'id':x['id'],'name':x['name'],'row':x['row']} for x in data['C_现场成品'] if cents_from_price(x['fields'].get('标注售价')) is None]
     digest=hashlib.sha256(path.read_bytes()).hexdigest()
     summary={p.split('_')[0]:len(v) for p,v in data.items()}
+    approved_c = sum(
+        str(x['fields'].get('内容审核状态') or '').strip() in VALID_PUBLISH
+        and str(x['fields'].get('上架状态') or '').strip() in VALID_ACTIVE
+        for x in data['C_现场成品'])
     summary.update({'source_sha256':digest,'source_file':path.name,'quotes':len(quotes),
                     'eligible_quotes':sum(x['eligible'] for x in quotes),'warnings':warnings,
                     'not_calculated_formulas':True,'extras':len(extras),
                     'price_policy':PRICE_POLICY,'c_aj_priced':len(c_priced),'c_aj_missing':c_missing,
-                    'c_aj_total':len(data['C_现场成品']),
+                    'c_aj_total':len(data['C_现场成品']),'c_content_and_listing_approved':approved_c,
+                    'c_sale_eligible':sum(
+                        cents_from_price(x['fields'].get('标注售价')) is not None
+                        and str(x['fields'].get('内容审核状态') or '').strip() in VALID_PUBLISH
+                        and str(x['fields'].get('上架状态') or '').strip() in VALID_ACTIVE
+                        for x in data['C_现场成品']),
                     'store_ids':[r['store_id'] for r in bsv_layouts.registry()]})
     return data,extras,quotes,summary
 
@@ -276,20 +285,24 @@ def sync_v9(dbpath:Path, excelpath:Path, force=False):
                 item['valid_from'],item['valid_to'],int(item['eligible']),item['reason']))
         # 禁止旧产品被继续售卖；已销售记录保留订单快照和稳定ID。
         db.execute("UPDATE bsv_products SET sale_enabled=0 WHERE demo_only=0")
-        # 所有门店读取同一AJ标注售价，不区分C表旧审批状态、上架状态、门店Q页报价。
-        # 不存在AJ价格的C成品仍完整上架到资料库，但不得冒险生成0元订单。
+        # Catalog visibility is independent of POS sellability. A price alone never
+        # approves a draft or unlisted item; historical order snapshots are untouched.
         for item in data['C_现场成品']:
             fixed_id=item['id']
             cents=cents_from_price(item['fields'].get('标注售价'))
             if cents is None:continue
+            fields=item['fields']
+            sale_enabled=int(
+                str(fields.get('内容审核状态') or '').strip() in VALID_PUBLISH
+                and str(fields.get('上架状态') or '').strip() in VALID_ACTIVE)
             # One product_id globally. Store visibility is an access policy, not a second SKU.
             db.execute('''INSERT INTO bsv_products
               (id,name,price_cents,demo_only,discount_eligible,source_domain,store_id,sale_enabled,catalog_sha,price_policy)
-              VALUES (?,?,?,0,1,'C',NULL,1,?,?)
+              VALUES (?,?,?,0,1,'C',NULL,?,?,?)
               ON CONFLICT(id) DO UPDATE SET name=excluded.name,price_cents=excluded.price_cents,
                 source_domain='C',store_id=NULL,
-                sale_enabled=1,catalog_sha=excluded.catalog_sha,price_policy=excluded.price_policy''',
-              (fixed_id,item['name'],cents,summary['source_sha256'],PRICE_POLICY))
+                sale_enabled=excluded.sale_enabled,catalog_sha=excluded.catalog_sha,price_policy=excluded.price_policy''',
+              (fixed_id,item['name'],cents,sale_enabled,summary['source_sha256'],PRICE_POLICY))
         db.execute('''INSERT INTO bsv_v9_sync VALUES(1,?,?,?,?) ON CONFLICT(one) DO UPDATE SET
           source_path=excluded.source_path,source_sha=excluded.source_sha,
           imported_at=excluded.imported_at,summary_json=excluded.summary_json''',(
@@ -315,6 +328,19 @@ def price_is_current(db,product,store_id):
     if not record or not sync or product['catalog_sha']!=sync['source_sha'] or record['imported_sha']!=sync['source_sha']:
         return False
     fields=json.loads(record['fields_json'])
+    if (str(fields.get('内容审核状态') or '').strip() not in VALID_PUBLISH
+            or str(fields.get('上架状态') or '').strip() not in VALID_ACTIVE):
+        return False
+    store_rows=db.execute("SELECT fields_json FROM bsv_v9_record WHERE page='T_门店注册'").fetchall()
+    store_approved=False
+    for store_row in store_rows:
+        registered=json.loads(store_row['fields_json'])
+        if (str(registered.get('门店ID') or '').strip()==store_id
+                and str(registered.get('审核状态') or '').strip() in VALID_PUBLISH):
+            store_approved=True
+            break
+    if not store_approved:
+        return False
     cents=cents_from_price(fields.get('标注售价'))
     return cents is not None and cents==product['price_cents']
 

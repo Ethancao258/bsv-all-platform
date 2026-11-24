@@ -66,3 +66,59 @@ sudo python3 "$stage_tool" --recovery-check "$CHECKPOINT_RECEIPT"
 `CHECKPOINT_READY` 回执受根账户保护。恢复检查实际校验 AES-GCM、PG 文件 SHA-256、SQLite `PRAGMA quick_check` 和学院媒体指纹，成功显示 `RECOVERY_CHECK_READY`。按受控流程分别保存归档和密钥。部署前检查点暂停隔离写入，手动备份不承诺跨库同一时点。`tests/identity/pg/check.sh` 在真正的临时 PG17 目标中执行解密恢复与合成数据校验。生产恢复与 V4.1 Lighthouse 实机回切仍须实际执行后更新证据。
 
 一句话自动启动 Codex、从 GitHub 自动触发主机和生产数据迁移为 `NOT_CONNECTED`。`bsvctl.py` 只提供已经实现的人工批准入口。
+
+
+## BSV V9 酒水Excel私有资料更新
+
+原始附件不进入GitHub。运行时私有版本存储位于 `/var/lib/bsv-all-internal-stage/pos/catalog`（随程序发布不删除），产品图片位于 `/var/lib/bsv-all-internal-stage/pos/product-media/{product_id}/{原文件名}`。两者由POS服务账户 `bsvint-pos` 独占读写，目录0700，Excel/清单0600。`BSV_PRODUCT_MEDIA_ROOT` 指向该持久目录，图片查找优先读取持久目录，并只读回退旧 release 素材路径。活动指针记录SHA256、前一版本、导入时间及人工锁。目录首次使用由POS账户创建；部署器只允许对已登记的受管配置作明确变更，按既有差异比较流程拒绝未知密钥/变更。
+
+安全导入流水线（`BSV_IMPORT_ROOT=/var/lib/bsv-all-internal-stage/pos/imports`，归档与目录活动版本分开；使用同一 V9 解析/验证器）：
+
+```bash
+sudo -u bsvint-pos env PYTHONPATH=/opt/bsv-all-internal-stage/current/src/services/api/bsv1 \
+  BSV_CATALOG_DIR=/var/lib/bsv-all-internal-stage/pos/catalog \
+  BSV_IMPORT_ROOT=/var/lib/bsv-all-internal-stage/pos/imports \
+  python3 -m bsv_v9_catalog_store archive /var/lib/bsv-all-internal-stage/pos/imports/incoming/catalog.xlsx \
+  --store-dir /var/lib/bsv-all-internal-stage/pos/catalog
+# 用返回的 SHA 依次调用 preview、validate、commit-candidate；确认审批后才 publish。
+```
+
+`archive/preview/validate/commit-candidate` 不切换活动版本，不修改 POS SQLite。只有受控 `publish` 会复用现有事务同步与活动版本指针；`rollback` 可恢复上一个有效目录版本。旧 `stage` 命令名保留，但现在仅执行安全归档与校验，不会顺带发布。手动上传的文件必须先经过受限目录和同一 SHA/七表/固定 ID校验；此处没有新增公网上传路由。
+
+以下为人工上传方式。先从管理终端上传到服务器暂存位置，再在服务器通过POS账户运行同一Excel七表解析与SQLite事务校验。不要放进 `releases/<sha>`：
+
+```bash
+scp 'BSVALL酒水套餐数据库.xlsx' ubuntu@<已批准的Lighthouse主机>:/home/ubuntu/BSVALL酒水套餐数据库.xlsx
+ssh ubuntu@<已批准的Lighthouse主机>
+sudo install -d -o bsvint-pos -g bsvint-pos -m 0700 /var/lib/bsv-all-internal-stage/pos/imports/incoming
+sudo install -o bsvint-pos -g bsvint-pos -m 0600 \\
+  /home/ubuntu/BSVALL酒水套餐数据库.xlsx \\
+  /var/lib/bsv-all-internal-stage/pos/imports/incoming/BSVALL酒水套餐.xlsx
+sudo -u bsvint-pos env \\
+  PYTHONPATH=/opt/bsv-all-internal-stage/current/src/services/api/bsv1 \\
+  BSV_CATALOG_DIR=/var/lib/bsv-all-internal-stage/pos/catalog \\
+  BSV_IMPORT_ROOT=/var/lib/bsv-all-internal-stage/pos/imports \\
+  BSV_V9_XLSX=/var/lib/bsv-all-internal-stage/pos/synthetic-v9.xlsx \\
+  /usr/bin/python3 -m bsv_v9_catalog_store stage \\
+  /var/lib/bsv-all-internal-stage/pos/imports/incoming/BSVALL酒水套餐.xlsx \\
+  --store-dir /var/lib/bsv-all-internal-stage/pos/catalog
+# 用 stage 返回的 SHA256 做预览、校验、人工提交，然后才发布：
+SHA256="从 stage 输出复制的64位SHA256"
+sudo -u bsvint-pos env BSV_IMPORT_ROOT=/var/lib/bsv-all-internal-stage/pos/imports PYTHONPATH=/opt/bsv-all-internal-stage/current/src/services/api/bsv1 \\
+  python3 -m bsv_v9_catalog_store preview "$SHA256" --store-dir /var/lib/bsv-all-internal-stage/pos/catalog
+sudo -u bsvint-pos env BSV_IMPORT_ROOT=/var/lib/bsv-all-internal-stage/pos/imports PYTHONPATH=/opt/bsv-all-internal-stage/current/src/services/api/bsv1 \\
+  python3 -m bsv_v9_catalog_store validate "$SHA256" --store-dir /var/lib/bsv-all-internal-stage/pos/catalog
+sudo -u bsvint-pos env BSV_IMPORT_ROOT=/var/lib/bsv-all-internal-stage/pos/imports PYTHONPATH=/opt/bsv-all-internal-stage/current/src/services/api/bsv1 \\
+  python3 -m bsv_v9_catalog_store commit-candidate "$SHA256" --store-dir /var/lib/bsv-all-internal-stage/pos/catalog
+sudo -u bsvint-pos env BSV_IMPORT_ROOT=/var/lib/bsv-all-internal-stage/pos/imports PYTHONPATH=/opt/bsv-all-internal-stage/current/src/services/api/bsv1 \\
+  python3 -m bsv_v9_catalog_store publish "$SHA256" --database /var/lib/bsv-all-internal-stage/pos/synthetic.sqlite3 \\
+  --store-dir /var/lib/bsv-all-internal-stage/pos/catalog
+sudo -u bsvint-pos env BSV_CATALOG_DIR=/var/lib/bsv-all-internal-stage/pos/catalog \\
+  /usr/bin/python3 -m bsv_v9_catalog_store status --store-dir /var/lib/bsv-all-internal-stage/pos/catalog
+```
+
+回退：以同样的 `PYTHONPATH`、`BSV_CATALOG_DIR`、`BSV_V9_XLSX` 运行 `/usr/bin/python3 -m bsv_v9_catalog_store rollback --database /var/lib/bsv-all-internal-stage/pos/synthetic.sqlite3 --store-dir /var/lib/bsv-all-internal-stage/pos/catalog`。发布会设置人工版本锁；暂时没有已实现的CloudBase自动下载器或每日05:00任务。解除锁的CLI只解除覆盖保护，不会自行启动云同步。需要CloudBase官方私有对象身份、Bucket/object fileID验证和服务端定时同步后再启用。
+
+资料查询必须通过POS登录后使用稳定契约 `/api/v1/catalog/products`、`/api/v1/catalog/products/{product_id}`、`/api/v1/catalog/products/{product_id}/recipe`；旧 `/api/catalog/*` 接口保留兼容。请求不创建订单。产品图片通过现有私有图片目录和同一登录会话读取。资料可查与可售分离，人工确认内容、商品上架、门店及报价授权前保持不可销售。
+
+本说明为代码交付方法，不是已在Lighthouse执行的部署记录。当前主机安装、初次Excel启用和浏览器验收均为 `HOST_NOT_RUN`。

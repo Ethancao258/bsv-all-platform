@@ -13,7 +13,8 @@
     "identity.A": {
       "purpose": "唯一人员身份可写事实",
       "config": "config/modules/identity-data-sources.json",
-      "runtime_env": "BSV_DB_A_URL",
+      "runtime_env": "BSV_DB_URL",
+      "compatibility_envs": ["BSV_DB_A_URL"],
       "allow_use": "isolated_current; production_blocked"
     },
     "identity.B": {

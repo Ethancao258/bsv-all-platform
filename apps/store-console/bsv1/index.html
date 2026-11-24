@@ -100,12 +100,12 @@
    </section>
    <div id="detailSheet" class="detail-sheet hidden" role="dialog" aria-label="工作任务与记录" aria-modal="true"><div class="detail-panel"><div class="detail-top"><div><span class="detail-kicker">BSV1 · 当前门店</span><strong id="detailHeading">操作详情</strong></div><button id="detailDismiss" class="detail-close" type="button">关闭 ×</button></div>
    <section id="pageCatalog" class="page-section hidden"><div class="section-card catalog-section">
-      <div class="panel-head"><div><h2>BSV ALL｜统一商品资料库</h2><p>直接读取V9 Excel固定商品ID；商品参考售价不作为门店应收价</p></div></div>
+      <div class="panel-head"><div><h2>BSV ALL｜统一商品资料库</h2><p>直接读取V9七页固定ID资料；资料可查不等于获准销售</p></div></div>
       <div id="catalogSummary" class="catalog-summary"></div>
-      <div class="catalog-filters"><input id="catalogSearch" placeholder="搜索商品名称、固定ID、销售系列" autocomplete="off" aria-label="搜索商品" />
-        <select id="catalogDomain" aria-label="筛选商品分类"><option value="ALL">现场成品与套餐</option><option value="C">现场成品</option><option value="K">套餐组合</option><option value="READY">已核价可下单</option></select></div>
+      <div class="catalog-filters"><input id="catalogSearch" placeholder="搜索名称、固定ID、分类或规格" autocomplete="off" aria-label="搜索商品" />
+        <select id="catalogDomain" aria-label="筛选商品分类"><option value="ALL">全部资料</option><option value="C">现场成品</option><option value="P">预调半成品</option><option value="M">采购纯饮/物料</option><option value="K">套餐组合</option><option value="READY">已审核可下单</option></select></div>
       <div id="catalogList" class="catalog-list"></div>
-      <p class="catalog-footer-note">提示：商品/套餐审批、门店审核与Q页核准售价全部有效，才可以在对应门店点单。原始内容未被改写。</p>
+      <p class="catalog-footer-note">只读查询不创建订单。未经商品、门店及报价审批的资料不会因此获得销售资格；采购成本等受限字段不会显示。</p>
     </div></section>
     <section id="pageOrders" class="page-section hidden"><div class="section-card"><div class="panel-head"><div><h2>进行中桌次</h2><p>仅显示正在营业的桌次</p></div></div><div id="ordersList" class="table-list"></div></div></section>
    <section id="pageQueue" class="page-section hidden"><div class="section-card"><div class="panel-head"><div><h2>制作与送达任务</h2><p>领取制作 → 看图/配方/计时 → 我已做完 → 待上桌 → 已送达；制作与送达分别留痕</p></div></div><div id="queueList" class="task-list"></div></div></section>

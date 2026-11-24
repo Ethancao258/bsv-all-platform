@@ -1,0 +1,32 @@
+{
+  "source_id": "SRC-WORKBUDDY-V22-20261123",
+  "file_type": "zip + xlsx + jsonl + csv + sql",
+  "business_domain": ["catalog", "core", "audit"],
+  "bsv_layer": "BSV1",
+  "source": "user-uploaded second-stage handoff ZIP; nested WorkBuddy V2.2 data package",
+  "sha256": {
+    "handoff_zip": "d0b40f376880791a4feab9d8dff165c6b1a401db823781cb10da7da46cb95d3d",
+    "workbuddy_zip": "3f98fbe12eacdca481d1e7b3350a59410da7f1116c74a75a1c7b93fe63a0e5a1",
+    "source_excel": "4ed9bc164981f267997bd146dfd54d27ae22fbdc9cc1c850776daed83d34c8e82"
+  },
+  "sensitivity": "BUSINESS_CONFIDENTIAL; source workbook and full data package are excluded from Git",
+  "version": "WorkBuddy V2.2",
+  "authority_status": "CANDIDATE_IMPORT_RAW",
+  "import_target": "isolated PostgreSQL 17 only; logical database bsv_all_prod; never bsv_identity_isolated_internal or CloudBase production",
+  "processing_status": "SHA_VERIFIED_PACKAGE_47_PASS; COMPLETE_MANIFEST_REVALIDATED; SYNTHETIC_PG17_CI_PASS; REAL_V22_IMPORT_NOT_EXECUTED; HOST_NOT_RUN",
+  "verified_package_counts": {
+    "catalog_product": 63,
+    "catalog_semifinished": 17,
+    "catalog_material": 419,
+    "catalog_bundle": 21,
+    "catalog_bundle_slot": 21,
+    "catalog_store_nps": 84,
+    "catalog_recipe_step": 65,
+    "catalog_price_quote": 0,
+    "core_store": 4,
+    "source_mapping_cells": 16815,
+    "field_dictionary": 381,
+    "formula_index": 6275
+  },
+  "git_data_policy": "index, hashes, schemas, and tests only; no source workbook, complete JSONL records, images, or credentials"
+}

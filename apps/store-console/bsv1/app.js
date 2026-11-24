@@ -346,34 +346,67 @@ $('loginForm').addEventListener('submit',e=>{
  }});
 });
 function renderCatalogSummary(){
- const items=data?.catalog_items||[],sync=data?.catalog_sync;
- const countC=items.filter(x=>x.domain==='C').length,countK=items.filter(x=>x.domain==='K').length,ready=items.filter(x=>x.sale_enabled).length;
- $('catalogSummary').innerHTML=`<span>现场成品 <b>${countC}</b></span><span>套餐资料 <b>${countK}</b></span><span>AJ可下单 <b class="${ready?'ready':'not-ready'}">${ready}</b></span><span>来源校验 <b>${sync?'V9已同步':'尚未导入'}</b></span>`;
+ const sync=data?.catalog_sync;
+ const version=sync?.source_sha?sync.source_sha.slice(0,12):'未导入';
+ const imported=sync?.imported_at?new Date(sync.imported_at).toLocaleString('zh-CN'):'暂无更新时间';
+ $('catalogSummary').innerHTML=`<span>资料来源 <b>${esc(version)}</b></span><span>最近导入 <b>${esc(imported)}</b></span><span>资料可查不代表允许销售</span>`;
 }
-function renderCatalogList(){if(!data)return;
- const term=($('catalogSearch').value||'').trim().toLowerCase(),kind=$('catalogDomain').value;
- const rows=(data.catalog_items||[]).filter(p=>(kind==='ALL'||kind==='READY'&&p.sale_enabled||kind===p.domain)&&
-    pinyinMatch(p,term));
+function renderCatalogSource(source){
+ if(!source)return;
+ const version=source.sha256?String(source.sha256).slice(0,12):'未知';
+ const imported=source.imported_at?new Date(source.imported_at).toLocaleString('zh-CN'):'暂无更新时间';
+ const label=source.source==='postgresql'?'PostgreSQL 17':'SQLite兼容资料';
+ $('catalogSummary').innerHTML=`<span>资料读取自 <b>${esc(label)} · ${esc(version)}</b></span><span>最近导入 <b>${esc(imported)}</b></span><span>导入原始资料不代表允许销售</span>`;
+}
+let catalogSearchRequest=0;
+async function renderCatalogList(){
+ if(!data)return;
+ const term=($('catalogSearch').value||'').trim(),kind=$('catalogDomain').value,request=++catalogSearchRequest;
  const list=$('catalogList');
- list.innerHTML=rows.length?rows.map(p=>`<button type="button" class="catalog-item" data-cid="${esc(p.id)}">
-   <span class="catalog-item-main"><b>${esc(p.name)}</b><small>${esc(p.id)} · ${esc(p.series|| (p.domain==='K'?'套餐':'现场成品'))}${p.readable_sku?' · 分类码 '+esc(p.readable_sku):''}</small></span>
-   <span class="catalog-item-status ${p.sale_enabled?'ready':'pending'}">${p.sale_enabled?yuan(p.price_cents)+' · AJ统一价':p.domain==='C'?'AJ待定价':'套餐定价待配置'}</span></button>`).join(''):'<div class="catalog-empty">没有符合条件的商品</div>';
- list.querySelectorAll('[data-cid]').forEach(b=>b.onclick=()=>showCatalogItem(b.dataset.cid));
+ if(!term){list.innerHTML='<div class="catalog-empty">输入名称、固定ID或分类开始查询</div>';return;}
+ list.innerHTML='<div class="catalog-empty">正在查询集团酒水资料…</div>';
+ try{
+  const result=await getJson('/api/v1/catalog/products?q='+encodeURIComponent(term)+'&domain='+encodeURIComponent(kind));
+  if(request!==catalogSearchRequest)return;
+  renderCatalogSource(result.source);
+  list.innerHTML=result.items.length?result.items.map(p=>`<button type="button" class="catalog-item" data-cid="${esc(p.id)}">
+   <span class="catalog-item-main"><b>${esc(p.name)}</b><small>${esc(p.id)} · ${esc(p.series||p.domain)}</small></span>
+   <span class="catalog-item-status ${p.sale_enabled?'ready':'pending'}">${p.sale_enabled?'已获准销售':'资料可查 · 未获销售授权'}</span></button>`).join(''):'<div class="catalog-empty">没有符合条件的资料</div>';
+  list.querySelectorAll('[data-cid]').forEach(b=>b.onclick=()=>showCatalogItem(b.dataset.cid));
+ }catch(e){if(request===catalogSearchRequest)list.innerHTML='<div class="catalog-empty">查询失败：'+esc(e.message)+'。请检查连接后重试。</div>';}
+}
+function catalogFields(fields){
+ return Object.entries(fields||{}).filter(([k,v])=>v!==undefined&&v!==null&&String(v).trim())
+  .map(([k,v])=>`<div class="catalog-detail-row"><b>${esc(k)}</b><p>${esc(String(v))}</p></div>`).join('');
 }
 async function showCatalogItem(id){
- try{const r=await getJson('/api/catalog/item?id='+encodeURIComponent(id));const f=r.fields||{};
- const sections=[['商品身份','商品名称','销售系列','英文名称','套餐名称','套餐包含内容'],
- ['制作资料','配方文字','完整制作步骤','寻酒指引','杯具','制作时长（秒）','过敏原'],
- ['发布审核','内容审核状态','上架状态','审批状态','业务审批状态','销售状态']];
- const html=sections.map(section=>{const fields=section.slice(1).filter(k=>f[k]!==undefined&&f[k]!==null&&String(f[k]).trim());
- return fields.length?`<section class="catalog-detail-section"><h3>${esc(section[0])}</h3>${fields.map(k=>`<div class="catalog-detail-row"><b>${esc(k)}</b><p>${esc(String(f[k]))}</p></div>`).join('')}</section>`:'';}).join('');
- const rawFields=Object.entries(f).filter(([k,v])=>v!==undefined&&v!==null&&String(v).trim())
-  .map(([k,v])=>`<div class="catalog-detail-row"><b>${esc(k)}</b><p>${esc(String(v))}</p></div>`).join('');
- $('catalogDetailBody').innerHTML=`<p class="eyebrow">BSV ALL · ${esc(id)} · 资料只读</p><h2>${esc(r.name)}</h2><div class="catalog-detail-state">${r.sale_enabled?'集团统一售价 · C表AJ列':r.id.startsWith('C')?'AJ未标价，请在Excel补齐':'套餐价格未配置'}</div>${html||'<p>该商品暂无详细资料。</p>'}
- <details class="catalog-all-fields"><summary>查看全部原始业务字段（${Object.keys(f).length}列）</summary>${rawFields}</details>
- <p class="small-muted">制作资料来自 V9，商品过敏原等字段如未核实，请务必人工查验；支付尚未接入。</p>
- <p class="small-muted">商品标价仅以 V9 Excel「C_现场成品」AJ列为准。所有门店使用相同价格；缺价请在原Excel补齐后执行同步。</p>`;
- $('catalogDetailModal').classList.remove('hidden');}catch(e){flash(e.message,true);}
+ try{
+  const r=await getJson('/api/v1/catalog/products/'+encodeURIComponent(id));const f=r.fields||{};
+  let tutorial=null;
+  if(id.startsWith('C')||id.startsWith('P')){try{tutorial=await getJson('/api/v1/catalog/products/'+encodeURIComponent(id)+'/recipe');}catch(e){tutorial={warning:e.message};}}
+  const source=r.source||{},stamp=source.imported_at||'未导入';
+  const sections=[['身份与分类',['商品ID','商品名称','销售系列','英文名称','套餐名称','套餐包含内容','物料名称','类别','规格']],
+   ['配方和制作',['配方文字','单品配方','完整制作步骤','寻酒指引','杯具','制作时长（秒）','操作方式','制作要求','产品故事']],
+   ['审核状态',['内容审核状态','上架状态','审核状态','销售状态','审批状态','业务审批状态']]];
+  const semantic=r.attributes||{};
+  const semanticHtml=Object.keys(semantic).length?`<section class="catalog-detail-section"><h3>标准字段</h3>${catalogFields(semantic)}</section>`:'';
+  const details=semanticHtml+sections.map(([title,keys])=>{const pairs=keys.filter(k=>f[k]!==undefined&&f[k]!==null&&String(f[k]).trim());
+   return pairs.length?`<section class="catalog-detail-section"><h3>${esc(title)}</h3>${pairs.map(k=>`<div class="catalog-detail-row"><b>${esc(k)}</b><p>${esc(String(f[k]))}</p></div>`).join('')}</section>`:'';}).join('');
+  const photos=tutorial?.photos||{};
+  const photoHtml=Object.entries(photos).filter(([kind,p])=>p.available&&['materials','final'].includes(kind)).map(([kind,p])=>p.available?`<figure><img loading="lazy" alt="${esc(p.filename||kind)}" src="/api/production/photo?product_id=${encodeURIComponent(id)}&kind=${encodeURIComponent(kind)}"><figcaption>${esc(p.filename)}</figcaption></figure>`:'').join('');
+  const recipeHtml=tutorial?`<section class="catalog-detail-section"><h3>配方耗用工序（按Excel出品ID关联）</h3>${(tutorial.recipe_operations||[]).map(x=>`<article><b>${esc(x.record_id)} · ${esc(x.material_link_status)}</b>${catalogFields(x.fields)}${x.material?'<h4>固定ID物料：'+esc(x.material.id)+' · '+esc(x.material.name)+'</h4>'+catalogFields(x.material.fields):''}</article>`).join('')||'<p>暂无通过出品固定ID关联的工序记录。</p>'}</section>
+   <section class="catalog-detail-section"><h3>可用产品图片</h3>${photoHtml||'<p>Excel关联的图片素材当前不可用。</p>'}</section>`: `<section class="catalog-detail-section"><h3>制作指引</h3><p>${esc(tutorial?.warning||'制作资料暂不可用。')}</p></section>`;
+  const meta=`<p class="small-muted">资料源版本 SHA256：${esc(source.sha256||'未知')} · 最近导入：${esc(stamp)}</p>`;
+  const sale=r.sale_enabled?'已核准可按当前POS规则销售':'资料可查，但当前未获销售授权';
+  $('catalogDetailBody').innerHTML=`<p class="eyebrow">BSV ALL · ${esc(id)} · 只读资料</p><h2>${esc(r.name)}</h2><div class="catalog-detail-state">${esc(sale)}</div>${details||catalogFields(f)}
+   <details class="catalog-all-fields"><summary>查看Excel全部原始字段（${Object.keys(f).length}项）</summary>${catalogFields(f)}</details>
+   ${r.store_research?.length?'<section class="catalog-detail-section"><h3>套餐门店研究情景（未审批，不自动上架）</h3>'+r.store_research.map(item=>'<h4>'+esc(item.section)+' · Excel第'+esc(item.source_row)+'</h4>'+catalogFields(item.fields)).join('')+'</section>':''}
+   ${recipeHtml}
+   ${r.withheld_fields?.length?'<p class="small-muted">为保护采购权限，以下字段未向普通POS展示：'+esc(r.withheld_fields.join('、'))+'</p>':''}
+   ${r.production_standard_approved===false?'<p class="small-muted">该半成品的储存、运输或效期标准尚未核准，不能作为有效操作标准。</p>':''}
+   ${meta}<p class="small-muted">查询不会创建订单或改变销售状态；未审批资料不会自动上架。</p>`;
+  $('catalogDetailModal').classList.remove('hidden');
+ }catch(e){flash(e.message,true);}
 }
 function render(){if(!data)return;
  $('storeIdentity').textContent=data.store.district.replace('北京市','北京')+' · '+data.store.name;

@@ -1,0 +1,4061 @@
+{
+  "contract_version": "bsv-data-contracts-v1",
+  "status": "APPLICATION_CONTRACT_READY_SCHEMA_PENDING",
+  "registry_refs": {
+    "data_ownership": "config/data-ownership.json",
+    "module_data_sources": [
+      "config/modules/identity-data-sources.json",
+      "config/modules/supply-sources.example.json",
+      "config/modules/bsv1-handoff.json"
+    ],
+    "ownership_is_authoritative": true,
+    "do_not_duplicate_entity_owners": true
+  },
+  "database": {
+    "primary_url_env": "BSV_DB_URL",
+    "database_name": "bsv_all_prod",
+    "engine": "PostgreSQL 17",
+    "schema_status": "ISOLATED_PG17_CANDIDATE_ONLY_CLOUDBASE_HISTORY_UNVERIFIED",
+    "production_configured": false,
+    "single_authoritative_writer": true,
+    "migration_owner": "cloudbase/migrations",
+    "forbidden_fallbacks": [
+      "bsv_identity_isolated_internal",
+      "SQLite operational databases"
+    ],
+    "compatibility": {
+      "pos_operational_sqlite": "BSV_DB_PATH",
+      "supply_sources_registry": "BSV_SOURCES_CONFIG",
+      "growth_database": "BSV_GROWTH_DB_URL"
+    },
+    "candidate_migration": "platform/lighthouse/bsv1/catalog/isolated_migrations/0001_workbuddy_v22.sql"
+  },
+  "domains": {
+    "catalog": {
+      "owner": "catalog",
+      "current_writer": "controlled WorkBuddy V2.2 importer commits versioned IMPORTED_RAW records to isolated PostgreSQL; approval/published sale remains separate",
+      "current_source": "Excel/JSONL import to versioned PostgreSQL 17 raw catalog; API adapter can explicitly read active imported source revision; legacy SQLite remains operational compatibility only",
+      "postgres_namespaces": ["catalog", "core", "audit"],
+      "candidate_schema_status": "ISOLATED_ONLY_NOT_OFFICIAL_CLOUDBASE_DDL",
+      "read_api": [
+        "GET /api/v1/catalog/products",
+        "GET /api/v1/catalog/products/{product_id}",
+        "GET /api/v1/catalog/products/{product_id}/recipe",
+        "GET /api/v1/catalog/products?domain=P|M|K"
+      ],
+      "write_api": "controlled versioned import only; no direct UI or public-menu writes; imported raw data does not approve sale",
+      "operational_boundary": "catalog reads may opt into the PG adapter in isolated staging; POS orders, seats, payments and existing price snapshots continue using the existing SQLite operational store",
+      "stable_fields": {
+        "product_id": {
+          "sheet": "C_现场成品",
+          "source_header": "商品ID",
+          "source": "fixed_id",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "product_id",
+            "semantic_key": "catalog.product.product_id"
+          }
+        },
+        "name": {
+          "sheet": "C_现场成品",
+          "source_header": "商品名称",
+          "source": "display_name",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "name_zh",
+            "semantic_key": "catalog.product.name_zh"
+          }
+        },
+        "series": {
+          "sheet": "C_现场成品",
+          "source_header": "销售系列",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "sales_series",
+            "semantic_key": "catalog.product.sales_series"
+          }
+        },
+        "recipe_text": {
+          "sheet": "C_现场成品",
+          "source_header": "配方文字",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "recipe_text",
+            "semantic_key": "catalog.product.recipe_text"
+          }
+        },
+        "recipe_steps": {
+          "sheet": "C_现场成品",
+          "source_header": "完整制作步骤",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "prep_steps_full",
+            "semantic_key": "catalog.product.prep_steps_full"
+          }
+        },
+        "sourcing_guide": {
+          "sheet": "C_现场成品",
+          "source_header": "寻酒指引",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "locator_guide",
+            "semantic_key": "catalog.product.locator_guide"
+          }
+        },
+        "glassware": {
+          "sheet": "C_现场成品",
+          "source_header": "杯具",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "glassware",
+            "semantic_key": "catalog.product.glassware"
+          }
+        },
+        "duration_seconds": {
+          "sheet": "C_现场成品",
+          "source_header": "制作时长（秒）",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "prep_duration_sec",
+            "semantic_key": "catalog.product.prep_duration_sec"
+          }
+        },
+        "method": {
+          "sheet": "C_现场成品",
+          "source_header": "操作方式",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "method",
+            "semantic_key": "catalog.product.method"
+          }
+        },
+        "story": {
+          "sheet": "C_现场成品",
+          "source_header": "产品故事",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "product_story",
+            "semantic_key": "catalog.product.product_story"
+          }
+        },
+        "image_materials": {
+          "sheet": "C_现场成品",
+          "source_header": "配方图文件名｜首次确认",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "recipe_image_first",
+            "semantic_key": "catalog.product.recipe_image_first"
+          }
+        },
+        "image_review": {
+          "sheet": "C_现场成品",
+          "source_header": "配方图文件名｜二次复核",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "recipe_image_second",
+            "semantic_key": "catalog.product.recipe_image_second"
+          }
+        },
+        "image_final": {
+          "sheet": "C_现场成品",
+          "source_header": "成品图文件名",
+          "postgres": {
+            "table": "catalog.product",
+            "column": "final_image_file",
+            "semantic_key": "catalog.product.final_image_file"
+          }
+        }
+      },
+      "sale_authority": "existing approved catalog/quote/store checks only; data presence is not sale approval",
+      "read_source_env": "BSV_CATALOG_READ_SOURCE",
+      "postgres_field_dictionary": {
+        "catalog.product.sku": {
+          "table": "catalog.product",
+          "column": "sku",
+          "source_sheet": "C",
+          "source_column": "K",
+          "source_header": "SKU",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.product_id": {
+          "table": "catalog.product",
+          "column": "product_id",
+          "source_sheet": "C",
+          "source_column": "L",
+          "source_header": "商品ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.name_zh": {
+          "table": "catalog.product",
+          "column": "name_zh",
+          "source_sheet": "C",
+          "source_column": "M",
+          "source_header": "商品名称",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.sales_series": {
+          "table": "catalog.product",
+          "column": "sales_series",
+          "source_sheet": "C",
+          "source_column": "N",
+          "source_header": "销售系列",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.name_en": {
+          "table": "catalog.product",
+          "column": "name_en",
+          "source_sheet": "C",
+          "source_column": "O",
+          "source_header": "英文名称",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.category_l1": {
+          "table": "catalog.product",
+          "column": "category_l1",
+          "source_sheet": "C",
+          "source_column": "P",
+          "source_header": "L1",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.category_l2": {
+          "table": "catalog.product",
+          "column": "category_l2",
+          "source_sheet": "C",
+          "source_column": "Q",
+          "source_header": "L2",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.category_l3": {
+          "table": "catalog.product",
+          "column": "category_l3",
+          "source_sheet": "C",
+          "source_column": "R",
+          "source_header": "L3",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.category_l4": {
+          "table": "catalog.product",
+          "column": "category_l4",
+          "source_sheet": "C",
+          "source_column": "S",
+          "source_header": "L4",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.c_t": {
+          "table": "catalog.product",
+          "column": "c_t",
+          "source_sheet": "C",
+          "source_column": "T",
+          "source_header": "类内编号",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.recipe_text": {
+          "table": "catalog.product",
+          "column": "recipe_text",
+          "source_sheet": "C",
+          "source_column": "U",
+          "source_header": "配方文字",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.product.prep_steps_full": {
+          "table": "catalog.product",
+          "column": "prep_steps_full",
+          "source_sheet": "C",
+          "source_column": "V",
+          "source_header": "完整制作步骤",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.product.locator_guide": {
+          "table": "catalog.product",
+          "column": "locator_guide",
+          "source_sheet": "C",
+          "source_column": "W",
+          "source_header": "寻酒指引",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.product.recipe_image_first": {
+          "table": "catalog.product",
+          "column": "recipe_image_first",
+          "source_sheet": "C",
+          "source_column": "X",
+          "source_header": "配方图文件名｜首次确认",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.product.recipe_image_second": {
+          "table": "catalog.product",
+          "column": "recipe_image_second",
+          "source_sheet": "C",
+          "source_column": "Y",
+          "source_header": "配方图文件名｜二次复核",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.product.final_image_file": {
+          "table": "catalog.product",
+          "column": "final_image_file",
+          "source_sheet": "C",
+          "source_column": "Z",
+          "source_header": "成品图文件名",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.drink_image_flag": {
+          "table": "catalog.product",
+          "column": "drink_image_flag",
+          "source_sheet": "C",
+          "source_column": "AA",
+          "source_header": "酒图标识",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.method": {
+          "table": "catalog.product",
+          "column": "method",
+          "source_sheet": "C",
+          "source_column": "AB",
+          "source_header": "操作方式",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.method_intensity": {
+          "table": "catalog.product",
+          "column": "method_intensity",
+          "source_sheet": "C",
+          "source_column": "AC",
+          "source_header": "操作力度",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.prep_duration_sec": {
+          "table": "catalog.product",
+          "column": "prep_duration_sec",
+          "source_sheet": "C",
+          "source_column": "AD",
+          "source_header": "制作时长（秒）",
+          "data_type": "INTEGER",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.product.glassware": {
+          "table": "catalog.product",
+          "column": "glassware",
+          "source_sheet": "C",
+          "source_column": "AE",
+          "source_header": "杯具",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.product_story": {
+          "table": "catalog.product",
+          "column": "product_story",
+          "source_sheet": "C",
+          "source_column": "AF",
+          "source_header": "产品故事",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.flavor_desc": {
+          "table": "catalog.product",
+          "column": "flavor_desc",
+          "source_sheet": "C",
+          "source_column": "AG",
+          "source_header": "风味描述",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.flavor_tag": {
+          "table": "catalog.product",
+          "column": "flavor_tag",
+          "source_sheet": "C",
+          "source_column": "AH",
+          "source_header": "风味标签",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.abv": {
+          "table": "catalog.product",
+          "column": "abv",
+          "source_sheet": "C",
+          "source_column": "AI",
+          "source_header": "酒精度数",
+          "data_type": "NUMERIC(6,2)",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.reference_price_raw": {
+          "table": "catalog.product",
+          "column": "reference_price_raw",
+          "source_sheet": "C",
+          "source_column": "AJ",
+          "source_header": "标注售价",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.product.prep_note_extra": {
+          "table": "catalog.product",
+          "column": "prep_note_extra",
+          "source_sheet": "C",
+          "source_column": "AK",
+          "source_header": "补充制作说明",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.product.store_op_note": {
+          "table": "catalog.product",
+          "column": "store_op_note",
+          "source_sheet": "C",
+          "source_column": "AL",
+          "source_header": "门店操作备注",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.portion": {
+          "table": "catalog.product",
+          "column": "portion",
+          "source_sheet": "C",
+          "source_column": "AM",
+          "source_header": "份量",
+          "data_type": "NUMERIC(12,3)",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.portion_unit": {
+          "table": "catalog.product",
+          "column": "portion_unit",
+          "source_sheet": "C",
+          "source_column": "AN",
+          "source_header": "份量单位",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.alcohol_attribute": {
+          "table": "catalog.product",
+          "column": "alcohol_attribute",
+          "source_sheet": "C",
+          "source_column": "AO",
+          "source_header": "酒精属性",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.allergen": {
+          "table": "catalog.product",
+          "column": "allergen",
+          "source_sheet": "C",
+          "source_column": "AP",
+          "source_header": "过敏原",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.image_asset_id": {
+          "table": "catalog.product",
+          "column": "image_asset_id",
+          "source_sheet": "C",
+          "source_column": "AQ",
+          "source_header": "图片素材ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.recipe_version": {
+          "table": "catalog.product",
+          "column": "recipe_version",
+          "source_sheet": "C",
+          "source_column": "AR",
+          "source_header": "配方版本",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.product.content_review_status": {
+          "table": "catalog.product",
+          "column": "content_review_status",
+          "source_sheet": "C",
+          "source_column": "AS",
+          "source_header": "内容审核状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.n_input": {
+          "table": "catalog.product",
+          "column": "n_input",
+          "source_sheet": "C",
+          "source_column": "AT",
+          "source_header": "N需求输入",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.p_input": {
+          "table": "catalog.product",
+          "column": "p_input",
+          "source_sheet": "C",
+          "source_column": "AU",
+          "source_header": "P支付输入",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.s_input": {
+          "table": "catalog.product",
+          "column": "s_input",
+          "source_sheet": "C",
+          "source_column": "AV",
+          "source_header": "S场景输入",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.display_flavor_note": {
+          "table": "catalog.product",
+          "column": "display_flavor_note",
+          "source_sheet": "C",
+          "source_column": "AW",
+          "source_header": "展示风味说明",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.listing_status": {
+          "table": "catalog.product",
+          "column": "listing_status",
+          "source_sheet": "C",
+          "source_column": "AX",
+          "source_header": "上架状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.image_review_first": {
+          "table": "catalog.product",
+          "column": "image_review_first",
+          "source_sheet": "C",
+          "source_column": "AY",
+          "source_header": "首次图审核状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.product.image_review_second": {
+          "table": "catalog.product",
+          "column": "image_review_second",
+          "source_sheet": "C",
+          "source_column": "AZ",
+          "source_header": "二次图审核状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.sku": {
+          "table": "catalog.semifinished",
+          "column": "sku",
+          "source_sheet": "P",
+          "source_column": "K",
+          "source_header": "SKU",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.semifinished_id": {
+          "table": "catalog.semifinished",
+          "column": "semifinished_id",
+          "source_sheet": "P",
+          "source_column": "L",
+          "source_header": "半成品ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.name_zh": {
+          "table": "catalog.semifinished",
+          "column": "name_zh",
+          "source_sheet": "P",
+          "source_column": "M",
+          "source_header": "半成品名称",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.category_l1": {
+          "table": "catalog.semifinished",
+          "column": "category_l1",
+          "source_sheet": "P",
+          "source_column": "N",
+          "source_header": "L1",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.category_l2": {
+          "table": "catalog.semifinished",
+          "column": "category_l2",
+          "source_sheet": "P",
+          "source_column": "O",
+          "source_header": "L2",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.category_l3": {
+          "table": "catalog.semifinished",
+          "column": "category_l3",
+          "source_sheet": "P",
+          "source_column": "P",
+          "source_header": "L3",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.category_l4": {
+          "table": "catalog.semifinished",
+          "column": "category_l4",
+          "source_sheet": "P",
+          "source_column": "Q",
+          "source_header": "L4",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.p_r": {
+          "table": "catalog.semifinished",
+          "column": "p_r",
+          "source_sheet": "P",
+          "source_column": "R",
+          "source_header": "类内编号",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.label_short_code": {
+          "table": "catalog.semifinished",
+          "column": "label_short_code",
+          "source_sheet": "P",
+          "source_column": "S",
+          "source_header": "标签短码",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.package_qty": {
+          "table": "catalog.semifinished",
+          "column": "package_qty",
+          "source_sheet": "P",
+          "source_column": "T",
+          "source_header": "包装量",
+          "data_type": "NUMERIC(14,3)",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.package_unit": {
+          "table": "catalog.semifinished",
+          "column": "package_unit",
+          "source_sheet": "P",
+          "source_column": "U",
+          "source_header": "包装单位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.shelf_life": {
+          "table": "catalog.semifinished",
+          "column": "shelf_life",
+          "source_sheet": "P",
+          "source_column": "V",
+          "source_header": "保质期",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.batch_cost": {
+          "table": "catalog.semifinished",
+          "column": "batch_cost",
+          "source_sheet": "P",
+          "source_column": "W",
+          "source_header": "整批成本",
+          "data_type": "NUMERIC(14,2)",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.recipe_text": {
+          "table": "catalog.semifinished",
+          "column": "recipe_text",
+          "source_sheet": "P",
+          "source_column": "X",
+          "source_header": "配方文字",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.semifinished.prep_steps_full": {
+          "table": "catalog.semifinished",
+          "column": "prep_steps_full",
+          "source_sheet": "P",
+          "source_column": "Y",
+          "source_header": "完整制作步骤",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.semifinished.recipe_image_first": {
+          "table": "catalog.semifinished",
+          "column": "recipe_image_first",
+          "source_sheet": "P",
+          "source_column": "Z",
+          "source_header": "配方图文件名｜首次确认",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.semifinished.recipe_image_second": {
+          "table": "catalog.semifinished",
+          "column": "recipe_image_second",
+          "source_sheet": "P",
+          "source_column": "AA",
+          "source_header": "配方图文件名｜二次复核",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.semifinished.final_image_file": {
+          "table": "catalog.semifinished",
+          "column": "final_image_file",
+          "source_sheet": "P",
+          "source_column": "AB",
+          "source_header": "成品图文件名",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.material_locator": {
+          "table": "catalog.semifinished",
+          "column": "material_locator",
+          "source_sheet": "P",
+          "source_column": "AC",
+          "source_header": "寻料指引",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.semifinished.storage_condition": {
+          "table": "catalog.semifinished",
+          "column": "storage_condition",
+          "source_sheet": "P",
+          "source_column": "AD",
+          "source_header": "储存条件",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.transport_condition": {
+          "table": "catalog.semifinished",
+          "column": "transport_condition",
+          "source_sheet": "P",
+          "source_column": "AE",
+          "source_header": "运输条件",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.alcohol_attribute": {
+          "table": "catalog.semifinished",
+          "column": "alcohol_attribute",
+          "source_sheet": "P",
+          "source_column": "AF",
+          "source_header": "酒精属性",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.sop_version": {
+          "table": "catalog.semifinished",
+          "column": "sop_version",
+          "source_sheet": "P",
+          "source_column": "AG",
+          "source_header": "SOP版本",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.content_review_status": {
+          "table": "catalog.semifinished",
+          "column": "content_review_status",
+          "source_sheet": "P",
+          "source_column": "AH",
+          "source_header": "内容审核状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.label_image_id": {
+          "table": "catalog.semifinished",
+          "column": "label_image_id",
+          "source_sheet": "P",
+          "source_column": "AI",
+          "source_header": "标签图形ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.operation_note": {
+          "table": "catalog.semifinished",
+          "column": "operation_note",
+          "source_sheet": "P",
+          "source_column": "AJ",
+          "source_header": "运营备注",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.method": {
+          "table": "catalog.semifinished",
+          "column": "method",
+          "source_sheet": "P",
+          "source_column": "AK",
+          "source_header": "操作方式",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.product_story": {
+          "table": "catalog.semifinished",
+          "column": "product_story",
+          "source_sheet": "P",
+          "source_column": "AL",
+          "source_header": "产品故事",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.flavor_desc": {
+          "table": "catalog.semifinished",
+          "column": "flavor_desc",
+          "source_sheet": "P",
+          "source_column": "AM",
+          "source_header": "风味描述",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.flavor_tag": {
+          "table": "catalog.semifinished",
+          "column": "flavor_tag",
+          "source_sheet": "P",
+          "source_column": "AN",
+          "source_header": "风味标签",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.semifinished.abv": {
+          "table": "catalog.semifinished",
+          "column": "abv",
+          "source_sheet": "P",
+          "source_column": "AO",
+          "source_header": "酒精度数",
+          "data_type": "NUMERIC(6,2)",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.sku": {
+          "table": "catalog.material",
+          "column": "sku",
+          "source_sheet": "M",
+          "source_column": "K",
+          "source_header": "SKU",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.material_id": {
+          "table": "catalog.material",
+          "column": "material_id",
+          "source_sheet": "M",
+          "source_column": "L",
+          "source_header": "物料ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.name_zh": {
+          "table": "catalog.material",
+          "column": "name_zh",
+          "source_sheet": "M",
+          "source_column": "M",
+          "source_header": "物料名称",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.category_l1": {
+          "table": "catalog.material",
+          "column": "category_l1",
+          "source_sheet": "M",
+          "source_column": "N",
+          "source_header": "L1",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.category_l2": {
+          "table": "catalog.material",
+          "column": "category_l2",
+          "source_sheet": "M",
+          "source_column": "O",
+          "source_header": "L2",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.category_l3": {
+          "table": "catalog.material",
+          "column": "category_l3",
+          "source_sheet": "M",
+          "source_column": "P",
+          "source_header": "L3",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.category_l4": {
+          "table": "catalog.material",
+          "column": "category_l4",
+          "source_sheet": "M",
+          "source_column": "Q",
+          "source_header": "L4",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.m_r": {
+          "table": "catalog.material",
+          "column": "m_r",
+          "source_sheet": "M",
+          "source_column": "R",
+          "source_header": "类内编号",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.identity_role": {
+          "table": "catalog.material",
+          "column": "identity_role",
+          "source_sheet": "M",
+          "source_column": "S",
+          "source_header": "身份角色",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.linked_inventory_material_id": {
+          "table": "catalog.material",
+          "column": "linked_inventory_material_id",
+          "source_sheet": "M",
+          "source_column": "T",
+          "source_header": "关联库存物料ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.spec_qty": {
+          "table": "catalog.material",
+          "column": "spec_qty",
+          "source_sheet": "M",
+          "source_column": "U",
+          "source_header": "规格量",
+          "data_type": "NUMERIC(14,3)",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.spec_unit": {
+          "table": "catalog.material",
+          "column": "spec_unit",
+          "source_sheet": "M",
+          "source_column": "V",
+          "source_header": "规格单位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.original_package_volume": {
+          "table": "catalog.material",
+          "column": "original_package_volume",
+          "source_sheet": "M",
+          "source_column": "W",
+          "source_header": "原包装容量",
+          "data_type": "NUMERIC(14,3)",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.sell_deduct_qty": {
+          "table": "catalog.material",
+          "column": "sell_deduct_qty",
+          "source_sheet": "M",
+          "source_column": "X",
+          "source_header": "售卖扣减量",
+          "data_type": "NUMERIC(14,3)",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.is_sellable_raw": {
+          "table": "catalog.material",
+          "column": "is_sellable_raw",
+          "source_sheet": "M",
+          "source_column": "Y",
+          "source_header": "是否可售",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.material.review_status": {
+          "table": "catalog.material",
+          "column": "review_status",
+          "source_sheet": "M",
+          "source_column": "Z",
+          "source_header": "审核状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.image_asset_id": {
+          "table": "catalog.material",
+          "column": "image_asset_id",
+          "source_sheet": "M",
+          "source_column": "AA",
+          "source_header": "图片素材ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.alias": {
+          "table": "catalog.material",
+          "column": "alias",
+          "source_sheet": "M",
+          "source_column": "AB",
+          "source_header": "别名",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.tag": {
+          "table": "catalog.material",
+          "column": "tag",
+          "source_sheet": "M",
+          "source_column": "AC",
+          "source_header": "标签",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.purchase_price_raw": {
+          "table": "catalog.material",
+          "column": "purchase_price_raw",
+          "source_sheet": "M",
+          "source_column": "AD",
+          "source_header": "采购价",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.material.purchase_channel": {
+          "table": "catalog.material",
+          "column": "purchase_channel",
+          "source_sheet": "M",
+          "source_column": "AE",
+          "source_header": "采购渠道",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.purchase_url": {
+          "table": "catalog.material",
+          "column": "purchase_url",
+          "source_sheet": "M",
+          "source_column": "AF",
+          "source_header": "采购链接",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.purchase_date_raw": {
+          "table": "catalog.material",
+          "column": "purchase_date_raw",
+          "source_sheet": "M",
+          "source_column": "AG",
+          "source_header": "采购日期",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.material.depreciation_months": {
+          "table": "catalog.material",
+          "column": "depreciation_months",
+          "source_sheet": "M",
+          "source_column": "AH",
+          "source_header": "折旧月数",
+          "data_type": "INTEGER",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.store_id": {
+          "table": "catalog.material",
+          "column": "store_id",
+          "source_sheet": "M",
+          "source_column": "AI",
+          "source_header": "门店ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.operating_status": {
+          "table": "catalog.material",
+          "column": "operating_status",
+          "source_sheet": "M",
+          "source_column": "AJ",
+          "source_header": "经营状态",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.asset_note": {
+          "table": "catalog.material",
+          "column": "asset_note",
+          "source_sheet": "M",
+          "source_column": "AK",
+          "source_header": "资产备注",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.operation_note": {
+          "table": "catalog.material",
+          "column": "operation_note",
+          "source_sheet": "M",
+          "source_column": "AL",
+          "source_header": "运营备注",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.material.external_entity_id": {
+          "table": "catalog.material",
+          "column": "external_entity_id",
+          "source_sheet": "M",
+          "source_column": "AM",
+          "source_header": "外部主体ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.sku": {
+          "table": "catalog.bundle",
+          "column": "sku",
+          "source_sheet": "K",
+          "source_column": "K",
+          "source_header": "SKU",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.bundle_id": {
+          "table": "catalog.bundle",
+          "column": "bundle_id",
+          "source_sheet": "K",
+          "source_column": "L",
+          "source_header": "套餐ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.name_zh": {
+          "table": "catalog.bundle",
+          "column": "name_zh",
+          "source_sheet": "K",
+          "source_column": "M",
+          "source_header": "套餐名称",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.approval_status_raw": {
+          "table": "catalog.bundle",
+          "column": "approval_status_raw",
+          "source_sheet": "K",
+          "source_column": "N",
+          "source_header": "审批状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.bundle.applicable_channel": {
+          "table": "catalog.bundle",
+          "column": "applicable_channel",
+          "source_sheet": "K",
+          "source_column": "O",
+          "source_header": "适用渠道",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.category_l1": {
+          "table": "catalog.bundle",
+          "column": "category_l1",
+          "source_sheet": "K",
+          "source_column": "P",
+          "source_header": "L1",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.category_l2": {
+          "table": "catalog.bundle",
+          "column": "category_l2",
+          "source_sheet": "K",
+          "source_column": "Q",
+          "source_header": "L2",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.category_l3": {
+          "table": "catalog.bundle",
+          "column": "category_l3",
+          "source_sheet": "K",
+          "source_column": "R",
+          "source_header": "L3",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.category_l4": {
+          "table": "catalog.bundle",
+          "column": "category_l4",
+          "source_sheet": "K",
+          "source_column": "S",
+          "source_header": "L4",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.k_t": {
+          "table": "catalog.bundle",
+          "column": "k_t",
+          "source_sheet": "K",
+          "source_column": "T",
+          "source_header": "类内编号",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.bundle_contents": {
+          "table": "catalog.bundle",
+          "column": "bundle_contents",
+          "source_sheet": "K",
+          "source_column": "U",
+          "source_header": "套餐包含内容",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.full_product_copy": {
+          "table": "catalog.bundle",
+          "column": "full_product_copy",
+          "source_sheet": "K",
+          "source_column": "V",
+          "source_header": "完整商品文案",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.store_variant_copy": {
+          "table": "catalog.bundle",
+          "column": "store_variant_copy",
+          "source_sheet": "K",
+          "source_column": "W",
+          "source_header": "门店差异文案",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.list_price_raw": {
+          "table": "catalog.bundle",
+          "column": "list_price_raw",
+          "source_sheet": "K",
+          "source_column": "X",
+          "source_header": "标注原价",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.bundle.region_reference_price_raw": {
+          "table": "catalog.bundle",
+          "column": "region_reference_price_raw",
+          "source_sheet": "K",
+          "source_column": "Y",
+          "source_header": "区域参考售价",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.bundle.core_reference_price_raw": {
+          "table": "catalog.bundle",
+          "column": "core_reference_price_raw",
+          "source_sheet": "K",
+          "source_column": "Z",
+          "source_header": "核心参考售价",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.bundle.target_budget_range": {
+          "table": "catalog.bundle",
+          "column": "target_budget_range",
+          "source_sheet": "K",
+          "source_column": "AA",
+          "source_header": "目标预算区间",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.applicable_date_raw": {
+          "table": "catalog.bundle",
+          "column": "applicable_date_raw",
+          "source_sheet": "K",
+          "source_column": "AB",
+          "source_header": "适用日期",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.bundle.design_goal": {
+          "table": "catalog.bundle",
+          "column": "design_goal",
+          "source_sheet": "K",
+          "source_column": "AC",
+          "source_header": "设计目标",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.sales_status": {
+          "table": "catalog.bundle",
+          "column": "sales_status",
+          "source_sheet": "K",
+          "source_column": "AD",
+          "source_header": "销售状态",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.suggested_persons": {
+          "table": "catalog.bundle",
+          "column": "suggested_persons",
+          "source_sheet": "K",
+          "source_column": "AE",
+          "source_header": "建议人数",
+          "data_type": "INTEGER",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.demand_task_code": {
+          "table": "catalog.bundle",
+          "column": "demand_task_code",
+          "source_sheet": "K",
+          "source_column": "AF",
+          "source_header": "需求任务代码",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.demand_task": {
+          "table": "catalog.bundle",
+          "column": "demand_task",
+          "source_sheet": "K",
+          "source_column": "AG",
+          "source_header": "消费需求任务",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.consumer_count": {
+          "table": "catalog.bundle",
+          "column": "consumer_count",
+          "source_sheet": "K",
+          "source_column": "AH",
+          "source_header": "消费人数",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.payment_budget": {
+          "table": "catalog.bundle",
+          "column": "payment_budget",
+          "source_sheet": "K",
+          "source_column": "AI",
+          "source_header": "支付预算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.consumption_scenario": {
+          "table": "catalog.bundle",
+          "column": "consumption_scenario",
+          "source_sheet": "K",
+          "source_column": "AJ",
+          "source_header": "消费场景",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.substitute_note": {
+          "table": "catalog.bundle",
+          "column": "substitute_note",
+          "source_sheet": "K",
+          "source_column": "AK",
+          "source_header": "替代说明",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.n_demand_rate": {
+          "table": "catalog.bundle",
+          "column": "n_demand_rate",
+          "source_sheet": "K",
+          "source_column": "AL",
+          "source_header": "N需求率",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.p_payment_rate": {
+          "table": "catalog.bundle",
+          "column": "p_payment_rate",
+          "source_sheet": "K",
+          "source_column": "AM",
+          "source_header": "P支付转化率",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.s_scenario_rate": {
+          "table": "catalog.bundle",
+          "column": "s_scenario_rate",
+          "source_sheet": "K",
+          "source_column": "AN",
+          "source_header": "S场景实现率",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.nps_result": {
+          "table": "catalog.bundle",
+          "column": "nps_result",
+          "source_sheet": "K",
+          "source_column": "AO",
+          "source_header": "NPS计算结果",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.evidence_level": {
+          "table": "catalog.bundle",
+          "column": "evidence_level",
+          "source_sheet": "K",
+          "source_column": "AP",
+          "source_header": "数据证据等级",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.nps_evidence": {
+          "table": "catalog.bundle",
+          "column": "nps_evidence",
+          "source_sheet": "K",
+          "source_column": "AQ",
+          "source_header": "NPS证据依据",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.data_date_raw": {
+          "table": "catalog.bundle",
+          "column": "data_date_raw",
+          "source_sheet": "K",
+          "source_column": "AR",
+          "source_header": "数据日期",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.bundle.sample_denominator": {
+          "table": "catalog.bundle",
+          "column": "sample_denominator",
+          "source_sheet": "K",
+          "source_column": "AS",
+          "source_header": "样本与分母",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.model_assumption": {
+          "table": "catalog.bundle",
+          "column": "model_assumption",
+          "source_sheet": "K",
+          "source_column": "AT",
+          "source_header": "模型假设与局限",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.nps_data_status": {
+          "table": "catalog.bundle",
+          "column": "nps_data_status",
+          "source_sheet": "K",
+          "source_column": "AU",
+          "source_header": "NPS数据状态",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.new_returning": {
+          "table": "catalog.bundle",
+          "column": "new_returning",
+          "source_sheet": "K",
+          "source_column": "AV",
+          "source_header": "新老客适用",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.weekday_weekend": {
+          "table": "catalog.bundle",
+          "column": "weekday_weekend",
+          "source_sheet": "K",
+          "source_column": "AW",
+          "source_header": "周中周末适用",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.substitute_risk": {
+          "table": "catalog.bundle",
+          "column": "substitute_risk",
+          "source_sheet": "K",
+          "source_column": "AX",
+          "source_header": "替代风险",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.execution_condition": {
+          "table": "catalog.bundle",
+          "column": "execution_condition",
+          "source_sheet": "K",
+          "source_column": "AY",
+          "source_header": "执行条件",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.evidence_uncertainty": {
+          "table": "catalog.bundle",
+          "column": "evidence_uncertainty",
+          "source_sheet": "K",
+          "source_column": "AZ",
+          "source_header": "证据与不确定性",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.business_approval_status": {
+          "table": "catalog.bundle",
+          "column": "business_approval_status",
+          "source_sheet": "K",
+          "source_column": "BA",
+          "source_header": "业务审批状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.next_action": {
+          "table": "catalog.bundle",
+          "column": "next_action",
+          "source_sheet": "K",
+          "source_column": "BB",
+          "source_header": "下一步动作",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.recheck_date_raw": {
+          "table": "catalog.bundle",
+          "column": "recheck_date_raw",
+          "source_sheet": "K",
+          "source_column": "BC",
+          "source_header": "复检日期",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.bundle.image_asset_id": {
+          "table": "catalog.bundle",
+          "column": "image_asset_id",
+          "source_sheet": "K",
+          "source_column": "BD",
+          "source_header": "图片素材ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.operation_note": {
+          "table": "catalog.bundle",
+          "column": "operation_note",
+          "source_sheet": "K",
+          "source_column": "BE",
+          "source_header": "运营备注",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.bundle_item_link_status": {
+          "table": "catalog.bundle",
+          "column": "bundle_item_link_status",
+          "source_sheet": "K",
+          "source_column": "BF",
+          "source_header": "套餐子项关联状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.demand_category": {
+          "table": "catalog.bundle",
+          "column": "demand_category",
+          "source_sheet": "K",
+          "source_column": "BG",
+          "source_header": "消费需求分类",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle.sales_business_zone": {
+          "table": "catalog.bundle",
+          "column": "sales_business_zone",
+          "source_sheet": "K",
+          "source_column": "BH",
+          "source_header": "销售业务分区",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle_slot.slot_bundle_id": {
+          "table": "catalog.bundle_slot",
+          "column": "slot_bundle_id",
+          "source_sheet": "K",
+          "source_column": "CR",
+          "source_header": "套餐ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=无真实绑定，不得按名称推测"
+        },
+        "catalog.bundle_slot.slot_number": {
+          "table": "catalog.bundle_slot",
+          "column": "slot_number",
+          "source_sheet": "K",
+          "source_column": "CS",
+          "source_header": "槽位编号",
+          "data_type": "INTEGER",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=槽位占位未绑定，非已发布子项"
+        },
+        "catalog.bundle_slot.slot_name": {
+          "table": "catalog.bundle_slot",
+          "column": "slot_name",
+          "source_sheet": "K",
+          "source_column": "CT",
+          "source_header": "槽位名称",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle_slot.quantity": {
+          "table": "catalog.bundle_slot",
+          "column": "quantity",
+          "source_sheet": "K",
+          "source_column": "CU",
+          "source_header": "所需数量",
+          "data_type": "NUMERIC(12,3)",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=槽位占位未绑定，非已发布子项"
+        },
+        "catalog.bundle_slot.selection_rule": {
+          "table": "catalog.bundle_slot",
+          "column": "selection_rule",
+          "source_sheet": "K",
+          "source_column": "CV",
+          "source_header": "选择规则",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=槽位占位未绑定，非已发布子项"
+        },
+        "catalog.bundle_slot.candidate_product_id": {
+          "table": "catalog.bundle_slot",
+          "column": "candidate_product_id",
+          "source_sheet": "K",
+          "source_column": "CW",
+          "source_header": "候选商品ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=槽位占位未绑定，非已发布子项"
+        },
+        "catalog.bundle_slot.candidate_sku_auto": {
+          "table": "catalog.bundle_slot",
+          "column": "candidate_sku_auto",
+          "source_sheet": "K",
+          "source_column": "CX",
+          "source_header": "候选商品SKU｜自动",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle_slot.candidate_name_auto": {
+          "table": "catalog.bundle_slot",
+          "column": "candidate_name_auto",
+          "source_sheet": "K",
+          "source_column": "CY",
+          "source_header": "候选商品名称｜自动",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle_slot.link_check": {
+          "table": "catalog.bundle_slot",
+          "column": "link_check",
+          "source_sheet": "K",
+          "source_column": "CZ",
+          "source_header": "关联校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.bundle_slot.fulfillment_constraint": {
+          "table": "catalog.bundle_slot",
+          "column": "fulfillment_constraint",
+          "source_sheet": "K",
+          "source_column": "DA",
+          "source_header": "履约约束说明",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.store_nps.nps_bundle_id": {
+          "table": "catalog.store_nps",
+          "column": "nps_bundle_id",
+          "source_sheet": "K",
+          "source_column": "DC",
+          "source_header": "套餐ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=无真实绑定，不得按名称推测"
+        },
+        "catalog.store_nps.store_id": {
+          "table": "catalog.store_nps",
+          "column": "store_id",
+          "source_sheet": "K",
+          "source_column": "DD",
+          "source_header": "门店ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=无真实绑定，不得按名称推测"
+        },
+        "catalog.store_nps.nps_n_demand_rate": {
+          "table": "catalog.store_nps",
+          "column": "nps_n_demand_rate",
+          "source_sheet": "K",
+          "source_column": "DE",
+          "source_header": "N需求率",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.store_nps.nps_p_payment_rate": {
+          "table": "catalog.store_nps",
+          "column": "nps_p_payment_rate",
+          "source_sheet": "K",
+          "source_column": "DF",
+          "source_header": "P支付转化率",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.store_nps.nps_s_scenario_rate": {
+          "table": "catalog.store_nps",
+          "column": "nps_s_scenario_rate",
+          "source_sheet": "K",
+          "source_column": "DG",
+          "source_header": "S场景实现率",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.store_nps.data_marker": {
+          "table": "catalog.store_nps",
+          "column": "data_marker",
+          "source_sheet": "K",
+          "source_column": "DH",
+          "source_header": "数据标记",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.store_nps.note": {
+          "table": "catalog.store_nps",
+          "column": "note",
+          "source_sheet": "K",
+          "source_column": "DI",
+          "source_header": "备注",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.sku": {
+          "table": "catalog.recipe_step",
+          "column": "sku",
+          "source_sheet": "R",
+          "source_column": "K",
+          "source_header": "SKU",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.recipe_step_id": {
+          "table": "catalog.recipe_step",
+          "column": "recipe_step_id",
+          "source_sheet": "R",
+          "source_column": "L",
+          "source_header": "工序记录ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.recipe_step.record_name": {
+          "table": "catalog.recipe_step",
+          "column": "record_name",
+          "source_sheet": "R",
+          "source_column": "M",
+          "source_header": "记录名称",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.category_l1": {
+          "table": "catalog.recipe_step",
+          "column": "category_l1",
+          "source_sheet": "R",
+          "source_column": "N",
+          "source_header": "L1",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.category_l2": {
+          "table": "catalog.recipe_step",
+          "column": "category_l2",
+          "source_sheet": "R",
+          "source_column": "O",
+          "source_header": "L2",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.category_l3": {
+          "table": "catalog.recipe_step",
+          "column": "category_l3",
+          "source_sheet": "R",
+          "source_column": "P",
+          "source_header": "L3",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.category_l4": {
+          "table": "catalog.recipe_step",
+          "column": "category_l4",
+          "source_sheet": "R",
+          "source_column": "Q",
+          "source_header": "L4",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.r_r": {
+          "table": "catalog.recipe_step",
+          "column": "r_r",
+          "source_sheet": "R",
+          "source_column": "R",
+          "source_header": "类内编号",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.output_link_id": {
+          "table": "catalog.recipe_step",
+          "column": "output_link_id",
+          "source_sheet": "R",
+          "source_column": "S",
+          "source_header": "出品关联ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=无真实绑定，不得按名称推测"
+        },
+        "catalog.recipe_step.input_material_id": {
+          "table": "catalog.recipe_step",
+          "column": "input_material_id",
+          "source_sheet": "R",
+          "source_column": "T",
+          "source_header": "投入物料ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=无真实绑定，不得按名称推测"
+        },
+        "catalog.recipe_step.input_qty": {
+          "table": "catalog.recipe_step",
+          "column": "input_qty",
+          "source_sheet": "R",
+          "source_column": "U",
+          "source_header": "投料数量",
+          "data_type": "NUMERIC(12,3)",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.input_unit": {
+          "table": "catalog.recipe_step",
+          "column": "input_unit",
+          "source_sheet": "R",
+          "source_column": "V",
+          "source_header": "投料单位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.recipe_text_step": {
+          "table": "catalog.recipe_step",
+          "column": "recipe_text_step",
+          "source_sheet": "R",
+          "source_column": "W",
+          "source_header": "配方文字｜制作记录",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.recipe_step.prep_steps_full_step": {
+          "table": "catalog.recipe_step",
+          "column": "prep_steps_full_step",
+          "source_sheet": "R",
+          "source_column": "X",
+          "source_header": "完整制作步骤｜制作记录",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.recipe_step.locator_guide_step": {
+          "table": "catalog.recipe_step",
+          "column": "locator_guide_step",
+          "source_sheet": "R",
+          "source_column": "Y",
+          "source_header": "寻料指引｜制作记录",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.recipe_step.recipe_image_first": {
+          "table": "catalog.recipe_step",
+          "column": "recipe_image_first",
+          "source_sheet": "R",
+          "source_column": "Z",
+          "source_header": "配方图文件名｜首次确认",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.recipe_step.recipe_image_second": {
+          "table": "catalog.recipe_step",
+          "column": "recipe_image_second",
+          "source_sheet": "R",
+          "source_column": "AA",
+          "source_header": "配方图文件名｜二次复核",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.recipe_step.prep_duration_sec": {
+          "table": "catalog.recipe_step",
+          "column": "prep_duration_sec",
+          "source_sheet": "R",
+          "source_column": "AB",
+          "source_header": "制作时长（秒）",
+          "data_type": "INTEGER",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=原始未填写，禁止代填"
+        },
+        "catalog.recipe_step.method_intensity": {
+          "table": "catalog.recipe_step",
+          "column": "method_intensity",
+          "source_sheet": "R",
+          "source_column": "AC",
+          "source_header": "操作力度",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.output_note_extra": {
+          "table": "catalog.recipe_step",
+          "column": "output_note_extra",
+          "source_sheet": "R",
+          "source_column": "AD",
+          "source_header": "补充出品说明",
+          "data_type": "TEXT",
+          "permission_class": "CONFIDENTIAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.review_status": {
+          "table": "catalog.recipe_step",
+          "column": "review_status",
+          "source_sheet": "R",
+          "source_column": "AE",
+          "source_header": "审核状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.output_sku_link": {
+          "table": "catalog.recipe_step",
+          "column": "output_sku_link",
+          "source_sheet": "R",
+          "source_column": "AF",
+          "source_header": "出品SKU｜关联读取",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.recipe_step.link_check": {
+          "table": "catalog.recipe_step",
+          "column": "link_check",
+          "source_sheet": "R",
+          "source_column": "AG",
+          "source_header": "关联校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.sku": {
+          "table": "catalog.price_quote",
+          "column": "sku",
+          "source_sheet": "Q",
+          "source_column": "K",
+          "source_header": "SKU",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.quote_id": {
+          "table": "catalog.price_quote",
+          "column": "quote_id",
+          "source_sheet": "Q",
+          "source_column": "L",
+          "source_header": "报价记录ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.quote_name": {
+          "table": "catalog.price_quote",
+          "column": "quote_name",
+          "source_sheet": "Q",
+          "source_column": "M",
+          "source_header": "报价名称",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.category_l1": {
+          "table": "catalog.price_quote",
+          "column": "category_l1",
+          "source_sheet": "Q",
+          "source_column": "N",
+          "source_header": "L1",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.category_l2": {
+          "table": "catalog.price_quote",
+          "column": "category_l2",
+          "source_sheet": "Q",
+          "source_column": "O",
+          "source_header": "L2",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.category_l3": {
+          "table": "catalog.price_quote",
+          "column": "category_l3",
+          "source_sheet": "Q",
+          "source_column": "P",
+          "source_header": "L3",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.category_l4": {
+          "table": "catalog.price_quote",
+          "column": "category_l4",
+          "source_sheet": "Q",
+          "source_column": "Q",
+          "source_header": "L4",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.q_r": {
+          "table": "catalog.price_quote",
+          "column": "q_r",
+          "source_sheet": "Q",
+          "source_column": "R",
+          "source_header": "类内编号",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.store_id": {
+          "table": "catalog.price_quote",
+          "column": "store_id",
+          "source_sheet": "Q",
+          "source_column": "S",
+          "source_header": "门店ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=无真实绑定，不得按名称推测"
+        },
+        "catalog.price_quote.product_id": {
+          "table": "catalog.price_quote",
+          "column": "product_id",
+          "source_sheet": "Q",
+          "source_column": "T",
+          "source_header": "商品ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=无真实绑定，不得按名称推测"
+        },
+        "catalog.price_quote.channel": {
+          "table": "catalog.price_quote",
+          "column": "channel",
+          "source_sheet": "Q",
+          "source_column": "U",
+          "source_header": "销售渠道",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.pricing_unit": {
+          "table": "catalog.price_quote",
+          "column": "pricing_unit",
+          "source_sheet": "Q",
+          "source_column": "V",
+          "source_header": "计价单位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.approved_price_raw": {
+          "table": "catalog.price_quote",
+          "column": "approved_price_raw",
+          "source_sheet": "Q",
+          "source_column": "W",
+          "source_header": "核准售价",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.price_quote.currency": {
+          "table": "catalog.price_quote",
+          "column": "currency",
+          "source_sheet": "Q",
+          "source_column": "X",
+          "source_header": "币种",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.review_status": {
+          "table": "catalog.price_quote",
+          "column": "review_status",
+          "source_sheet": "Q",
+          "source_column": "Y",
+          "source_header": "审核状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.valid_from_raw": {
+          "table": "catalog.price_quote",
+          "column": "valid_from_raw",
+          "source_sheet": "Q",
+          "source_column": "Z",
+          "source_header": "生效日期",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.price_quote.valid_until_raw": {
+          "table": "catalog.price_quote",
+          "column": "valid_until_raw",
+          "source_sheet": "Q",
+          "source_column": "AA",
+          "source_header": "失效日期",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保留空不补0"
+        },
+        "catalog.price_quote.product_sku_link": {
+          "table": "catalog.price_quote",
+          "column": "product_sku_link",
+          "source_sheet": "Q",
+          "source_column": "AB",
+          "source_header": "商品SKU｜关联读取",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.store_quote_id_auto": {
+          "table": "catalog.price_quote",
+          "column": "store_quote_id_auto",
+          "source_sheet": "Q",
+          "source_column": "AC",
+          "source_header": "门店报价ID｜自动",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "catalog.price_quote.quote_check": {
+          "table": "catalog.price_quote",
+          "column": "quote_check",
+          "source_sheet": "Q",
+          "source_column": "AD",
+          "source_header": "报价校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.sku": {
+          "table": "core.store",
+          "column": "sku",
+          "source_sheet": "T",
+          "source_column": "K",
+          "source_header": "SKU",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.outlet_record_id": {
+          "table": "core.store",
+          "column": "outlet_record_id",
+          "source_sheet": "T",
+          "source_column": "L",
+          "source_header": "网点记录ID",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.store_name_zh": {
+          "table": "core.store",
+          "column": "store_name_zh",
+          "source_sheet": "T",
+          "source_column": "M",
+          "source_header": "门店名称",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.category_l1": {
+          "table": "core.store",
+          "column": "category_l1",
+          "source_sheet": "T",
+          "source_column": "N",
+          "source_header": "L1",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.category_l2": {
+          "table": "core.store",
+          "column": "category_l2",
+          "source_sheet": "T",
+          "source_column": "O",
+          "source_header": "L2",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.category_l3": {
+          "table": "core.store",
+          "column": "category_l3",
+          "source_sheet": "T",
+          "source_column": "P",
+          "source_header": "L3",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.category_l4": {
+          "table": "core.store",
+          "column": "category_l4",
+          "source_sheet": "T",
+          "source_column": "Q",
+          "source_header": "L4",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.t_r": {
+          "table": "core.store",
+          "column": "t_r",
+          "source_sheet": "T",
+          "source_column": "R",
+          "source_header": "类内编号",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.store_id": {
+          "table": "core.store",
+          "column": "store_id",
+          "source_sheet": "T",
+          "source_column": "S",
+          "source_header": "门店ID",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.business_format": {
+          "table": "core.store",
+          "column": "business_format",
+          "source_sheet": "T",
+          "source_column": "T",
+          "source_header": "产品业态",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.operation_mode": {
+          "table": "core.store",
+          "column": "operation_mode",
+          "source_sheet": "T",
+          "source_column": "U",
+          "source_header": "经营方式",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.region": {
+          "table": "core.store",
+          "column": "region",
+          "source_sheet": "T",
+          "source_column": "V",
+          "source_header": "所在区域",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.currency": {
+          "table": "core.store",
+          "column": "currency",
+          "source_sheet": "T",
+          "source_column": "W",
+          "source_header": "币种",
+          "data_type": "TEXT",
+          "permission_class": "PUBLIC",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.review_status": {
+          "table": "core.store",
+          "column": "review_status",
+          "source_sheet": "T",
+          "source_column": "X",
+          "source_header": "审核状态",
+          "data_type": "TEXT",
+          "permission_class": "RESTRICTED",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "core.store.operation_note": {
+          "table": "core.store",
+          "column": "operation_note",
+          "source_sheet": "T",
+          "source_column": "Y",
+          "source_header": "运营备注",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_a": {
+          "table": "audit.source_dictionary",
+          "column": "c_a",
+          "source_sheet": "C",
+          "source_column": "C:A",
+          "source_header": "列A",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_b": {
+          "table": "audit.source_dictionary",
+          "column": "c_b",
+          "source_sheet": "C",
+          "source_column": "C:B",
+          "source_header": "列B",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_c": {
+          "table": "audit.source_dictionary",
+          "column": "c_c",
+          "source_sheet": "C",
+          "source_column": "C:C",
+          "source_header": "列C",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_d": {
+          "table": "audit.source_dictionary",
+          "column": "c_d",
+          "source_sheet": "C",
+          "source_column": "C:D",
+          "source_header": "列D",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_e": {
+          "table": "audit.source_dictionary",
+          "column": "c_e",
+          "source_sheet": "C",
+          "source_column": "C:E",
+          "source_header": "列E",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_f": {
+          "table": "audit.source_dictionary",
+          "column": "c_f",
+          "source_sheet": "C",
+          "source_column": "C:F",
+          "source_header": "列F",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_g": {
+          "table": "audit.source_dictionary",
+          "column": "c_g",
+          "source_sheet": "C",
+          "source_column": "C:G",
+          "source_header": "列G",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_h": {
+          "table": "audit.source_dictionary",
+          "column": "c_h",
+          "source_sheet": "C",
+          "source_column": "C:H",
+          "source_header": "列H",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.c_i": {
+          "table": "audit.source_dictionary",
+          "column": "c_i",
+          "source_sheet": "C",
+          "source_column": "C:I",
+          "source_header": "列I",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_a": {
+          "table": "audit.source_dictionary",
+          "column": "p_a",
+          "source_sheet": "P",
+          "source_column": "P:A",
+          "source_header": "列A",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_b": {
+          "table": "audit.source_dictionary",
+          "column": "p_b",
+          "source_sheet": "P",
+          "source_column": "P:B",
+          "source_header": "列B",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_c": {
+          "table": "audit.source_dictionary",
+          "column": "p_c",
+          "source_sheet": "P",
+          "source_column": "P:C",
+          "source_header": "列C",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_d": {
+          "table": "audit.source_dictionary",
+          "column": "p_d",
+          "source_sheet": "P",
+          "source_column": "P:D",
+          "source_header": "列D",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_e": {
+          "table": "audit.source_dictionary",
+          "column": "p_e",
+          "source_sheet": "P",
+          "source_column": "P:E",
+          "source_header": "列E",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_f": {
+          "table": "audit.source_dictionary",
+          "column": "p_f",
+          "source_sheet": "P",
+          "source_column": "P:F",
+          "source_header": "列F",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_g": {
+          "table": "audit.source_dictionary",
+          "column": "p_g",
+          "source_sheet": "P",
+          "source_column": "P:G",
+          "source_header": "列G",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_h": {
+          "table": "audit.source_dictionary",
+          "column": "p_h",
+          "source_sheet": "P",
+          "source_column": "P:H",
+          "source_header": "列H",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.p_i": {
+          "table": "audit.source_dictionary",
+          "column": "p_i",
+          "source_sheet": "P",
+          "source_column": "P:I",
+          "source_header": "列I",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_a": {
+          "table": "audit.source_dictionary",
+          "column": "m_a",
+          "source_sheet": "M",
+          "source_column": "M:A",
+          "source_header": "列A",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_b": {
+          "table": "audit.source_dictionary",
+          "column": "m_b",
+          "source_sheet": "M",
+          "source_column": "M:B",
+          "source_header": "列B",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_c": {
+          "table": "audit.source_dictionary",
+          "column": "m_c",
+          "source_sheet": "M",
+          "source_column": "M:C",
+          "source_header": "列C",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_d": {
+          "table": "audit.source_dictionary",
+          "column": "m_d",
+          "source_sheet": "M",
+          "source_column": "M:D",
+          "source_header": "列D",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_e": {
+          "table": "audit.source_dictionary",
+          "column": "m_e",
+          "source_sheet": "M",
+          "source_column": "M:E",
+          "source_header": "列E",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_f": {
+          "table": "audit.source_dictionary",
+          "column": "m_f",
+          "source_sheet": "M",
+          "source_column": "M:F",
+          "source_header": "列F",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_g": {
+          "table": "audit.source_dictionary",
+          "column": "m_g",
+          "source_sheet": "M",
+          "source_column": "M:G",
+          "source_header": "列G",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_h": {
+          "table": "audit.source_dictionary",
+          "column": "m_h",
+          "source_sheet": "M",
+          "source_column": "M:H",
+          "source_header": "列H",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.m_i": {
+          "table": "audit.source_dictionary",
+          "column": "m_i",
+          "source_sheet": "M",
+          "source_column": "M:I",
+          "source_header": "列I",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_a": {
+          "table": "audit.source_dictionary",
+          "column": "k_a",
+          "source_sheet": "K",
+          "source_column": "K:A",
+          "source_header": "列A",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_b": {
+          "table": "audit.source_dictionary",
+          "column": "k_b",
+          "source_sheet": "K",
+          "source_column": "K:B",
+          "source_header": "列B",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_c": {
+          "table": "audit.source_dictionary",
+          "column": "k_c",
+          "source_sheet": "K",
+          "source_column": "K:C",
+          "source_header": "列C",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_d": {
+          "table": "audit.source_dictionary",
+          "column": "k_d",
+          "source_sheet": "K",
+          "source_column": "K:D",
+          "source_header": "列D",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_e": {
+          "table": "audit.source_dictionary",
+          "column": "k_e",
+          "source_sheet": "K",
+          "source_column": "K:E",
+          "source_header": "列E",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_f": {
+          "table": "audit.source_dictionary",
+          "column": "k_f",
+          "source_sheet": "K",
+          "source_column": "K:F",
+          "source_header": "列F",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_g": {
+          "table": "audit.source_dictionary",
+          "column": "k_g",
+          "source_sheet": "K",
+          "source_column": "K:G",
+          "source_header": "列G",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_h": {
+          "table": "audit.source_dictionary",
+          "column": "k_h",
+          "source_sheet": "K",
+          "source_column": "K:H",
+          "source_header": "列H",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.k_i": {
+          "table": "audit.source_dictionary",
+          "column": "k_i",
+          "source_sheet": "K",
+          "source_column": "K:I",
+          "source_header": "列I",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_a": {
+          "table": "audit.source_dictionary",
+          "column": "r_a",
+          "source_sheet": "R",
+          "source_column": "R:A",
+          "source_header": "列A",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_b": {
+          "table": "audit.source_dictionary",
+          "column": "r_b",
+          "source_sheet": "R",
+          "source_column": "R:B",
+          "source_header": "列B",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_c": {
+          "table": "audit.source_dictionary",
+          "column": "r_c",
+          "source_sheet": "R",
+          "source_column": "R:C",
+          "source_header": "列C",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_d": {
+          "table": "audit.source_dictionary",
+          "column": "r_d",
+          "source_sheet": "R",
+          "source_column": "R:D",
+          "source_header": "列D",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_e": {
+          "table": "audit.source_dictionary",
+          "column": "r_e",
+          "source_sheet": "R",
+          "source_column": "R:E",
+          "source_header": "列E",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_f": {
+          "table": "audit.source_dictionary",
+          "column": "r_f",
+          "source_sheet": "R",
+          "source_column": "R:F",
+          "source_header": "列F",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_g": {
+          "table": "audit.source_dictionary",
+          "column": "r_g",
+          "source_sheet": "R",
+          "source_column": "R:G",
+          "source_header": "列G",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_h": {
+          "table": "audit.source_dictionary",
+          "column": "r_h",
+          "source_sheet": "R",
+          "source_column": "R:H",
+          "source_header": "列H",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.r_i": {
+          "table": "audit.source_dictionary",
+          "column": "r_i",
+          "source_sheet": "R",
+          "source_column": "R:I",
+          "source_header": "列I",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_a": {
+          "table": "audit.source_dictionary",
+          "column": "q_a",
+          "source_sheet": "Q",
+          "source_column": "Q:A",
+          "source_header": "列A",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_b": {
+          "table": "audit.source_dictionary",
+          "column": "q_b",
+          "source_sheet": "Q",
+          "source_column": "Q:B",
+          "source_header": "列B",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_c": {
+          "table": "audit.source_dictionary",
+          "column": "q_c",
+          "source_sheet": "Q",
+          "source_column": "Q:C",
+          "source_header": "列C",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_d": {
+          "table": "audit.source_dictionary",
+          "column": "q_d",
+          "source_sheet": "Q",
+          "source_column": "Q:D",
+          "source_header": "列D",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_e": {
+          "table": "audit.source_dictionary",
+          "column": "q_e",
+          "source_sheet": "Q",
+          "source_column": "Q:E",
+          "source_header": "列E",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_f": {
+          "table": "audit.source_dictionary",
+          "column": "q_f",
+          "source_sheet": "Q",
+          "source_column": "Q:F",
+          "source_header": "列F",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_g": {
+          "table": "audit.source_dictionary",
+          "column": "q_g",
+          "source_sheet": "Q",
+          "source_column": "Q:G",
+          "source_header": "列G",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_h": {
+          "table": "audit.source_dictionary",
+          "column": "q_h",
+          "source_sheet": "Q",
+          "source_column": "Q:H",
+          "source_header": "列H",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.q_i": {
+          "table": "audit.source_dictionary",
+          "column": "q_i",
+          "source_sheet": "Q",
+          "source_column": "Q:I",
+          "source_header": "列I",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_a": {
+          "table": "audit.source_dictionary",
+          "column": "t_a",
+          "source_sheet": "T",
+          "source_column": "T:A",
+          "source_header": "列A",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_b": {
+          "table": "audit.source_dictionary",
+          "column": "t_b",
+          "source_sheet": "T",
+          "source_column": "T:B",
+          "source_header": "列B",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_c": {
+          "table": "audit.source_dictionary",
+          "column": "t_c",
+          "source_sheet": "T",
+          "source_column": "T:C",
+          "source_header": "列C",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_d": {
+          "table": "audit.source_dictionary",
+          "column": "t_d",
+          "source_sheet": "T",
+          "source_column": "T:D",
+          "source_header": "列D",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_e": {
+          "table": "audit.source_dictionary",
+          "column": "t_e",
+          "source_sheet": "T",
+          "source_column": "T:E",
+          "source_header": "列E",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_f": {
+          "table": "audit.source_dictionary",
+          "column": "t_f",
+          "source_sheet": "T",
+          "source_column": "T:F",
+          "source_header": "列F",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_g": {
+          "table": "audit.source_dictionary",
+          "column": "t_g",
+          "source_sheet": "T",
+          "source_column": "T:G",
+          "source_header": "列G",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_h": {
+          "table": "audit.source_dictionary",
+          "column": "t_h",
+          "source_sheet": "T",
+          "source_column": "T:H",
+          "source_header": "列H",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_dictionary.t_i": {
+          "table": "audit.source_dictionary",
+          "column": "t_i",
+          "source_sheet": "T",
+          "source_column": "T:I",
+          "source_header": "列I",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.c_ja": {
+          "table": "audit.source_legal_path",
+          "column": "c_ja",
+          "source_sheet": "C",
+          "source_column": "C:JA",
+          "source_header": "L1字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.c_jb": {
+          "table": "audit.source_legal_path",
+          "column": "c_jb",
+          "source_sheet": "C",
+          "source_column": "C:JB",
+          "source_header": "L2字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.c_jc": {
+          "table": "audit.source_legal_path",
+          "column": "c_jc",
+          "source_sheet": "C",
+          "source_column": "C:JC",
+          "source_header": "L3字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.c_jd": {
+          "table": "audit.source_legal_path",
+          "column": "c_jd",
+          "source_sheet": "C",
+          "source_column": "C:JD",
+          "source_header": "L4字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.c_je": {
+          "table": "audit.source_legal_path",
+          "column": "c_je",
+          "source_sheet": "C",
+          "source_column": "C:JE",
+          "source_header": "合法分类码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.c_jf": {
+          "table": "audit.source_legal_path",
+          "column": "c_jf",
+          "source_sheet": "C",
+          "source_column": "C:JF",
+          "source_header": "路径校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.p_ja": {
+          "table": "audit.source_legal_path",
+          "column": "p_ja",
+          "source_sheet": "P",
+          "source_column": "P:JA",
+          "source_header": "L1字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.p_jb": {
+          "table": "audit.source_legal_path",
+          "column": "p_jb",
+          "source_sheet": "P",
+          "source_column": "P:JB",
+          "source_header": "L2字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.p_jc": {
+          "table": "audit.source_legal_path",
+          "column": "p_jc",
+          "source_sheet": "P",
+          "source_column": "P:JC",
+          "source_header": "L3字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.p_jd": {
+          "table": "audit.source_legal_path",
+          "column": "p_jd",
+          "source_sheet": "P",
+          "source_column": "P:JD",
+          "source_header": "L4字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.p_je": {
+          "table": "audit.source_legal_path",
+          "column": "p_je",
+          "source_sheet": "P",
+          "source_column": "P:JE",
+          "source_header": "合法分类码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.p_jf": {
+          "table": "audit.source_legal_path",
+          "column": "p_jf",
+          "source_sheet": "P",
+          "source_column": "P:JF",
+          "source_header": "路径校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.m_ja": {
+          "table": "audit.source_legal_path",
+          "column": "m_ja",
+          "source_sheet": "M",
+          "source_column": "M:JA",
+          "source_header": "L1字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.m_jb": {
+          "table": "audit.source_legal_path",
+          "column": "m_jb",
+          "source_sheet": "M",
+          "source_column": "M:JB",
+          "source_header": "L2字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.m_jc": {
+          "table": "audit.source_legal_path",
+          "column": "m_jc",
+          "source_sheet": "M",
+          "source_column": "M:JC",
+          "source_header": "L3字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.m_jd": {
+          "table": "audit.source_legal_path",
+          "column": "m_jd",
+          "source_sheet": "M",
+          "source_column": "M:JD",
+          "source_header": "L4字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.m_je": {
+          "table": "audit.source_legal_path",
+          "column": "m_je",
+          "source_sheet": "M",
+          "source_column": "M:JE",
+          "source_header": "合法分类码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.m_jf": {
+          "table": "audit.source_legal_path",
+          "column": "m_jf",
+          "source_sheet": "M",
+          "source_column": "M:JF",
+          "source_header": "路径校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.k_ja": {
+          "table": "audit.source_legal_path",
+          "column": "k_ja",
+          "source_sheet": "K",
+          "source_column": "K:JA",
+          "source_header": "L1字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.k_jb": {
+          "table": "audit.source_legal_path",
+          "column": "k_jb",
+          "source_sheet": "K",
+          "source_column": "K:JB",
+          "source_header": "L2字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.k_jc": {
+          "table": "audit.source_legal_path",
+          "column": "k_jc",
+          "source_sheet": "K",
+          "source_column": "K:JC",
+          "source_header": "L3字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.k_jd": {
+          "table": "audit.source_legal_path",
+          "column": "k_jd",
+          "source_sheet": "K",
+          "source_column": "K:JD",
+          "source_header": "L4字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.k_je": {
+          "table": "audit.source_legal_path",
+          "column": "k_je",
+          "source_sheet": "K",
+          "source_column": "K:JE",
+          "source_header": "合法分类码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.k_jf": {
+          "table": "audit.source_legal_path",
+          "column": "k_jf",
+          "source_sheet": "K",
+          "source_column": "K:JF",
+          "source_header": "路径校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.r_ja": {
+          "table": "audit.source_legal_path",
+          "column": "r_ja",
+          "source_sheet": "R",
+          "source_column": "R:JA",
+          "source_header": "L1字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.r_jb": {
+          "table": "audit.source_legal_path",
+          "column": "r_jb",
+          "source_sheet": "R",
+          "source_column": "R:JB",
+          "source_header": "L2字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.r_jc": {
+          "table": "audit.source_legal_path",
+          "column": "r_jc",
+          "source_sheet": "R",
+          "source_column": "R:JC",
+          "source_header": "L3字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.r_jd": {
+          "table": "audit.source_legal_path",
+          "column": "r_jd",
+          "source_sheet": "R",
+          "source_column": "R:JD",
+          "source_header": "L4字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.r_je": {
+          "table": "audit.source_legal_path",
+          "column": "r_je",
+          "source_sheet": "R",
+          "source_column": "R:JE",
+          "source_header": "合法分类码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.r_jf": {
+          "table": "audit.source_legal_path",
+          "column": "r_jf",
+          "source_sheet": "R",
+          "source_column": "R:JF",
+          "source_header": "路径校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.q_ja": {
+          "table": "audit.source_legal_path",
+          "column": "q_ja",
+          "source_sheet": "Q",
+          "source_column": "Q:JA",
+          "source_header": "L1字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.q_jb": {
+          "table": "audit.source_legal_path",
+          "column": "q_jb",
+          "source_sheet": "Q",
+          "source_column": "Q:JB",
+          "source_header": "L2字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.q_jc": {
+          "table": "audit.source_legal_path",
+          "column": "q_jc",
+          "source_sheet": "Q",
+          "source_column": "Q:JC",
+          "source_header": "L3字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.q_jd": {
+          "table": "audit.source_legal_path",
+          "column": "q_jd",
+          "source_sheet": "Q",
+          "source_column": "Q:JD",
+          "source_header": "L4字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.q_je": {
+          "table": "audit.source_legal_path",
+          "column": "q_je",
+          "source_sheet": "Q",
+          "source_column": "Q:JE",
+          "source_header": "合法分类码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.q_jf": {
+          "table": "audit.source_legal_path",
+          "column": "q_jf",
+          "source_sheet": "Q",
+          "source_column": "Q:JF",
+          "source_header": "路径校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.t_ja": {
+          "table": "audit.source_legal_path",
+          "column": "t_ja",
+          "source_sheet": "T",
+          "source_column": "T:JA",
+          "source_header": "L1字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.t_jb": {
+          "table": "audit.source_legal_path",
+          "column": "t_jb",
+          "source_sheet": "T",
+          "source_column": "T:JB",
+          "source_header": "L2字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.t_jc": {
+          "table": "audit.source_legal_path",
+          "column": "t_jc",
+          "source_sheet": "T",
+          "source_column": "T:JC",
+          "source_header": "L3字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.t_jd": {
+          "table": "audit.source_legal_path",
+          "column": "t_jd",
+          "source_sheet": "T",
+          "source_column": "T:JD",
+          "source_header": "L4字典序位",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.t_je": {
+          "table": "audit.source_legal_path",
+          "column": "t_je",
+          "source_sheet": "T",
+          "source_column": "T:JE",
+          "source_header": "合法分类码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_legal_path.t_jf": {
+          "table": "audit.source_legal_path",
+          "column": "t_jf",
+          "source_sheet": "T",
+          "source_column": "T:JF",
+          "source_header": "路径校验",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.c_ea": {
+          "table": "audit.source_calc",
+          "column": "c_ea",
+          "source_sheet": "C",
+          "source_column": "C:EA",
+          "source_header": "L1代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.c_eb": {
+          "table": "audit.source_calc",
+          "column": "c_eb",
+          "source_sheet": "C",
+          "source_column": "C:EB",
+          "source_header": "L2代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.c_ec": {
+          "table": "audit.source_calc",
+          "column": "c_ec",
+          "source_sheet": "C",
+          "source_column": "C:EC",
+          "source_header": "L3代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.c_ed": {
+          "table": "audit.source_calc",
+          "column": "c_ed",
+          "source_sheet": "C",
+          "source_column": "C:ED",
+          "source_header": "L4代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.c_ee": {
+          "table": "audit.source_calc",
+          "column": "c_ee",
+          "source_sheet": "C",
+          "source_column": "C:EE",
+          "source_header": "分类合法性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.c_ef": {
+          "table": "audit.source_calc",
+          "column": "c_ef",
+          "source_sheet": "C",
+          "source_column": "C:EF",
+          "source_header": "SKU唯一性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.c_eg": {
+          "table": "audit.source_calc",
+          "column": "c_eg",
+          "source_sheet": "C",
+          "source_column": "C:EG",
+          "source_header": "结构入库判定｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.p_ea": {
+          "table": "audit.source_calc",
+          "column": "p_ea",
+          "source_sheet": "P",
+          "source_column": "P:EA",
+          "source_header": "L1代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.p_eb": {
+          "table": "audit.source_calc",
+          "column": "p_eb",
+          "source_sheet": "P",
+          "source_column": "P:EB",
+          "source_header": "L2代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.p_ec": {
+          "table": "audit.source_calc",
+          "column": "p_ec",
+          "source_sheet": "P",
+          "source_column": "P:EC",
+          "source_header": "L3代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.p_ed": {
+          "table": "audit.source_calc",
+          "column": "p_ed",
+          "source_sheet": "P",
+          "source_column": "P:ED",
+          "source_header": "L4代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.p_ee": {
+          "table": "audit.source_calc",
+          "column": "p_ee",
+          "source_sheet": "P",
+          "source_column": "P:EE",
+          "source_header": "分类合法性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.p_ef": {
+          "table": "audit.source_calc",
+          "column": "p_ef",
+          "source_sheet": "P",
+          "source_column": "P:EF",
+          "source_header": "SKU唯一性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.p_eg": {
+          "table": "audit.source_calc",
+          "column": "p_eg",
+          "source_sheet": "P",
+          "source_column": "P:EG",
+          "source_header": "结构入库判定｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.m_ea": {
+          "table": "audit.source_calc",
+          "column": "m_ea",
+          "source_sheet": "M",
+          "source_column": "M:EA",
+          "source_header": "L1代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.m_eb": {
+          "table": "audit.source_calc",
+          "column": "m_eb",
+          "source_sheet": "M",
+          "source_column": "M:EB",
+          "source_header": "L2代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.m_ec": {
+          "table": "audit.source_calc",
+          "column": "m_ec",
+          "source_sheet": "M",
+          "source_column": "M:EC",
+          "source_header": "L3代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.m_ed": {
+          "table": "audit.source_calc",
+          "column": "m_ed",
+          "source_sheet": "M",
+          "source_column": "M:ED",
+          "source_header": "L4代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.m_ee": {
+          "table": "audit.source_calc",
+          "column": "m_ee",
+          "source_sheet": "M",
+          "source_column": "M:EE",
+          "source_header": "分类合法性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.m_ef": {
+          "table": "audit.source_calc",
+          "column": "m_ef",
+          "source_sheet": "M",
+          "source_column": "M:EF",
+          "source_header": "SKU唯一性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.m_eg": {
+          "table": "audit.source_calc",
+          "column": "m_eg",
+          "source_sheet": "M",
+          "source_column": "M:EG",
+          "source_header": "结构入库判定｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.k_ea": {
+          "table": "audit.source_calc",
+          "column": "k_ea",
+          "source_sheet": "K",
+          "source_column": "K:EA",
+          "source_header": "L1代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.k_eb": {
+          "table": "audit.source_calc",
+          "column": "k_eb",
+          "source_sheet": "K",
+          "source_column": "K:EB",
+          "source_header": "L2代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.k_ec": {
+          "table": "audit.source_calc",
+          "column": "k_ec",
+          "source_sheet": "K",
+          "source_column": "K:EC",
+          "source_header": "L3代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.k_ed": {
+          "table": "audit.source_calc",
+          "column": "k_ed",
+          "source_sheet": "K",
+          "source_column": "K:ED",
+          "source_header": "L4代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.k_ee": {
+          "table": "audit.source_calc",
+          "column": "k_ee",
+          "source_sheet": "K",
+          "source_column": "K:EE",
+          "source_header": "分类合法性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.k_ef": {
+          "table": "audit.source_calc",
+          "column": "k_ef",
+          "source_sheet": "K",
+          "source_column": "K:EF",
+          "source_header": "SKU唯一性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.k_eg": {
+          "table": "audit.source_calc",
+          "column": "k_eg",
+          "source_sheet": "K",
+          "source_column": "K:EG",
+          "source_header": "结构入库判定｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.r_ea": {
+          "table": "audit.source_calc",
+          "column": "r_ea",
+          "source_sheet": "R",
+          "source_column": "R:EA",
+          "source_header": "L1代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.r_eb": {
+          "table": "audit.source_calc",
+          "column": "r_eb",
+          "source_sheet": "R",
+          "source_column": "R:EB",
+          "source_header": "L2代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.r_ec": {
+          "table": "audit.source_calc",
+          "column": "r_ec",
+          "source_sheet": "R",
+          "source_column": "R:EC",
+          "source_header": "L3代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.r_ed": {
+          "table": "audit.source_calc",
+          "column": "r_ed",
+          "source_sheet": "R",
+          "source_column": "R:ED",
+          "source_header": "L4代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.r_ee": {
+          "table": "audit.source_calc",
+          "column": "r_ee",
+          "source_sheet": "R",
+          "source_column": "R:EE",
+          "source_header": "分类合法性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.r_ef": {
+          "table": "audit.source_calc",
+          "column": "r_ef",
+          "source_sheet": "R",
+          "source_column": "R:EF",
+          "source_header": "SKU唯一性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.r_eg": {
+          "table": "audit.source_calc",
+          "column": "r_eg",
+          "source_sheet": "R",
+          "source_column": "R:EG",
+          "source_header": "结构入库判定｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.q_ea": {
+          "table": "audit.source_calc",
+          "column": "q_ea",
+          "source_sheet": "Q",
+          "source_column": "Q:EA",
+          "source_header": "L1代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.q_eb": {
+          "table": "audit.source_calc",
+          "column": "q_eb",
+          "source_sheet": "Q",
+          "source_column": "Q:EB",
+          "source_header": "L2代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.q_ec": {
+          "table": "audit.source_calc",
+          "column": "q_ec",
+          "source_sheet": "Q",
+          "source_column": "Q:EC",
+          "source_header": "L3代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.q_ed": {
+          "table": "audit.source_calc",
+          "column": "q_ed",
+          "source_sheet": "Q",
+          "source_column": "Q:ED",
+          "source_header": "L4代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.q_ee": {
+          "table": "audit.source_calc",
+          "column": "q_ee",
+          "source_sheet": "Q",
+          "source_column": "Q:EE",
+          "source_header": "分类合法性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.q_ef": {
+          "table": "audit.source_calc",
+          "column": "q_ef",
+          "source_sheet": "Q",
+          "source_column": "Q:EF",
+          "source_header": "SKU唯一性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.q_eg": {
+          "table": "audit.source_calc",
+          "column": "q_eg",
+          "source_sheet": "Q",
+          "source_column": "Q:EG",
+          "source_header": "结构入库判定｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.t_ea": {
+          "table": "audit.source_calc",
+          "column": "t_ea",
+          "source_sheet": "T",
+          "source_column": "T:EA",
+          "source_header": "L1代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.t_eb": {
+          "table": "audit.source_calc",
+          "column": "t_eb",
+          "source_sheet": "T",
+          "source_column": "T:EB",
+          "source_header": "L2代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.t_ec": {
+          "table": "audit.source_calc",
+          "column": "t_ec",
+          "source_sheet": "T",
+          "source_column": "T:EC",
+          "source_header": "L3代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.t_ed": {
+          "table": "audit.source_calc",
+          "column": "t_ed",
+          "source_sheet": "T",
+          "source_column": "T:ED",
+          "source_header": "L4代码｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.t_ee": {
+          "table": "audit.source_calc",
+          "column": "t_ee",
+          "source_sheet": "T",
+          "source_column": "T:EE",
+          "source_header": "分类合法性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.t_ef": {
+          "table": "audit.source_calc",
+          "column": "t_ef",
+          "source_sheet": "T",
+          "source_column": "T:EF",
+          "source_header": "SKU唯一性｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        },
+        "audit.source_calc.t_eg": {
+          "table": "audit.source_calc",
+          "column": "t_eg",
+          "source_sheet": "T",
+          "source_column": "T:EG",
+          "source_header": "结构入库判定｜计算",
+          "data_type": "TEXT",
+          "permission_class": "INTERNAL",
+          "null_meaning": "NULL=Excel原值为空，保持空"
+        }
+      }
+    },
+    "identity_access": {
+      "owner_ref": "config/data-ownership.json#key_owners.auth_subject_id",
+      "current_source_ref": "config/modules/identity-data-sources.json",
+      "schema_status": "existing isolated test schemas only; no production migration",
+      "api_contract_ref": "contracts/identity/identity.openapi.json"
+    },
+    "workforce": {
+      "owner_ref": "config/data-ownership.json#key_owners.tr_code",
+      "api_contract_ref": "contracts/identity/identity.openapi.json"
+    },
+    "learning": {
+      "owner_ref": "config/data-ownership.json#key_owners.credential_id",
+      "api_contract_ref": "contracts/academy/V4_1.md"
+    },
+    "procurement": {
+      "owner_ref": "config/data-ownership.json#key_owners.supplier_id",
+      "api_contract_ref": "contracts/supply/openapi.json"
+    },
+    "inventory": {
+      "owner_ref": "config/data-ownership.json#key_owners.stock_lot_id",
+      "api_contract_ref": "contracts/supply/openapi.json"
+    },
+    "commerce": {
+      "owner_ref": "config/data-ownership.json#key_owners.order_id",
+      "api_contract_ref": "contracts/API_AND_EVENTS.md"
+    },
+    "event_audit": {
+      "owner_ref": "config/data-ownership.json#key_owners.audit_event_id",
+      "api_contract_ref": "contracts/database/EVENTS.md"
+    },
+    "customer_growth": {
+      "owner_ref": "config/data-ownership.json#key_owners.customer_id",
+      "api_contract_ref": "services/api/customer_growth/README.md"
+    },
+    "public_menu": {
+      "owner_ref": "catalog publication only",
+      "api_contract_ref": "contracts/menu/public-menu-v2.schema.json"
+    }
+  },
+  "media": {
+    "persistent_root_env": "BSV_PRODUCT_MEDIA_ROOT",
+    "default_root": "/var/lib/bsv-all/media/products",
+    "release_tree_is_not_storage": true,
+    "identity": [
+      "product_id",
+      "original_filename"
+    ],
+    "public_serving": false
+  },
+  "imports": {
+    "root_env": "BSV_IMPORT_ROOT",
+    "default_root": "/var/lib/bsv-all/imports",
+    "incoming_directory": "${BSV_IMPORT_ROOT}/incoming",
+    "archive_directory": "${BSV_IMPORT_ROOT}/archive",
+    "exports_directory": "/var/lib/bsv-all/exports",
+    "catalog_pipeline": [
+      "archive",
+      "preview",
+      "validate",
+      "commit-candidate",
+      "publish",
+      "rollback"
+    ],
+    "publish_updates_content_version_only": true,
+    "failed_validation_changes_active_version": false,
+    "versioning": {
+      "source_sha256": "immutable source data revision",
+      "application_sha": "independent program revision",
+      "schema_revision": "numbered PostgreSQL migration"
+    }
+  },
+  "versioning": {
+    "application": "Git commit SHA",
+    "database_schema": "official CloudBase migration version only",
+    "business_content": "immutable source SHA256 and separate active catalog version",
+    "no_implicit_schema_upgrade": true
+  }
+}

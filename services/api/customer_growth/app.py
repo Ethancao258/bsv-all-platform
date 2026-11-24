@@ -7,7 +7,7 @@ import base64, binascii, hashlib, hmac, json, os, re, secrets, time, uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from io import BytesIO
-from urllib.parse import quote, urlencode, urlparse
+from urllib.parse import quote, urlencode, urlparse, urlsplit
 
 import httpx
 from cryptography.fernet import Fernet
@@ -25,7 +25,14 @@ ISOLATED = ENV == 'isolated'
 # In the unified private Lighthouse stage, employee sessions come from identity.A,
 # never from the standalone growth demo staff cookie.
 TRUST_IDENTITY = os.getenv('BSV_GROWTH_TRUST_IDENTITY', '0') == '1'
-DATABASE_URL = os.getenv('BSV_GROWTH_DB_URL', 'sqlite:///:memory:' if ISOLATED else '')
+CENTRAL_DB_URL = os.getenv('BSV_DB_URL', '').strip()
+if CENTRAL_DB_URL:
+    if ENV not in {'staging', 'production'}:
+        raise RuntimeError('BSV_DB_URL is unavailable in isolated or disabled growth mode')
+    parsed_db_url = urlsplit(CENTRAL_DB_URL)
+    if parsed_db_url.scheme not in {'postgresql+psycopg', 'postgresql+psycopg2'} or parsed_db_url.path.lstrip('/') != 'bsv_all_prod':
+        raise RuntimeError('BSV_DB_URL must use PostgreSQL and target bsv_all_prod')
+DATABASE_URL = CENTRAL_DB_URL or os.getenv('BSV_GROWTH_DB_URL', 'sqlite:///:memory:' if ISOLATED else '')
 SECRET = os.getenv('BSV_GROWTH_SIGNING_KEY', '')
 SIGNATURE_KEY = os.getenv('BSV_GROWTH_SIGNATURE_KEY', '')
 STORES = tuple(x.strip() for x in os.getenv('BSV_GROWTH_STORE_IDS', 'BSVM,BSVS,BSVT' if ISOLATED else '').split(',') if x.strip())

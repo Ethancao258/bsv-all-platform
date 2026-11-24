@@ -56,6 +56,27 @@
       "authority_status": "MATCHES_LOCKED_BASELINE",
       "import_target": "config/use-case-registry.json",
       "processing_status": "DUPLICATE_ALREADY_ARCHIVED"
+    },
+    {
+      "source_id": "BSV-SRC-004",
+      "file_type": "XLSX",
+      "business_domains": [
+        "catalog",
+        "production",
+        "procurement"
+      ],
+      "bsv_circles": [
+        "BSV1",
+        "BSV2",
+        "BSV3"
+      ],
+      "source": "用户本轮上传附件《BSVALL酒水套餐数据库.xlsx》；仓库仅记录元数据，不归档原始Excel",
+      "sha256": "4ed9bc164981f267997bd146df54d27ae22fbdc9cc1c850776daed83d34c8e82",
+      "sensitivity": "CONFIDENTIAL_BUSINESS_DATA",
+      "version": "首次有效来源版本（原始工作簿结构不变）",
+      "authority_status": "SOURCE_ACCEPTED_SALES_AUTHORIZATION_NOT_GRANTED",
+      "import_target": "Lighthouse私有目录 /var/lib/bsv-all-internal-stage/pos/catalog/versions/<sha256>.xlsx",
+      "processing_status": "SHA256_VERIFIED_AND_LOCAL_PARSER_VALIDATED; SERVER_ACTIVATION_NOT_RUN"
     }
   ]
 }

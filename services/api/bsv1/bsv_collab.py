@@ -3,6 +3,7 @@ Server is authoritative: no client-generated assignments, locks or amounts.
 """
 from __future__ import annotations
 import json,re,sqlite3,time,uuid
+import os
 from datetime import datetime,timezone
 from pathlib import Path
 
@@ -137,16 +138,29 @@ def tasks_for_store(db,store_id):
  return [dict(r) for r in rows]
 
 def _media_file(product_id, filename):
- """Resolve only trusted DB filenames in dedicated product photo folders."""
+ """Resolve a private product image, preferring durable media outside releases.
+
+    BSV_PRODUCT_MEDIA_ROOT is the persistent root on Lighthouse. The packaged
+    legacy root remains a read-only compatibility fallback for existing assets.
+    """
  if not isinstance(filename,str) or not filename.strip():return None
  name=Path(filename.strip()).name
  if name!=filename.strip() or name in ('.','..') or Path(name).suffix.lower() not in ('.jpg','.jpeg','.png','.webp'):
   return None
  fixed=product_id if isinstance(product_id,str) and re.fullmatch(r'C\d{6}',product_id) else ''
- root=Path(__file__).resolve().parent/'resources'/'product_images'
- candidates=[root/fixed/name,root/name]
+ legacy_root=Path(__file__).resolve().parent/'resources'/'product_images'
+ configured=os.environ.get('BSV_PRODUCT_MEDIA_ROOT','/var/lib/bsv-all/media/products').strip()
+ persistent_root=Path(configured).expanduser() if configured else Path('/var/lib/bsv-all/media/products')
+ candidates=[persistent_root/fixed/name,legacy_root/fixed/name,legacy_root/name]
  for file in candidates:
-  if file.is_file() and file.stat().st_size<=12*1024*1024:return file
+  try:
+   root=file.parents[1] if file.parent.name==fixed else file.parent
+   if root.is_symlink() or file.parent.is_symlink() or file.is_symlink() or not file.is_file():continue
+   resolved=file.resolve(strict=True)
+   if root.resolve() not in resolved.parents:continue
+   if resolved.stat().st_size<=12*1024*1024:return resolved
+  except (OSError,RuntimeError):
+   continue
  return None
 
 def recipe(db,store_id,product_id):
@@ -163,6 +177,24 @@ def recipe(db,store_id,product_id):
  for kind,key in [('materials','配方图文件名｜首次确认'),('review','配方图文件名｜二次复核'),('final','成品图文件名')]:
   name=f.get(key)
   photos[kind]={'filename':str(name or ''),'available':bool(_media_file(product_id,name))}
+ operations=[]
+ for record in db.execute("SELECT fixed_id,source_row,fields_json FROM bsv_v9_record WHERE page='R_配方耗用' ORDER BY source_row"):
+  item=json.loads(record['fields_json'])
+  if str(item.get('出品关联ID') or '').strip()==pid:
+   material_id=str(item.get('投入物料ID') or '').strip()
+   material=db.execute("SELECT fixed_id,display_name,fields_json,page FROM bsv_v9_record WHERE fixed_id=? AND page IN ('M_采购纯饮','P_预调半成品')",
+                       (material_id,)).fetchone() if material_id else None
+   material_fields=json.loads(material['fields_json']) if material else {}
+   if material and material['page']=='M_采购纯饮':
+    material_fields={k:v for k,v in material_fields.items()
+     if not any(word in str(k).casefold() for word in ('采购价','成本','供应商','进货价','单价','价格','金额'))}
+   operations.append({'record_id':record['fixed_id'],'source_row':record['source_row'],
+    'fields':item,'material_id':material_id or None,
+    'material_link_status':'LINKED_BY_ID' if material else 'UNRESOLVED_MATERIAL_ID' if material_id else 'NO_MATERIAL_ID',
+    'material':({'id':material['fixed_id'],'name':material['display_name'],'fields':material_fields} if material else None)})
+ source=db.execute('SELECT source_sha,imported_at FROM bsv_v9_sync WHERE one=1').fetchone()
  return {'name':row['display_name'],'fixed_id':pid,
   'fields':{k:f[k] for k in keys if f.get(k) not in ('',None)},'photos':photos,
-  'warning':'请以当前门店核准配方为准；过敏原或原料资料未核实前，必须人工复核'}
+  'recipe_operations':operations,
+  'source':{'sha256':source['source_sha'],'imported_at':source['imported_at']} if source else None,
+  'warning':'仅供制作资料查询，不代表获准销售。请以核准配方为准；过敏原或原料资料未核实前必须人工复核。'}

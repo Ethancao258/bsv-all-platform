@@ -18,6 +18,9 @@ APPS = ROOT.parents[2] / "apps"
 from bsv_database_config import get_database_path
 from bsv_catalog_config import get_excel_path,SHOW_LOCAL_TRAINING_ITEMS
 from bsv_v9_import import sync_v9, catalog_for_store as v9_catalog_for_store,price_is_current as v9_price_is_current
+from bsv_catalog_contract import semantic_attributes, registry_version
+from bsv_catalog_repository import (SQLiteCatalogReadRepository, PostgresCatalogReadRepository,
+                                    postgres_catalog_enabled)
 import bsv_collab as collab
 from bsv_ledger import checkout_report, checkout_csv_bytes
 import bsv_layouts
@@ -332,9 +335,12 @@ def init_db():
     with tx() as db:
         bsv_one.seed_revisions(db)
     # V9只是源文件；生产订单/价格快照和事务仍存储在SQLite。任一源文件损坏则阻止本地启动.
-    from bsv_v9_import import sync_v9
-    report=sync_v9(DB_PATH,get_excel_path(ROOT))
-    print('BSV ALL V9同步：', {k:v for k,v in report.items() if k in ('C','P','M','K','R','Q','T','eligible_quotes','unchanged')})
+    if postgres_catalog_enabled():
+        print('BSV ALL catalog read source: PostgreSQL 17 (isolated opt-in); SQLite V9 import is paused.')
+    else:
+        from bsv_v9_import import sync_v9
+        report=sync_v9(DB_PATH,get_excel_path(ROOT))
+        print('BSV ALL V9同步：', {k:v for k,v in report.items() if k in ('C','P','M','K','R','Q','T','eligible_quotes','unchanged')})
     with tx() as db:
         # AJ统一售价为唯一有效价格源，不再读取旧版门店临时价格。
         # Legacy pending records are represented without modifying source history.
@@ -348,11 +354,20 @@ def price_is_current(db,product,store_id):
     return v9_price_is_current(db,product,store_id)
 
 def catalog_for_store(db,store_id):
-    """全部C现场成品公开展示；有AJ价格的商品在所有门店同价销售。"""
+    """已审核可售商品镜像；资料库查询由独立只读接口提供。"""
     items=v9_catalog_for_store(db,store_id)
     for item in items:
         item['initials']=collab.initials(item['name'])
     return items
+
+def catalog_source(db):
+    row=db.execute('SELECT source_sha,imported_at,summary_json FROM bsv_v9_sync WHERE one=1').fetchone()
+    if not row:return {'status':'NOT_IMPORTED','sha256':None,'imported_at':None,'counts':{}}
+    try:summary=json.loads(row['summary_json'])
+    except (TypeError,ValueError):summary={}
+    return {'status':'SYNCED','sha256':row['source_sha'],'imported_at':row['imported_at'],
+            'counts':{k:summary.get(k,0) for k in ('C','P','M','K','R','Q','T','extras')}}
+
 
 class UserError(Exception):
     def __init__(self,message,status=400,code=None):
@@ -567,6 +582,24 @@ def state(db,staff):
     locked=[dict(x) for x in db.execute('''SELECT l.seat_id,l.staff_id,s.staff_code,l.expires_at FROM seat_edit_locks l
         JOIN staff s ON s.id=l.staff_id WHERE l.store_id=? AND l.expires_at>?''',(store_id,timestamp()))]
     tasks=collab.tasks_for_store(db,store_id)
+    # PostgreSQL raw catalog reads are independent from the SQLite POS sale
+    # projection. When V9 synchronization is paused (or a clean POS database
+    # has not built that projection yet), expose no local sale candidates and
+    # do not issue queries against columns/tables that are not present. An
+    # existing, fully migrated SQLite sale projection keeps its prior behavior.
+    v9_table = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bsv_v9_record'").fetchone()
+    v9_sync_table = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='bsv_v9_sync'").fetchone()
+    product_columns = {row['name'] for row in db.execute('PRAGMA table_info(bsv_products)')}
+    if v9_table and 'sale_enabled' in product_columns:
+        sale_products=[dict(x) for x in db.execute('''SELECT * FROM bsv_products WHERE
+            (demo_only=0 AND sale_enabled=1 AND (store_id IS NULL OR store_id=?)) OR (demo_only=1 AND ?=1)
+            ORDER BY demo_only,id''',(store_id,int(MODE=='local' and SHOW_LOCAL_TRAINING_ITEMS)))
+            if x['demo_only']==1 or price_is_current(db,x,store_id)]
+        pos_catalog_items=catalog_for_store(db,store_id)
+    else:
+        sale_products=[]
+        pos_catalog_items=[]
+    catalog_sync_row=db.execute('SELECT * FROM bsv_v9_sync WHERE one=1').fetchone() if v9_sync_table else None
     return {'online_staff_count':len(active_staff),'online_staff':[{'id':x,'code':db.execute('SELECT staff_code FROM staff WHERE id=?',(x,)).fetchone()[0]} for x in active_staff],
        'seat_edit_locks':locked,'production_tasks':tasks,'alert_escalations':escalations,'severity_thresholds':{'service_warn':DEFAULT_WARN_SECONDS,
        'service_late':DEFAULT_LATE_SECONDS,'service_critical':DEFAULT_CRITICAL_SECONDS,
@@ -576,13 +609,10 @@ def state(db,staff):
                 **({"shift": staff["authority"]} if staff.get("authority") else {})},
        'store':store,'seats':seats,'visits':visits,'groups':groups,'bathrooms':bathrooms,
        'documents':docs,'layout':bsv_layouts.runtime_layout(db,store_id),
-       'products':[dict(x) for x in db.execute('''SELECT * FROM bsv_products WHERE
-           (demo_only=0 AND sale_enabled=1 AND (store_id IS NULL OR store_id=?)) OR (demo_only=1 AND ?=1)
-           ORDER BY demo_only,id''',(store_id,int(MODE=='local' and SHOW_LOCAL_TRAINING_ITEMS)))
-           if x['demo_only']==1 or price_is_current(db,x,store_id)],
-       'catalog_items':catalog_for_store(db,store_id),
+       'products':sale_products,
+       'catalog_items':pos_catalog_items,
        'catalog_sync':(lambda r: {'source_sha':r['source_sha'],'imported_at':r['imported_at'],
-            'summary':json.loads(r['summary_json'])} if r else None)(db.execute('SELECT * FROM bsv_v9_sync WHERE one=1').fetchone()),
+            'summary':json.loads(r['summary_json'])} if r else None)(catalog_sync_row),
        'audit':audit,'csrf':staff.get('csrf'),'server_time_ms':timestamp()*1000,
        'service_warn_seconds':DEFAULT_WARN_SECONDS,'service_late_seconds':DEFAULT_LATE_SECONDS,
        'payments_enabled':False,'prototype':True,'mode':MODE,'version':application_version()}
@@ -1694,6 +1724,16 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError,UnicodeDecodeError):raise UserError('JSON格式错误')
     def do_GET(self):
         path=unquote(urlparse(self.path).path)
+        versioned_catalog=None
+        versioned_id=None
+        if path=="/api/v1/catalog/products":
+            path="/api/catalog/search";versioned_catalog="search"
+        else:
+            match=re.fullmatch(r"/api/v1/catalog/products/([CPMK]\d{6})(/recipe)?",path)
+            if match:
+                versioned_id=match.group(1)
+                versioned_catalog="recipe" if match.group(2) else "item"
+                path="/api/production/recipe" if versioned_catalog=="recipe" else "/api/catalog/item"
         if path in {"/hq/stores/layout", "/hq/stores/layout/assets/app.js",
                     "/hq/stores/layout/assets/style.css"}:
             self.hq_layout_page(path)
@@ -1779,8 +1819,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not allowed:self.send_json({'error':'门店未授权'},403);return
                 if not db.execute('SELECT 1 FROM stores WHERE id=?',(sid,)).fetchone():
                     self.send_json({'error':'门店不存在'},404);return
-                rows=catalog_for_store(db,sid)
-            self.send_json({'store_id':sid,'source':'C_现场成品!AJ','scope':'private-preview',
+                rows=[] if postgres_catalog_enabled() else catalog_for_store(db,sid)
+            source = 'postgresql-raw-catalog-not-public' if postgres_catalog_enabled() else 'C_现场成品!AJ'
+            self.send_json({'store_id':sid,'source':source,'scope':'private-preview',
+              'catalog_publication':'BLOCKED_RAW_NOT_APPROVED' if postgres_catalog_enabled() else 'EXISTING_SQLITE_APPROVALS',
               'products':rows,'priced':sum(bool(r['sale_enabled']) for r in rows if r['domain']=='C'),
               'payments_enabled':False});return
         if path=='/api/document':
@@ -1842,15 +1884,32 @@ class Handler(BaseHTTPRequestHandler):
             staff=self.resolve_auth()
             if not staff:self.fail_auth('请先登录并确认门店');return
             q=parse_qs(urlparse(self.path).query)
-            lid=q.get('line_id',[''])[0];kind=q.get('kind',[''])[0]
+            lid=q.get('line_id',[''])[0];product_id=q.get('product_id',[''])[0];kind=q.get('kind',[''])[0]
             if kind not in ('materials','final'):self.send_json({'error':'图片类型不支持'},400);return
             with db_read() as db:
-                r=db.execute('''SELECT l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
-                    WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
-                if not r:self.send_json({'error':'任务不属于本店'},404);return
-                info=collab.recipe(db,staff['session_store_id'],r['product_id'])
-                photo=info.get('photos',{}).get(kind,{})
-                filepath=collab._media_file(r['product_id'],photo.get('filename'))
+                if product_id and not lid:
+                    if not re.fullmatch(r'C\d{6}',product_id):
+                        self.send_json({'error':'无效商品固定ID'},400);return
+                else:
+                    r=db.execute('''SELECT l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
+                        WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
+                    if not r:self.send_json({'error':'任务不属于本店'},404);return
+                    product_id=r['product_id']
+                if postgres_catalog_enabled():
+                    try:
+                        product=PostgresCatalogReadRepository().get_product(product_id,allow_confidential=True)
+                    except Exception as error:
+                        if not isinstance(error,(ValueError,RuntimeError,OSError)) and not error.__class__.__module__.startswith('psycopg'):
+                            raise
+                        self.send_json({'error':'PostgreSQL资料源暂不可用。POS订单和座位数据未受影响。',
+                                        'code':'CATALOG_SOURCE_UNAVAILABLE'},503);return
+                    if not product:self.send_json({'error':'资料不存在'},404);return
+                    field={'materials':'配方图文件名｜首次确认','final':'成品图文件名'}[kind]
+                    filepath=collab._media_file(product_id,product.get('source_fields',{}).get(field))
+                else:
+                    info=collab.recipe(db,staff['session_store_id'],product_id)
+                    photo=info.get('photos',{}).get(kind,{})
+                    filepath=collab._media_file(product_id,photo.get('filename'))
             if not filepath:self.send_json({'error':'尚未上传此商品的图片文件'},404);return
             from mimetypes import guess_type
             payload=filepath.read_bytes()
@@ -1860,30 +1919,130 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Length',str(len(payload)))
             self.send_header('X-Content-Type-Options','nosniff')
             self.end_headers();self.wfile.write(payload);return
-        if path in ('/api/state','/api/receipt','/api/history','/api/audit','/api/members/search','/api/catalog/item','/api/production/recipe'):
+        if path in ('/api/state','/api/receipt','/api/history','/api/audit','/api/members/search','/api/catalog/item','/api/catalog/search','/api/production/recipe'):
             staff=self.resolve_auth()
             if not staff:self.fail_auth('请先登录并确认门店');return
             if path=='/api/state' and not device_required():report_escalations(staff['session_store_id'])
             q=parse_qs(urlparse(self.path).query)
+            if versioned_id:
+                q["id"]=[versioned_id]
             with db_read() as db:
                 if path=='/api/state':data=state(db,staff)
+                elif versioned_catalog and postgres_catalog_enabled():
+                    try:
+                        repository = PostgresCatalogReadRepository()
+                        hq_reader = bsv_one.is_hq(db, staff)
+                        if versioned_catalog == 'search':
+                            term = q.get('q',[''])[0].strip()
+                            domain = q.get('domain',['ALL'])[0]
+                            if len(term) > 100 or domain not in {'ALL','C','P','M','K','READY'}:
+                                self.send_json({'error':'无效查询条件'},400);return
+                            data = repository.search(term, domain, 100)
+                        elif versioned_catalog == 'item':
+                            data = repository.get_product(versioned_id, allow_confidential=(versioned_id[0] in {'C','P'} or hq_reader))
+                            if not data:
+                                self.send_json({'error':'资料不存在'},404);return
+                            if versioned_id[0] == 'M' and not hq_reader:
+                                data['withheld_fields'] = sorted(set(data.get('withheld_fields',[])) | {
+                                    key for key in data.get('source_fields',{})
+                                    if any(word in key for word in ('采购价','成本','供应商','进货价','单价','金额'))})
+                        else:
+                            data = repository.recipe(versioned_id, allow_confidential=True)
+                            if not data:
+                                self.send_json({'error':'制作资料不存在'},404);return
+                    except Exception as error:
+                        if not isinstance(error, (ValueError, RuntimeError, OSError)) and not error.__class__.__module__.startswith('psycopg'):
+                            raise
+                        self.send_json({'error':'PostgreSQL资料源暂不可用。POS订单和座位数据未受影响。',
+                                        'code':'CATALOG_SOURCE_UNAVAILABLE'},503);return
                 elif path=='/api/production/recipe':
                     lid=q.get('line_id',[''])[0]
-                    task=db.execute('''SELECT t.*,l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
-                        WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
-                    if not task:self.send_json({'error':'制作任务不属于本店'},404);return
-                    data=collab.recipe(db,staff['session_store_id'],task['product_id'])
+                    product_id=q.get('id',[''])[0]
+                    if product_id and not lid and not re.fullmatch(r'C\d{6}',product_id):
+                        self.send_json({'error':'无效商品固定ID'},400);return
+                    if not (product_id and not lid):
+                        task=db.execute('''SELECT t.*,l.product_id FROM production_tasks t JOIN order_lines l ON l.id=t.line_id
+                            WHERE t.line_id=? AND t.store_id=?''',(lid,staff['session_store_id'])).fetchone()
+                        if not task:self.send_json({'error':'制作任务不属于本店'},404);return
+                        product_id=task['product_id']
+                    if postgres_catalog_enabled():
+                        try:
+                            data=PostgresCatalogReadRepository().recipe(product_id,allow_confidential=True)
+                        except Exception as error:
+                            if not isinstance(error,(ValueError,RuntimeError,OSError)) and not error.__class__.__module__.startswith('psycopg'):
+                                raise
+                            self.send_json({'error':'PostgreSQL资料源暂不可用。POS订单和座位数据未受影响.',
+                                            'code':'CATALOG_SOURCE_UNAVAILABLE'},503);return
+                        if not data:self.send_json({'error':'制作资料不存在'},404);return
+                    else:
+                        data=collab.recipe(db,staff['session_store_id'],product_id)
+                elif path=='/api/catalog/search':
+                    term=q.get('q',[''])[0].strip().casefold()
+                    domain=q.get('domain',['ALL'])[0]
+                    allowed_domains={'ALL','C','P','M','K','READY'}
+                    if domain not in allowed_domains or len(term)>100:
+                        self.send_json({'error':'无效查询条件'},400);return
+                    if not term:
+                        self.send_json({'items':[],'source':catalog_source(db)});return
+                    page_map={'C':'C_现场成品','P':'P_预调半成品','M':'M_采购纯饮','K':'K_套餐组合'}
+                    pages=[page_map[x] for x in page_map if domain in ('ALL',x) or domain=='READY' and x=='C']
+                    records=[]
+                    for page_name in pages:
+                        for record in db.execute('''SELECT fixed_id,display_name,page,fields_json FROM bsv_v9_record
+                                WHERE page=? ORDER BY source_row LIMIT 1000''',(page_name,)):
+                            fields=json.loads(record['fields_json'])
+                            haystack=' '.join([record['fixed_id'],record['display_name'],
+                                *(str(v) for k,v in fields.items() if any(w in str(k).casefold()
+                                  for w in ('名称','系列','类别','分类','规格','sku')))]).casefold()
+                            if term not in haystack:continue
+                            fixed_id=record['fixed_id']
+                            product=db.execute('SELECT * FROM bsv_products WHERE id=?',(fixed_id,)).fetchone()
+                            sellable=bool(product and price_is_current(db,product,staff['session_store_id']))
+                            if domain=='READY' and not sellable:continue
+                            if record['page']=='M_采购纯饮':
+                                withheld=[k for k in fields if any(word in str(k).casefold()
+                                    for word in ('采购价','成本','供应商','进货价','单价','价格','金额'))]
+                                fields={k:v for k,v in fields.items() if k not in withheld}
+                            else:withheld=[]
+                            records.append({'id':fixed_id,'name':record['display_name'],'domain':fixed_id[0],
+                                'series':str(fields.get('销售系列') or fields.get('类别') or ''),
+                                'sale_enabled':sellable,'fields':fields,'withheld_fields':withheld})
+                            if len(records)>=100:break
+                        if len(records)>=100:break
+                    data={'items':records,'source':catalog_source(db)}
                 elif path=='/api/catalog/item':
                     fixed_id=q.get('id',[''])[0]
-                    if not re.fullmatch(r'[CK]\d{6}',fixed_id):
-                        self.send_json({'error':'无效商品固定ID'},400);return
-                    row=db.execute('''SELECT display_name,fields_json FROM bsv_v9_record
-                         WHERE fixed_id=? AND page IN ('C_现场成品','K_套餐组合')''',(fixed_id,)).fetchone()
-                    if not row:self.send_json({'error':'商品不存在'},404);return
-                    ready=db.execute('''SELECT sale_enabled FROM bsv_products WHERE id=?''',
-                                     (fixed_id,)).fetchone()
-                    data={'id':fixed_id,'name':row['display_name'],'fields':json.loads(row['fields_json']),
-                           'sale_enabled':bool(ready and price_is_current(db,db.execute('SELECT * FROM bsv_products WHERE id=?',(fixed_id,)).fetchone(),staff['session_store_id']))}
+                    if not re.fullmatch(r'[CPMK]\d{6}',fixed_id):
+                        self.send_json({'error':'无效资料固定ID'},400);return
+                    page={'C':'C_现场成品','P':'P_预调半成品','M':'M_采购纯饮','K':'K_套餐组合'}[fixed_id[0]]
+                    if versioned_catalog=='item':
+                        record=SQLiteCatalogReadRepository(db).get_product(fixed_id)
+                        row=({'display_name':record['name'],'fields_json':json.dumps(record['source_fields'],ensure_ascii=False)}
+                             if record else None)
+                    else:
+                        row=db.execute('''SELECT display_name,fields_json FROM bsv_v9_record WHERE fixed_id=? AND page=?''',
+                                       (fixed_id,page)).fetchone()
+                    if not row:self.send_json({'error':'资料不存在'},404);return
+                    fields=json.loads(row['fields_json'])
+                    withheld=[]
+                    if page=='M_采购纯饮':
+                        withheld=[k for k in fields if any(word in str(k).casefold()
+                            for word in ('采购价','成本','供应商','进货价','单价','价格','金额'))]
+                        fields={k:v for k,v in fields.items() if k not in withheld}
+                    ready=db.execute('SELECT * FROM bsv_products WHERE id=?',(fixed_id,)).fetchone()
+                    data={'id':fixed_id,'name':row['display_name'],'fields':fields,
+                          'sale_enabled':bool(ready and price_is_current(db,ready,staff['session_store_id'])),
+                          'withheld_fields':withheld,'source':catalog_source(db)}
+                    if page=='K_套餐组合':
+                        data['store_research']=[]
+                        for section in ('K_套餐槽位','K_门店NPS'):
+                            for extra in db.execute("SELECT section,source_row,fields_json FROM bsv_v9_extra WHERE section=? ORDER BY source_row",(section,)):
+                                item=json.loads(extra['fields_json'])
+                                if item.get('套餐ID')==fixed_id:
+                                    data['store_research'].append({'section':section,'source_row':extra['source_row'],'fields':item})
+                    if page=='P_预调半成品':
+                        data['production_standard_approved']=(str(fields.get('审核状态') or '') in
+                            ('已批准','已核准','审核通过'))
                 elif path=='/api/members/search':
                     last4=q.get('last4',[''])[0]
                     if not re.fullmatch(r'\d{4}',last4):
@@ -1941,6 +2100,24 @@ class Handler(BaseHTTPRequestHandler):
                     vid=parse_qs(urlparse(self.path).query).get('visit_id',[''])[0]
                     try:data=receipt(db,staff,vid)
                     except UserError as e:self.send_error_json(e);return
+            if versioned_catalog:
+                data["contract_version"]=registry_version()
+                if versioned_catalog=="search":
+                    page_by_domain={"C":"C_现场成品","P":"P_预调半成品","M":"M_采购纯饮","K":"K_套餐组合"}
+                    for item in data.get("items",[]):
+                        item["product_id"]=item["id"]
+                        item["attributes"]=semantic_attributes(page_by_domain[item["domain"]],item.get("fields",{}))
+                        item["source_fields"]=item.get("fields",{})
+                else:
+                    sheet=({"C":"C_现场成品","P":"P_预调半成品","M":"M_采购纯饮","K":"K_套餐组合"}
+                           .get(str(data.get("fixed_id") or data.get("id") or versioned_id)[:1],"C_现场成品"))
+                    source_fields=data.get("fields",{})
+                    data["attributes"]=semantic_attributes(sheet,source_fields)
+                    data["source_fields"]=source_fields
+                    if versioned_catalog=="item":data["product_id"]=data.get("id")
+                    else:
+                        for operation in data.get("recipe_operations",[]):
+                            operation["source_fields"]=operation.get("fields",{})
             self.send_json(data);return
         if path in ('/hq','/hq.html','/hq.js','/hq.css','/menu','/menu.html','/menu.js','/menu.css'):
             staff=self.resolve_auth()

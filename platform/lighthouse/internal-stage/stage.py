@@ -35,6 +35,22 @@ LEGACY_UNITS = {8765: "bsv1-preview.service", 8767: "bsv-all-bsv1-stage.service"
 REPO = Path(__file__).resolve().parents[3]
 DB = "bsv_identity_isolated_internal"
 DB_USER = "bsv_internal_app"
+CATALOG_DB = "bsv_all_prod"
+CATALOG_RUNTIME_USER = "bsv_catalog_runtime"
+CATALOG_IMPORT_USER = "bsv_catalog_importer"
+EXPECTED_CATALOG_MEMBERSHIPS = {
+    CATALOG_RUNTIME_USER: "bsv_catalog_confidential_reader,bsv_catalog_reader",
+    CATALOG_IMPORT_USER: "",
+    "bsv_catalog_confidential_reader": "bsv_catalog_reader",
+    # This query lists roles that this role is a member of. The reader role
+    # itself must not inherit another role.
+    "bsv_catalog_reader": "",
+}
+EXPECTED_CATALOG_ROLE_GRAPH = (
+    "bsv_catalog_confidential_reader>bsv_catalog_runtime,"
+    "bsv_catalog_reader>bsv_catalog_confidential_reader,"
+    "bsv_catalog_reader>bsv_catalog_runtime",
+)
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 MIGRATIONS = Path("platform/lighthouse/identity/migrations")
 IDENTITY_REVISION = "bsv_identity_0001"
@@ -67,7 +83,27 @@ def user(name):
     return "bsvint-" + name
 
 
+def catalog_restore_database_name(source_sha, max_identifier_length, *, timestamp=None, nonce=None):
+    """Return a unique ASCII restore DB name that fits this server's limit."""
+    if not re.fullmatch(r"[a-f0-9]{40}", source_sha):
+        raise ValueError("restore source SHA must be a full lowercase Git SHA")
+    if not isinstance(max_identifier_length, int) or max_identifier_length < 1:
+        raise ValueError("PostgreSQL max_identifier_length must be a positive integer")
+    timestamp = timestamp or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    nonce = nonce or secrets.token_hex(8)
+    if not re.fullmatch(r"[0-9]{14}", timestamp) or not re.fullmatch(r"[a-f0-9]{16}", nonce):
+        raise ValueError("restore database timestamp or uniqueness token is invalid")
+    name = f"bsvr_{source_sha[:8]}_{timestamp}_{nonce}"
+    if len(name.encode("ascii")) > max_identifier_length:
+        raise RuntimeError("PostgreSQL max_identifier_length is too small for a safe restore database name")
+    return name
+
+
 def as_user(name, *args, **kwargs):
+    # TAT may invoke us from a root-only private package directory. runuser keeps
+    # the caller's cwd by default, and the service account cannot enter that
+    # directory even when every requested path is absolute.
+    kwargs.setdefault("cwd", "/")
     return run("/usr/sbin/runuser", "-u", user(name), "--", *args, **kwargs)
 
 
@@ -197,7 +233,7 @@ def preflight(sha):
             raise RuntimeError(f"Missing host dependency: {required}")
     if not output("tar", "--version").startswith("tar (GNU tar)"):
         raise RuntimeError("Safe release extraction requires Ubuntu GNU tar")
-    for executable in ("postgres", "initdb", "psql", "pg_isready", "pg_dump", "pg_restore"):
+    for executable in ("postgres", "initdb", "psql", "pg_isready", "pg_dump", "pg_restore", "dropdb"):
         if not os.access(PG / executable, os.X_OK):
             raise RuntimeError(f"Install approved native PostgreSQL 17 binaries: missing {executable}")
     if "PostgreSQL) 17." not in output(PG / "postgres", "--version"):
@@ -209,6 +245,133 @@ def preflight(sha):
         if path.is_symlink() or (path.exists() and (path.stat().st_uid != 0 or path.stat().st_mode & 0o022)):
             raise RuntimeError(f"Unsafe directory ownership or permissions: {path}")
     print(f"PREFLIGHT_OK {sha} (dedicated loopback ports 18760–18764)", flush=True)
+
+
+def _catalog_peer_psql(database, sql):
+    result = as_user(
+        "postgres", PG / "psql", "-h", DATA / "postgres", "-p", str(PORTS["postgres"]),
+        "-U", user("postgres"), "-d", database, "-XAt", "-F", "\t",
+        "-v", "ON_ERROR_STOP=1", "-c", sql,
+        env={"PATH": str(PG) + ":/usr/bin:/bin", "PGOPTIONS": "-c default_transaction_read_only=on"},
+        stdout=subprocess.PIPE,
+    )
+    return result.stdout.strip()
+
+
+def catalog_database_preflight(sha):
+    """Read-only gate for the existing isolated catalog database.
+
+    This function deliberately runs before bsvctl deploy/prepare_pg. It never
+    creates roles, repairs HBA, changes a database owner, or writes catalog
+    state. Existing non-empty data is classified for a second exact-package
+    audit by the importer before deployment may proceed.
+    """
+    if output(*git("rev-parse", "HEAD")) != sha:
+        raise RuntimeError("Catalog preflight checkout differs from the approved SHA")
+    if not active("postgres"):
+        raise RuntimeError("Private PostgreSQL must already be active for read-only catalog preflight")
+    version = int(_catalog_peer_psql("postgres", "SHOW server_version_num"))
+    if version // 10000 != 17:
+        raise RuntimeError("Catalog preflight requires the already-running PostgreSQL 17 service")
+    if int(_catalog_peer_psql("postgres", "SHOW max_identifier_length")) != 63:
+        raise RuntimeError("PostgreSQL identifier limit differs from the verified host contract")
+    database = _catalog_peer_psql(
+        "postgres", f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='{CATALOG_DB}'")
+    if not database:
+        print(json.dumps({"status": "CATALOG_PREFLIGHT_OK", "database": CATALOG_DB,
+                          "exists": False, "data_state": "ABSENT"}, sort_keys=True), flush=True)
+        return {"exists": False, "data_state": "ABSENT"}
+    if database != CATALOG_IMPORT_USER:
+        raise RuntimeError("Existing bsv_all_prod owner is unexpected; no takeover performed")
+
+    directory = DATA / "postgres"
+    cluster = directory / "pg"
+    hba_path = cluster / "pg_hba.conf"
+    marker = directory / ".catalog-hba-initialized"
+    baseline_marker = directory / ".hba-initialized"
+    backup = directory / "pg_hba.pre-catalog.bsv-backup"
+    if any(path.is_symlink() for path in (hba_path, marker, baseline_marker, backup)):
+        raise RuntimeError("Catalog preflight found an unsafe managed HBA path")
+    account = pwd.getpwnam(user("postgres"))
+    if (not hba_path.is_file() or hba_path.stat().st_uid != account.pw_uid
+            or stat.S_IMODE(hba_path.stat().st_mode) != 0o600):
+        raise RuntimeError("Catalog preflight found unexpected HBA ownership or mode")
+    _baseline, expected_hba = _catalog_hba_policies()
+    current_hba = hba_path.read_text(encoding="utf-8")
+    if current_hba != expected_hba:
+        raise RuntimeError("Existing catalog HBA differs from the managed policy; preserve and stop")
+    if (not marker.is_file() or marker.read_text().strip() != hashlib.sha256(expected_hba.encode()).hexdigest()
+            or not baseline_marker.is_file() or not backup.is_file()
+            or backup.stat().st_uid != account.pw_uid or stat.S_IMODE(backup.stat().st_mode) != 0o600):
+        raise RuntimeError("Existing catalog HBA management evidence is incomplete; preserve and stop")
+    if _catalog_peer_psql("postgres", "SELECT count(*) FROM pg_hba_file_rules WHERE error IS NOT NULL") != "0":
+        raise RuntimeError("PostgreSQL reports an invalid HBA rule; preserve and stop")
+
+    expected_flags = {
+        CATALOG_RUNTIME_USER: "t|f|f|f|f|f|f",
+        CATALOG_IMPORT_USER: "t|f|f|f|f|f|f",
+        "bsv_catalog_reader": "f|f|f|f|f|t|f",
+        "bsv_catalog_confidential_reader": "f|f|f|f|f|t|f",
+    }
+    for role, expected in expected_flags.items():
+        actual = _catalog_peer_psql(
+            "postgres", "SELECT concat_ws('|',rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,"
+            "rolreplication,rolinherit,rolbypassrls) FROM pg_roles WHERE rolname='" + role + "'")
+        if actual != expected:
+            raise RuntimeError(f"Existing catalog role is missing or differs from policy: {role}")
+        membership = _catalog_peer_psql("postgres", _catalog_role_membership_query(role))
+        if membership != EXPECTED_CATALOG_MEMBERSHIPS[role]:
+            raise RuntimeError(f"Existing catalog role membership differs from policy: {role}")
+    role_names = ",".join(f"'{name}'" for name in expected_flags)
+    graph = _catalog_peer_psql(
+        "postgres",
+        "SELECT COALESCE(string_agg(granted_role.rolname||'>'||member.rolname,',' "
+        "ORDER BY granted_role.rolname,member.rolname),'') FROM pg_auth_members m "
+        "JOIN pg_roles granted_role ON granted_role.oid=m.roleid "
+        "JOIN pg_roles member ON member.oid=m.member "
+        f"WHERE granted_role.rolname IN ({role_names}) OR member.rolname IN ({role_names})")
+    if graph != ",".join(EXPECTED_CATALOG_ROLE_GRAPH):
+        raise RuntimeError("Existing catalog role graph contains an unregistered membership; preserve and stop")
+    if _catalog_peer_psql(
+            "postgres", f"SELECT has_database_privilege('{CATALOG_RUNTIME_USER}','{CATALOG_DB}','CONNECT')"
+            " AND has_database_privilege('" + CATALOG_IMPORT_USER + "','" + CATALOG_DB + "','CONNECT')") != "t":
+        raise RuntimeError("Registered catalog roles lack the exact database connect capability")
+    public_connect = _catalog_peer_psql(
+        "postgres", f"SELECT EXISTS (SELECT 1 FROM pg_database d, "
+        "LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a "
+        f"WHERE d.datname='{CATALOG_DB}' AND a.grantee=0 AND a.privilege_type='CONNECT')")
+    if public_connect != "f":
+        raise RuntimeError("Existing catalog database is connectable by PUBLIC; preserve and stop")
+
+    schemas = _catalog_peer_psql(
+        CATALOG_DB,
+        "SELECT COALESCE(string_agg(nspname,',' ORDER BY nspname),'') FROM pg_namespace "
+        "WHERE nspname NOT IN ('pg_catalog','information_schema') "
+        "AND nspname NOT LIKE 'pg_toast%' AND nspname NOT LIKE 'pg_temp_%' "
+        "AND nspname NOT LIKE 'pg_toast_temp_%'")
+    allowed_empty_schemas = {"public"}
+    schema_names = set(filter(None, schemas.split(",")))
+    objects = _catalog_peer_psql(
+        CATALOG_DB,
+        "SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+        "WHERE n.nspname NOT IN ('pg_catalog','information_schema') "
+        "AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp_%' "
+        "AND n.nspname NOT LIKE 'pg_toast_temp_%' AND c.relkind IN ('r','p','v','m','f','S')) "
+        "+ (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace "
+        "WHERE n.nspname NOT IN ('pg_catalog','information_schema') "
+        "AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp_%' "
+        "AND n.nspname NOT LIKE 'pg_toast_temp_%') "
+        "+ (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace "
+        "WHERE n.nspname NOT IN ('pg_catalog','information_schema') "
+        "AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp_%' "
+        "AND n.nspname NOT LIKE 'pg_toast_temp_%' AND t.typtype IN ('b','d','e','r') "
+        "AND t.typrelid=0 AND t.typelem=0)")
+    state = "EMPTY" if objects == "0" and schema_names <= allowed_empty_schemas else "NONEMPTY"
+    result = {"status": "CATALOG_PREFLIGHT_OK", "database": CATALOG_DB, "exists": True,
+              "owner": CATALOG_IMPORT_USER, "server_major": 17, "max_identifier_length": 63,
+              "hba": "MANAGED_EXACT", "roles": "MANAGED_EXACT", "data_state": state}
+    print(json.dumps(result, sort_keys=True), flush=True)
+    return result
 
 
 def write_secret(path, value, uid=0, gid=0):
@@ -258,7 +421,7 @@ def _read_managed_environment(name):
     return parsed
 
 
-def _managed_config_snapshot(names=("identity", "pos", "ingress", "postgres", "supply")):
+def _managed_config_snapshot(names=("identity", "pos", "ingress", "postgres", "supply", "catalog-import")):
     snapshot = {}
     for name in names:
         path = ROOT / "config" / f"{name}.env"
@@ -501,9 +664,25 @@ def _prepare_config(approve_synthetic_three_store=False):
         if path.stat().st_uid != account.pw_uid or path.stat().st_mode & 0o077:
             raise RuntimeError(f"Unsafe service data directory: {path}")
     config = ROOT / "config"
-    dbpw, pos_token, layout_token, supply_token, session, pepper, reviewer1, reviewer2 = [
+    identity_account = pwd.getpwnam(user("identity"))
+    catalog_data = DATA / "catalog"
+    catalog_archives = catalog_data / "archives"
+    for directory in (catalog_data, catalog_archives):
+        if directory.is_symlink():
+            raise RuntimeError("Unexpected catalog backup directory symlink")
+        if not directory.exists():
+            directory.mkdir(mode=0o700)
+            os.chown(directory, identity_account.pw_uid, identity_account.pw_gid)
+        if directory.stat().st_uid != identity_account.pw_uid or directory.stat().st_mode & 0o077:
+            raise RuntimeError("Unsafe private catalog backup directory")
+    catalog_backup_key = catalog_data / "backup.key"
+    write_secret(catalog_backup_key, base64.urlsafe_b64encode(secrets.token_bytes(32)).decode(),
+                 identity_account.pw_uid, identity_account.pw_gid)
+    dbpw, catalog_runtime_pw, catalog_import_pw, pos_token, layout_token, supply_token, session, pepper, reviewer1, reviewer2 = [
         write_secret(config / key, secrets.token_urlsafe(36)) for key in
-        ("pg-password", "pos-token", "layout-token", "supply-token", "session-key", "privacy-pepper", "reviewer1", "reviewer2")]
+        ("pg-password", "catalog-runtime-password", "catalog-import-password", "pos-token", "layout-token",
+         "supply-token", "session-key", "privacy-pepper", "reviewer1", "reviewer2")]
+    write_secret(config / "catalog-approval.key", secrets.token_urlsafe(48))
     pin = write_secret(config / "pos-pin", str(10**10 + secrets.randbelow(9 * 10**10)))
     # Three distinct secrets: guest authorization, POS visit context and the
     # private POS-to-growth verification channel. Never share payment secrets.
@@ -539,7 +718,12 @@ def _prepare_config(approve_synthetic_three_store=False):
         "BSV_MODE": "staging", "BSV_PORT": "18762", "BSV_PRIVATE_SSH_TUNNEL": "1",
         "BSV_DB_PATH": str(DATA / "pos" / "synthetic.sqlite3"),
         "BSV_V9_XLSX": str(DATA / "pos" / "synthetic-v9.xlsx"),
+        "BSV_CATALOG_DIR": str(DATA / "pos" / "catalog"),
+        "BSV_IMPORT_ROOT": str(DATA / "pos" / "imports"),
+        "BSV_PRODUCT_MEDIA_ROOT": str(DATA / "pos" / "product-media"),
         "BSV_BACKUP_DIR": str(DATA / "pos" / "backups"),
+        "BSV_DB_URL": f"postgresql+psycopg://{CATALOG_RUNTIME_USER}:{catalog_runtime_pw}@127.0.0.1:18764/{CATALOG_DB}",
+        "BSV_CATALOG_READ_SOURCE": "postgres",
         "BSV_POS_IDENTITY_REQUIRED": "1", "BSV_POS_IDENTITY_URL": "http://127.0.0.1:18761",
         "BSV_POS_IDENTITY_TOKEN": pos_token, "BSV_POS_INTERNAL_STAGE": "1",
         "BSV_POS_STORE_LEGAL_JSON": store_map_json,
@@ -550,7 +734,8 @@ def _prepare_config(approve_synthetic_three_store=False):
         "BSV_GROWTH_LINK_KEY": growth_link,
         "BSV_GROWTH_POS_CONTEXT_KEY": growth_context,
         "BSV_GROWTH_POS_VERIFY_TOKEN": growth_verify,
-    }, {"BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
+    }, {"BSV_CATALOG_DIR", "BSV_IMPORT_ROOT", "BSV_PRODUCT_MEDIA_ROOT", "BSV_DB_URL", "BSV_CATALOG_READ_SOURCE",
+        "BSV_POS_LAYOUT_SERVICE_TOKEN", "BSV_POS_LAYOUT_SCOPE_MODE",
         "BSV_APP_ENV", "BSV_POS_GROWTH_INTEGRATION", "BSV_GROWTH_LINK_KEY",
         "BSV_GROWTH_POS_CONTEXT_KEY", "BSV_GROWTH_POS_VERIFY_TOKEN",
         "BSV_POS_G1_TEST_STORES"}, approved_changes={
@@ -560,6 +745,12 @@ def _prepare_config(approve_synthetic_three_store=False):
                                        store_csv if approve_synthetic_three_store else "disabled",
                                        approve_synthetic_three_store),
         })
+    catalog_import_environment = {
+        "BSV_APP_ENV": "isolated", "BSV_ALLOW_ISOLATED_CATALOG_IMPORT": "1",
+        "BSV_CATALOG_ADMIN_DB_URL": f"postgresql+psycopg://{CATALOG_IMPORT_USER}:{catalog_import_pw}@127.0.0.1:18764/{CATALOG_DB}",
+        "BSV_CATALOG_APPROVAL_KEY_FILE": str(config / "catalog-approval.key"),
+    }
+    upgrade_managed_environment("catalog-import", catalog_import_environment, set(catalog_import_environment))
     environment("postgres", {"BSV_STAGE_COMPONENT_DATA": str(DATA / "postgres")})
     # Isolated, synthetic candidate only; no additional public service or authority.
     # The original ingress.env is an empty, root-owned environment file on older
@@ -599,7 +790,7 @@ def _prepare_config(approve_synthetic_three_store=False):
         raise RuntimeError("Existing supply source configuration differs")
     environment("supply", {"BSV_MODE": "internal-stage", "BSV_SUPPLY_STATE_DIR": str(DATA / "supply"),
                            "BSV_SOURCE_B_TOKEN": supply_token, "BSV_SOURCES_CONFIG": str(supply_config)})
-    return identity, pos, dbpw, pin
+    return identity, pos, dbpw, pin, catalog_runtime_pw, catalog_import_pw
 
 
 def _restore_default_store_scope_if_enabled():
@@ -1000,34 +1191,151 @@ def verify_release_access(dest):
         assert_readable_tree(service_name, dest / service_name)
 
 
-def prepare_pg(dbpw):
+def _catalog_hba_policies():
+    baseline = f"local all all peer\nhost {DB} {DB_USER} 127.0.0.1/32 scram-sha-256\n"
+    catalog = baseline + (
+        f"host {CATALOG_DB} {CATALOG_RUNTIME_USER} 127.0.0.1/32 scram-sha-256\n"
+        f"host {CATALOG_DB} {CATALOG_IMPORT_USER} 127.0.0.1/32 scram-sha-256\n")
+    return baseline, catalog
+
+
+def _catalog_role_membership_query(role):
+    """List granted roles for a member role (not members granted this role)."""
+    if role not in EXPECTED_CATALOG_MEMBERSHIPS:
+        raise ValueError("Unknown managed catalog role")
+    return (
+        "SELECT COALESCE(string_agg(granted_role.rolname, ',' ORDER BY granted_role.rolname),'') "
+        "FROM pg_auth_members m "
+        "JOIN pg_roles granted_role ON granted_role.oid=m.roleid "
+        "JOIN pg_roles member ON member.oid=m.member "
+        f"WHERE member.rolname='{role}'"
+    )
+
+
+def _catalog_hba_target(current: str, *, fresh_cluster: bool = False, managed_prior: str | None = None) -> str:
+    baseline, target = _catalog_hba_policies()
+    if current == target:
+        return target
+    if current == baseline or fresh_cluster or (managed_prior is not None and current == managed_prior):
+        return target
+    raise RuntimeError("Private PostgreSQL authentication configuration drift; preserve and inspect before upgrade")
+
+
+def _rollback_catalog_hba(hba_path, backup_path, marker, directory):
+    if not backup_path.is_file():
+        return
+    rollback_path = hba_path.with_name("pg_hba.conf.bsv-catalog-rollback")
+    if rollback_path.exists() or rollback_path.is_symlink():
+        raise RuntimeError("Unexpected PostgreSQL HBA rollback marker")
+    as_user("postgres", "/usr/bin/tee", rollback_path, input=backup_path.read_text(encoding="utf-8"),
+            stdout=subprocess.DEVNULL)
+    os.chmod(rollback_path, 0o600)
+    os.replace(rollback_path, hba_path)
+    marker.unlink(missing_ok=True)
+    sync_directory(hba_path.parent)
+    if active("postgres"):
+        as_user("postgres", PG / "psql", "-h", directory, "-p", str(PORTS["postgres"]),
+                "-U", user("postgres"), "-d", "postgres", "-XAt", "-c", "SELECT pg_reload_conf()",
+                env={"PATH": str(PG)+":/usr/bin:/bin", "PGUSER": user("postgres")}, stdout=subprocess.DEVNULL)
+
+
+def prepare_pg(dbpw, catalog_runtime_pw=None, catalog_import_pw=None):
+    if not catalog_runtime_pw or not catalog_import_pw:
+        raise RuntimeError("Dedicated catalog runtime and importer credentials are required")
+    if not all(re.fullmatch(r"[A-Za-z0-9_-]+", value) for value in (dbpw, catalog_runtime_pw, catalog_import_pw)):
+        raise RuntimeError("Invalid managed database secret")
     directory = DATA / "postgres"
     cluster = directory / "pg"
-    if not (cluster / "PG_VERSION").is_file():
+    fresh_cluster = not (cluster / "PG_VERSION").is_file()
+    if fresh_cluster:
         as_user("postgres", PG / "initdb", "-D", cluster, "--auth-local=peer", "--auth-host=scram-sha-256",
                 "--encoding=UTF8", "--locale=C.UTF-8")
     if (cluster / "PG_VERSION").read_text().strip() != "17":
         raise RuntimeError("Existing cluster is not PostgreSQL 17")
-    hba = "local all all peer\nhost " + DB + " " + DB_USER + " 127.0.0.1/32 scram-sha-256\n"
-    path = cluster / "pg_hba.conf"
-    marker = directory / ".hba-initialized"
-    if marker.exists() and path.read_text() != hba:
-        raise RuntimeError("Private PostgreSQL authentication configuration drift")
-    if not marker.exists():
-        # Write through the cluster owner and never replace a different managed policy.
-        as_user("postgres", "/usr/bin/tee", path, input=hba, stdout=subprocess.DEVNULL)
-        as_user("postgres", "/usr/bin/touch", marker)
-    run("systemctl", "start", unit("postgres"))
+    hba_path = cluster / "pg_hba.conf"
+    old_policy_marker = directory / ".hba-initialized"
+    new_policy_marker = directory / ".catalog-hba-initialized"
+    backup_path = directory / "pg_hba.pre-catalog.bsv-backup"
+    if (hba_path.is_symlink() or not hba_path.is_file() or old_policy_marker.is_symlink()
+            or new_policy_marker.is_symlink() or backup_path.is_symlink()):
+        raise RuntimeError("Unsafe managed PostgreSQL HBA path")
+    postgres_account = pwd.getpwnam(user("postgres"))
+    hba_stat = hba_path.stat()
+    if hba_stat.st_uid != postgres_account.pw_uid or stat.S_IMODE(hba_stat.st_mode) != 0o600:
+        raise RuntimeError("PostgreSQL HBA ownership or mode drift")
+    if backup_path.exists():
+        backup_stat = backup_path.stat()
+        if backup_stat.st_uid != postgres_account.pw_uid or stat.S_IMODE(backup_stat.st_mode) != 0o600:
+            raise RuntimeError("PostgreSQL HBA backup ownership or mode drift")
+    current_hba = hba_path.read_text(encoding="utf-8")
+    managed_prior = backup_path.read_text(encoding="utf-8") if backup_path.is_file() and old_policy_marker.is_file() else None
+    target_hba = _catalog_hba_target(current_hba, fresh_cluster=fresh_cluster, managed_prior=managed_prior)
+    if new_policy_marker.exists() and new_policy_marker.read_text().strip() != hashlib.sha256(target_hba.encode()).hexdigest():
+        raise RuntimeError("Catalog HBA policy marker mismatch")
+    if current_hba == target_hba and not new_policy_marker.exists() and not fresh_cluster:
+        raise RuntimeError("Unmarked catalog HBA policy cannot be treated as managed")
+    if current_hba == target_hba and old_policy_marker.exists() and not backup_path.is_file():
+        raise RuntimeError("Managed HBA transition lacks its prior-policy backup")
+    if current_hba != target_hba:
+        if not fresh_cluster and not old_policy_marker.is_file():
+            raise RuntimeError("Unmanaged PostgreSQL HBA cannot be extended automatically")
+        if backup_path.exists():
+            if backup_path.read_text(encoding="utf-8") != current_hba:
+                raise RuntimeError("Existing PostgreSQL HBA backup differs; refuse overwrite")
+        else:
+            shutil.copyfile(hba_path, backup_path)
+            postgres_account = pwd.getpwnam(user("postgres"))
+            postgres_uid = postgres_account.pw_uid
+            postgres_gid = postgres_account.pw_gid
+            os.chown(backup_path, postgres_uid, postgres_gid)
+            os.chmod(backup_path, 0o600)
+            sync_directory(directory)
+        if not old_policy_marker.exists():
+            write_secret(old_policy_marker, "managed PostgreSQL HBA baseline")
+        next_path = hba_path.with_name("pg_hba.conf.bsv-catalog-next")
+        if next_path.exists() or next_path.is_symlink():
+            raise RuntimeError("Unexpected PostgreSQL HBA update marker")
+        as_user("postgres", "/usr/bin/tee", next_path, input=target_hba, stdout=subprocess.DEVNULL)
+        os.chmod(next_path, 0o600)
+        os.replace(next_path, hba_path)
+        sync_directory(cluster)
+    write_secret(new_policy_marker, hashlib.sha256(target_hba.encode()).hexdigest())
+    try:
+        run("systemctl", "start", unit("postgres"))
+    except BaseException:
+        _rollback_catalog_hba(hba_path, backup_path, new_policy_marker, directory)
+        raise
     for _ in range(35):
         status = subprocess.run((PG / "pg_isready", "-h", directory, "-p", "18764"), stdout=subprocess.DEVNULL)
         if status.returncode == 0:
             break
         time.sleep(1)
     else:
+        _rollback_catalog_hba(hba_path, backup_path, new_policy_marker, directory)
         raise RuntimeError("Private PostgreSQL did not become ready")
-    psql = (PG / "psql", "-h", directory, "-p", "18764", "-d", "postgres", "-X", "-v", "ON_ERROR_STOP=1")
-    if not re.fullmatch(r"[A-Za-z0-9_-]+", dbpw):
-        raise RuntimeError("Invalid managed database secret")
+    try:
+        reload_result = as_user("postgres", PG / "psql", "-h", directory, "-p", str(PORTS["postgres"]),
+                                "-U", user("postgres"), "-d", "postgres", "-XAt", "-v", "ON_ERROR_STOP=1",
+                                "-c", "SELECT pg_reload_conf()", stdout=subprocess.PIPE)
+    except BaseException:
+        _rollback_catalog_hba(hba_path, backup_path, new_policy_marker, directory)
+        raise
+    if reload_result.stdout.strip() != "t":
+        _rollback_catalog_hba(hba_path, backup_path, new_policy_marker, directory)
+        raise RuntimeError("PostgreSQL refused the managed HBA reload")
+    try:
+        error_check = as_user("postgres", PG / "psql", "-h", directory, "-p", str(PORTS["postgres"]),
+                              "-U", user("postgres"), "-d", "postgres", "-XAt", "-v", "ON_ERROR_STOP=1",
+                              "-c", "SELECT count(*) FROM pg_hba_file_rules WHERE error IS NOT NULL",
+                              stdout=subprocess.PIPE)
+    except BaseException:
+        _rollback_catalog_hba(hba_path, backup_path, new_policy_marker, directory)
+        raise
+    if error_check.stdout.strip() != "0":
+        _rollback_catalog_hba(hba_path, backup_path, new_policy_marker, directory)
+        raise RuntimeError("Managed HBA failed PostgreSQL rule validation; previous policy restored")
+    psql = (PG / "psql", "-h", directory, "-p", "18764", "-U", user("postgres"),
+            "-d", "postgres", "-X", "-v", "ON_ERROR_STOP=1")
     as_user("postgres", *psql, input=f"""
 SET log_min_error_statement = 'panic';
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', '{DB_USER}', '{dbpw}')
@@ -1037,7 +1345,58 @@ SELECT format('CREATE DATABASE %I OWNER %I', '{DB}', '{DB_USER}')
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{DB}')
 \\gexec
 REVOKE CONNECT ON DATABASE "{DB}" FROM PUBLIC;
+SELECT format('CREATE ROLE %I LOGIN NOINHERIT PASSWORD %L', '{CATALOG_RUNTIME_USER}', '{catalog_runtime_pw}')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{CATALOG_RUNTIME_USER}')
+\\gexec
+SELECT format('CREATE ROLE %I LOGIN NOINHERIT PASSWORD %L', '{CATALOG_IMPORT_USER}', '{catalog_import_pw}')
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{CATALOG_IMPORT_USER}')
+\\gexec
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='bsv_catalog_reader') THEN
+    CREATE ROLE bsv_catalog_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+  ELSIF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='bsv_catalog_reader'
+                AND (rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole)) THEN
+    RAISE EXCEPTION 'unsafe existing bsv_catalog_reader role';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='bsv_catalog_confidential_reader') THEN
+    CREATE ROLE bsv_catalog_confidential_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+  ELSIF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='bsv_catalog_confidential_reader'
+                AND (rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole)) THEN
+    RAISE EXCEPTION 'unsafe existing bsv_catalog_confidential_reader role';
+  END IF;
+END $$;
+GRANT bsv_catalog_reader TO bsv_catalog_confidential_reader;
+GRANT bsv_catalog_reader, bsv_catalog_confidential_reader TO "{CATALOG_RUNTIME_USER}";
+SELECT format('CREATE DATABASE %I OWNER %I', '{CATALOG_DB}', '{CATALOG_IMPORT_USER}')
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{CATALOG_DB}')
+\\gexec
+REVOKE CONNECT ON DATABASE "{CATALOG_DB}" FROM PUBLIC;
+GRANT CONNECT ON DATABASE "{CATALOG_DB}" TO "{CATALOG_RUNTIME_USER}", "{CATALOG_IMPORT_USER}";
 """, stdout=subprocess.DEVNULL)
+    owner_check = as_user("postgres", *psql, "-At", "-c",
+                          f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='{CATALOG_DB}'",
+                          stdout=subprocess.PIPE)
+    if owner_check.stdout.strip() != CATALOG_IMPORT_USER:
+        raise RuntimeError("Existing bsv_all_prod database has an unexpected owner; no takeover performed")
+    for role in (CATALOG_RUNTIME_USER, CATALOG_IMPORT_USER):
+        role_check = as_user("postgres", *psql, "-At", "-c",
+                             f"SELECT (rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole AND NOT rolreplication AND NOT rolbypassrls AND NOT rolinherit) FROM pg_roles WHERE rolname='{role}'",
+                             stdout=subprocess.PIPE)
+        if role_check.stdout.strip() != "t":
+            raise RuntimeError(f"Existing catalog role has unsafe or unexpected attributes: {role}")
+    for role, expected in EXPECTED_CATALOG_MEMBERSHIPS.items():
+        membership = as_user("postgres", *psql, "-At", "-c",
+            _catalog_role_membership_query(role),
+            stdout=subprocess.PIPE)
+        if membership.stdout.strip() != expected:
+            raise RuntimeError(f"Catalog role has unexpected membership grants: {role}")
+    for role, password in ((CATALOG_RUNTIME_USER, catalog_runtime_pw), (CATALOG_IMPORT_USER, catalog_import_pw)):
+        check = as_user("postgres", PG / "psql", "-h", "127.0.0.1", "-p", str(PORTS["postgres"]),
+                        "-U", role, "-d", CATALOG_DB, "-XAt", "-v", "ON_ERROR_STOP=1",
+                        "-c", "SELECT current_user", env={"PATH": "/usr/bin:/bin", "PGPASSWORD": password},
+                        stdout=subprocess.PIPE)
+        if check.stdout.strip() != role:
+            raise RuntimeError(f"Dedicated database login could not be verified: {role}")
 
 
 def identity_tool(dest, identity, *args, **kwargs):
@@ -1087,6 +1446,39 @@ def file_sha256(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def verified_release_directory(directory):
+    """Return an immutable, verified release path and commit SHA.
+
+    Catalog backups must use the exact candidate release that was built and
+    verified for the pending upgrade. Do not infer a generator from the active
+    symlink: during pre-deploy backup that symlink intentionally points to the
+    old release, and after rollback it points back to the old release again.
+    """
+    directory = Path(directory)
+    if directory.is_symlink() or directory.parent != ROOT / "releases" \
+            or not re.fullmatch(r"[a-f0-9]{40}", directory.name):
+        raise RuntimeError("Catalog backup generator is not a managed release directory")
+    if not directory.is_dir():
+        raise RuntimeError("Catalog backup generator release is unavailable")
+    marker = directory / ".built"
+    private_file(marker, 0)
+    try:
+        attestation = json.loads(marker.read_text(encoding="utf-8"))
+        manifest = verified_source_manifest(directory.name)
+        inventory = attestation.get("inventory_sha256")
+        if (set(attestation) != {"manifest", "inventory_sha256"}
+                or attestation.get("manifest") != manifest
+                or not isinstance(inventory, str)
+                or not re.fullmatch(r"[a-f0-9]{64}", inventory)):
+            raise RuntimeError("Catalog backup generator build attestation is invalid")
+        verify_source_tree(directory / "src", manifest)
+        if release_inventory_sha256(directory) != inventory:
+            raise RuntimeError("Catalog backup generator inventory does not match its attestation")
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError("Catalog backup generator release could not be verified") from error
+    return directory, directory.name, manifest
+
+
 def service_config(name):
     config = ROOT / "config" / f"{name}.env"
     private_file(config, 0)
@@ -1097,7 +1489,7 @@ def service_config(name):
     return parsed
 
 
-def postgres_snapshot(current):
+def postgres_snapshot(current, catalog_generator_release=None):
     if not active("postgres"):
         raise RuntimeError("Start the managed private PostgreSQL service before backup")
     identity = service_config("identity")
@@ -1129,8 +1521,63 @@ def postgres_snapshot(current):
             or integrity.get("meta", {}).get("type") != "postgresql"):
         raise RuntimeError("Identity backup integrity check did not confirm PostgreSQL ciphertext")
     sync_directory(archive_dir)
+    catalog_config = service_config("catalog-import")
+    catalog_dir = DATA / "catalog"
+    catalog_archives = catalog_dir / "archives"
+    catalog_key = catalog_dir / "backup.key"
+    private_directory(catalog_dir, owner)
+    private_directory(catalog_archives, owner)
+    private_file(catalog_key, owner)
+    exists = as_user("postgres", PG / "psql", "-h", DATA / "postgres", "-p", str(PORTS["postgres"]),
+                     "-U", user("postgres"), "-d", "postgres", "-XAt", "-c",
+                     f"SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname='{CATALOG_DB}')",
+                     stdout=subprocess.PIPE)
+    if exists.stdout.strip() != "t":
+        return {"archive": str(archive), "sha256": report["sha256"], "key_file": str(archive_key),
+                "integrity": "AES_GCM_VERIFIED", "restore_rehearsal": "DRY_RUN_NO_WRITE",
+                "catalog": {"status": "NOT_CREATED_NO_CATALOG_DATABASE_TO_BACK_UP"}}
+    catalog_release = Path(catalog_generator_release) if catalog_generator_release else ROOT / "releases" / current
+    catalog_release, catalog_generator_sha, catalog_manifest = verified_release_directory(catalog_release)
+    catalog_url = catalog_config.get("BSV_CATALOG_ADMIN_DB_URL", "")
+    if not re.fullmatch(
+            rf"postgresql\+psycopg://{CATALOG_IMPORT_USER}:[A-Za-z0-9_-]+@127\.0\.0\.1:{PORTS['postgres']}/{CATALOG_DB}",
+            catalog_url) or catalog_config.get("BSV_APP_ENV") != "isolated":
+        raise RuntimeError("Catalog backup requires the isolated loopback bsv_all_prod database")
+    catalog_settings = {**identity,
+        "BSV_DB_A_URL": catalog_url,
+        "BSV_LOCAL_ARCHIVE_DIR": str(catalog_archives),
+        "BSV_BACKUP_KEY_FILE": str(catalog_key),
+        "BSV_BACKUP_SOURCE_LABEL": "catalog",
+    }
+    created_catalog = identity_tool(catalog_release, catalog_settings, *module, "create",
+                                    stdout=subprocess.PIPE, timeout=120)
+    catalog_report = json.loads(created_catalog.stdout)
+    catalog_archive = Path(catalog_report["archive"])
+    if (catalog_archive.parent != catalog_archives
+            or not re.fullmatch(r"catalog-[0-9]{8}T[0-9]{6}Z-[a-f0-9]{6}\.bsvenc", catalog_archive.name)):
+        raise RuntimeError("Catalog backup returned an unexpected archive")
+    private_file(catalog_archive, owner)
+    if catalog_report.get("encrypted") is not True or catalog_report.get("source") != "catalog" \
+            or catalog_report.get("sha256") != file_sha256(catalog_archive):
+        raise RuntimeError("Catalog backup checksum or encryption metadata mismatch")
+    checked_catalog = identity_tool(catalog_release, catalog_settings, *module, "restore", "--archive", catalog_archive,
+                                   stdout=subprocess.PIPE, timeout=120)
+    catalog_integrity = json.loads(checked_catalog.stdout)
+    if (catalog_integrity.get("integrity") != "AES_GCM_VERIFIED"
+            or catalog_integrity.get("restore") != "DRY_RUN_NO_WRITE"
+            or catalog_integrity.get("meta", {}).get("source") != "catalog"
+            or catalog_integrity.get("meta", {}).get("type") != "postgresql"
+            or catalog_integrity.get("meta", {}).get("format") != 2):
+        raise RuntimeError("Catalog checkpoint integrity check did not confirm encrypted PostgreSQL ciphertext")
+    sync_directory(catalog_archives)
     return {"archive": str(archive), "sha256": report["sha256"], "key_file": str(archive_key),
-            "integrity": "AES_GCM_VERIFIED", "restore_rehearsal": "HOST_NOT_RUN"}
+            "integrity": "AES_GCM_VERIFIED", "restore_rehearsal": "DRY_RUN_NO_WRITE",
+            "catalog": {"archive": str(catalog_archive), "sha256": catalog_report["sha256"],
+                        "source": "catalog", "database": CATALOG_DB,
+                        "generator_sha": catalog_generator_sha,
+                        "generator_tree": catalog_manifest["tree"],
+                        "key_file": str(catalog_key), "integrity": "AES_GCM_VERIFIED",
+                        "restore_rehearsal": "DRY_RUN_NO_WRITE"}}
 
 
 def sqlite_snapshot(current, destination):
@@ -1225,7 +1672,7 @@ def academy_media_snapshot(directory):
     return result
 
 
-def backup(current=None, purpose="manual"):
+def backup(current=None, purpose="manual", catalog_generator_release=None):
     if DATA.is_symlink() or DATA.stat().st_uid != 0 or DATA.stat().st_mode & 0o022:
         raise RuntimeError("Unsafe private data directory")
     current = current or sha_at(ROOT / "current")
@@ -1237,7 +1684,7 @@ def backup(current=None, purpose="manual"):
     stamp = datetime.now(timezone.utc)
     dest = recovery / f"{stamp:%Y%m%dT%H%M%SZ}-{secrets.token_hex(5)}"
     dest.mkdir(mode=0o700)
-    postgres = postgres_snapshot(current)
+    postgres = postgres_snapshot(current, catalog_generator_release)
     pos = sqlite_snapshot(current, dest / "pos.sqlite3")
     growth = growth_candidate_snapshot(current, dest / "growth-candidate.sqlite3")
     media = academy_media_snapshot(dest / "academy-media")
@@ -1292,6 +1739,53 @@ def recovery_check(receipt):
     if (pg_result.get("integrity") != "AES_GCM_VERIFIED" or pg_result.get("restore") != "DRY_RUN_NO_WRITE"
             or pg_result.get("meta", {}).get("type") != "postgresql"):
         raise RuntimeError("PostgreSQL checkpoint did not pass its no-write verification")
+    catalog_backup = pg.get("catalog")
+    catalog_integrity_status = "NOT_CREATED"
+    if catalog_backup and catalog_backup.get("status") != "NOT_CREATED_NO_CATALOG_DATABASE_TO_BACK_UP":
+        catalog_archive = Path(catalog_backup.get("archive", ""))
+        catalog_dir = DATA / "catalog"
+        catalog_archives = catalog_dir / "archives"
+        catalog_key = catalog_dir / "backup.key"
+        if (catalog_archive.parent != catalog_archives
+                or not re.fullmatch(r"catalog-[0-9]{8}T[0-9]{6}Z-[a-f0-9]{6}\.bsvenc", catalog_archive.name)):
+            raise RuntimeError("Checkpoint references an unmanaged catalog archive")
+        private_directory(catalog_dir, owner)
+        private_directory(catalog_archives, owner)
+        private_file(catalog_archive, owner)
+        private_file(catalog_key, owner)
+        if catalog_backup.get("sha256") != file_sha256(catalog_archive):
+            raise RuntimeError("Catalog checkpoint checksum mismatch")
+        if catalog_backup.get("source") != "catalog" or catalog_backup.get("database") != CATALOG_DB:
+            raise RuntimeError("Catalog checkpoint lacks its authenticated source/database labels")
+        generator_sha = catalog_backup.get("generator_sha")
+        if not isinstance(generator_sha, str) or not re.fullmatch(r"[a-f0-9]{40}", generator_sha):
+            raise RuntimeError("Catalog checkpoint lacks its verified generator release SHA")
+        generator_release, verified_sha, generator_manifest = verified_release_directory(
+            ROOT / "releases" / generator_sha)
+        if (verified_sha != generator_sha
+                or catalog_backup.get("generator_tree") != generator_manifest.get("tree")):
+            raise RuntimeError("Catalog checkpoint generator commit/tree evidence mismatch")
+        catalog_config = service_config("catalog-import")
+        catalog_url = catalog_config.get("BSV_CATALOG_ADMIN_DB_URL", "")
+        if not re.fullmatch(
+                rf"postgresql\+psycopg://{CATALOG_IMPORT_USER}:[A-Za-z0-9_-]+@127\.0\.0\.1:{PORTS['postgres']}/{CATALOG_DB}",
+                catalog_url) or catalog_config.get("BSV_APP_ENV") != "isolated":
+            raise RuntimeError("Catalog recovery requires the isolated loopback bsv_all_prod database")
+        catalog_settings = {**identity,
+            "BSV_DB_A_URL": catalog_url,
+            "BSV_LOCAL_ARCHIVE_DIR": str(catalog_archives),
+            "BSV_BACKUP_KEY_FILE": str(catalog_key),
+            "BSV_BACKUP_SOURCE_LABEL": "catalog",
+        }
+        checked = identity_tool(generator_release, catalog_settings, "-m", "services.api.identity.backup",
+                                "restore", "--archive", catalog_archive, stdout=subprocess.PIPE, timeout=120)
+        result = json.loads(checked.stdout)
+        if (result.get("integrity") != "AES_GCM_VERIFIED" or result.get("restore") != "DRY_RUN_NO_WRITE"
+                or result.get("meta", {}).get("source") != "catalog"
+                or result.get("meta", {}).get("type") != "postgresql"
+                or result.get("meta", {}).get("format") != 2):
+            raise RuntimeError("Catalog archive failed authenticated no-write recovery verification")
+        catalog_integrity_status = "AES_GCM_VERIFIED"
     pos = receipt.parent / "pos.sqlite3"
     private_file(pos, 0)
     if record.get("pos_sqlite", {}).get("sha256") != file_sha256(pos):
@@ -1325,7 +1819,8 @@ def recovery_check(receipt):
             raise RuntimeError("Academy media checkpoint checksum mismatch")
         names.add(name)
     print(json.dumps({"status": "RECOVERY_CHECK_READY", "mode": "isolated", "checkpoint": str(receipt),
-                      "postgres": "AES_GCM_VERIFIED", "pos_sqlite": "QUICK_CHECK_OK",
+                      "postgres": "AES_GCM_VERIFIED", "catalog_postgres": catalog_integrity_status,
+                      "pos_sqlite": "QUICK_CHECK_OK",
                       "academy_media_files": len(names), "live_restore": "NOT_RUN"}), flush=True)
 
 
@@ -1405,7 +1900,7 @@ def recover_pending():
     marker.unlink()
 
 
-def activation_checkpoint(current, purpose):
+def activation_checkpoint(current, purpose, catalog_generator_release=None):
     switch_services(False, keep_postgres=True)
     if not active("postgres"):
         run("systemctl", "start", unit("postgres"))
@@ -1413,7 +1908,7 @@ def activation_checkpoint(current, purpose):
         probe = subprocess.run((PG / "pg_isready", "-h", "127.0.0.1", "-p", str(PORTS["postgres"]),
                                 "-t", "1", "-q"))
         if probe.returncode == 0:
-            backup(current, purpose)
+            backup(current, purpose, catalog_generator_release)
             return
         time.sleep(1)
     raise RuntimeError("Private PostgreSQL is not accepting connections for backup")
@@ -1431,7 +1926,7 @@ def deploy(sha, *, approve_synthetic_three_store=False):
     dest = build(sha)
     config_snapshot = _managed_config_snapshot()
     try:
-        identity, pos, dbpw, pin = prepare_config(approve_synthetic_three_store)
+        identity, pos, dbpw, pin, catalog_runtime_pw, catalog_import_pw = prepare_config(approve_synthetic_three_store)
         # Fail while the old release still runs if any service cannot read/traverse the candidate.
         verify_release_access(dest)
         if not UNIT_FILE.exists():
@@ -1447,10 +1942,13 @@ def deploy(sha, *, approve_synthetic_three_store=False):
     write_secret(marker, previous or "")
     try:
         if previous:
-            activation_checkpoint(previous, "pre_deploy")
+            # The identity snapshot is generated by the active old release for
+            # its backwards-compatible identity contract. Catalog is generated
+            # by this already-built and attested candidate release.
+            activation_checkpoint(previous, "pre_deploy", dest)
         switch_services(False)
         link("current", sha)
-        prepare_pg(dbpw)
+        prepare_pg(dbpw, catalog_runtime_pw, catalog_import_pw)
         bootstrap(dest, identity, pos, pin)
         switch_services(True)
         verify()
@@ -1478,7 +1976,9 @@ def rollback():
     marker = ROOT / "activation.pending"
     write_secret(marker, current)
     try:
-        activation_checkpoint(current, "pre_rollback")
+        # Before switching back, use the currently verified new release for
+        # both archive generation and the source-labelled catalog verifier.
+        activation_checkpoint(current, "pre_rollback", ROOT / "releases" / current)
         switch_services(False)
         _restore_default_store_scope_if_enabled()
         if previous:
@@ -1501,7 +2001,7 @@ def rollback():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
-    for operation in ("preflight", "deploy", "verify", "rollback", "backup"):
+    for operation in ("preflight", "catalog-preflight", "deploy", "verify", "rollback", "backup"):
         group.add_argument("--" + operation, action="store_const", dest="operation", const=operation)
     group.add_argument("--recovery-check", type=Path, metavar="RECEIPT")
     parser.add_argument("--sha")
@@ -1510,12 +2010,14 @@ def main():
     args = parser.parse_args()
     if args.approve_synthetic_three_store and args.operation != "deploy":
         parser.error("--approve-synthetic-three-store is valid only with --deploy")
-    if args.operation in {"preflight", "deploy"} and not re.fullmatch(r"[a-f0-9]{40}", args.sha or ""):
+    if args.operation in {"preflight", "catalog-preflight", "deploy"} and not re.fullmatch(r"[a-f0-9]{40}", args.sha or ""):
         parser.error("A full approved --sha is required")
-    if (args.operation in {"deploy", "rollback", "backup"} or args.recovery_check) and os.geteuid() != 0:
+    if (args.operation in {"catalog-preflight", "deploy", "rollback", "backup"} or args.recovery_check) and os.geteuid() != 0:
         parser.error("Use sudo for systemd changes")
     if args.operation == "preflight":
         preflight(args.sha)
+    elif args.operation == "catalog-preflight":
+        catalog_database_preflight(args.sha)
     elif args.operation == "verify":
         verify()
     else:

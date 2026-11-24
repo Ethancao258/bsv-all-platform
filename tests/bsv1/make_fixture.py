@@ -5,7 +5,7 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from zipfile import ZipFile
 
 
-def write_fixture(path):
+def write_fixture(path, *, approved=True):
     main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
     rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
     wb = Element("workbook", {"xmlns": main, "xmlns:r": rel})
@@ -27,16 +27,20 @@ def write_fixture(path):
             data = SubElement(sheet, "sheetData")
             rows = [{"L": label}]
             if i == 1:
-                rows[0].update(M="商品名称", AJ="标注售价", AK="完整制作步骤", AL="制作时长（秒）")
+                rows[0].update(M="商品名称", AJ="标注售价", AK="完整制作步骤", AL="制作时长（秒）",
+                               AM="内容审核状态", AN="上架状态")
                 for n in range(1, 64):
-                    record = {"L": f"C{n:06}", "M": f"合成商品 {n}", "AK": "演练步骤", "AL": "45"}
+                    record = {"L": f"C{n:06}", "M": f"合成商品 {n}", "AK": "演练步骤", "AL": "45",
+                              "AM": "已批准" if approved else "草案",
+                              "AN": "在售" if approved else ""}
                     if n <= 52:
                         record["AJ"] = "28.35"
                     rows.append(record)
             if i == 7:
                 rows[0]["N"] = "门店ID"
+                rows[0]["O"] = "审核状态"
                 for n, code in enumerate(("BSVM", "BSVS", "BSVT", "BSVF"), 1):
-                    rows.append({"L": f"T{n:06}", "N": code})
+                    rows.append({"L": f"T{n:06}", "N": code, "O": "已批准" if approved else "待核准"})
             for rn, record in enumerate(rows, 8):
                 row = SubElement(data, "row", {"r": str(rn)})
                 for column, value in record.items():

@@ -136,7 +136,7 @@ def run_flow(base, passwords, results, run_id, browser_check=None):
         case(results, "LEGACY_ALIAS", {"write_count": 0, "unchanged": True})
         flow = Exercise(base, results, run_id)
         try:
-            business(flow, employee, reviewer, approver, second, people, browser_check)
+            business(flow, employee, reviewer, approver, second, anonymous, people, browser_check)
         finally:
             flow.close()
 
@@ -148,7 +148,7 @@ def run_flow(base, passwords, results, run_id, browser_check=None):
         case(results, "CENTRAL_D_E", {}, "BLOCKED", "No approved authoritative supply or inspection writer")
 
 
-def business(flow, employee, reviewer, approver, second, people, browser_check):
+def business(flow, employee, reviewer, approver, second, anonymous, people, browser_check):
     post = flow.post
     for store in STORES:
         # Two site schedulers distinct from the employee being scheduled.
@@ -198,6 +198,10 @@ def business(flow, employee, reviewer, approver, second, people, browser_check):
         require(state["store"]["id"] == "BSVT" and state["payments_enabled"] is False, "Wrong store or payment state")
     case(flow.results, "SHIFT", {"same_request_same_shift": True, "requester_approval_denied": True,
                                  "before_confirmation_denied": True})
+    if os.environ.get("BSV_REQUIRE_PG_CATALOG") == "1":
+        catalog_read_acceptance(flow.results, employee, anonymous)
+    else:
+        case(flow.results, "PG_CATALOG_READ", {}, "NOT_RUN", "Host acceptance did not request a real PostgreSQL catalog read")
     pos_order(employee, flow, first_terminal)
     pos_order(second, flow, second_terminal)
     growth_context = growth_pos_flow(employee, flow)
@@ -250,6 +254,30 @@ def business(flow, employee, reviewer, approver, second, people, browser_check):
     case(flow.results, "CROSS_STORE", {"other_store_theory_not_enough": True, "overlap_denied": True,
                                        "other_store_after_independent_practical_and_shift": True,
                                        "credential_revocation_and_retraining": True, "beijing_midnight": True})
+
+
+def catalog_read_acceptance(results, employee, anonymous):
+    """Verify the authenticated POS API is backed by PostgreSQL catalog data."""
+    call(anonymous, "GET", "/api/v1/catalog/products/C000001", 401)
+    search = call(employee, "GET", "/api/v1/catalog/products?q=C000001&domain=C", 200)
+    require(search.get("source", {}).get("source") == "postgresql"
+            and any(row.get("id") == "C000001" for row in search.get("items", [])),
+            "Catalog search did not return C000001 from PostgreSQL")
+    product = call(employee, "GET", "/api/v1/catalog/products/C000001", 200)
+    require(product.get("source", {}).get("source") == "postgresql"
+            and product.get("id") == "C000001"
+            and product.get("attributes", {}).get("recipe_text"),
+            "C000001 detail or recipe is not PostgreSQL-backed")
+    recipe = call(employee, "GET", "/api/v1/catalog/products/P000003/recipe", 200)
+    require(any(row.get("record_id") == "R000048" for row in recipe.get("recipe_operations", [])),
+            "P000003 production recipe link R000048 is unavailable")
+    material = call(employee, "GET", "/api/v1/catalog/products/M000001", 200)
+    require("采购价" not in material.get("fields", {}), "POS exposed restricted material purchase price")
+    bundle = call(employee, "GET", "/api/v1/catalog/products/K000001", 200)
+    require(bundle.get("source", {}).get("source") == "postgresql", "K000001 is not PostgreSQL-backed")
+    case(results, "PG_CATALOG_READ", {"source": "postgresql", "product": "C000001",
+                                      "recipe_link": "R000048->P000003", "purchase_price_withheld": True,
+                                      "bundle": "K000001", "payment": "NOT_USED"})
 
 
 def growth_pos_flow(employee, flow):

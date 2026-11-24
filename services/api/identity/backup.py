@@ -9,6 +9,8 @@ import hashlib
 import io
 import json
 import os
+import pwd
+import re
 import secrets
 import shutil
 import sqlite3
@@ -23,6 +25,11 @@ from .config import load_settings
 
 MAGIC=b"BSVIDBACKUP2\x00"
 CHUNK=1024*256
+MANAGED_PG_RESTORE_PEER_USER="bsvint-postgres"
+MANAGED_PG_RESTORE_SOCKET_DIR=Path("/var/lib/bsv-all-internal-stage/postgres")
+MANAGED_PG_RESTORE_BINARY=Path("/usr/lib/postgresql/17/bin/pg_restore")
+MANAGED_PG_RESTORE_PORT=18764
+MANAGED_CATALOG_RESTORE_DATABASE = re.compile(r"bsvr_[a-f0-9]{8}_[0-9]{14}_[a-f0-9]{16}")
 
 
 def get_key(path):
@@ -62,6 +69,23 @@ def _pg_env(url):
     return env
 
 
+def _managed_catalog_restore_database(target):
+    """Validate the one disposable local catalog restore target, without widening migration guards."""
+    if not isinstance(target, str):
+        raise RuntimeError("Managed peer restore is restricted to a unique isolated catalog restore database")
+    normalized = target.replace("postgresql+psycopg://", "postgresql://", 1)
+    parsed = urlparse(normalized)
+    database = unquote(parsed.path.lstrip("/"))
+    if (parsed.scheme != "postgresql" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
+            or parsed.port != MANAGED_PG_RESTORE_PORT
+            or unquote(parsed.username or "") != MANAGED_PG_RESTORE_PEER_USER
+            or parsed.password is not None or parsed.query or parsed.fragment
+            or parsed.path != f"/{database}"
+            or not MANAGED_CATALOG_RESTORE_DATABASE.fullmatch(database)):
+        raise RuntimeError("Managed peer restore is restricted to a unique isolated catalog restore database")
+    return database
+
+
 def _input_stream(settings):
     url=settings.db_a_url
     if url.startswith("sqlite"):
@@ -82,7 +106,14 @@ def create_archive(settings=None):
         os.chmod(target,0o700)
     timestamp=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     nonce=os.urandom(12)
-    output=target / f"identity-A-{timestamp}-{secrets.token_hex(3)}.bsvenc"
+    # Keep the pre-catalog identity archive filename and authenticated source
+    # metadata stable across f6d8 and newer releases. Catalog is a distinct
+    # source, never an alias for the legacy identity-A archive.
+    source_label=os.getenv("BSV_BACKUP_SOURCE_LABEL", "identity-A")
+    if source_label not in {"identity-A", "catalog"}:
+        raise RuntimeError("Invalid backup source label")
+    archive_source = "A" if source_label == "identity-A" else "catalog"
+    output=target / f"{source_label}-{timestamp}-{secrets.token_hex(3)}.bsvenc"
     tmp=output.with_suffix(".tmp")
     proc=None
     sqlite_temp=None
@@ -101,7 +132,7 @@ def create_archive(settings=None):
                                   stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,env=pg_env)
             source_file=proc.stdout
         encryptor=Cipher(algorithms.AES(key),modes.GCM(nonce)).encryptor()
-        head=json.dumps({"created_at":timestamp,"source":"A","type":kind,"format":2},sort_keys=True).encode()
+        head=json.dumps({"created_at":timestamp,"source":archive_source,"type":kind,"format":2},sort_keys=True).encode()
         encryptor.authenticate_additional_data(head)
         fd=os.open(tmp,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
         with os.fdopen(fd,"wb") as dest,source_file:
@@ -120,7 +151,7 @@ def create_archive(settings=None):
             while block:=snapshot.read(CHUNK):
                 digester.update(block)
         checksum=digester.hexdigest()
-        print(json.dumps({"archive":str(output),"sha256":checksum,"source":"A","encrypted":True},ensure_ascii=False))
+        print(json.dumps({"archive":str(output),"sha256":checksum,"source":archive_source,"encrypted":True},ensure_ascii=False))
         return output
     except Exception:
         tmp.unlink(missing_ok=True)
@@ -130,7 +161,46 @@ def create_archive(settings=None):
         if sqlite_temp:sqlite_temp.unlink(missing_ok=True)
 
 
-def decrypt_to_isolated(archive, settings=None, target=None, dry_run=True):
+def _restore_postgres_peer(plain, target, *, peer_user, socket_dir, pg_restore_binary):
+    """Restore only to a unique disposable DB using the managed local peer lane.
+
+    The cluster's local policy is `local all all peer`; this avoids expanding
+    loopback HBA from the exact bsv_all_prod importer rule to restore databases.
+    The destination is constrained to a disposable isolated DB name, and the
+    OS service identity must own the configured socket directory.
+    """
+    env = _pg_env(target)
+    database = _managed_catalog_restore_database(target)
+    if (peer_user != MANAGED_PG_RESTORE_PEER_USER
+            or env["PGUSER"] != peer_user
+            or env["PGPORT"] != str(MANAGED_PG_RESTORE_PORT)
+            or env["PGHOST"] not in {"127.0.0.1", "localhost", "::1"}):
+        raise RuntimeError("Managed peer restore is restricted to a unique isolated catalog restore database")
+    account = pwd.getpwnam(peer_user)
+    socket_dir = Path(socket_dir)
+    if socket_dir.is_symlink() or not socket_dir.is_dir():
+        raise RuntimeError("Managed PostgreSQL socket directory is unavailable or unsafe")
+    socket_stat = socket_dir.stat()
+    if (socket_stat.st_uid != account.pw_uid or socket_stat.st_mode & 0o077
+            or socket_dir.resolve() != Path(MANAGED_PG_RESTORE_SOCKET_DIR)):
+        raise RuntimeError("Managed PostgreSQL peer socket ownership or path is unsafe")
+    pg_restore_binary = Path(pg_restore_binary)
+    if pg_restore_binary != MANAGED_PG_RESTORE_BINARY or not pg_restore_binary.is_file() or not os.access(pg_restore_binary, os.X_OK):
+        raise RuntimeError("Approved PostgreSQL 17 pg_restore binary is unavailable")
+    if not Path("/usr/sbin/runuser").is_file():
+        raise RuntimeError("Managed PostgreSQL peer restore requires runuser")
+    command = ["/usr/sbin/runuser", "-u", peer_user, "--", "/usr/bin/env",
+               f"PATH={MANAGED_PG_RESTORE_BINARY.parent}:/usr/bin:/bin",
+               f"PGHOST={socket_dir}", f"PGPORT={MANAGED_PG_RESTORE_PORT}", f"PGUSER={peer_user}",
+               f"PGDATABASE={database}", "PGSSLMODE=disable", str(pg_restore_binary),
+               "--exit-on-error", "--single-transaction", "--no-owner", "--no-privileges",
+               "--dbname", database]
+    with Path(plain).open("rb") as source:
+        subprocess.run(command, check=True, stdin=source,
+                       env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"}, cwd="/")
+
+
+def decrypt_to_isolated(archive, settings=None, target=None, dry_run=True, *, managed_peer_restore=False):
     s=settings or load_settings()
     if s.env!="isolated":raise RuntimeError("Restore is isolated-only; never use on a production mode")
     key=get_key(s.backup_key_file)
@@ -171,16 +241,28 @@ def decrypt_to_isolated(archive, settings=None, target=None, dry_run=True):
             if dest.exists():raise RuntimeError("Target must not exist to avoid overwrite")
             shutil.copyfile(plain,dest);os.chmod(dest,0o600)
         elif meta["type"]=="postgresql":
-            from dataclasses import replace
-            from .cli import isolated_guard
-            isolated_guard(replace(s, db_a_url=target))
-            if _pg_env(target)["PGDATABASE"] == _pg_env(s.db_a_url)["PGDATABASE"]:
-                raise RuntimeError("Restore target must be distinct from source A")
-            if not shutil.which("pg_restore"):raise RuntimeError("pg_restore not installed")
-            env=_pg_env(target.replace("postgresql+psycopg","postgresql"))
-            subprocess.run(["pg_restore","--exit-on-error","--single-transaction","--no-owner","--no-privileges",
-                            "--dbname",env["PGDATABASE"],str(plain)],
-                           check=True,env=env)
+            if managed_peer_restore:
+                if meta.get("source") != "catalog":
+                    raise RuntimeError("Managed peer restore is reserved for authenticated catalog archives")
+                target_database = _managed_catalog_restore_database(target)
+                if target_database == _pg_env(s.db_a_url)["PGDATABASE"]:
+                    raise RuntimeError("Restore target must be distinct from source A")
+                _restore_postgres_peer(
+                    plain, target, peer_user=MANAGED_PG_RESTORE_PEER_USER,
+                    socket_dir=MANAGED_PG_RESTORE_SOCKET_DIR,
+                    pg_restore_binary=MANAGED_PG_RESTORE_BINARY,
+                )
+            else:
+                from dataclasses import replace
+                from .cli import isolated_guard
+                isolated_guard(replace(s, db_a_url=target))
+                if _pg_env(target)["PGDATABASE"] == _pg_env(s.db_a_url)["PGDATABASE"]:
+                    raise RuntimeError("Restore target must be distinct from source A")
+                if not shutil.which("pg_restore"):raise RuntimeError("pg_restore not installed")
+                env=_pg_env(target.replace("postgresql+psycopg","postgresql"))
+                subprocess.run(["pg_restore","--exit-on-error","--single-transaction","--no-owner","--no-privileges",
+                                "--dbname",env["PGDATABASE"],str(plain)],
+                               check=True,env=env)
         else:raise RuntimeError("Unrecognized archive type")
         print("ISOLATED_RESTORE_COMPLETE")
     finally:plain.unlink(missing_ok=True)
@@ -217,12 +299,15 @@ def main():
     subs.add_parser("list")
     p=subs.add_parser("prune");p.add_argument("--keep-days",type=int,default=30);p.add_argument("--keep-last",type=int,default=7)
     r=subs.add_parser("restore");r.add_argument("--archive",required=True);r.add_argument("--target");r.add_argument("--apply-isolated",action="store_true")
+    r.add_argument("--managed-peer-restore",action="store_true",
+                    help="restore only to a unique disposable PG17 catalog DB via the managed local peer lane")
     args=parser.parse_args()
     if args.cmd=="generate-key":make_key(args.path)
     if args.cmd=="create":create_archive()
     if args.cmd=="list":print(json.dumps([str(x) for x in archives()],ensure_ascii=False))
     if args.cmd=="prune":prune_archives(keep_days=args.keep_days,keep_last=args.keep_last)
-    if args.cmd=="restore":decrypt_to_isolated(args.archive,target=args.target,dry_run=not args.apply_isolated)
+    if args.cmd=="restore":decrypt_to_isolated(args.archive,target=args.target,dry_run=not args.apply_isolated,
+                                                 managed_peer_restore=args.managed_peer_restore)
 
 
 if __name__=="__main__":main()
