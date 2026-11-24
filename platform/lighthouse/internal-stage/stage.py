@@ -1087,7 +1087,8 @@ def _rollback_catalog_hba(hba_path, backup_path, marker, directory):
     sync_directory(hba_path.parent)
     if active("postgres"):
         as_user("postgres", PG / "psql", "-h", directory, "-p", str(PORTS["postgres"]),
-                "-d", "postgres", "-XAt", "-c", "SELECT pg_reload_conf()", stdout=subprocess.DEVNULL)
+                "-U", user("postgres"), "-d", "postgres", "-XAt", "-c", "SELECT pg_reload_conf()",
+                env={"PATH": str(PG)+":/usr/bin:/bin", "PGUSER": user("postgres")}, stdout=subprocess.DEVNULL)
 
 
 def prepare_pg(dbpw, catalog_runtime_pw=None, catalog_import_pw=None):
@@ -1166,7 +1167,7 @@ def prepare_pg(dbpw, catalog_runtime_pw=None, catalog_import_pw=None):
         raise RuntimeError("Private PostgreSQL did not become ready")
     try:
         reload_result = as_user("postgres", PG / "psql", "-h", directory, "-p", str(PORTS["postgres"]),
-                                "-d", "postgres", "-XAt", "-v", "ON_ERROR_STOP=1",
+                                "-U", user("postgres"), "-d", "postgres", "-XAt", "-v", "ON_ERROR_STOP=1",
                                 "-c", "SELECT pg_reload_conf()", stdout=subprocess.PIPE)
     except BaseException:
         _rollback_catalog_hba(hba_path, backup_path, new_policy_marker, directory)
@@ -1176,7 +1177,7 @@ def prepare_pg(dbpw, catalog_runtime_pw=None, catalog_import_pw=None):
         raise RuntimeError("PostgreSQL refused the managed HBA reload")
     try:
         error_check = as_user("postgres", PG / "psql", "-h", directory, "-p", str(PORTS["postgres"]),
-                              "-d", "postgres", "-XAt", "-v", "ON_ERROR_STOP=1",
+                              "-U", user("postgres"), "-d", "postgres", "-XAt", "-v", "ON_ERROR_STOP=1",
                               "-c", "SELECT count(*) FROM pg_hba_file_rules WHERE error IS NOT NULL",
                               stdout=subprocess.PIPE)
     except BaseException:
@@ -1185,7 +1186,8 @@ def prepare_pg(dbpw, catalog_runtime_pw=None, catalog_import_pw=None):
     if error_check.stdout.strip() != "0":
         _rollback_catalog_hba(hba_path, backup_path, new_policy_marker, directory)
         raise RuntimeError("Managed HBA failed PostgreSQL rule validation; previous policy restored")
-    psql = (PG / "psql", "-h", directory, "-p", "18764", "-d", "postgres", "-X", "-v", "ON_ERROR_STOP=1")
+    psql = (PG / "psql", "-h", directory, "-p", "18764", "-U", user("postgres"),
+            "-d", "postgres", "-X", "-v", "ON_ERROR_STOP=1")
     as_user("postgres", *psql, input=f"""
 SET log_min_error_statement = 'panic';
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', '{DB_USER}', '{dbpw}')
@@ -1379,7 +1381,7 @@ def postgres_snapshot(current, catalog_generator_release=None):
     private_directory(catalog_archives, owner)
     private_file(catalog_key, owner)
     exists = as_user("postgres", PG / "psql", "-h", DATA / "postgres", "-p", str(PORTS["postgres"]),
-                     "-d", "postgres", "-XAt", "-c",
+                     "-U", user("postgres"), "-d", "postgres", "-XAt", "-c",
                      f"SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname='{CATALOG_DB}')",
                      stdout=subprocess.PIPE)
     if exists.stdout.strip() != "t":

@@ -258,3 +258,10 @@
 - **定向与集成验证** · 新增角色方向图与SQL筛选、runuser私有父目录、默认及显式cwd测试全部通过。内部阶段除本地磁盘不足导致的完整归档解包用例未能运行外，其余29项通过、1项按环境条件跳过；GitHub 托管 runner 的完整 `lighthouse-internal-stage` job 通过。`git diff --check`、Python编译与 Bash语法检查通过。
 - **代码与CI** · 故障修复提交 `18fa7e1ebf831032666ecffa36e65feb28bd5fa3`；该SHA的主验证 [run 45124215553](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45124215553) 九个作业通过，独立 [run 45124215624](https://github.com/Ethancao258/bsv-all-platform/actions/runs/45124215624) 通过。发布包待绑定最终文档SHA重新生成。
 - **真实状态** · 业主TAT报告旧版已恢复；本次Codex无TAT/SSH写入通道。`PG17_REAL_V22_IMPORTED=NO`、`HOST_DEPLOYED=NO`、`BROWSER_VERIFIED=NO`。之前失败留下的role/database/HBA及build目录由受管发布器精确核对续跑；本轮不手动改权限、不删除或覆盖历史文件。
+
+## 2026-11-24｜BSV-A 恢复认证门禁修复与 BSV-B 预览切片
+
+- **BSV-A 代码** · 在 PR #40 继续修复隔离PG17的恢复闭环：恢复专用临时库只允许使用 OS/PG `bsvint-postgres` peer 身份、受管PG17 socket目录及端口 `18764`；拒绝非唯一隔离恢复库或其他端口。run-once恢复后校验与查询改用受管 postgres OS 用户，避开 root→peer身份不匹配；不增加恢复数据库的TCP/HBA白名单。CI测试取消 `trust`，用精确DB/role的SCRAM TCP规则和 `local all all peer`，并检查临时恢复库没有TCP例外。
+- **安全验证状态** · Python编译、Bash语法与 `git diff --check` 已通过。此执行环境缺少 pytest、SQLAlchemy、psycopg及可用PG测试环境，新增真实PG17/peer/SCRAM测试尚未本地运行，等PR CI；不得将其记为PASS。实际Lighthouse仍为 `HOST_NOT_RUN`，WorkBuddy V2.2真实导入、网页查询、备份恢复及旧版保护未在主机复验。
+- **BSV-B 独立交付** · PR #42 `feature/bsv-b-excel-ingestion` 已交付受控Excel七表字段校验、来源哈希/ID关系检查及差异预览；5项新增测试与本地既有BSV1测试通过，PR CI run `45304293209` 九项通过。状态为 `PREVIEW_ONLY`：Excel→批准签名数据包转换、双人审批与PG事务提交/版本回退未实现，不能导入生产或替代PR #40。
+- **交付边界** · PR #40仍未合并，PR #42以PR #40分支为base。两者均未部署；旧版8765/8767、CloudBase、真实订单、员工身份及支付均未触碰。新SHA的完整CI与主机部署结果必须以本记录后续更新为准。

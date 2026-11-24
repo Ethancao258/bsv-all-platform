@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
+import subprocess
 
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError, DBAPIError
@@ -156,13 +157,35 @@ with patch.dict(os.environ, {"BSV_BACKUP_SOURCE_LABEL": "catalog"}):
     catalog_archive = create_archive(catalog_settings)
     assert catalog_archive.name.startswith("catalog-") and catalog_archive.suffix == ".bsvenc"
     decrypt_to_isolated(catalog_archive, catalog_settings, dry_run=True)
-    decrypt_to_isolated(catalog_archive, catalog_settings, catalog_restore_url, dry_run=False)
+    import services.api.identity.backup as backup
+    backup.MANAGED_PG_RESTORE_SOCKET_DIR = Path(os.environ["BSV_PG_RESTORE_TEST_SOCKET"])
+    backup.MANAGED_PG_RESTORE_BINARY = Path(os.environ["BSV_PG_RESTORE_TEST_BINARY"])
+    decrypt_to_isolated(catalog_archive, catalog_settings, catalog_restore_url, dry_run=False,
+                        managed_peer_restore=True)
 
-catalog_restored = create_engine(catalog_restore_url)
-with catalog_restored.connect() as conn:
-    row = conn.exec_driver_sql("SELECT product_id,name_zh,ingest_status FROM catalog.product").one()
-    assert tuple(row) == ("C000001", "合成目录测试", "IMPORTED_RAW"), tuple(row)
-catalog_restored.dispose()
+catalog_restore_db = catalog_restore_url.rsplit("/", 1)[1]
+row = subprocess.check_output([
+    "docker", "exec", "--user", "postgres", os.environ["BSV_PG_TEST_CONTAINER"],
+    "psql", "-XAt", "-F", "|", "-U", "postgres", "-d", catalog_restore_db,
+    "-v", "ON_ERROR_STOP=1", "-c",
+    "SELECT product_id,name_zh,ingest_status FROM catalog.product WHERE product_id='C000001'"],
+    text=True).strip().split("|")
+assert row == ["C000001", "合成目录测试", "IMPORTED_RAW"], row
+hba = subprocess.check_output([
+    "docker", "exec", "--user", "postgres", os.environ["BSV_PG_TEST_CONTAINER"],
+    "psql", "-XAt", "-U", "postgres", "-d", "postgres", "-c",
+    "SELECT (count(*) FILTER (WHERE type='local' AND auth_method='peer'))::text || '|' || "
+    "(count(*) FILTER (WHERE type='host' AND auth_method='trust'))::text || '|' || "
+    "(count(*) FILTER (WHERE type='host' AND ('all'=ANY(database) OR 'all'=ANY(user_name))))::text || '|' || "
+    "(count(*) FILTER (WHERE type='host' AND array_to_string(database,',') LIKE '%catalog_restore%'))::text "
+    "FROM pg_hba_file_rules"], text=True).strip()
+assert hba == "1|0|0|0", hba
+try:
+    psycopg.connect(catalog_restore_url, connect_timeout=3)
+except psycopg.OperationalError as exc:
+    assert "no pg_hba.conf entry" in str(exc), str(exc)
+else:
+    raise AssertionError("temporary recovery database unexpectedly gained a TCP/HBA exception")
 
 tampered = catalog_archive.with_name("tampered-catalog.bsvenc")
 blob = bytearray(catalog_archive.read_bytes())
@@ -177,4 +200,4 @@ else:
 finally:
     tampered.unlink(missing_ok=True)
 
-print("PASS: PostgreSQL 17, 15 identity domain tables, 120 concurrent persons, retry/rollback, immutable facts, scoped stages/revocation, read-only B, legacy identity archive, and distinct-database AES-GCM catalog restore/tamper rejection")
+print("PASS: PostgreSQL 17 with local peer + loopback SCRAM, 15 identity domain tables, 120 concurrent persons, retry/rollback, immutable facts, scoped stages/revocation, read-only B, legacy identity archive, and isolated catalog restore over local peer without HBA expansion")
