@@ -85,7 +85,7 @@ def test_managed_catalog_restore_uses_exact_local_peer_lane(tmp_path, monkeypatc
     args=called['args']
     assert args[:4]==['/usr/sbin/runuser','-u','bsvint-postgres','--']
     assert f'PGHOST={socket_dir}' in args and 'PGUSER=bsvint-postgres' in args
-    assert '--single-transaction' in args and args[-1]=='-'
+    assert '--single-transaction' in args and args[-2:]==['--dbname', 'bsv_identity_isolated_catalog_restore_abc123_20261124_1']
     assert 'PGPASSWORD' not in called['env']
     assert called['cwd']=='/'
 

@@ -177,7 +177,7 @@ def _restore_postgres_peer(plain, target, *, peer_user, socket_dir, pg_restore_b
                f"PGHOST={socket_dir}", f"PGPORT={MANAGED_PG_RESTORE_PORT}", f"PGUSER={peer_user}",
                f"PGDATABASE={database}", "PGSSLMODE=disable", str(pg_restore_binary),
                "--exit-on-error", "--single-transaction", "--no-owner", "--no-privileges",
-               "--dbname", database, "-"]
+               "--dbname", database]
     with Path(plain).open("rb") as source:
         subprocess.run(command, check=True, stdin=source,
                        env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"}, cwd="/")
