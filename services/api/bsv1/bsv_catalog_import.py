@@ -554,6 +554,134 @@ def query_counts(conn, source_sha: str, expected: dict[str, int]) -> dict[str, i
     return actual
 
 
+def inspect_existing_import(package: Path, archive: Path, approvals_dir: Path) -> dict:
+    """Read-only gate for resuming a deployment after its software was rolled back.
+
+    A retry is permitted only when the *active* database revision is the exact
+    same package, its COMMITTED_RAW audit row and original HMAC approval agree,
+    and every table count still matches the package manifest.  Nothing is
+    repaired, deleted, re-imported, or activated here.
+    """
+    manifest, package_sha, _rows = _verified_package(package, archive)
+    source_sha = manifest["source_sha256"]
+    expected_counts = expected_sql_counts(manifest)
+    if approvals_dir.is_symlink() or not approvals_dir.is_dir():
+        raise PermissionError("private approval evidence directory is missing or unsafe")
+    conn = _connect()
+    try:
+        # This path is an audit gate only; make accidental writes impossible
+        # even if the implementation is extended later.
+        conn.execute("SET TRANSACTION READ ONLY")
+        with conn.cursor() as cur:
+            cur.execute("SELECT current_setting('server_version_num')::integer")
+            if cur.fetchone()[0] // 10000 != 17:
+                raise RuntimeError("PostgreSQL 17 required for retry audit")
+            cur.execute("""SELECT table_schema,table_name FROM information_schema.tables
+                           WHERE table_schema IN ('catalog','core','audit')
+                             AND table_type='BASE TABLE' ORDER BY table_schema,table_name""")
+            tables = {(row[0], row[1]) for row in cur.fetchall()}
+        if not tables:
+            return {"status": "FRESH", "source_sha256": source_sha,
+                    "package_sha256": package_sha, "counts": expected_counts}
+        required = {("catalog", "active_content"), ("audit", "import_batch"),
+                    ("audit", "content_activation_event")}
+        if not required <= tables:
+            raise RuntimeError("catalog schema is partial or not the registered migration; refusing retry")
+        with conn.cursor() as cur:
+            cur.execute("SELECT source_sha256,content_revision,activation_status "
+                        "FROM catalog.active_content WHERE singleton_id=1")
+            active = cur.fetchone()
+            cur.execute("""SELECT batch_id::text,status,package_sha256,package_version,counts,
+                                  approval_id::text,approver,change_id,manifest_sha256,contract_sha256,
+                                  expected_active_source_sha256,approval_hmac_sha256
+                           FROM audit.import_batch WHERE source_sha256=%s""", (source_sha,))
+            batches = cur.fetchall()
+        active_sha = active[0].strip() if active else None
+        if not batches and active is None:
+            # A database with an empty, fully applied schema is a safe first
+            # import. Any leftover rows or an unrelated batch make it unknown.
+            with conn.cursor() as cur:
+                cur.execute("SELECT count(*) FROM audit.import_batch")
+                if cur.fetchone()[0] != 0:
+                    raise RuntimeError("catalog has unrelated import history without an active pointer; refusing retry")
+            for schema, name in sorted(tables):
+                if schema == "audit" and name == "import_batch":
+                    continue
+                from psycopg import sql
+                with conn.cursor() as cur:
+                    cur.execute(sql.SQL("SELECT count(*) FROM {}.{}").format(
+                        sql.Identifier(schema), sql.Identifier(name)))
+                    if cur.fetchone()[0] != 0:
+                        raise RuntimeError("catalog has unowned data but no active content pointer; refusing retry")
+            return {"status": "FRESH", "source_sha256": source_sha,
+                    "package_sha256": package_sha, "counts": expected_counts}
+        if active_sha != source_sha or active[2] != "IMPORTED_RAW" or len(batches) != 1:
+            raise RuntimeError("active catalog state differs from this package; preserve data and stop")
+        (batch_id, status, stored_package_sha, package_version, stored_record_counts,
+         approval_id, approver, change_id, manifest_sha, contract_sha,
+         expected_active_sha, approval_hmac) = batches[0]
+        if (status != "COMMITTED_RAW" or stored_package_sha.strip() != package_sha
+                or package_version != manifest.get("version")
+                or manifest_sha.strip() != sha256(package.resolve() / "manifest.json")
+                or contract_sha.strip() != sha256(ROOT / "config/data-contracts.json")
+                or not approval_id or not approver or not change_id or not approval_hmac):
+            raise RuntimeError("import audit does not match the exact package/contract; refusing retry")
+        actual_counts = query_counts(conn, source_sha, expected_counts)
+        if actual_counts != expected_counts:
+            raise RuntimeError("persisted catalog rows differ from the exact package counts; refusing retry")
+        with conn.cursor() as cur:
+            cur.execute("""SELECT source_sha256,prior_source_sha256,content_revision,approver,
+                                  change_id,approval_hmac_sha256
+                           FROM audit.content_activation_event
+                           WHERE approval_id=%s AND operation='IMPORT_RAW'""", (approval_id,))
+            events = cur.fetchall()
+        if (len(events) != 1 or events[0][0].strip() != source_sha
+                or events[0][1] != expected_active_sha or events[0][2] != active[1]
+                or events[0][3] != approver or events[0][4] != change_id
+                or events[0][5].strip() != approval_hmac.strip()):
+            raise RuntimeError("catalog import event does not match the active batch; refusing retry")
+
+        approval = None
+        for path in sorted(approvals_dir.glob("approval-*.json")):
+            if path.is_symlink() or not path.is_file():
+                raise PermissionError("approval directory contains a non-regular entry")
+            info = path.stat()
+            if info.st_uid != os.geteuid() or info.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+                raise PermissionError("approval evidence ownership or mode is unsafe")
+            item = json.loads(path.read_text(encoding="utf-8"))
+            if item.get("approval_id") == approval_id:
+                if approval is not None:
+                    raise PermissionError("duplicate approval ID evidence")
+                approval = item
+        if approval is None:
+            raise RuntimeError("original import approval evidence is missing; refusing retry")
+        issued_at = approval.get("issued_at")
+        expires_at = approval.get("expires_at")
+        if (not isinstance(issued_at, int) or not isinstance(expires_at, int)
+                or issued_at > expires_at or expires_at - issued_at > 86400
+                or issued_at > int(time.time())):
+            raise RuntimeError("original approval lifetime evidence is malformed; refusing retry")
+        payload = _approval_payload(approval)
+        expected_hmac = hmac.new(
+            _approval_key(), json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(),
+            hashlib.sha256).hexdigest()
+        if (not hmac.compare_digest(approval.get("hmac_sha256", ""), expected_hmac)
+                or not hmac.compare_digest(approval["hmac_sha256"], approval_hmac.strip())
+                or approval.get("action") != "import"
+                or approval.get("source_sha256") != source_sha
+                or approval.get("archive_sha256") != sha256(archive.resolve())
+                or approval.get("manifest_sha256") != manifest_sha.strip()
+                or approval.get("contract_sha256") != contract_sha.strip()
+                or approval.get("approver") != approver or approval.get("change_id") != change_id
+                or approval.get("expected_active_source_sha256") != expected_active_sha):
+            raise RuntimeError("original approval signature or its bound facts differ; refusing retry")
+        return {"status": "SAFE_RESUME_IDEMPOTENT_NOOP", "source_sha256": source_sha,
+                "package_sha256": package_sha, "batch_id": batch_id,
+                "content_revision": active[1], "counts": actual_counts}
+    finally:
+        conn.close()
+
+
 def activate_source_revision(source_sha: str, package: Path, archive: Path, approval_file: Path) -> dict:
     if not re.fullmatch(r"[0-9a-f]{64}", source_sha):
         raise ValueError("source SHA256 must be 64 lowercase hexadecimal characters")
@@ -613,9 +741,17 @@ def main() -> int:
     parser.add_argument("--expected-active-source-sha")
     parser.add_argument("--approval-output", type=Path)
     parser.add_argument("--approval-action", choices=("import", "activate"), default="import")
+    parser.add_argument("--audit-existing", action="store_true",
+                        help="read-only exact-package audit used only for safe deployment resume")
+    parser.add_argument("--approvals-dir", type=Path,
+                        help="private directory holding the original import approval evidence")
     args = parser.parse_args()
     try:
-        if args.issue_approval:
+        if args.audit_existing:
+            if not args.package_dir or not args.archive or not args.approvals_dir:
+                raise ValueError("read-only retry audit requires --package-dir --archive --approvals-dir")
+            result = inspect_existing_import(args.package_dir, args.archive, args.approvals_dir)
+        elif args.issue_approval:
             if not all((args.package_dir, args.archive, args.approver, args.change_id, args.approval_output)):
                 raise ValueError("approval requires --package-dir --archive --approver --change-id --approval-output")
             result = create_approval(args.package_dir, args.archive, approver=args.approver,

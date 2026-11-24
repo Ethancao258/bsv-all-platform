@@ -134,6 +134,10 @@ jobs:
           for file in apps/hq-console/identity/hq.js apps/staff-center/identity/assets/*.js apps/staff-center/identity/workbench.js apps/hq-console/supply/app.js apps/store-console/bsv1/app.js; do
             node --check "$file"
           done
+      - name: Audit the tracked final deployment shell artifact
+        run: |
+          python -m pip install ruff==0.14.0
+          python tests/internal-stage/test_run_once_artifact.py
       - name: Build independent locked environments
         run: |
           python -m venv "$RUNNER_TEMP/bsv-identity"

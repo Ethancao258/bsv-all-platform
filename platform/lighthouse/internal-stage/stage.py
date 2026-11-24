@@ -212,7 +212,7 @@ def preflight(sha):
             raise RuntimeError(f"Missing host dependency: {required}")
     if not output("tar", "--version").startswith("tar (GNU tar)"):
         raise RuntimeError("Safe release extraction requires Ubuntu GNU tar")
-    for executable in ("postgres", "initdb", "psql", "pg_isready", "pg_dump", "pg_restore"):
+    for executable in ("postgres", "initdb", "psql", "pg_isready", "pg_dump", "pg_restore", "dropdb"):
         if not os.access(PG / executable, os.X_OK):
             raise RuntimeError(f"Install approved native PostgreSQL 17 binaries: missing {executable}")
     if "PostgreSQL) 17." not in output(PG / "postgres", "--version"):

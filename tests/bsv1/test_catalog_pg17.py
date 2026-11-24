@@ -75,6 +75,7 @@ class CatalogPostgres17Tests(unittest.TestCase):
                                      VALUES (%s,%s,%s,%s,%s,'C','A',%s,'TEXT',%s)""",
                                     (SHA, index, key, table, key.rsplit('.', 1)[1], header, permission))
                     records = [
+                        ("core.store", "BSVM", 1, {"门店ID":"BSVM","门店名称":"演练店"}),
                         ("catalog.product", "C000001", 9, {"商品ID":"C000001","商品名称":"边车","配方文字":"白兰地45ml","完整制作步骤":"摇匀12秒","寻酒指引":"后酒架一层"}),
                         ("catalog.semifinished", "P000003", 48, {"半成品ID":"P000003","半成品名称":"油浸章鱼足备料"}),
                         ("catalog.semifinished", "P000004", 51, {"半成品ID":"P000004","半成品名称":"romesco酱"}),
@@ -262,6 +263,89 @@ class CatalogPostgres17Tests(unittest.TestCase):
         finally:
             conn.close()
 
+    def test_retry_audit_accepts_only_same_committed_package_and_contract(self):
+        import hmac
+        import hashlib
+        import time
+        from unittest.mock import patch
+
+        manifest = {"version": "V2.2", "source_sha256": SHA, "counts": {
+            "source_sha256": SHA,
+            "counts": {"catalog_product": 1, "catalog_semifinished": 2, "catalog_material": 1,
+                       "catalog_bundle": 1, "catalog_bundle_slot": 0, "catalog_store_nps": 0,
+                       "catalog_recipe_step": 3, "catalog_price_quote": 0, "core_store": 1,
+                       "audit_source_dictionary": 0, "audit_source_legal_path": 0,
+                       "audit_source_calc": 0},
+            "fields": 8, "mappings": 0, "formulas": 0}}
+        with tempfile.TemporaryDirectory(prefix="bsv-catalog-retry-audit-") as directory:
+            root = Path(directory)
+            package = root / "package"
+            approvals = root / "approvals"
+            package.mkdir(mode=0o700)
+            approvals.mkdir(mode=0o700)
+            manifest_path = package / "manifest.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            archive = root / "workbuddy.zip"
+            archive.write_bytes(b"synthetic package bytes for retry-state audit")
+            key_path = root / "approval.key"
+            key_path.write_bytes(b"K" * 48)
+            key_path.chmod(0o600)
+            approval_id = "44444444-4444-4444-8444-444444444444"
+            approval = {"approval_id": approval_id, "action": "import",
+                        "archive_sha256": importer.sha256(archive),
+                        "manifest_sha256": importer.sha256(manifest_path),
+                        "source_sha256": SHA,
+                        "contract_sha256": importer.sha256(ROOT / "config/data-contracts.json"),
+                        "expected_active_source_sha256": None, "approver": "ci-operator",
+                        "change_id": "ISSUE-40-RETRY", "issued_at": int(time.time())-10,
+                        "expires_at": int(time.time())+600}
+            approval["hmac_sha256"] = hmac.new(
+                key_path.read_bytes(), json.dumps(approval, sort_keys=True, separators=(",", ":")).encode(),
+                hashlib.sha256).hexdigest()
+            approval_path = approvals / "approval-initial.json"
+            approval_path.write_text(json.dumps(approval), encoding="utf-8")
+            approval_path.chmod(0o600)
+
+            expected = importer.expected_sql_counts(manifest)
+            conn = importer._connect()
+            try:
+                revision = conn.execute("SELECT content_revision FROM catalog.active_content WHERE singleton_id=1").fetchone()[0]
+                conn.execute("""UPDATE audit.import_batch SET package_sha256=%s,approval_id=%s,approver=%s,
+                             change_id=%s,manifest_sha256=%s,contract_sha256=%s,
+                             expected_active_source_sha256=NULL,approval_hmac_sha256=%s
+                             WHERE source_sha256=%s""",
+                             (importer.sha256(archive), approval_id, approval["approver"], approval["change_id"],
+                              approval["manifest_sha256"], approval["contract_sha256"], approval["hmac_sha256"], SHA))
+                conn.execute("""INSERT INTO audit.content_activation_event
+                             (event_id,source_sha256,prior_source_sha256,content_revision,operation,approval_id,
+                              approver,change_id,approval_hmac_sha256)
+                             VALUES (%s,%s,NULL,%s,'IMPORT_RAW',%s,%s,%s,%s)""",
+                             ("55555555-5555-4555-8555-555555555555", SHA, revision, approval_id,
+                              approval["approver"], approval["change_id"], approval["hmac_sha256"]))
+                conn.commit()
+                actual = importer.query_counts(conn, SHA, expected)
+                self.assertEqual(actual, expected)
+            finally:
+                conn.close()
+            env = {"BSV_APP_ENV": "isolated", "BSV_ALLOW_ISOLATED_CATALOG_IMPORT": "1",
+                   "BSV_CATALOG_ADMIN_DB_URL": os.environ["BSV_CATALOG_ADMIN_DB_URL"],
+                   "BSV_CATALOG_APPROVAL_KEY_FILE": str(key_path)}
+            with patch.dict(os.environ, env, clear=False), \
+                 patch.object(importer, "_verified_package", return_value=(manifest, importer.sha256(archive), {})):
+                state = importer.inspect_existing_import(package, archive, approvals)
+                self.assertEqual(state["status"], "SAFE_RESUME_IDEMPOTENT_NOOP")
+                self.assertEqual(state["counts"], expected)
+
+                changed_counts = dict(expected)
+                changed_counts["catalog.product"] += 1
+                with patch.object(importer, "expected_sql_counts", return_value=changed_counts):
+                    with self.assertRaisesRegex(RuntimeError, "persisted catalog rows differ"):
+                        importer.inspect_existing_import(package, archive, approvals)
+
+                wrong_manifest = {**manifest, "source_sha256": "c" * 64}
+                with patch.object(importer, "_verified_package", return_value=(wrong_manifest, "d" * 64, {})):
+                    with self.assertRaisesRegex(RuntimeError, "active catalog state differs"):
+                        importer.inspect_existing_import(package, archive, approvals)
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls, "http_server"):
