@@ -24,7 +24,10 @@ export BSV_DB_A_URL="postgresql+psycopg://bsv_internal_app:apppw@127.0.0.1:$port
 export BSV_DB_B_READONLY_URL="postgresql+psycopg://bsv_reference:referencepw@127.0.0.1:$port/bsv_identity_isolated"
 export BSV_IDENTITY_PG_RESTORE_URL="postgresql+psycopg://bsv_internal_app:apppw@127.0.0.1:$port/bsv_identity_isolated_restore"
 export BSV_CATALOG_PG_URL="postgresql+psycopg://bsv_catalog_importer:catalogpw@127.0.0.1:$port/bsv_all_prod"
-catalog_restore_db="bsv_identity_isolated_catalog_restore_${tmp##*.}_$$"
+catalog_restore_sha="$(printf '%s' "$name" | sha256sum | cut -c1-8)"
+catalog_restore_time="$(date -u +%Y%m%d%H%M%S)"
+catalog_restore_nonce="$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+catalog_restore_db="bsvr_${catalog_restore_sha}_${catalog_restore_time}_${catalog_restore_nonce}"
 export BSV_CATALOG_PG_RESTORE_URL="postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/$catalog_restore_db"
 export BSV_LOCAL_ARCHIVE_DIR="$tmp/archives" BSV_BACKUP_KEY_FILE="$tmp/key"
 unset BSV_DATA_SOURCES_FILE
