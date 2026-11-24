@@ -47,6 +47,28 @@ CANONICAL_ROW_ID = {
     "catalog.price_quote": re.compile(r"Q\d{6}"),
 }
 REGISTERED_STORES = {"BSVM", "BSVS", "BSVT", "BSVF"}
+EXPECTED_CATALOG_RELATIONS = {
+    ("catalog", name, kind) for name, kind in (
+        ("product", "BASE TABLE"), ("semifinished", "BASE TABLE"),
+        ("material", "BASE TABLE"), ("bundle", "BASE TABLE"),
+        ("bundle_slot", "BASE TABLE"), ("store_nps", "BASE TABLE"),
+        ("recipe_step", "BASE TABLE"), ("price_quote", "BASE TABLE"),
+        ("active_content", "BASE TABLE"),
+    )
+} | {("core", "store", "BASE TABLE")} | {
+    ("audit", name, "BASE TABLE") for name in (
+        "source_dictionary", "source_legal_path", "source_calc", "excel_formula_index",
+        "import_batch", "content_activation_event", "source_mapping", "field_dictionary",
+        "source_record",
+    )
+} | {
+    ("audit", name, "VIEW") for name in ("source_record_staff", "source_record_confidential")
+} | {("bsv_isolated_migration", "applied", "BASE TABLE")}
+EXPECTED_MIGRATIONS = (
+    ("0001_workbuddy_v22", MIGRATION),
+    ("0002_catalog_reader_least_privilege", MIGRATION.with_name("0002_catalog_reader_least_privilege.sql")),
+    ("0003_recipe_order_read", MIGRATION.with_name("0003_recipe_order_read.sql")),
+)
 
 
 def _manifest_counts(manifest: dict) -> dict[str, int]:
@@ -315,20 +337,75 @@ def _active_source(conn) -> str | None:
     return row[0].strip() if row else None
 
 
-def migrate(conn) -> str:
+def _catalog_layout_state(conn) -> tuple[str, set[tuple[str, str, str]]]:
+    """Classify the whole non-system database layout before any DDL.
+
+    Only an actually empty database or the exact registered migration shape is
+    eligible for an import. User schemas, extra relations and partial migration
+    ledgers are preserved and rejected.
+    """
+    allowed_schemas = {"public", "catalog", "core", "audit", "bsv_isolated_migration"}
     with conn.cursor() as cur:
-        cur.execute("""SELECT EXISTS (SELECT 1 FROM information_schema.tables
-                       WHERE table_schema IN ('catalog','core','audit')
-                         AND table_name NOT IN ('import_batch'))""")
-        has_domain_tables = bool(cur.fetchone()[0])
-        cur.execute("CREATE SCHEMA IF NOT EXISTS bsv_isolated_migration")
-        cur.execute("""CREATE TABLE IF NOT EXISTS bsv_isolated_migration.applied (
-                     version TEXT PRIMARY KEY, checksum CHAR(64) NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())""")
+        cur.execute("""SELECT nspname FROM pg_namespace
+                       WHERE nspname NOT IN ('pg_catalog','information_schema')
+                         AND nspname NOT LIKE 'pg_toast%'
+                         AND nspname NOT LIKE 'pg_temp_%'
+                         AND nspname NOT LIKE 'pg_toast_temp_%'""")
+        schemas = {row[0] for row in cur.fetchall()}
+        cur.execute("""SELECT n.nspname,c.relname,
+                              CASE WHEN c.relkind IN ('r','p') THEN 'BASE TABLE'
+                                   WHEN c.relkind='v' THEN 'VIEW'
+                                   WHEN c.relkind='S' THEN 'SEQUENCE' ELSE c.relkind::text END
+                       FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+                       WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+                         AND n.nspname NOT LIKE 'pg_toast%'
+                         AND n.nspname NOT LIKE 'pg_temp_%'
+                         AND n.nspname NOT LIKE 'pg_toast_temp_%'
+                         AND c.relkind IN ('r','p','v','m','f','S') ORDER BY 1,2""")
+        relations = {(row[0], row[1], row[2]) for row in cur.fetchall()}
+    unknown_schemas = schemas - allowed_schemas
+    if unknown_schemas:
+        raise RuntimeError("catalog database contains unregistered schemas; preserve data and stop")
+    with conn.cursor() as cur:
+        cur.execute("""SELECT
+                         (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+                          WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+                            AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp_%'
+                            AND n.nspname NOT LIKE 'pg_toast_temp_%')
+                       + (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
+                          WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+                            AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp_%'
+                            AND n.nspname NOT LIKE 'pg_toast_temp_%'
+                            AND t.typtype IN ('b','d','e','r') AND t.typrelid=0 AND t.typelem=0)""")
+        unknown_code_objects = cur.fetchone()[0]
+    if not relations:
+        if schemas - {"public"} or unknown_code_objects:
+            raise RuntimeError("catalog database contains leftover empty schemas; refusing to treat it as fresh")
+        return "EMPTY", relations
+    if relations != EXPECTED_CATALOG_RELATIONS:
+        raise RuntimeError("catalog database relations are partial or unregistered; preserve data and stop")
+    if unknown_code_objects:
+        raise RuntimeError("catalog database contains unregistered callable/type objects; preserve data and stop")
+    with conn.cursor() as cur:
+        cur.execute("SELECT version,checksum FROM bsv_isolated_migration.applied ORDER BY version")
+        applied = {row[0]: row[1].strip() for row in cur.fetchall()}
+    expected = {version: hashlib.sha256(path.read_bytes()).hexdigest() for version, path in EXPECTED_MIGRATIONS}
+    if applied != expected:
+        raise RuntimeError("catalog migration ledger is incomplete or differs from the registered SQL; preserve data and stop")
+    return "MANAGED_SCHEMA", relations
+
+
+def migrate(conn) -> str:
+    layout_state, _relations = _catalog_layout_state(conn)
+    if layout_state == "EMPTY":
+        with conn.cursor() as cur:
+            cur.execute("CREATE SCHEMA bsv_isolated_migration")
+            cur.execute("""CREATE TABLE bsv_isolated_migration.applied (
+                         version TEXT PRIMARY KEY, checksum CHAR(64) NOT NULL,
+                         applied_at TIMESTAMPTZ NOT NULL DEFAULT now())""")
         conn.commit()
     states = []
-    for version, path in (("0001_workbuddy_v22", MIGRATION),
-                          ("0002_catalog_reader_least_privilege", MIGRATION.with_name("0002_catalog_reader_least_privilege.sql")),
-                          ("0003_recipe_order_read", MIGRATION.with_name("0003_recipe_order_read.sql"))):
+    for version, path in EXPECTED_MIGRATIONS:
         sql = path.read_text(encoding="utf-8")
         checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
         with conn.cursor() as cur:
@@ -344,8 +421,6 @@ def migrate(conn) -> str:
                 raise RuntimeError(f"applied migration {version} checksum differs; refusing to alter prior schema")
             states.append("ALREADY_APPLIED")
             continue
-        if version == "0001_workbuddy_v22" and has_domain_tables:
-            raise RuntimeError("catalog/core/audit objects exist without this isolation migration ledger; refusing to overlay")
         with conn.transaction():
             with conn.cursor() as cur:
                 cur.execute(sql, prepare=False)
@@ -576,13 +651,11 @@ def inspect_existing_import(package: Path, archive: Path, approvals_dir: Path) -
             cur.execute("SELECT current_setting('server_version_num')::integer")
             if cur.fetchone()[0] // 10000 != 17:
                 raise RuntimeError("PostgreSQL 17 required for retry audit")
-            cur.execute("""SELECT table_schema,table_name FROM information_schema.tables
-                           WHERE table_schema IN ('catalog','core','audit')
-                             AND table_type='BASE TABLE' ORDER BY table_schema,table_name""")
-            tables = {(row[0], row[1]) for row in cur.fetchall()}
-        if not tables:
+        layout_state, relations = _catalog_layout_state(conn)
+        if layout_state == "EMPTY":
             return {"status": "FRESH", "source_sha256": source_sha,
                     "package_sha256": package_sha, "counts": expected_counts}
+        tables = {(schema, name) for schema, name, kind in relations if kind == "BASE TABLE"}
         required = {("catalog", "active_content"), ("audit", "import_batch"),
                     ("audit", "content_activation_event")}
         if not required <= tables:
@@ -605,7 +678,10 @@ def inspect_existing_import(package: Path, archive: Path, approvals_dir: Path) -
                 if cur.fetchone()[0] != 0:
                     raise RuntimeError("catalog has unrelated import history without an active pointer; refusing retry")
             for schema, name in sorted(tables):
-                if schema == "audit" and name == "import_batch":
+                if (schema, name) in {
+                    ("audit", "import_batch"),
+                    ("bsv_isolated_migration", "applied"),
+                }:
                     continue
                 from psycopg import sql
                 with conn.cursor() as cur:

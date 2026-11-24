@@ -46,6 +46,11 @@ EXPECTED_CATALOG_MEMBERSHIPS = {
     # itself must not inherit another role.
     "bsv_catalog_reader": "",
 }
+EXPECTED_CATALOG_ROLE_GRAPH = (
+    "bsv_catalog_confidential_reader>bsv_catalog_runtime,"
+    "bsv_catalog_reader>bsv_catalog_confidential_reader,"
+    "bsv_catalog_reader>bsv_catalog_runtime",
+)
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 MIGRATIONS = Path("platform/lighthouse/identity/migrations")
 IDENTITY_REVISION = "bsv_identity_0001"
@@ -240,6 +245,133 @@ def preflight(sha):
         if path.is_symlink() or (path.exists() and (path.stat().st_uid != 0 or path.stat().st_mode & 0o022)):
             raise RuntimeError(f"Unsafe directory ownership or permissions: {path}")
     print(f"PREFLIGHT_OK {sha} (dedicated loopback ports 18760–18764)", flush=True)
+
+
+def _catalog_peer_psql(database, sql):
+    result = as_user(
+        "postgres", PG / "psql", "-h", DATA / "postgres", "-p", str(PORTS["postgres"]),
+        "-U", user("postgres"), "-d", database, "-XAt", "-F", "\t",
+        "-v", "ON_ERROR_STOP=1", "-c", sql,
+        env={"PATH": str(PG) + ":/usr/bin:/bin", "PGOPTIONS": "-c default_transaction_read_only=on"},
+        stdout=subprocess.PIPE,
+    )
+    return result.stdout.strip()
+
+
+def catalog_database_preflight(sha):
+    """Read-only gate for the existing isolated catalog database.
+
+    This function deliberately runs before bsvctl deploy/prepare_pg. It never
+    creates roles, repairs HBA, changes a database owner, or writes catalog
+    state. Existing non-empty data is classified for a second exact-package
+    audit by the importer before deployment may proceed.
+    """
+    if output(*git("rev-parse", "HEAD")) != sha:
+        raise RuntimeError("Catalog preflight checkout differs from the approved SHA")
+    if not active("postgres"):
+        raise RuntimeError("Private PostgreSQL must already be active for read-only catalog preflight")
+    version = int(_catalog_peer_psql("postgres", "SHOW server_version_num"))
+    if version // 10000 != 17:
+        raise RuntimeError("Catalog preflight requires the already-running PostgreSQL 17 service")
+    if int(_catalog_peer_psql("postgres", "SHOW max_identifier_length")) != 63:
+        raise RuntimeError("PostgreSQL identifier limit differs from the verified host contract")
+    database = _catalog_peer_psql(
+        "postgres", f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='{CATALOG_DB}'")
+    if not database:
+        print(json.dumps({"status": "CATALOG_PREFLIGHT_OK", "database": CATALOG_DB,
+                          "exists": False, "data_state": "ABSENT"}, sort_keys=True), flush=True)
+        return {"exists": False, "data_state": "ABSENT"}
+    if database != CATALOG_IMPORT_USER:
+        raise RuntimeError("Existing bsv_all_prod owner is unexpected; no takeover performed")
+
+    directory = DATA / "postgres"
+    cluster = directory / "pg"
+    hba_path = cluster / "pg_hba.conf"
+    marker = directory / ".catalog-hba-initialized"
+    baseline_marker = directory / ".hba-initialized"
+    backup = directory / "pg_hba.pre-catalog.bsv-backup"
+    if any(path.is_symlink() for path in (hba_path, marker, baseline_marker, backup)):
+        raise RuntimeError("Catalog preflight found an unsafe managed HBA path")
+    account = pwd.getpwnam(user("postgres"))
+    if (not hba_path.is_file() or hba_path.stat().st_uid != account.pw_uid
+            or stat.S_IMODE(hba_path.stat().st_mode) != 0o600):
+        raise RuntimeError("Catalog preflight found unexpected HBA ownership or mode")
+    _baseline, expected_hba = _catalog_hba_policies()
+    current_hba = hba_path.read_text(encoding="utf-8")
+    if current_hba != expected_hba:
+        raise RuntimeError("Existing catalog HBA differs from the managed policy; preserve and stop")
+    if (not marker.is_file() or marker.read_text().strip() != hashlib.sha256(expected_hba.encode()).hexdigest()
+            or not baseline_marker.is_file() or not backup.is_file()
+            or backup.stat().st_uid != account.pw_uid or stat.S_IMODE(backup.stat().st_mode) != 0o600):
+        raise RuntimeError("Existing catalog HBA management evidence is incomplete; preserve and stop")
+    if _catalog_peer_psql("postgres", "SELECT count(*) FROM pg_hba_file_rules WHERE error IS NOT NULL") != "0":
+        raise RuntimeError("PostgreSQL reports an invalid HBA rule; preserve and stop")
+
+    expected_flags = {
+        CATALOG_RUNTIME_USER: "true|false|false|false|false|false|false",
+        CATALOG_IMPORT_USER: "true|false|false|false|false|false|false",
+        "bsv_catalog_reader": "false|false|false|false|false|true|false",
+        "bsv_catalog_confidential_reader": "false|false|false|false|false|true|false",
+    }
+    for role, expected in expected_flags.items():
+        actual = _catalog_peer_psql(
+            "postgres", "SELECT concat_ws('|',rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,"
+            "rolreplication,rolinherit,rolbypassrls) FROM pg_roles WHERE rolname='" + role + "'")
+        if actual != expected:
+            raise RuntimeError(f"Existing catalog role is missing or differs from policy: {role}")
+        membership = _catalog_peer_psql("postgres", _catalog_role_membership_query(role))
+        if membership != EXPECTED_CATALOG_MEMBERSHIPS[role]:
+            raise RuntimeError(f"Existing catalog role membership differs from policy: {role}")
+    role_names = ",".join(f"'{name}'" for name in expected_flags)
+    graph = _catalog_peer_psql(
+        "postgres",
+        "SELECT COALESCE(string_agg(granted_role.rolname||'>'||member.rolname,',' "
+        "ORDER BY granted_role.rolname,member.rolname),'') FROM pg_auth_members m "
+        "JOIN pg_roles granted_role ON granted_role.oid=m.roleid "
+        "JOIN pg_roles member ON member.oid=m.member "
+        f"WHERE granted_role.rolname IN ({role_names}) OR member.rolname IN ({role_names})")
+    if graph != ",".join(EXPECTED_CATALOG_ROLE_GRAPH):
+        raise RuntimeError("Existing catalog role graph contains an unregistered membership; preserve and stop")
+    if _catalog_peer_psql(
+            "postgres", f"SELECT has_database_privilege('{CATALOG_RUNTIME_USER}','{CATALOG_DB}','CONNECT')"
+            " AND has_database_privilege('" + CATALOG_IMPORT_USER + "','" + CATALOG_DB + "','CONNECT')") != "t":
+        raise RuntimeError("Registered catalog roles lack the exact database connect capability")
+    public_connect = _catalog_peer_psql(
+        "postgres", f"SELECT EXISTS (SELECT 1 FROM pg_database d, "
+        "LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a "
+        f"WHERE d.datname='{CATALOG_DB}' AND a.grantee=0 AND a.privilege_type='CONNECT')")
+    if public_connect == "true":
+        raise RuntimeError("Existing catalog database is connectable by PUBLIC; preserve and stop")
+
+    schemas = _catalog_peer_psql(
+        CATALOG_DB,
+        "SELECT COALESCE(string_agg(nspname,',' ORDER BY nspname),'') FROM pg_namespace "
+        "WHERE nspname NOT IN ('pg_catalog','information_schema') "
+        "AND nspname NOT LIKE 'pg_toast%' AND nspname NOT LIKE 'pg_temp_%' "
+        "AND nspname NOT LIKE 'pg_toast_temp_%'")
+    allowed_empty_schemas = {"public"}
+    schema_names = set(filter(None, schemas.split(",")))
+    objects = _catalog_peer_psql(
+        CATALOG_DB,
+        "SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+        "WHERE n.nspname NOT IN ('pg_catalog','information_schema') "
+        "AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp_%' "
+        "AND n.nspname NOT LIKE 'pg_toast_temp_%' AND c.relkind IN ('r','p','v','m','f','S')) "
+        "+ (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace "
+        "WHERE n.nspname NOT IN ('pg_catalog','information_schema') "
+        "AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp_%' "
+        "AND n.nspname NOT LIKE 'pg_toast_temp_%') "
+        "+ (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace "
+        "WHERE n.nspname NOT IN ('pg_catalog','information_schema') "
+        "AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp_%' "
+        "AND n.nspname NOT LIKE 'pg_toast_temp_%' AND t.typtype IN ('b','d','e','r') "
+        "AND t.typrelid=0 AND t.typelem=0)")
+    state = "EMPTY" if objects == "0" and schema_names <= allowed_empty_schemas else "NONEMPTY"
+    result = {"status": "CATALOG_PREFLIGHT_OK", "database": CATALOG_DB, "exists": True,
+              "owner": CATALOG_IMPORT_USER, "server_major": 17, "max_identifier_length": 63,
+              "hba": "MANAGED_EXACT", "roles": "MANAGED_EXACT", "data_state": state}
+    print(json.dumps(result, sort_keys=True), flush=True)
+    return result
 
 
 def write_secret(path, value, uid=0, gid=0):
@@ -1869,7 +2001,7 @@ def rollback():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
-    for operation in ("preflight", "deploy", "verify", "rollback", "backup"):
+    for operation in ("preflight", "catalog-preflight", "deploy", "verify", "rollback", "backup"):
         group.add_argument("--" + operation, action="store_const", dest="operation", const=operation)
     group.add_argument("--recovery-check", type=Path, metavar="RECEIPT")
     parser.add_argument("--sha")
@@ -1878,12 +2010,14 @@ def main():
     args = parser.parse_args()
     if args.approve_synthetic_three_store and args.operation != "deploy":
         parser.error("--approve-synthetic-three-store is valid only with --deploy")
-    if args.operation in {"preflight", "deploy"} and not re.fullmatch(r"[a-f0-9]{40}", args.sha or ""):
+    if args.operation in {"preflight", "catalog-preflight", "deploy"} and not re.fullmatch(r"[a-f0-9]{40}", args.sha or ""):
         parser.error("A full approved --sha is required")
-    if (args.operation in {"deploy", "rollback", "backup"} or args.recovery_check) and os.geteuid() != 0:
+    if (args.operation in {"catalog-preflight", "deploy", "rollback", "backup"} or args.recovery_check) and os.geteuid() != 0:
         parser.error("Use sudo for systemd changes")
     if args.operation == "preflight":
         preflight(args.sha)
+    elif args.operation == "catalog-preflight":
+        catalog_database_preflight(args.sha)
     elif args.operation == "verify":
         verify()
     else:

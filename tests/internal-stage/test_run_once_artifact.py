@@ -40,7 +40,7 @@ class RunOnceArtifactTests(unittest.TestCase):
     def test_exact_tracked_script_has_valid_shell_and_all_python_blocks_parse(self):
         subprocess.run(["bash", "-n", str(SCRIPT)], check=True)
         blocks = heredocs()
-        self.assertEqual(len(blocks), 15, "deployment script Python heredocs changed; review the gate")
+        self.assertEqual(len(blocks), 17, "deployment script Python heredocs changed; review the gate")
         self.assertEqual(sum(marker == "PYACTOR" for marker, _ in blocks), 1)
         with tempfile.TemporaryDirectory(prefix="bsv-run-once-heredoc-") as directory:
             out = Path(directory)
@@ -76,6 +76,9 @@ class RunOnceArtifactTests(unittest.TestCase):
 
     def test_post_import_failure_keeps_catalog_and_retry_is_audited(self):
         script = SCRIPT.read_text(encoding="utf-8")
+        self.assertLess(script.index("--catalog-preflight --sha"), script.index("DEPLOYMENT_ATTEMPTED=1"))
+        self.assertLess(script.index("CATALOG_CONTENT_PREFLIGHT"), script.index("DEPLOYMENT_ATTEMPTED=1"))
+        self.assertIn("unregistered schemas", (ROOT / "services/api/bsv1/bsv_catalog_import.py").read_text())
         self.assertIn("SAFE_RESUME_IDEMPOTENT_NOOP", script)
         self.assertIn("--audit-existing --approvals-dir", script)
         self.assertIn("CATALOG_CONTENT_ROLLBACK=NOT_PERFORMED", script)

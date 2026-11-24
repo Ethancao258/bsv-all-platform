@@ -33,6 +33,73 @@ NEW = "2" * 40
 
 
 class ReleaseTest(unittest.TestCase):
+    def test_catalog_readonly_preflight_checks_existing_policy_before_classifying_empty(self):
+        with tempfile.TemporaryDirectory(prefix="bsv-catalog-readonly-preflight-") as tmp:
+            data = Path(tmp)
+            cluster = data / "postgres" / "pg"
+            cluster.mkdir(parents=True)
+            expected_hba = stage._catalog_hba_policies()[1]
+            hba = cluster / "pg_hba.conf"
+            hba.write_text(expected_hba, encoding="utf-8")
+            hba.chmod(0o600)
+            marker = data / "postgres" / ".catalog-hba-initialized"
+            marker.write_text(hashlib.sha256(expected_hba.encode()).hexdigest())
+            marker.chmod(0o600)
+            baseline_marker = data / "postgres" / ".hba-initialized"
+            baseline_marker.write_text("managed")
+            baseline_marker.chmod(0o600)
+            backup = data / "postgres" / "pg_hba.pre-catalog.bsv-backup"
+            backup.write_text(stage._catalog_hba_policies()[0])
+            backup.chmod(0o600)
+            responses = {
+                "SHOW server_version_num": "170012",
+                "SHOW max_identifier_length": "63",
+                "FROM pg_database WHERE datname='bsv_all_prod'": "bsv_catalog_importer",
+                "pg_hba_file_rules WHERE error IS NOT NULL": "0",
+                "FROM pg_roles WHERE rolname='bsv_catalog_runtime'": "true|false|false|false|false|false|false",
+                "FROM pg_roles WHERE rolname='bsv_catalog_importer'": "true|false|false|false|false|false|false",
+                "FROM pg_roles WHERE rolname='bsv_catalog_reader'": "false|false|false|false|false|true|false",
+                "FROM pg_roles WHERE rolname='bsv_catalog_confidential_reader'": "false|false|false|false|false|true|false",
+                "WHERE member.rolname='bsv_catalog_runtime'": "bsv_catalog_confidential_reader,bsv_catalog_reader",
+                "WHERE member.rolname='bsv_catalog_importer'": "",
+                "WHERE member.rolname='bsv_catalog_reader'": "",
+                "WHERE member.rolname='bsv_catalog_confidential_reader'": "bsv_catalog_reader",
+                "granted_role.rolname||'>'||member.rolname": ",".join(stage.EXPECTED_CATALOG_ROLE_GRAPH),
+                "has_database_privilege": "t",
+                "a.grantee=0": "false",
+                "FROM pg_namespace ": "public",
+                "AND t.typrelid=0 AND t.typelem=0)": "0",
+            }
+
+            def query(_database, sql):
+                for fragment, value in responses.items():
+                    if fragment in sql:
+                        return value
+                raise AssertionError(f"unexpected preflight query: {sql}")
+
+            with patch.object(stage, "ROOT", Path(tmp) / "repo"), \
+                    patch.object(stage, "DATA", data), \
+                    patch.object(stage, "PG", Path("/usr/lib/postgresql/17/bin")), \
+                    patch.object(stage, "active", return_value=True), \
+                    patch.object(stage, "output", return_value=NEW), \
+                    patch.object(stage, "_catalog_peer_psql", side_effect=query), \
+                    patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())), \
+                    patch.object(stage, "user", return_value="bsvint-postgres"):
+                result = stage.catalog_database_preflight(NEW)
+                responses["granted_role.rolname||'>'||member.rolname"] = (
+                    "bsv_catalog_reader>bsv_catalog_runtime,unexpected_role>bsv_catalog_runtime")
+                with self.assertRaisesRegex(RuntimeError, "unregistered membership"):
+                    stage.catalog_database_preflight(NEW)
+            self.assertEqual(result["data_state"], "EMPTY")
+            self.assertEqual(result["hba"], "MANAGED_EXACT")
+
+    def test_catalog_readonly_preflight_stops_on_unknown_database_owner(self):
+        with patch.object(stage, "output", return_value=NEW), \
+                patch.object(stage, "active", return_value=True), \
+                patch.object(stage, "_catalog_peer_psql", side_effect=("170012", "63", "unknown_owner")):
+            with self.assertRaisesRegex(RuntimeError, "owner is unexpected"):
+                stage.catalog_database_preflight(NEW)
+
     def test_catalog_restore_database_name_respects_supplied_server_limit(self):
         for limit in (63, 48):
             name = stage.catalog_restore_database_name(

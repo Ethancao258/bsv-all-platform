@@ -97,6 +97,18 @@ mem_kib=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)
 [[ "$mem_kib" =~ ^[0-9]+$ && "$mem_kib" -ge 1048576 ]] || block 'less than 1 GiB available memory'
 [[ $(nproc) -ge 2 ]] || block 'fewer than two CPUs available'
 python3 "$WORK/repo/platform/lighthouse/internal-stage/stage.py" --preflight --sha "$SHA"
+catalog_gate=$(python3 "$WORK/repo/platform/lighthouse/internal-stage/stage.py" --catalog-preflight --sha "$SHA")
+catalog_data_state=$(python3 - "$catalog_gate" <<'PY'
+import json,sys
+result=json.loads(sys.argv[1])
+if result.get('status')!='CATALOG_PREFLIGHT_OK' or result.get('database')!='bsv_all_prod':
+  raise SystemExit('BLOCKED: catalog read-only preflight did not return a recognized database result')
+state=result.get('data_state')
+if state not in ('EMPTY','NONEMPTY','ABSENT'):
+  raise SystemExit('BLOCKED: catalog database state is not classifiable')
+print(state)
+PY
+)
 status=$(python3 "$WORK/repo/platform/lighthouse/internal-stage/bsvctl.py" status)
 python3 - "$status" <<'PY'
 import json,sys
@@ -106,27 +118,64 @@ if x.get('pending_activation') is not False or not x.get('deployed_sha'):
 PY
 
 # Verify WorkBuddy before any release change. Package rows and originals are source data, not executable code.
-python3 - "$WORK/repo" "$PACKAGE_DIR/workbuddy-v22.zip" <<'PY'
+preflight_package="$WORK/catalog-preflight-package"
+install -d -m 0700 "$preflight_package"
+python3 - "$WORK/repo" "$PACKAGE_DIR/workbuddy-v22.zip" "$preflight_package" <<'PY'
 import hashlib,sys,tempfile,zipfile
 from pathlib import Path
 sys.path.insert(0,str(Path(sys.argv[1])/'services/api/bsv1'))
 from bsv_catalog_import import _verified_package
-archive=Path(sys.argv[2])
+archive=Path(sys.argv[2]);root=Path(sys.argv[3]).resolve()
 if hashlib.sha256(archive.read_bytes()).hexdigest()!='3f98fbe12eacdca481d1e7b3350a59410da7f1116c74a75a1c7b93fe63a0e5a1':
     raise SystemExit('BLOCKED: WorkBuddy V2.2 archive SHA mismatch')
-with tempfile.TemporaryDirectory(prefix='bsv-v22-preflight-') as temp:
-    root=Path(temp).resolve()
-    with zipfile.ZipFile(archive) as z:
-        for name in z.namelist():
-            path=(root/name).resolve()
-            if name.startswith('/') or not path.is_relative_to(root):
-                raise SystemExit('BLOCKED: unsafe data archive path')
-        z.extractall(root)
-    manifest,_,rows=_verified_package(root,archive)
-    main=sum(len(rows[k]) for k in ('catalog.product','catalog.semifinished','catalog.material','catalog.bundle','catalog.recipe_step','catalog.price_quote','core.store'))
-    if main!=589: raise SystemExit(f'BLOCKED: expected 589 source records, got {main}')
-    print('SOURCE_PACKAGE_VALID',manifest['source_sha256'],'main_records=589')
+with zipfile.ZipFile(archive) as z:
+    for name in z.namelist():
+        path=(root/name).resolve()
+        if name.startswith('/') or not path.is_relative_to(root):
+            raise SystemExit('BLOCKED: unsafe data archive path')
+    z.extractall(root)
+manifest,_,rows=_verified_package(root,archive)
+main=sum(len(rows[k]) for k in ('catalog.product','catalog.semifinished','catalog.material','catalog.bundle','catalog.recipe_step','catalog.price_quote','core.store'))
+if main!=589: raise SystemExit(f'BLOCKED: expected 589 source records, got {main}')
+print('SOURCE_PACKAGE_VALID',manifest['source_sha256'],'main_records=589')
 PY
+
+# Non-empty catalogs must prove their exact registered state before deploy can
+# change release/config/HBA state. This importer invocation is read-only.
+if [[ "$catalog_data_state" == NONEMPTY ]]; then
+  config="$ROOT/config/catalog-import.env"
+  [[ -f "$config" && ! -L "$config" && $(stat -c '%u:%a' "$config") == '0:600' ]] || \
+    block 'non-empty bsv_all_prod has no safe managed importer configuration; preserved and stopped'
+  [[ -x "$ROOT/current/identity/bin/python" ]] || block 'current release has no trusted PostgreSQL audit runtime'
+  set -a
+  . "$config"
+  set +a
+  [[ \${BSV_APP_ENV:-} == isolated && \${BSV_ALLOW_ISOLATED_CATALOG_IMPORT:-} == 1 ]] || \
+    block 'existing importer configuration is not explicitly isolated'
+  [[ \${BSV_CATALOG_ADMIN_DB_URL:-} == postgresql+psycopg://bsv_catalog_importer:*@127.0.0.1:18764/bsv_all_prod ]] || \
+    block 'existing importer DSN is not the registered loopback target'
+  approvals="$IMPORT_DIR"
+  if [[ ! -e "$approvals" && ! -L "$approvals" ]]; then
+    approvals="$WORK/empty-approvals"
+    install -d -m 0700 "$approvals"
+  else
+    [[ -d "$approvals" && ! -L "$approvals" && \
+       $(stat -c '%U:%G:%a' "$approvals") == 'bsvint-identity:bsvint-identity:700' ]] || \
+      block 'existing import approval evidence directory is unsafe; preserved'
+  fi
+  state=$("$ROOT/current/identity/bin/python" "$WORK/repo/services/api/bsv1/bsv_catalog_import.py" \
+    --package-dir "$preflight_package" --archive "$PACKAGE_DIR/workbuddy-v22.zip" \
+    --audit-existing --approvals-dir "$approvals")
+  python3 - "$state" <<'PY'
+import json,sys
+x=json.loads(sys.argv[1])
+if x.get('status') not in ('FRESH','SAFE_RESUME_IDEMPOTENT_NOOP'):
+  raise SystemExit('BLOCKED: non-empty catalog is not empty-ready or an exact audited package')
+print('CATALOG_CONTENT_PREFLIGHT='+x['status'])
+PY
+else
+  echo "CATALOG_CONTENT_PREFLIGHT=$catalog_data_state"
+fi
 
 # bsvctl performs the managed-config comparison and checkpoint before service switching. Do not remove prior backups/releases.
 DEPLOYMENT_ATTEMPTED=1

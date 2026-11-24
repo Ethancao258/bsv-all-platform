@@ -341,6 +341,42 @@ class CatalogPostgres17Tests(unittest.TestCase):
                 self.assertEqual(state["status"], "SAFE_RESUME_IDEMPOTENT_NOOP")
                 self.assertEqual(state["counts"], expected)
 
+                # The retry gate inventories the whole database, not merely
+                # catalog/core/audit. Unknown objects must be preserved and
+                # rejected before any migration or import can run.
+                conn = importer._connect()
+                try:
+                    conn.execute("CREATE SCHEMA preflight_unregistered")
+                    conn.commit()
+                    with self.assertRaisesRegex(RuntimeError, "unregistered schemas"):
+                        importer.inspect_existing_import(package, archive, approvals)
+                    conn.execute("CREATE TABLE preflight_unregistered.keep_me (value TEXT)")
+                    conn.commit()
+                    with self.assertRaisesRegex(RuntimeError, "unregistered schemas"):
+                        importer.inspect_existing_import(package, archive, approvals)
+                    conn.execute("DROP SCHEMA preflight_unregistered CASCADE")
+                    conn.commit()
+                    conn.execute("CREATE FUNCTION public.unregistered_preflight_fn() RETURNS integer "
+                                 "LANGUAGE SQL AS 'SELECT 1'")
+                    conn.commit()
+                    with self.assertRaisesRegex(RuntimeError, "callable/type objects"):
+                        importer.inspect_existing_import(package, archive, approvals)
+                    conn.execute("DROP FUNCTION public.unregistered_preflight_fn()")
+                    conn.commit()
+                    missing = conn.execute(
+                        "SELECT checksum FROM bsv_isolated_migration.applied WHERE version=%s",
+                        ("0003_recipe_order_read",)).fetchone()[0].strip()
+                    conn.execute("DELETE FROM bsv_isolated_migration.applied WHERE version=%s",
+                                 ("0003_recipe_order_read",))
+                    conn.commit()
+                    with self.assertRaisesRegex(RuntimeError, "migration ledger is incomplete"):
+                        importer.inspect_existing_import(package, archive, approvals)
+                    conn.execute("INSERT INTO bsv_isolated_migration.applied(version,checksum) VALUES (%s,%s)",
+                                 ("0003_recipe_order_read", missing))
+                    conn.commit()
+                finally:
+                    conn.close()
+
                 changed_counts = dict(expected)
                 changed_counts["catalog.product"] += 1
                 with patch.object(importer, "expected_sql_counts", return_value=changed_counts):

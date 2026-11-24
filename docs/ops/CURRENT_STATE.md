@@ -266,3 +266,10 @@
 - **BSV-B 独立交付** · PR #42 `feature/bsv-b-excel-ingestion` 已交付受控Excel七表字段校验、来源哈希/ID关系检查及差异预览；5项新增测试与本地既有BSV1测试通过，PR CI run `45304293209` 九项通过。状态为 `PREVIEW_ONLY`：Excel→批准签名数据包转换、双人审批与PG事务提交/版本回退未实现，不能导入生产或替代PR #40。
 - **交付边界** · PR #40仍未合并，PR #42以PR #40分支为base。两者均未部署；旧版8765/8767、CloudBase、真实订单、员工身份及支付均未触碰。新SHA的完整CI与主机部署结果必须以本记录后续更新为准。
 - **CI定向修复** · `cab7b8c` 的首次CI将真实服务角色测试错误设为 `SET SESSION AUTHORIZATION`，并且恢复测试DSN未使用受管端口；已在 `9c8fbfe` 改为真实runtime SCRAM登录和固定端口。`bcd43af` 移除 `pg_restore` 标准输入调用中的伪文件名。`b5fd72a` 后的新CI又确认拒绝测试需导入 psycopg 并把SQLAlchemy DSN scheme转成psycopg原生URI；当前已修正。中间SHA存在失败作业，不作为放行证据。
+
+## 2026-11-24｜PR #40 数据库状态只读部署门禁
+
+- **主机依据** · 采用负责人提供的PR评论 [7122345954](https://github.com/Ethancao258/bsv-all-platform/pull/40#issuecomment-7122345954)：Lighthouse Ubuntu 24.04.4、4 vCPU、可用内存约2.77 GiB、磁盘剩余26G、隔离服务5/5 active、旧8765/8767正常、Unix socket PG17可连、identifier limit 63。当前仍是旧release `f6d8ce9b9c027baeaa0bdd5b62457fea40adeb27`；`bsv_all_prod`存在，但其owner/角色/HBA/数据/迁移状态均未由该回执确认。本轮Codex没有连接或写入真实主机。
+- **代码变更** · 在PR #40分支增加变更前 `stage.py --catalog-preflight`：只读检查PG17、owner、受管HBA证据、角色属性/完整成员关系图、PUBLIC连接权限及非系统对象；不修复或创建主机配置。非空库还要求导入器只读核验全库schema/对象、全部迁移校验和、导入批次/行数、活动内容与原始HMAC审批，结果只能为精确空/同包安全NOOP；部分或未知状态停止。导入器在执行DDL前先核验布局，避免创建迁移账本污染未知数据库。
+- **本地测试** · `tests/internal-stage/test_deploy.py`：36通过、1项因缺Ubuntu 24.04/Python 3.12环境跳过；`tests/internal-stage/test_run_once_artifact.py`：2通过、sudo真实调用场景在root执行环境跳过。Python编译、Bash语法、内嵌Python AST/Ruff F821及`git diff --check`通过。
+- **未运行/未交付** · PostgreSQL 17隔离容器未能创建：Docker VFS返回 `no space left on device`；最终精确签名部署包及完整包实际安装演练因此未运行/未生成。真实主机部署、员工浏览器、备份独立恢复与回切均 `HOST_NOT_RUN`。没有替换Drive文件。旧fa192385与1fda85e0包已过期，禁止运行。
