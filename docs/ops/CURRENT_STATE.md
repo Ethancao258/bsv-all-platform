@@ -273,3 +273,11 @@
 - **代码变更** · 在PR #40分支增加变更前 `stage.py --catalog-preflight`：只读检查PG17、owner、受管HBA证据、角色属性/完整成员关系图、PUBLIC连接权限及非系统对象；不修复或创建主机配置。非空库还要求导入器只读核验全库schema/对象、全部迁移校验和、导入批次/行数、活动内容与原始HMAC审批，结果只能为精确空/同包安全NOOP；部分或未知状态停止。导入器在执行DDL前先核验布局，避免创建迁移账本污染未知数据库。
 - **本地测试** · `tests/internal-stage/test_deploy.py`：36通过、1项因缺Ubuntu 24.04/Python 3.12环境跳过；`tests/internal-stage/test_run_once_artifact.py`：2通过、sudo真实调用场景在root执行环境跳过。Python编译、Bash语法、内嵌Python AST/Ruff F821及`git diff --check`通过。
 - **未运行/未交付** · PostgreSQL 17隔离容器未能创建：Docker VFS返回 `no space left on device`；最终精确签名部署包及完整包实际安装演练因此未运行/未生成。真实主机部署、员工浏览器、备份独立恢复与回切均 `HOST_NOT_RUN`。没有替换Drive文件。旧fa192385与1fda85e0包已过期，禁止运行。
+
+## 2026-11-24｜PR #40 M1 序列白名单与 M2 候选包收口
+
+- **M1 修复** · 迁移 `0001_workbuddy_v22.sql` 中 `audit.excel_formula_index.formula_id BIGSERIAL` 产生的唯一合法序列 `audit.excel_formula_index_formula_id_seq` 已纳入精确对象清单，并校验 PostgreSQL `pg_depend` 将它归属到指定表列。额外未知序列仍触发拒绝且测试确认对象保留；完整对象清单继续严格比较，不忽略任何 `relkind=S`。
+- **M1 验证** · 本地 `test_run_once_artifact.py` 新增候选包状态覆盖通过，2项环境门禁跳过；本地PG17集成类的7项测试因无容器均跳过，不能据此报告本地PG17通过。最终结果以本提交精确SHA的GitHub Actions 9项主CI和独立API/契约检查为准。
+- **M2 构建能力** · 新增固定SHA候选包构建脚本，只接受干净精确HEAD、固定哈希WorkBuddy ZIP与已通过的九项PR CI证明；输出标记 `UNAPPROVED_TEST_CANDIDATE`，运行器拒绝缺少该标记的归档，构建器不覆盖旧文件。
+- **M2 验收边界** · 候选包生成和包内散列/源码bundle验证完成后，再记录其私有候选资产SHA。最终包的 root runner 全流程、f6d8 systemd升级、整包数据导入、主机HTTP/浏览器、加密备份独立恢复与回切没有完整模拟环境时均标 `NOT_RUN`；GitHub PG17作业不是主机验收。未触碰真实Lighthouse或Google Drive。
+- **业务边界** · 本轮只修复PR #40合法序列白名单并收口第一阶段测试候选；不推进PR #42/Issue #41的Excel管理、员工注册、会员、正式POS经营功能。PR #40仍为Draft，候选包未经负责人对精确SHA的M3授权不得执行。

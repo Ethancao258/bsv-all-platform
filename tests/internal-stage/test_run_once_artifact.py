@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
 import os
 import re
 import shutil
@@ -12,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "platform/lighthouse/internal-stage/run-once.sh"
+BUILDER = ROOT / "scripts/build_pr40_candidate.py"
 MARKER = re.compile(r"<<'([A-Za-z][A-Za-z0-9_]*)'")
 
 
@@ -47,6 +49,8 @@ class RunOnceArtifactTests(unittest.TestCase):
             for number, (_marker, source) in enumerate(blocks, 1):
                 ast.parse(source, filename=f"run-once-{number}.py")
                 (out / f"run-once-{number:02}.py").write_text(source, encoding="utf-8")
+            if not shutil.which("ruff"):
+                self.skipTest("ruff is installed by the CI job; local binary is unavailable")
             subprocess.run(["ruff", "check", "--isolated", "--select", "F821", str(out)], check=True)
 
     @unittest.skipUnless(shutil.which("sudo") and os.geteuid() != 0,
@@ -80,6 +84,9 @@ class RunOnceArtifactTests(unittest.TestCase):
         self.assertLess(script.index("CATALOG_CONTENT_PREFLIGHT"), script.index("DEPLOYMENT_ATTEMPTED=1"))
         self.assertIn("unregistered schemas", (ROOT / "services/api/bsv1/bsv_catalog_import.py").read_text())
         self.assertIn("SAFE_RESUME_IDEMPOTENT_NOOP", script)
+        self.assertIn("candidateStatus", script)
+        self.assertIn("UNAPPROVED_TEST_CANDIDATE", script)
+        compile(BUILDER.read_text(encoding="utf-8"), str(BUILDER), "exec")
         self.assertIn("--audit-existing --approvals-dir", script)
         self.assertIn("CATALOG_CONTENT_ROLLBACK=NOT_PERFORMED", script)
         self.assertIn("Post-deploy failure/interruption", script)
@@ -89,8 +96,20 @@ class RunOnceArtifactTests(unittest.TestCase):
         self.assertRegex(script, r"bsvr_\[a-f0-9\]\{8\}_\[0-9\]\{14\}_\[a-f0-9\]\{16\}")
         self.assertIn("SUCCESS_WORKTREE=CLEANED_AFTER_ALL_ACCEPTANCE_GATES", script)
         self.assertIn("flock -n 9", script)
-        self.assertIn("bsv_identity_isolated_catalog_restore_", script)  # legacy residue is scanned, never blindly removed
+        self.assertIn("bsv_identity_isolated_catalog_restore_", script)
         self.assertNotIn('restore_db="bsv_identity_isolated_catalog_restore_', script)
+
+    def test_candidate_builder_labels_archive_and_documents_host_gates(self):
+        module_spec = importlib.util.spec_from_file_location("pr40_candidate_builder", BUILDER)
+        module = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(module)
+        proof = {"url": "https://github.com/Ethancao258/bsv-all-platform/actions/runs/123",
+                 "headSha": "a" * 40}
+        report = module.make_report("a" * 40, proof, module.WORKBUDDY_SHA256)
+        self.assertEqual(set(report), {"ACCEPTANCE_TEMPLATE.md", "TRANSFER_AND_EXECUTION.md",
+                                      "DEPLOYMENT_REHEARSAL_REPORT.md"})
+        self.assertIn(b"UNAPPROVED_TEST_CANDIDATE", report["TRANSFER_AND_EXECUTION.md"])
+        self.assertIn(b"NOT_RUN", report["DEPLOYMENT_REHEARSAL_REPORT.md"])
 
 
 if __name__ == "__main__":

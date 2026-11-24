@@ -64,6 +64,12 @@ EXPECTED_CATALOG_RELATIONS = {
 } | {
     ("audit", name, "VIEW") for name in ("source_record_staff", "source_record_confidential")
 } | {("bsv_isolated_migration", "applied", "BASE TABLE")}
+EXPECTED_CATALOG_RELATIONS |= {
+    # PostgreSQL creates this owned sequence for the BIGSERIAL primary key in
+    # 0001_workbuddy_v22.sql. Keep it explicit: ignoring all relkind=S objects
+    # would allow unrelated sequences to hide in the catalog database.
+    ("audit", "excel_formula_index_formula_id_seq", "SEQUENCE"),
+}
 EXPECTED_MIGRATIONS = (
     ("0001_workbuddy_v22", MIGRATION),
     ("0002_catalog_reader_least_privilege", MIGRATION.with_name("0002_catalog_reader_least_privilege.sql")),
@@ -384,6 +390,25 @@ def _catalog_layout_state(conn) -> tuple[str, set[tuple[str, str, str]]]:
         return "EMPTY", relations
     if relations != EXPECTED_CATALOG_RELATIONS:
         raise RuntimeError("catalog database relations are partial or unregistered; preserve data and stop")
+    with conn.cursor() as cur:
+        cur.execute("""SELECT seq_ns.nspname, seq.relname, dep.deptype,
+                              table_ns.nspname, table_rel.relname, column_info.attname
+                       FROM pg_class seq
+                       JOIN pg_namespace seq_ns ON seq_ns.oid=seq.relnamespace
+                       JOIN pg_depend dep ON dep.classid='pg_class'::regclass AND dep.objid=seq.oid
+                       JOIN pg_class table_rel ON table_rel.oid=dep.refobjid
+                       JOIN pg_namespace table_ns ON table_ns.oid=table_rel.relnamespace
+                       JOIN pg_attribute column_info ON column_info.attrelid=table_rel.oid
+                                                    AND column_info.attnum=dep.refobjsubid
+                       WHERE seq.relkind='S' AND seq_ns.nspname='audit'
+                         AND seq.relname='excel_formula_index_formula_id_seq'
+                         AND dep.deptype='a'""")
+        sequence_ownership = cur.fetchall()
+    if sequence_ownership != [(
+        "audit", "excel_formula_index_formula_id_seq", "a",
+        "audit", "excel_formula_index", "formula_id",
+    )]:
+        raise RuntimeError("registered catalog sequence is not owned by the expected BIGSERIAL column")
     if unknown_code_objects:
         raise RuntimeError("catalog database contains unregistered callable/type objects; preserve data and stop")
     with conn.cursor() as cur:

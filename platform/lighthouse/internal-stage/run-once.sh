@@ -79,6 +79,9 @@ expected={'repo.bundle','ci-proof.json','workbuddy-v22.zip','SHA256SUMS','run-on
 items=list(p.iterdir())
 if {x.name for x in items}!=expected or any(x.is_symlink() or not x.is_file() for x in items):
     raise SystemExit('BLOCKED: unexpected or unsafe delivery package contents')
+proof=json.loads((p/'ci-proof.json').read_text(encoding='utf-8'))
+if proof.get('candidateStatus')!='UNAPPROVED_TEST_CANDIDATE':
+    raise SystemExit('BLOCKED: package is not explicitly marked UNAPPROVED_TEST_CANDIDATE')
 PY
 
 # Fresh private checkout per attempt. A previous work tree is never deleted or rewritten.

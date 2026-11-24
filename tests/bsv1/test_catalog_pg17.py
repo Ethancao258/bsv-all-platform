@@ -114,6 +114,14 @@ class CatalogPostgres17Tests(unittest.TestCase):
         admin_conn = importer._connect()
         try:
             self.assertEqual(importer.migrate(admin_conn), "ALREADY_APPLIED+ALREADY_APPLIED+ALREADY_APPLIED")
+            layout, relations = importer._catalog_layout_state(admin_conn)
+            self.assertEqual(layout, "MANAGED_SCHEMA")
+            self.assertEqual(relations, importer.EXPECTED_CATALOG_RELATIONS)
+            self.assertIn(("audit", "excel_formula_index_formula_id_seq", "SEQUENCE"), relations)
+            owned_sequence = admin_conn.execute(
+                "SELECT pg_get_serial_sequence('audit.excel_formula_index','formula_id')"
+            ).fetchone()[0]
+            self.assertEqual(owned_sequence, "audit.excel_formula_index_formula_id_seq")
         finally:
             admin_conn.close()
         # Exercise a real SCRAM login as the exact non-superuser used by the
@@ -355,6 +363,15 @@ class CatalogPostgres17Tests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "unregistered schemas"):
                         importer.inspect_existing_import(package, archive, approvals)
                     conn.execute("DROP SCHEMA preflight_unregistered CASCADE")
+                    conn.commit()
+                    conn.execute("CREATE SEQUENCE audit.unregistered_preflight_seq")
+                    conn.commit()
+                    with self.assertRaisesRegex(RuntimeError, "relations are partial or unregistered"):
+                        importer.inspect_existing_import(package, archive, approvals)
+                    self.assertTrue(conn.execute(
+                        "SELECT to_regclass('audit.unregistered_preflight_seq') IS NOT NULL"
+                    ).fetchone()[0], "the rejected unknown sequence must remain untouched")
+                    conn.execute("DROP SEQUENCE audit.unregistered_preflight_seq")
                     conn.commit()
                     conn.execute("CREATE FUNCTION public.unregistered_preflight_fn() RETURNS integer "
                                  "LANGUAGE SQL AS 'SELECT 1'")

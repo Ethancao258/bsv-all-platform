@@ -36,6 +36,13 @@ The generated private package pins the exact PR commit, CI proof, and WorkBuddy 
 
 Required TAT settings: user `root`; working directory `/home/ubuntu`; timeout `3600` seconds. Host/browser results are pending the owner-run TAT action and must be recorded separately from CI.
 
+## 2026-11-24 M1 sequence allowlist and M2 candidate packaging
+
+- PostgreSQL 17's `0001_workbuddy_v22.sql` creates exactly one migration-owned sequence: `audit.excel_formula_index_formula_id_seq`, backing `audit.excel_formula_index.formula_id BIGSERIAL`. The importer now registers that exact relation and verifies its `pg_depend` ownership edge (`deptype='a'`) to that exact column. It still compares the complete non-system relation set and rejects any extra sequence, table, view, schema, function, or user type without removing the unexpected object.
+- The real PG17 regression requires the exact post-migration relation inventory, verifies `pg_get_serial_sequence`, exercises idempotent migration replay, and attempts an extra sequence that must be rejected and left intact. GitHub's `bsv1` CI job runs the test against `postgres:17`; local Docker could not create a container because the workspace filesystem is full.
+- `scripts/build_pr40_candidate.py` builds a deterministic fixed-SHA package only from a clean exact checkout, the pinned WorkBuddy ZIP hash, and a validated successful nine-job PR CI proof. The package is explicitly labeled `UNAPPROVED_TEST_CANDIDATE`; `run-once.sh` rejects packages missing this marker. The builder refuses to overwrite an existing output.
+- Candidate contents can be checksum/source-bundle verified on the GitHub Actions evidence and locally after building. A complete invocation of the exact root runner through old-version upgrade, data import, encrypted backup, independent recovery, HTTP/browser checks, and rollback still requires the systemd/PG17 rehearsal host. Until actually run, those end-to-end items remain `NOT_RUN`; this candidate is not deployment approval.
+
 ## 2026-11-24 database-state gate update
 
 - Before bsvctl deploy, the versioned stage.py --catalog-preflight uses read-only peer queries against the already-running PG17 cluster. It checks database owner, exact managed roles and memberships, loopback HBA policy/evidence, PUBLIC CONNECT, server identifier limit, and non-system schemas/relations/routines/types. It does not create roles/database, alter HBA, repair ownership, or start PostgreSQL.
