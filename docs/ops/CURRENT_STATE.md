@@ -265,4 +265,4 @@
 - **安全验证状态** · Python编译、Bash语法与 `git diff --check` 已通过。此执行环境缺少 pytest、SQLAlchemy、psycopg及可用PG测试环境，新增真实PG17/peer/SCRAM测试尚未本地运行，等PR CI；不得将其记为PASS。实际Lighthouse仍为 `HOST_NOT_RUN`，WorkBuddy V2.2真实导入、网页查询、备份恢复及旧版保护未在主机复验。
 - **BSV-B 独立交付** · PR #42 `feature/bsv-b-excel-ingestion` 已交付受控Excel七表字段校验、来源哈希/ID关系检查及差异预览；5项新增测试与本地既有BSV1测试通过，PR CI run `45304293209` 九项通过。状态为 `PREVIEW_ONLY`：Excel→批准签名数据包转换、双人审批与PG事务提交/版本回退未实现，不能导入生产或替代PR #40。
 - **交付边界** · PR #40仍未合并，PR #42以PR #40分支为base。两者均未部署；旧版8765/8767、CloudBase、真实订单、员工身份及支付均未触碰。新SHA的完整CI与主机部署结果必须以本记录后续更新为准。
-- **CI定向修复** · `cab7b8c` 的首次CI将真实服务角色测试错误设为 `SET SESSION AUTHORIZATION`，并且恢复测试DSN未使用受管端口；已在 `9c8fbfe` 改为真实runtime SCRAM登录和固定端口。该SHA在隔离PG17恢复测试中进一步发现 `pg_restore` 将 `-` 误作为文件名；当前代码改为从stdin读取且不传文件名，等待新CI确认。上述中间SHA存在失败作业，不作为放行证据。
+- **CI定向修复** · `cab7b8c` 的首次CI将真实服务角色测试错误设为 `SET SESSION AUTHORIZATION`，并且恢复测试DSN未使用受管端口；已在 `9c8fbfe` 改为真实runtime SCRAM登录和固定端口。`bcd43af` 移除 `pg_restore` 标准输入调用中的伪文件名。`b5fd72a` 后的新CI又确认拒绝测试需导入 psycopg 并把SQLAlchemy DSN scheme转成psycopg原生URI；当前已修正。中间SHA存在失败作业，不作为放行证据。
