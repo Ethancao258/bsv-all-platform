@@ -181,7 +181,8 @@ hba = subprocess.check_output([
     "FROM pg_hba_file_rules"], text=True).strip()
 assert hba == "1|0|0|0", hba
 try:
-    psycopg.connect(catalog_restore_url, connect_timeout=3)
+    tcp_probe_url = catalog_restore_url.replace(":18764/", f":{os.environ['BSV_PG_TEST_PORT']}/")
+    psycopg.connect(tcp_probe_url, connect_timeout=3)
 except psycopg.OperationalError as exc:
     assert "no pg_hba.conf entry" in str(exc), str(exc)
 else:

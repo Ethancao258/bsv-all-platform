@@ -18,13 +18,13 @@ docker run -d --name "$name" -p 127.0.0.1::5432 --tmpfs /var/lib/postgresql/data
     -e POSTGRES_PASSWORD="$pg_password" -e POSTGRES_HOST_AUTH_METHOD=scram-sha-256 \
     -e POSTGRES_INITDB_ARGS='--auth-local=peer' -e POSTGRES_DB=bsv_identity_isolated postgres:17 >/dev/null
 port=$(docker port "$name" 5432 | sed -n 's/^127.0.0.1://p')
-export BSV_APP_ENV=isolated BSV_AUTH_PROVIDER=isolated BSV_DB_SSLMODE=disable BSV_PG_TEST_CONTAINER="$name" BSV_PG_TEST_PASSWORD="$pg_password"
+export BSV_APP_ENV=isolated BSV_AUTH_PROVIDER=isolated BSV_DB_SSLMODE=disable BSV_PG_TEST_CONTAINER="$name" BSV_PG_TEST_PASSWORD="$pg_password" BSV_PG_TEST_PORT="$port"
 export BSV_DB_A_URL="postgresql+psycopg://bsv_internal_app:apppw@127.0.0.1:$port/bsv_identity_isolated"
 export BSV_DB_B_READONLY_URL="postgresql+psycopg://bsv_reference:referencepw@127.0.0.1:$port/bsv_identity_isolated"
 export BSV_IDENTITY_PG_RESTORE_URL="postgresql+psycopg://bsv_internal_app:apppw@127.0.0.1:$port/bsv_identity_isolated_restore"
 export BSV_CATALOG_PG_URL="postgresql+psycopg://bsv_catalog_importer:catalogpw@127.0.0.1:$port/bsv_all_prod"
 catalog_restore_db="bsv_identity_isolated_catalog_restore_${tmp##*.}_$$"
-export BSV_CATALOG_PG_RESTORE_URL="postgresql+psycopg://bsvint-postgres@127.0.0.1:$port/$catalog_restore_db"
+export BSV_CATALOG_PG_RESTORE_URL="postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/$catalog_restore_db"
 export BSV_LOCAL_ARCHIVE_DIR="$tmp/archives" BSV_BACKUP_KEY_FILE="$tmp/key"
 unset BSV_DATA_SOURCES_FILE
 for attempt in {1..40}; do

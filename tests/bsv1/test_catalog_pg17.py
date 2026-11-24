@@ -105,13 +105,17 @@ class CatalogPostgres17Tests(unittest.TestCase):
         cls.http_port = cls.http_server.server_address[1]
 
     def test_migration_replay_and_pg_read_role(self):
-        conn = importer._connect()
+        admin_conn = importer._connect()
         try:
-            self.assertEqual(importer.migrate(conn), "ALREADY_APPLIED+ALREADY_APPLIED+ALREADY_APPLIED")
-            # Exercise the same non-superuser identity used by the service, rather
-            # than testing grants while still authenticated as the database owner.
+            self.assertEqual(importer.migrate(admin_conn), "ALREADY_APPLIED+ALREADY_APPLIED+ALREADY_APPLIED")
+        finally:
+            admin_conn.close()
+        # Exercise a real SCRAM login as the exact non-superuser used by the
+        # service. SET SESSION AUTHORIZATION requires superuser and would hide
+        # mistakes in the runtime connection contract.
+        conn = psycopg.connect(os.environ["BSV_DB_URL"])
+        try:
             conn.autocommit = True
-            conn.execute("SET SESSION AUTHORIZATION bsv_catalog_runtime")
             conn.execute("SET ROLE bsv_catalog_reader")
             with self.assertRaises(psycopg.errors.InsufficientPrivilege):
                 conn.execute("UPDATE catalog.product SET name_zh='must fail' WHERE product_id='C000001'")
