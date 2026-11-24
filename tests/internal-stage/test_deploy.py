@@ -56,17 +56,17 @@ class ReleaseTest(unittest.TestCase):
                 "SHOW max_identifier_length": "63",
                 "FROM pg_database WHERE datname='bsv_all_prod'": "bsv_catalog_importer",
                 "pg_hba_file_rules WHERE error IS NOT NULL": "0",
-                "FROM pg_roles WHERE rolname='bsv_catalog_runtime'": "true|false|false|false|false|false|false",
-                "FROM pg_roles WHERE rolname='bsv_catalog_importer'": "true|false|false|false|false|false|false",
-                "FROM pg_roles WHERE rolname='bsv_catalog_reader'": "false|false|false|false|false|true|false",
-                "FROM pg_roles WHERE rolname='bsv_catalog_confidential_reader'": "false|false|false|false|false|true|false",
+                "FROM pg_roles WHERE rolname='bsv_catalog_runtime'": "t|f|f|f|f|f|f",
+                "FROM pg_roles WHERE rolname='bsv_catalog_importer'": "t|f|f|f|f|f|f",
+                "FROM pg_roles WHERE rolname='bsv_catalog_reader'": "f|f|f|f|f|t|f",
+                "FROM pg_roles WHERE rolname='bsv_catalog_confidential_reader'": "f|f|f|f|f|t|f",
                 "WHERE member.rolname='bsv_catalog_runtime'": "bsv_catalog_confidential_reader,bsv_catalog_reader",
                 "WHERE member.rolname='bsv_catalog_importer'": "",
                 "WHERE member.rolname='bsv_catalog_reader'": "",
                 "WHERE member.rolname='bsv_catalog_confidential_reader'": "bsv_catalog_reader",
                 "granted_role.rolname||'>'||member.rolname": ",".join(stage.EXPECTED_CATALOG_ROLE_GRAPH),
                 "has_database_privilege": "t",
-                "a.grantee=0": "false",
+                "a.grantee=0": "f",
                 "FROM pg_namespace ": "public",
                 "AND t.typrelid=0 AND t.typelem=0)": "0",
             }
@@ -86,6 +86,10 @@ class ReleaseTest(unittest.TestCase):
                     patch.object(stage.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=os.getuid())), \
                     patch.object(stage, "user", return_value="bsvint-postgres"):
                 result = stage.catalog_database_preflight(NEW)
+                responses["a.grantee=0"] = "t"
+                with self.assertRaisesRegex(RuntimeError, "connectable by PUBLIC"):
+                    stage.catalog_database_preflight(NEW)
+                responses["a.grantee=0"] = "f"
                 responses["granted_role.rolname||'>'||member.rolname"] = (
                     "bsv_catalog_reader>bsv_catalog_runtime,unexpected_role>bsv_catalog_runtime")
                 with self.assertRaisesRegex(RuntimeError, "unregistered membership"):

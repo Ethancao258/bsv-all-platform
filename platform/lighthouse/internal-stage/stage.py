@@ -308,10 +308,10 @@ def catalog_database_preflight(sha):
         raise RuntimeError("PostgreSQL reports an invalid HBA rule; preserve and stop")
 
     expected_flags = {
-        CATALOG_RUNTIME_USER: "true|false|false|false|false|false|false",
-        CATALOG_IMPORT_USER: "true|false|false|false|false|false|false",
-        "bsv_catalog_reader": "false|false|false|false|false|true|false",
-        "bsv_catalog_confidential_reader": "false|false|false|false|false|true|false",
+        CATALOG_RUNTIME_USER: "t|f|f|f|f|f|f",
+        CATALOG_IMPORT_USER: "t|f|f|f|f|f|f",
+        "bsv_catalog_reader": "f|f|f|f|f|t|f",
+        "bsv_catalog_confidential_reader": "f|f|f|f|f|t|f",
     }
     for role, expected in expected_flags.items():
         actual = _catalog_peer_psql(
@@ -340,7 +340,7 @@ def catalog_database_preflight(sha):
         "postgres", f"SELECT EXISTS (SELECT 1 FROM pg_database d, "
         "LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a "
         f"WHERE d.datname='{CATALOG_DB}' AND a.grantee=0 AND a.privilege_type='CONNECT')")
-    if public_connect == "true":
+    if public_connect != "f":
         raise RuntimeError("Existing catalog database is connectable by PUBLIC; preserve and stop")
 
     schemas = _catalog_peer_psql(

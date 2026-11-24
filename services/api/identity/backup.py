@@ -29,6 +29,7 @@ MANAGED_PG_RESTORE_PEER_USER="bsvint-postgres"
 MANAGED_PG_RESTORE_SOCKET_DIR=Path("/var/lib/bsv-all-internal-stage/postgres")
 MANAGED_PG_RESTORE_BINARY=Path("/usr/lib/postgresql/17/bin/pg_restore")
 MANAGED_PG_RESTORE_PORT=18764
+MANAGED_CATALOG_RESTORE_DATABASE = re.compile(r"bsvr_[a-f0-9]{8}_[0-9]{14}_[a-f0-9]{16}")
 
 
 def get_key(path):
@@ -66,6 +67,23 @@ def _pg_env(url):
                 "PGDATABASE":unquote(u.path.lstrip("/")),"PGPASSWORD":unquote(u.password or ""),
                 "PGSSLMODE":os.getenv("BSV_DB_SSLMODE", "verify-full")})
     return env
+
+
+def _managed_catalog_restore_database(target):
+    """Validate the one disposable local catalog restore target, without widening migration guards."""
+    if not isinstance(target, str):
+        raise RuntimeError("Managed peer restore is restricted to a unique isolated catalog restore database")
+    normalized = target.replace("postgresql+psycopg://", "postgresql://", 1)
+    parsed = urlparse(normalized)
+    database = unquote(parsed.path.lstrip("/"))
+    if (parsed.scheme != "postgresql" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
+            or parsed.port != MANAGED_PG_RESTORE_PORT
+            or unquote(parsed.username or "") != MANAGED_PG_RESTORE_PEER_USER
+            or parsed.password is not None or parsed.query or parsed.fragment
+            or parsed.path != f"/{database}"
+            or not MANAGED_CATALOG_RESTORE_DATABASE.fullmatch(database)):
+        raise RuntimeError("Managed peer restore is restricted to a unique isolated catalog restore database")
+    return database
 
 
 def _input_stream(settings):
@@ -152,9 +170,8 @@ def _restore_postgres_peer(plain, target, *, peer_user, socket_dir, pg_restore_b
     OS service identity must own the configured socket directory.
     """
     env = _pg_env(target)
-    database = env["PGDATABASE"]
+    database = _managed_catalog_restore_database(target)
     if (peer_user != MANAGED_PG_RESTORE_PEER_USER
-            or not re.fullmatch(r"(?:bsvr_[a-f0-9]{8}_[0-9]{14}_[a-f0-9]{16}|bsv_identity_isolated_catalog_restore_[A-Za-z0-9_]+)", database)
             or env["PGUSER"] != peer_user
             or env["PGPORT"] != str(MANAGED_PG_RESTORE_PORT)
             or env["PGHOST"] not in {"127.0.0.1", "localhost", "::1"}):
@@ -224,20 +241,23 @@ def decrypt_to_isolated(archive, settings=None, target=None, dry_run=True, *, ma
             if dest.exists():raise RuntimeError("Target must not exist to avoid overwrite")
             shutil.copyfile(plain,dest);os.chmod(dest,0o600)
         elif meta["type"]=="postgresql":
-            from dataclasses import replace
-            from .cli import isolated_guard
-            isolated_guard(replace(s, db_a_url=target))
-            if _pg_env(target)["PGDATABASE"] == _pg_env(s.db_a_url)["PGDATABASE"]:
-                raise RuntimeError("Restore target must be distinct from source A")
             if managed_peer_restore:
                 if meta.get("source") != "catalog":
                     raise RuntimeError("Managed peer restore is reserved for authenticated catalog archives")
+                target_database = _managed_catalog_restore_database(target)
+                if target_database == _pg_env(s.db_a_url)["PGDATABASE"]:
+                    raise RuntimeError("Restore target must be distinct from source A")
                 _restore_postgres_peer(
                     plain, target, peer_user=MANAGED_PG_RESTORE_PEER_USER,
                     socket_dir=MANAGED_PG_RESTORE_SOCKET_DIR,
                     pg_restore_binary=MANAGED_PG_RESTORE_BINARY,
                 )
             else:
+                from dataclasses import replace
+                from .cli import isolated_guard
+                isolated_guard(replace(s, db_a_url=target))
+                if _pg_env(target)["PGDATABASE"] == _pg_env(s.db_a_url)["PGDATABASE"]:
+                    raise RuntimeError("Restore target must be distinct from source A")
                 if not shutil.which("pg_restore"):raise RuntimeError("pg_restore not installed")
                 env=_pg_env(target.replace("postgresql+psycopg","postgresql"))
                 subprocess.run(["pg_restore","--exit-on-error","--single-transaction","--no-owner","--no-privileges",

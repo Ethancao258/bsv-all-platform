@@ -101,6 +101,16 @@ class RunOnceArtifactTests(unittest.TestCase):
         self.assertIn("bsv_identity_isolated_catalog_restore_", script)
         self.assertNotIn('restore_db="bsv_identity_isolated_catalog_restore_', script)
 
+    def test_nonempty_config_expansions_and_managed_restore_environment_are_literal_shell(self):
+        script = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn('[[ ${BSV_APP_ENV:-} == isolated && ${BSV_ALLOW_ISOLATED_CATALOG_IMPORT:-} == 1 ]]', script)
+        self.assertIn('[[ ${BSV_CATALOG_ADMIN_DB_URL:-} == postgresql+psycopg://bsv_catalog_importer:*@127.0.0.1:18764/bsv_all_prod ]]', script)
+        self.assertNotIn(r'\${BSV_APP_ENV', script)
+        self.assertNotIn(r'\${BSV_ALLOW_ISOLATED_CATALOG_IMPORT', script)
+        self.assertNotIn(r'\${BSV_CATALOG_ADMIN_DB_URL', script)
+        restore = script[script.index('restore_url="postgresql+psycopg'):script.index(' --archive "$catalog_archive"')]
+        self.assertIn('PYTHONPATH="$ROOT/current/src" PYTHONDONTWRITEBYTECODE=1', restore)
+
     def test_candidate_builder_labels_archive_and_documents_host_gates(self):
         module_spec = importlib.util.spec_from_file_location("pr40_candidate_builder", BUILDER)
         module = importlib.util.module_from_spec(module_spec)

@@ -154,9 +154,9 @@ if [[ "$catalog_data_state" == NONEMPTY ]]; then
   set -a
   . "$config"
   set +a
-  [[ \${BSV_APP_ENV:-} == isolated && \${BSV_ALLOW_ISOLATED_CATALOG_IMPORT:-} == 1 ]] || \
+  [[ ${BSV_APP_ENV:-} == isolated && ${BSV_ALLOW_ISOLATED_CATALOG_IMPORT:-} == 1 ]] || \
     block 'existing importer configuration is not explicitly isolated'
-  [[ \${BSV_CATALOG_ADMIN_DB_URL:-} == postgresql+psycopg://bsv_catalog_importer:*@127.0.0.1:18764/bsv_all_prod ]] || \
+  [[ ${BSV_CATALOG_ADMIN_DB_URL:-} == postgresql+psycopg://bsv_catalog_importer:*@127.0.0.1:18764/bsv_all_prod ]] || \
     block 'existing importer DSN is not the registered loopback target'
   approvals="$IMPORT_DIR"
   if [[ ! -e "$approvals" && ! -L "$approvals" ]]; then
@@ -348,6 +348,7 @@ print(name)
 PY
 )
 restore_url="postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/$restore_db"
+PYTHONPATH="$ROOT/current/src" PYTHONDONTWRITEBYTECODE=1 \
 BSV_APP_ENV=isolated BSV_DB_A_URL="$BSV_CATALOG_ADMIN_DB_URL" BSV_DB_SSLMODE=disable \
 BSV_LOCAL_ARCHIVE_DIR="$DATA/catalog/archives" BSV_BACKUP_KEY_FILE="$DATA/catalog/backup.key" \
 BSV_BACKUP_SOURCE_LABEL=catalog "$ROOT/current/identity/bin/python" -m services.api.identity.backup restore \

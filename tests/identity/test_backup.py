@@ -104,3 +104,51 @@ def test_managed_catalog_restore_rejects_unmanaged_cluster_port(tmp_path):
     with pytest.raises(RuntimeError,match='unique isolated catalog restore database'):
         backup._restore_postgres_peer(tmp_path/'dump',target,peer_user='bsvint-postgres',
                                       socket_dir=tmp_path,pg_restore_binary=tmp_path/'pg_restore')
+
+
+@pytest.mark.parametrize("target", [
+    'postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/bsv_all_prod',
+    'postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/bsv_identity_isolated_catalog_restore_abc123_20261124_1',
+    'postgresql+psycopg://other@127.0.0.1:18764/bsvr_abc123de_20261124123456_0123456789abcdef',
+    'postgresql+psycopg://bsvint-postgres@example.com:18764/bsvr_abc123de_20261124123456_0123456789abcdef',
+    'postgresql+psycopg://bsvint-postgres@127.0.0.1:5432/bsvr_abc123de_20261124123456_0123456789abcdef',
+    'postgresql+psycopg://bsvint-postgres:secret@127.0.0.1:18764/bsvr_abc123de_20261124123456_0123456789abcdef',
+])
+def test_managed_catalog_restore_target_is_exact_and_dedicated(target):
+    import services.api.identity.backup as backup
+    with pytest.raises(RuntimeError, match="unique isolated catalog restore database"):
+        backup._managed_catalog_restore_database(target)
+
+
+def test_managed_catalog_restore_uses_exact_target_without_widening_identity_guard(tmp_path, monkeypatch):
+    import json
+    import struct
+    from types import SimpleNamespace
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from services.api.identity import backup
+    from services.api.identity import cli
+
+    key = b"k" * 32
+    nonce = b"n" * 12
+    header = json.dumps({"source": "catalog", "type": "postgresql"}, sort_keys=True).encode()
+    encryptor = Cipher(algorithms.AES(key), modes.GCM(nonce)).encryptor()
+    encryptor.authenticate_additional_data(header)
+    ciphertext = encryptor.update(b"test PostgreSQL archive") + encryptor.finalize()
+    archive = tmp_path / "catalog.bsvenc"
+    archive.write_bytes(backup.MAGIC + struct.pack(">I", len(header)) + header + nonce
+                        + ciphertext + encryptor.tag)
+    settings = SimpleNamespace(env="isolated", backup_key_file="unused",
+                               backup_dir=tmp_path,
+                               db_a_url="postgresql+psycopg://bsv_catalog_importer:secret@127.0.0.1:18764/bsv_all_prod")
+    calls = []
+    monkeypatch.setattr(backup, "get_key", lambda _path: key)
+    monkeypatch.setattr(cli, "isolated_guard", lambda *_args: pytest.fail("legacy identity guard must not run for the dedicated catalog restore lane"))
+    monkeypatch.setattr(backup, "_restore_postgres_peer", lambda *args, **kwargs: calls.append((args, kwargs)))
+
+    backup.decrypt_to_isolated(
+        archive, settings, target="postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/bsvr_abc123de_20261124123456_0123456789abcdef",
+        dry_run=False, managed_peer_restore=True)
+
+    assert len(calls) == 1
+    assert calls[0][0][1].endswith("/bsvr_abc123de_20261124123456_0123456789abcdef")
+    assert not list(tmp_path.glob("recovery-*"))
