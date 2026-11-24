@@ -73,6 +73,7 @@ cd "$PACKAGE_DIR"
 sha256sum --check --strict SHA256SUMS
 
 python3 - "$PACKAGE_DIR" <<'PY'
+import json
 import pathlib,sys
 p=pathlib.Path(sys.argv[1])
 expected={'repo.bundle','ci-proof.json','workbuddy-v22.zip','SHA256SUMS','run-once.sh','ACCEPTANCE_TEMPLATE.md','TRANSFER_AND_EXECUTION.md','DEPLOYMENT_REHEARSAL_REPORT.md'}
