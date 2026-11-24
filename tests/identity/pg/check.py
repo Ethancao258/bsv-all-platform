@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 
+import psycopg
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError, DBAPIError
 
