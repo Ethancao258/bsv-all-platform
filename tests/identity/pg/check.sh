@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ ${EUID} -ne 0 && "${BSV_IDENTITY_PG_ROOT_TEST:-}" != 1 ]]; then
-    root_env=("PATH=$PATH" "BSV_IDENTITY_PG_ROOT_TEST=1")
+    root_env=("PATH=$PATH" "PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
+              "BSV_IDENTITY_PG_ROOT_TEST=1")
     for key in BSV_STAGE_SUPPLY_PYTHON BSV_STAGE_BROWSER BSV_STAGE_UI_ARTIFACTS BSV_G1_UI_ARTIFACTS; do
         if [[ -n "${!key:-}" ]]; then root_env+=("$key=${!key}"); fi
     done
