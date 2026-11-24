@@ -154,7 +154,7 @@ def _restore_postgres_peer(plain, target, *, peer_user, socket_dir, pg_restore_b
     env = _pg_env(target)
     database = env["PGDATABASE"]
     if (peer_user != MANAGED_PG_RESTORE_PEER_USER
-            or not re.fullmatch(r"bsv_identity_isolated_catalog_restore_[A-Za-z0-9_]+", database)
+            or not re.fullmatch(r"(?:bsvr_[a-f0-9]{8}_[0-9]{14}_[a-f0-9]{16}|bsv_identity_isolated_catalog_restore_[A-Za-z0-9_]+)", database)
             or env["PGUSER"] != peer_user
             or env["PGPORT"] != str(MANAGED_PG_RESTORE_PORT)
             or env["PGHOST"] not in {"127.0.0.1", "localhost", "::1"}):

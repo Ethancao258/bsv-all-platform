@@ -33,6 +33,18 @@ NEW = "2" * 40
 
 
 class ReleaseTest(unittest.TestCase):
+    def test_catalog_restore_database_name_respects_supplied_server_limit(self):
+        for limit in (63, 48):
+            name = stage.catalog_restore_database_name(
+                NEW, limit, timestamp="20261124123456", nonce="0123456789abcdef")
+            self.assertLessEqual(len(name.encode("ascii")), limit)
+            self.assertRegex(name, r"^bsvr_2{8}_20261124123456_0123456789abcdef$")
+        with self.assertRaisesRegex(RuntimeError, "max_identifier_length"):
+            stage.catalog_restore_database_name(
+                NEW, 12, timestamp="20261124123456", nonce="0123456789abcdef")
+        with self.assertRaisesRegex(ValueError, "full lowercase Git SHA"):
+            stage.catalog_restore_database_name("ABC", 63)
+
     def test_catalog_hba_upgrade_is_additive_and_refuses_drift(self):
         baseline, target = stage._catalog_hba_policies()
         self.assertEqual(stage._catalog_hba_target(baseline), target)

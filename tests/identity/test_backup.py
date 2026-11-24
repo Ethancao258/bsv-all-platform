@@ -80,7 +80,7 @@ def test_managed_catalog_restore_uses_exact_local_peer_lane(tmp_path, monkeypatc
         called['args']=args;called['stdin']=kwargs['stdin'];called['env']=kwargs['env'];called['cwd']=kwargs['cwd']
         return type('Result',(),{'returncode':0})()
     monkeypatch.setattr(backup.subprocess,'run',run)
-    target='postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/bsv_identity_isolated_catalog_restore_abc123_20261124_1'
+    target='postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/bsvr_abc123de_20261124123456_0123456789abcdef'
     backup._restore_postgres_peer(archive,target,peer_user='bsvint-postgres',socket_dir=socket_dir,pg_restore_binary=binary)
     args=called['args']
     assert args[:4]==['/usr/sbin/runuser','-u','bsvint-postgres','--']

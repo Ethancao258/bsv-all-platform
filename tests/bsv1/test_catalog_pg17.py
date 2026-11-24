@@ -6,6 +6,7 @@ import sys
 import tempfile
 import threading
 import http.client
+import importlib.util
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -22,6 +23,10 @@ else:
 import bsv_catalog_import as importer
 from bsv_catalog_repository import PostgresCatalogReadRepository
 import app
+_stage_spec = importlib.util.spec_from_file_location(
+    "catalog_test_stage", ROOT / "platform/lighthouse/internal-stage/stage.py")
+stage = importlib.util.module_from_spec(_stage_spec)
+_stage_spec.loader.exec_module(stage)
 
 SHA = "a" * 64
 
@@ -346,6 +351,20 @@ class CatalogPostgres17Tests(unittest.TestCase):
                 with patch.object(importer, "_verified_package", return_value=(wrong_manifest, "d" * 64, {})):
                     with self.assertRaisesRegex(RuntimeError, "active catalog state differs"):
                         importer.inspect_existing_import(package, archive, approvals)
+
+    def test_restore_database_identifier_uses_live_pg17_limit(self):
+        conn = importer._connect()
+        try:
+            limit = int(conn.execute("SHOW max_identifier_length").fetchone()[0])
+        finally:
+            conn.close()
+        name = stage.catalog_restore_database_name(
+            "a" * 40, limit, timestamp="20261124123456", nonce="0123456789abcdef")
+        self.assertEqual(name, "bsvr_aaaaaaaa_20261124123456_0123456789abcdef")
+        self.assertLessEqual(len(name.encode("ascii")), limit)
+        with self.assertRaisesRegex(RuntimeError, "too small"):
+            stage.catalog_restore_database_name(
+                "a" * 40, 8, timestamp="20261124123456", nonce="0123456789abcdef")
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls, "http_server"):

@@ -78,6 +78,22 @@ def user(name):
     return "bsvint-" + name
 
 
+def catalog_restore_database_name(source_sha, max_identifier_length, *, timestamp=None, nonce=None):
+    """Return a unique ASCII restore DB name that fits this server's limit."""
+    if not re.fullmatch(r"[a-f0-9]{40}", source_sha):
+        raise ValueError("restore source SHA must be a full lowercase Git SHA")
+    if not isinstance(max_identifier_length, int) or max_identifier_length < 1:
+        raise ValueError("PostgreSQL max_identifier_length must be a positive integer")
+    timestamp = timestamp or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    nonce = nonce or secrets.token_hex(8)
+    if not re.fullmatch(r"[0-9]{14}", timestamp) or not re.fullmatch(r"[a-f0-9]{16}", nonce):
+        raise ValueError("restore database timestamp or uniqueness token is invalid")
+    name = f"bsvr_{source_sha[:8]}_{timestamp}_{nonce}"
+    if len(name.encode("ascii")) > max_identifier_length:
+        raise RuntimeError("PostgreSQL max_identifier_length is too small for a safe restore database name")
+    return name
+
+
 def as_user(name, *args, **kwargs):
     # TAT may invoke us from a root-only private package directory. runuser keeps
     # the caller's cwd by default, and the service account cannot enter that

@@ -273,15 +273,17 @@ if catalog.get('source')!='catalog' or catalog.get('database')!='bsv_all_prod' o
 print(catalog['archive'])
 PY
 )
-restore_db="bsv_identity_isolated_catalog_restore_${SHA:0:8}_$(date -u +%Y%m%dT%H%M%S)_$$"
-python3 - "$WORK/repo" "$restore_db" <<'PY'
+restore_db=$(python3 - "$WORK/repo" "$SHA" <<'PY'
 import subprocess, sys
 from pathlib import Path
 sys.path.insert(0,str(Path(sys.argv[1])/'platform/lighthouse/internal-stage'))
 import stage
-name=sys.argv[2]
-if not name.startswith('bsv_identity_isolated_catalog_restore_'):
-  raise SystemExit('BLOCKED: unsafe temporary restore database name')
+source_sha=sys.argv[2]
+common=['-XAt','-h',stage.DATA/'postgres','-p',str(stage.PORTS['postgres']),'-U',stage.user('postgres'),'-d','postgres','-v','ON_ERROR_STOP=1']
+limit_result=stage.as_user('postgres',stage.PG/'psql',*common,'-c','SHOW max_identifier_length',
+    env={'PATH':str(stage.PG)+':/usr/bin:/bin'},stdout=subprocess.PIPE)
+limit=int(limit_result.stdout.strip())
+name=stage.catalog_restore_database_name(source_sha,limit)
 exists=stage.as_user('postgres',stage.PG/'psql','-XAt','-h',stage.DATA/'postgres','-p',str(stage.PORTS['postgres']),
                     '-U',stage.user('postgres'),'-d','postgres','-v','ON_ERROR_STOP=1',
                     '-c',f"SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname='{name}')",
@@ -289,7 +291,9 @@ exists=stage.as_user('postgres',stage.PG/'psql','-XAt','-h',stage.DATA/'postgres
 if exists!='f': raise SystemExit('BLOCKED: isolated restore target name already exists; preserved')
 stage.as_user('postgres',stage.PG/'createdb','-T','template0','-O',stage.CATALOG_IMPORT_USER,
               '-h',stage.DATA/'postgres','-p',str(stage.PORTS['postgres']),'-U',stage.user('postgres'),name)
+print(name)
 PY
+)
 restore_url="postgresql+psycopg://bsvint-postgres@127.0.0.1:18764/$restore_db"
 BSV_APP_ENV=isolated BSV_DB_A_URL="$BSV_CATALOG_ADMIN_DB_URL" BSV_DB_SSLMODE=disable \
 BSV_LOCAL_ARCHIVE_DIR="$DATA/catalog/archives" BSV_BACKUP_KEY_FILE="$DATA/catalog/backup.key" \
@@ -302,17 +306,27 @@ sys.path.insert(0,str(Path(sys.argv[1])/'platform/lighthouse/internal-stage'))
 import stage
 name=sys.argv[2];counts=json.load(open(sys.argv[3],encoding='utf-8'))['counts']
 source_sha=json.load(open(sys.argv[4],encoding='utf-8'))['source_sha256']
-prefix='bsv_identity_isolated_catalog_restore_'
-if not name.startswith(prefix):
+prefix='bsvr_'
+legacy_prefix='bsv_identity_isolated_catalog_restore_'
+if not re.fullmatch(r'bsvr_[a-f0-9]{8}_[0-9]{14}_[a-f0-9]{16}',name):
   raise SystemExit('BLOCKED: restore query is outside a unique isolated database')
+limit_output=stage.as_user('postgres',stage.PG/'psql','-XAt','-h',stage.DATA/'postgres',
+    '-p',str(stage.PORTS['postgres']),'-U',stage.user('postgres'),'-d','postgres',
+    '-v','ON_ERROR_STOP=1','-c','SHOW max_identifier_length',
+    env={'PATH':str(stage.PG)+':/usr/bin:/bin'},stdout=subprocess.PIPE).stdout.strip()
+identifier_limit=int(limit_output)
 found=stage.as_user('postgres',stage.PG/'psql','-XAt','-h',stage.DATA/'postgres',
     '-p',str(stage.PORTS['postgres']),'-U',stage.user('postgres'),'-d','postgres',
-    '-v','ON_ERROR_STOP=1','-c',"SELECT datname FROM pg_database WHERE left(datname,"+str(len(prefix))+ ")='"+prefix+"' ORDER BY datname",
+    '-v','ON_ERROR_STOP=1','-c',"SELECT datname FROM pg_database WHERE left(datname,"+str(len(prefix))+ ")='"+prefix+"' OR left(datname,"+str(len(legacy_prefix))+ ")='"+legacy_prefix+"' ORDER BY datname",
     env={'PATH':str(stage.PG)+':/usr/bin:/bin'},stdout=subprocess.PIPE).stdout.splitlines()
 names=[item.strip() for item in found if item.strip()]
 if name not in names: raise SystemExit('BLOCKED: current restore database is not in the managed temporary namespace')
-if any(not re.fullmatch(r'bsv_identity_isolated_catalog_restore_[a-f0-9]{8}_[0-9]{8}T[0-9]{6}_[0-9]+',item) for item in names):
+if any(not (re.fullmatch(r'bsvr_[a-f0-9]{8}_[0-9]{14}_[a-f0-9]{16}',item)
+            or re.fullmatch(r'bsv_identity_isolated_catalog_restore_[a-f0-9]{8}_[0-9]{8}T[0-9]{6}_[0-9]+',item))
+       for item in names):
   raise SystemExit('BLOCKED: unexpected temporary restore database name; preserve all')
+if any(len(item.encode('utf-8'))>identifier_limit for item in names):
+  raise SystemExit('BLOCKED: retained restore database name exceeds server max_identifier_length; preserve all')
 verified=[]
 for candidate in names:
   owner=stage.as_user('postgres',stage.PG/'psql','-XAt','-h',stage.DATA/'postgres',

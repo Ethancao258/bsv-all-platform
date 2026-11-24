@@ -81,6 +81,13 @@ class RunOnceArtifactTests(unittest.TestCase):
         self.assertIn("CATALOG_CONTENT_ROLLBACK=NOT_PERFORMED", script)
         self.assertIn("Post-deploy failure/interruption", script)
         self.assertNotIn("--approver root", script)
+        self.assertIn("max_identifier_length", script)
+        self.assertIn("catalog_restore_database_name(source_sha,limit)", script)
+        self.assertRegex(script, r"bsvr_\[a-f0-9\]\{8\}_\[0-9\]\{14\}_\[a-f0-9\]\{16\}")
+        self.assertIn("SUCCESS_WORKTREE=CLEANED_AFTER_ALL_ACCEPTANCE_GATES", script)
+        self.assertIn("flock -n 9", script)
+        self.assertIn("bsv_identity_isolated_catalog_restore_", script)  # legacy residue is scanned, never blindly removed
+        self.assertNotIn('restore_db="bsv_identity_isolated_catalog_restore_', script)
 
 
 if __name__ == "__main__":
