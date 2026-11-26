@@ -1,0 +1,205 @@
+{
+  "version": "2026-11-26-prep-1",
+  "owner": "BSV ALL delivery management",
+  "repository": "Ethancao258/bsv-all-platform",
+  "planning_branch": "planning/next-deliveries-20261126",
+  "freeze_control_issue": 44,
+  "execution_allowed": false,
+  "release_gate": "A and B frozen and stopped; C finishes M1 per #44; business owner activates next task",
+  "execution_instruction": "读取本Issue及其已有资料；在受控启动后执行三步、提交PR/完整Git SHA/隔离网页验收/停止状态。不得自动执行下一Issue。",
+  "github_issue_base": "https://github.com/Ethancao258/bsv-all-platform/issues/",
+  "task_count": 12,
+  "tasks": [
+    {
+      "id": "R07",
+      "issue": 45,
+      "title": "调酒辅助与出品",
+      "wave": 1,
+      "depends_on": [
+        "M1_CANDIDATE",
+        "#44_B"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "apps/store-console/bsv1",
+        "services/api/bsv1"
+      ],
+      "gate": "订单→配方→制作→出品隔离浏览器验收"
+    },
+    {
+      "id": "HQ01",
+      "issue": 50,
+      "title": "总部Excel商品维护与发布",
+      "wave": 1,
+      "depends_on": [
+        "#44_B",
+        "#41",
+        "APPROVAL_SCOPE"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "apps/hq-console",
+        "services/api/bsv1/bsv_catalog_import.py"
+      ],
+      "gate": "获批商品发布与POS同步，未批准拒绝"
+    },
+    {
+      "id": "OPS01",
+      "issue": 55,
+      "title": "GitHub到腾讯云受控发布与回退",
+      "wave": 1,
+      "depends_on": [
+        "#44_C"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "platform/lighthouse/internal-stage",
+        ".github/workflows"
+      ],
+      "gate": "指定Git SHA的隔离发布与回退实测"
+    },
+    {
+      "id": "R09",
+      "issue": 47,
+      "title": "统一身份学院排班临时人员",
+      "wave": 1,
+      "depends_on": [
+        "#44_C",
+        "#37"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "services/api/identity",
+        "domains/workforce"
+      ],
+      "gate": "培训、排班、POS门店权限和撤权端到端"
+    },
+    {
+      "id": "R08",
+      "issue": 46,
+      "title": "员工公告日会待办日报",
+      "wave": 2,
+      "depends_on": [
+        "R09",
+        "#14"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "apps/staff-center/identity",
+        "domains/service_ops"
+      ],
+      "gate": "管理者发布到员工任务完成和日报闭环"
+    },
+    {
+      "id": "R10",
+      "issue": 48,
+      "title": "会员注册权益认领佣金",
+      "wave": 2,
+      "depends_on": [
+        "#44_C",
+        "R09"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "services/api/customer_growth",
+        "apps/staff-center/growth"
+      ],
+      "gate": "真实已支付订单的权益核销及归因"
+    },
+    {
+      "id": "R11",
+      "issue": 49,
+      "title": "实际支付退款自动对账",
+      "wave": 2,
+      "depends_on": [
+        "#44_C",
+        "MERCHANT_AUTHORIZATION"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "domains/payments",
+        "integrations"
+      ],
+      "gate": "通道真实验签与财务对账不混同人工登记"
+    },
+    {
+      "id": "SUP01",
+      "issue": 52,
+      "title": "中央预制批次物流库存标签",
+      "wave": 2,
+      "depends_on": [
+        "HQ01"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "services/api/supply",
+        "domains/production",
+        "domains/inventory"
+      ],
+      "gate": "一笔完整批次配送及追溯"
+    },
+    {
+      "id": "GUEST01",
+      "issue": 51,
+      "title": "菜单扫码点单与团购核券",
+      "wave": 3,
+      "depends_on": [
+        "#44_C",
+        "HQ01"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "apps/guest-web",
+        "services/api/bsv1/public_menu_projection.py"
+      ],
+      "gate": "顾客桌台单进入同一POS订单；券码受控"
+    },
+    {
+      "id": "CX01",
+      "issue": 53,
+      "title": "客户反馈回访客诉处理",
+      "wave": 3,
+      "depends_on": [
+        "#44_A",
+        "R10"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "domains/customer",
+        "domains/quality"
+      ],
+      "gate": "一条授权客诉全流程处理及复核"
+    },
+    {
+      "id": "FIN01",
+      "issue": 54,
+      "title": "多店日报净利SDF经营分析",
+      "wave": 3,
+      "depends_on": [
+        "#44_C",
+        "COST_DATA_CONFIRMED"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "domains/operating_finance",
+        "apps/hq-console"
+      ],
+      "gate": "与真实流水和成本凭证核对的日报"
+    },
+    {
+      "id": "HR01",
+      "issue": 56,
+      "title": "员工合同寄送签署归档",
+      "wave": 3,
+      "depends_on": [
+        "R09"
+      ],
+      "state": "PREPARED_NOT_STARTED",
+      "code_owners": [
+        "domains/workforce",
+        "domains/knowledge"
+      ],
+      "gate": "合成合同版本至纸本验收、扫描归档、离职交接"
+    }
+  ]
+}
