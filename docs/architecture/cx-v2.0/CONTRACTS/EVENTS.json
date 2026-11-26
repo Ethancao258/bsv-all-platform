@@ -1,0 +1,166 @@
+{
+  "events": [
+    {
+      "id": "cx.order.created.v1",
+      "producer": "F",
+      "consumers": [
+        "H",
+        "D"
+      ],
+      "payload_fields": [
+        "order_id",
+        "quote_id",
+        "revision"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.order.fulfilled.v1",
+      "producer": "F",
+      "consumers": [
+        "D",
+        "E",
+        "H"
+      ],
+      "payload_fields": [
+        "order_id",
+        "fulfillment_ref",
+        "line_ids"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.payment.verified.v1",
+      "producer": "H",
+      "consumers": [
+        "F",
+        "D",
+        "E"
+      ],
+      "payload_fields": [
+        "payment_id",
+        "order_id",
+        "allocation_id",
+        "amount_minor",
+        "currency"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.refund.verified.v1",
+      "producer": "H",
+      "consumers": [
+        "F",
+        "D",
+        "E"
+      ],
+      "payload_fields": [
+        "refund_id",
+        "payment_id",
+        "amount_minor",
+        "currency",
+        "allocation_refs"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.coupon.consumed.v1",
+      "producer": "G",
+      "consumers": [
+        "F",
+        "H"
+      ],
+      "payload_fields": [
+        "external_fact_id",
+        "consume_attempt_id",
+        "count",
+        "offer_snapshot_ref"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.coupon.cancelled.v1",
+      "producer": "G",
+      "consumers": [
+        "F",
+        "H"
+      ],
+      "payload_fields": [
+        "cancel_id",
+        "consume_attempt_id",
+        "confirmed_count"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.platform.settlement.verified.v1",
+      "producer": "H",
+      "consumers": [
+        "E"
+      ],
+      "payload_fields": [
+        "settlement_fact_id",
+        "external_fact_id",
+        "eligible_net_minor",
+        "currency"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.entitlement.changed.v1",
+      "producer": "D",
+      "consumers": [
+        "F"
+      ],
+      "payload_fields": [
+        "asset_id",
+        "ledger_id",
+        "state"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.commission.eligible.v1",
+      "producer": "E",
+      "consumers": [
+        "H"
+      ],
+      "payload_fields": [
+        "liability_id",
+        "beneficiary_id",
+        "amount_minor",
+        "currency"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.payout.verified.v1",
+      "producer": "H",
+      "consumers": [
+        "E"
+      ],
+      "payload_fields": [
+        "payout_id",
+        "approved_settlement_id",
+        "amount_minor",
+        "currency"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    },
+    {
+      "id": "cx.consent.changed.v1",
+      "producer": "B",
+      "consumers": [
+        "F",
+        "E"
+      ],
+      "payload_fields": [
+        "customer_id",
+        "receipt_id",
+        "purpose",
+        "decision"
+      ],
+      "status": "PROPOSED_MAP_EXISTING_FIRST"
+    }
+  ]
+}

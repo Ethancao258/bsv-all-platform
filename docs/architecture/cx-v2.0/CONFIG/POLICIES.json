@@ -1,0 +1,86 @@
+{
+  "policy.commission": {
+    "schema_ref": "#/$defs/PolicyCommission",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.benefit": {
+    "schema_ref": "#/$defs/PolicyBenefit",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.membership": {
+    "schema_ref": "#/$defs/PolicyMembership",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.timer": {
+    "schema_ref": "#/$defs/PolicyTimer",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.booking": {
+    "schema_ref": "#/$defs/PolicyBooking",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.payout": {
+    "schema_ref": "#/$defs/PolicyPayout",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.recommendation": {
+    "schema_ref": "#/$defs/PolicyRecommendation",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.refund": {
+    "schema_ref": "#/$defs/PolicyRefund",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.age": {
+    "schema_ref": "#/$defs/PolicyAge",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.privacy": {
+    "schema_ref": "#/$defs/PolicyPrivacy",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.price": {
+    "schema_ref": "#/$defs/PolicyPrice",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.notification": {
+    "schema_ref": "#/$defs/PolicyNotification",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.retention": {
+    "schema_ref": "#/$defs/PolicyRetention",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  },
+  "policy.prepaid": {
+    "schema_ref": "#/$defs/PolicyPrepaid",
+    "actual_value": null,
+    "active_version": null,
+    "approval_ref": null
+  }
+}

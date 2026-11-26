@@ -1,0 +1,120 @@
+{
+  "status": "SYNTHETIC_ONLY",
+  "tenants": [
+    {
+      "id": "SYN-T1",
+      "currency": "CNY",
+      "stores": [
+        "SYN-S1",
+        "SYN-S2"
+      ],
+      "policy_ref": "SYN-POL1"
+    },
+    {
+      "id": "SYN-T2",
+      "currency": "CNY",
+      "stores": [
+        "SYN-S3"
+      ],
+      "policy_ref": "SYN-POL2"
+    }
+  ],
+  "customers": [
+    {
+      "id": "SYN-C1",
+      "tenant": "SYN-T1"
+    },
+    {
+      "id": "SYN-C2",
+      "tenant": "SYN-T1"
+    },
+    {
+      "id": "SYN-C1",
+      "tenant": "SYN-T2"
+    }
+  ],
+  "staff": [
+    {
+      "id": "SYN-E1",
+      "tenant": "SYN-T1",
+      "store": "SYN-S1"
+    },
+    {
+      "id": "SYN-E1",
+      "tenant": "SYN-T2",
+      "store": "SYN-S3"
+    }
+  ],
+  "products": [
+    {
+      "id": "SYN-P1",
+      "tenant": "SYN-T1",
+      "price_minor": 10000,
+      "alcohol": "ALCOHOLIC"
+    },
+    {
+      "id": "SYN-P1",
+      "tenant": "SYN-T2",
+      "price_minor": 3000,
+      "alcohol": "NON_ALCOHOLIC"
+    },
+    {
+      "id": "SYN-P2",
+      "tenant": "SYN-T1",
+      "price_minor": 2500,
+      "alcohol": "NON_ALCOHOLIC"
+    }
+  ],
+  "visit": {
+    "id": "SYN-V1",
+    "tenant": "SYN-T1",
+    "store": "SYN-S1",
+    "state": "ACTIVE"
+  },
+  "order": {
+    "id": "SYN-O1",
+    "tenant": "SYN-T1",
+    "visit": "SYN-V1",
+    "total_minor": 10000
+  },
+  "payment": {
+    "id": "SYN-PAY1",
+    "order": "SYN-O1",
+    "paid_minor": 10000
+  },
+  "refund": {
+    "id": "SYN-R1",
+    "payment": "SYN-PAY1",
+    "amount_minor": 3000
+  },
+  "commission": {
+    "rate_bps": 600,
+    "coeff_bps": 10000,
+    "expected_initial": 600,
+    "expected_after_refund": 420,
+    "expected_delta": -180
+  },
+  "custody": {
+    "issued_ml": 700,
+    "withdraw_ml": 200,
+    "expected_ml": 500,
+    "invalid_withdraw_ml": 600
+  },
+  "entitlement": {
+    "quantity": 1,
+    "concurrent_holds": 2,
+    "max_success": 1
+  },
+  "coupon": {
+    "consumed_count": 3,
+    "successful_cancel": 1,
+    "pending_cancel": 1,
+    "max_new_cancel": 1
+  },
+  "unknown_payment": {
+    "attempt": "SYN-ATT1",
+    "state": "DISPATCHING",
+    "next_provider_allowed": false
+  },
+  "note": "not actual policy; never seed production"
+}

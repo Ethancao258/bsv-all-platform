@@ -1,0 +1,390 @@
+{
+  "version": "2.0",
+  "status": "DESIGN_ONLY",
+  "machines": {
+    "payment": {
+      "initial": "CREATED",
+      "transitions": [
+        [
+          "CREATED",
+          "DISPATCHING",
+          "持久化原绑定、唯一外部编号及意图，提交本地事务后才允许I/O"
+        ],
+        [
+          "CREATED",
+          "CANCELLED",
+          "未发请求"
+        ],
+        [
+          "DISPATCHED",
+          "UNKNOWN",
+          "网络超时或无可信结果"
+        ],
+        [
+          "DISPATCHED",
+          "VERIFIED_PAID",
+          "验签+核对可信成功"
+        ],
+        [
+          "UNKNOWN",
+          "VERIFIED_PAID",
+          "原单可信查询成功"
+        ],
+        [
+          "DISPATCHED",
+          "VERIFIED_UNPAID_CLOSED",
+          "原单不可再成功的终态"
+        ],
+        [
+          "UNKNOWN",
+          "VERIFIED_UNPAID_CLOSED",
+          "原单不可再成功的终态"
+        ],
+        [
+          "DISPATCHING",
+          "DISPATCHED",
+          "收到可确认已发/处理中信息"
+        ],
+        [
+          "DISPATCHING",
+          "UNKNOWN",
+          "进程崩溃、超时、发送是否发生未知"
+        ],
+        [
+          "DISPATCHING",
+          "VERIFIED_PAID",
+          "可信原始成功证据"
+        ],
+        [
+          "DISPATCHING",
+          "VERIFIED_UNPAID_CLOSED",
+          "provider confirms terminal no success; NOT_FOUND alone insufficient"
+        ]
+      ],
+      "invariant": "DISPATCHING/UNKNOWN must query original provider/merchant/request before alternate. Never infer not sent from crash."
+    },
+    "coupon": {
+      "initial": "QUERIED",
+      "transitions": [
+        [
+          "QUERIED",
+          "DISPATCHING",
+          "持久化原绑定、唯一外部编号及意图，提交本地事务后才允许I/O"
+        ],
+        [
+          "DISPATCHED",
+          "UNKNOWN",
+          "超时/处理中"
+        ],
+        [
+          "DISPATCHED",
+          "CONSUMED",
+          "可信成功且保存外部事实"
+        ],
+        [
+          "UNKNOWN",
+          "CONSUMED",
+          "原请求查询确认"
+        ],
+        [
+          "DISPATCHED",
+          "FAILED_CONFIRMED",
+          "可信终态未核销"
+        ],
+        [
+          "UNKNOWN",
+          "FAILED_CONFIRMED",
+          "可信终态未核销"
+        ],
+        [
+          "DISPATCHING",
+          "DISPATCHED",
+          "收到可确认已发/处理中信息"
+        ],
+        [
+          "DISPATCHING",
+          "UNKNOWN",
+          "进程崩溃、超时、发送是否发生未知"
+        ],
+        [
+          "DISPATCHING",
+          "CONSUMED",
+          "可信原始成功证据"
+        ],
+        [
+          "DISPATCHING",
+          "FAILED_CONFIRMED",
+          "provider confirms terminal no success; NOT_FOUND alone insufficient"
+        ]
+      ],
+      "invariant": "DISPATCHING/UNKNOWN must query original provider/merchant/request before alternate. Never infer not sent from crash."
+    },
+    "hold": {
+      "initial": "HELD",
+      "transitions": [
+        [
+          "HELD",
+          "CONSUMED",
+          "可信履约/付款满足权益政策"
+        ],
+        [
+          "HELD",
+          "RELEASED",
+          "终态确认未履约或未支付且可释放"
+        ],
+        [
+          "HELD",
+          "REVIEW",
+          "到期但支付未知"
+        ],
+        [
+          "REVIEW",
+          "CONSUMED",
+          "可信成功"
+        ],
+        [
+          "REVIEW",
+          "RELEASED",
+          "确认未发生"
+        ]
+      ],
+      "invariant": "Available qty nonnegative; REVIEW continues reservation."
+    },
+    "booking": {
+      "initial": "REQUESTED",
+      "transitions": [
+        [
+          "REQUESTED",
+          "CONFIRMED",
+          "资源锁内容量校验"
+        ],
+        [
+          "REQUESTED",
+          "REJECTED",
+          "员工拒绝"
+        ],
+        [
+          "REQUESTED",
+          "CANCELLED",
+          "取消"
+        ],
+        [
+          "CONFIRMED",
+          "CHECKED_IN",
+          "员工确认"
+        ],
+        [
+          "CONFIRMED",
+          "CANCELLED",
+          "政策允许"
+        ],
+        [
+          "CONFIRMED",
+          "NO_SHOW",
+          "超时经规则确认"
+        ],
+        [
+          "CHECKED_IN",
+          "COMPLETED",
+          "服务完成"
+        ]
+      ],
+      "invariant": "Only confirmed bookings reserve capacity; request not a promise."
+    },
+    "settlement": {
+      "initial": "PROVISIONAL",
+      "transitions": [
+        [
+          "PROVISIONAL",
+          "ELIGIBLE",
+          "可信实收履约、等待、合同均符合"
+        ],
+        [
+          "ELIGIBLE",
+          "LOCKED",
+          "审批锁定负债"
+        ],
+        [
+          "LOCKED",
+          "PAYMENT_PENDING",
+          "H持久化付款指令"
+        ],
+        [
+          "PAYMENT_PENDING",
+          "UNKNOWN",
+          "结果未知"
+        ],
+        [
+          "PAYMENT_PENDING",
+          "PAID",
+          "可信回单"
+        ],
+        [
+          "UNKNOWN",
+          "PAID",
+          "原付款确认"
+        ],
+        [
+          "PAYMENT_PENDING",
+          "FAILED_CONFIRMED",
+          "明确未付"
+        ],
+        [
+          "UNKNOWN",
+          "FAILED_CONFIRMED",
+          "明确未付"
+        ]
+      ],
+      "invariant": "E owns liability; H payout facts; never unlock UNKNOWN."
+    },
+    "refund": {
+      "initial": "REQUESTED",
+      "transitions": [
+        [
+          "REQUESTED",
+          "APPROVED",
+          "授权且累计成功+在途金额不超原支付"
+        ],
+        [
+          "APPROVED",
+          "DISPATCHING",
+          "持久化原通道退款指令"
+        ],
+        [
+          "DISPATCHING",
+          "UNKNOWN",
+          "结果未知或进程崩溃"
+        ],
+        [
+          "DISPATCHING",
+          "VERIFIED_REFUNDED",
+          "原渠道确认"
+        ],
+        [
+          "UNKNOWN",
+          "VERIFIED_REFUNDED",
+          "原退款查询成功"
+        ],
+        [
+          "UNKNOWN",
+          "VERIFIED_FAILED",
+          "明确终态未退"
+        ],
+        [
+          "DISPATCHING",
+          "VERIFIED_FAILED",
+          "明确终态未退"
+        ]
+      ],
+      "invariant": "unknown retains reserved amount; terminal failure can release; new attempt has new ID with approved reason"
+    },
+    "payout": {
+      "initial": "APPROVED",
+      "transitions": [
+        [
+          "APPROVED",
+          "DISPATCHING",
+          "先持久化指令并锁E负债"
+        ],
+        [
+          "DISPATCHING",
+          "UNKNOWN",
+          "崩溃或结果未知"
+        ],
+        [
+          "DISPATCHING",
+          "VERIFIED_PAID",
+          "原渠道确认"
+        ],
+        [
+          "UNKNOWN",
+          "VERIFIED_PAID",
+          "原渠道确认"
+        ],
+        [
+          "UNKNOWN",
+          "VERIFIED_FAILED",
+          "明确不可付款终态"
+        ],
+        [
+          "DISPATCHING",
+          "VERIFIED_FAILED",
+          "明确不可付款终态"
+        ]
+      ],
+      "invariant": "No new payout before prior verified nonpayment; E liability lock retained until reconciliation"
+    },
+    "order": {
+      "initial": "DRAFT",
+      "transitions": [
+        [
+          "DRAFT",
+          "PENDING_STAFF",
+          "valid quote"
+        ],
+        [
+          "PENDING_STAFF",
+          "ACCEPTED",
+          "staff/approved auto"
+        ],
+        [
+          "ACCEPTED",
+          "IN_PRODUCTION",
+          "POS event"
+        ],
+        [
+          "IN_PRODUCTION",
+          "FULFILLED",
+          "verified fulfillment"
+        ],
+        [
+          "PENDING_STAFF",
+          "CANCELLED",
+          "no payment conflict"
+        ],
+        [
+          "ACCEPTED",
+          "CANCEL_REQUESTED",
+          "authorized request"
+        ],
+        [
+          "IN_PRODUCTION",
+          "CANCEL_REQUESTED",
+          "authorized request"
+        ],
+        [
+          "CANCEL_REQUESTED",
+          "CANCELLED",
+          "POS resolution; refund separate"
+        ]
+      ],
+      "invariant": "order state independent of payment"
+    },
+    "coupon_cancel": {
+      "initial": "REQUESTED",
+      "transitions": [
+        [
+          "REQUESTED",
+          "DISPATCHING",
+          "reserve count against exact attempt"
+        ],
+        [
+          "DISPATCHING",
+          "UNKNOWN",
+          "timeout/crash"
+        ],
+        [
+          "DISPATCHING",
+          "RESULT_CONFIRMED",
+          "verified reply"
+        ],
+        [
+          "UNKNOWN",
+          "RESULT_CONFIRMED",
+          "original query"
+        ]
+      ],
+      "invariant": "success+inflight <= consumed; partial failures retained"
+    }
+  }
+}

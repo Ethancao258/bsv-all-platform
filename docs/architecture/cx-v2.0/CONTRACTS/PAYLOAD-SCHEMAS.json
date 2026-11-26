@@ -1,0 +1,7613 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CX V2.0 proposed canonical payload schemas",
+  "$defs": {
+    "Option": {
+      "type": "object",
+      "properties": {
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "option_id",
+        "quantity"
+      ],
+      "additionalProperties": false
+    },
+    "Item": {
+      "type": "object",
+      "properties": {
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Option"
+          },
+          "maxItems": 200
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "product_id",
+        "quantity"
+      ],
+      "additionalProperties": false
+    },
+    "Product": {
+      "type": "object",
+      "properties": {
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "category_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "taste_tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 200
+        },
+        "price_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "availability": {
+          "type": "string",
+          "enum": [
+            "AVAILABLE",
+            "SOLD_OUT",
+            "UNKNOWN"
+          ]
+        },
+        "alcohol_mode": {
+          "type": "string",
+          "enum": [
+            "ALCOHOLIC",
+            "NON_ALCOHOLIC",
+            "UNKNOWN"
+          ]
+        },
+        "publication_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "abv_bps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "allergens": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 200
+        },
+        "story": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "image_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "option_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "maxItems": 200
+        },
+        "volume_ml": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "option_groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OptionGroup"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "allergen_status": {
+          "type": "string",
+          "enum": [
+            "VERIFIED",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "required": [
+        "product_id",
+        "name",
+        "category_id",
+        "taste_tags",
+        "price_minor",
+        "currency",
+        "availability",
+        "alcohol_mode",
+        "publication_id",
+        "allergen_status"
+      ],
+      "additionalProperties": false
+    },
+    "Store": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "open_state": {
+          "type": "string",
+          "enum": [
+            "OPEN",
+            "CLOSED",
+            "UNKNOWN"
+          ]
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "timezone": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "contact_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "navigation_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "maxItems": 200
+        },
+        "amenities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 200
+        },
+        "opening_hours_text": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "admission_policy_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "guide_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "brand_content_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "support_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "return_navigation_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "store_id",
+        "name",
+        "profile_id",
+        "open_state",
+        "address",
+        "timezone",
+        "features"
+      ],
+      "additionalProperties": false
+    },
+    "Profile": {
+      "type": "object",
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "avatar_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "birthday": {
+          "type": "string",
+          "format": "date"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "UNSPECIFIED",
+            "FEMALE",
+            "MALE",
+            "OTHER"
+          ]
+        },
+        "taste_tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "display_name"
+      ],
+      "additionalProperties": false
+    },
+    "ProfilePatch": {
+      "type": "object",
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "avatar_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "birthday": {
+          "type": "string",
+          "format": "date"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "UNSPECIFIED",
+            "FEMALE",
+            "MALE",
+            "OTHER"
+          ]
+        },
+        "taste_tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "PolicyParameters": {
+      "type": "object",
+      "properties": {
+        "parameter_schema_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "parameters_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "parameter_schema_ref",
+        "version",
+        "parameters_ref",
+        "content_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "ConfigPatch": {
+      "type": "object",
+      "properties": {
+        "candidate_binding_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "adapter_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "endpoint_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "credential_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "policy_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "candidate_binding_ref"
+      ],
+      "additionalProperties": false
+    },
+    "ProviderHealth": {
+      "type": "object",
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "technical_state": {
+          "type": "string",
+          "enum": [
+            "HEALTHY",
+            "DEGRADED",
+            "UNAVAILABLE",
+            "UNKNOWN"
+          ]
+        },
+        "authorization_state": {
+          "type": "string",
+          "enum": [
+            "VERIFIED",
+            "NOT_VERIFIED",
+            "EXPIRED",
+            "REVOKED"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "reason_code": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "binding_id",
+        "adapter_id",
+        "technical_state",
+        "authorization_state",
+        "observed_at",
+        "reason_code"
+      ],
+      "additionalProperties": false
+    },
+    "OrderSummary": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "paid_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refunded_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "discount_minor": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "order_id",
+        "store_id",
+        "paid_minor",
+        "refunded_minor",
+        "currency",
+        "state",
+        "created_at"
+      ],
+      "additionalProperties": false
+    },
+    "Availability": {
+      "type": "object",
+      "properties": {
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "AVAILABLE",
+            "SOLD_OUT",
+            "UNKNOWN"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "product_id",
+        "state",
+        "observed_at"
+      ],
+      "additionalProperties": false
+    },
+    "Entitlement": {
+      "type": "object",
+      "properties": {
+        "entitlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "template_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "available_quantity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "valid_from": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "valid_to": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "store_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "entitlement_id",
+        "template_ref",
+        "policy_version",
+        "state",
+        "available_quantity",
+        "unit",
+        "valid_from",
+        "valid_to",
+        "store_ids"
+      ],
+      "additionalProperties": false
+    },
+    "AssetEntry": {
+      "type": "object",
+      "properties": {
+        "entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "delta": {
+          "type": "integer"
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "entry_id",
+        "source_ref",
+        "delta",
+        "unit",
+        "reason",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "Custody": {
+      "type": "object",
+      "properties": {
+        "custody_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "balance": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "physical_label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "custody_id",
+        "store_id",
+        "product_id",
+        "balance",
+        "unit",
+        "state",
+        "expires_at",
+        "physical_label"
+      ],
+      "additionalProperties": false
+    },
+    "Liability": {
+      "type": "object",
+      "properties": {
+        "liability_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "amount_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "liability_id",
+        "amount_minor",
+        "currency",
+        "state",
+        "policy_version"
+      ],
+      "additionalProperties": false
+    },
+    "Referral": {
+      "type": "object",
+      "properties": {
+        "attribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "confirmed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "attribution_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "Quote": {
+      "type": "object",
+      "properties": {
+        "quote_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quote_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "subject_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "publication_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "policy_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QuoteLine"
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "subtotal_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "discount_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "benefit_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "quote_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "quote_id",
+        "quote_version",
+        "store_id",
+        "subject_ref",
+        "publication_id",
+        "policy_refs",
+        "lines",
+        "subtotal_minor",
+        "discount_minor",
+        "total_minor",
+        "currency",
+        "expires_at",
+        "benefit_ids",
+        "quote_digest"
+      ],
+      "additionalProperties": false
+    },
+    "OrderLine": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "line_total_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      },
+      "required": [
+        "line_id",
+        "product_id",
+        "quantity",
+        "line_total_minor",
+        "currency",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "ServiceDetails": {
+      "type": "object",
+      "properties": {
+        "note": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "target_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "Message": {
+      "type": "object",
+      "properties": {
+        "message_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "kind": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "resource_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "message_id",
+        "kind",
+        "title",
+        "body",
+        "created_at",
+        "read"
+      ],
+      "additionalProperties": false
+    },
+    "Booking": {
+      "type": "object",
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "resource_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "party_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "booking_id",
+        "store_id",
+        "resource_ref",
+        "start_at",
+        "end_at",
+        "party_size",
+        "state",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "Offer": {
+      "type": "object",
+      "properties": {
+        "offer_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "offer_kind": {
+          "type": "string",
+          "enum": [
+            "PACKAGE",
+            "VOUCHER",
+            "OTHER"
+          ]
+        },
+        "eligible_store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "maxItems": 200
+        },
+        "mapping_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "available_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "face_value_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "selection_groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OptionGroup"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "offer_version",
+        "title",
+        "offer_kind",
+        "eligible_store_id",
+        "items",
+        "mapping_version",
+        "available_count"
+      ],
+      "additionalProperties": false
+    },
+    "Redemption": {
+      "type": "object",
+      "properties": {
+        "external_fact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "platform": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "consumed_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cancelled_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "consume_attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "external_fact_id",
+        "platform",
+        "store_id",
+        "consumed_count",
+        "cancelled_count",
+        "state",
+        "consume_attempt_id"
+      ],
+      "additionalProperties": false
+    },
+    "Channel": {
+      "type": "object",
+      "properties": {
+        "channel": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "provider_binding_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "display_name": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "reason_code": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "channel",
+        "provider_binding_ref",
+        "display_name",
+        "available",
+        "reason_code"
+      ],
+      "additionalProperties": false
+    },
+    "PrepaidEntry": {
+      "type": "object",
+      "properties": {
+        "entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "account_kind": {
+          "type": "string",
+          "enum": [
+            "PRINCIPAL",
+            "PROMO"
+          ]
+        },
+        "delta_minor": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "entry_id",
+        "account_kind",
+        "delta_minor",
+        "currency",
+        "source_ref",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_tenant_resolve_v1_request": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "session_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "host"
+      ],
+      "additionalProperties": false
+    },
+    "cx_tenant_resolve_v1_response": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "legal_entity_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "maxItems": 200
+        },
+        "config_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "tenant_id",
+        "legal_entity_ids",
+        "config_revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_provider_resolve_v1_request": {
+      "type": "object",
+      "properties": {
+        "reference_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "channel": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "reference_id",
+        "channel"
+      ],
+      "additionalProperties": false
+    },
+    "cx_provider_resolve_v1_response": {
+      "type": "object",
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "config_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "eligible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "binding_id",
+        "adapter_id",
+        "config_revision",
+        "eligible"
+      ],
+      "additionalProperties": false
+    },
+    "cx_flag_read_v1_request": {
+      "type": "object",
+      "properties": {
+        "feature_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "feature_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_flag_read_v1_response": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "enabled",
+        "revision",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_reference_resolve_v1_request": {
+      "type": "object",
+      "properties": {
+        "reference_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "context_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "reference_id",
+        "operation_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_reference_resolve_v1_response": {
+      "type": "object",
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "kind": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "binding_id",
+        "revision",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "cx_policy_resolve_v1_request": {
+      "type": "object",
+      "properties": {
+        "policy_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "scope_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "policy_id",
+        "scope_ref",
+        "as_of"
+      ],
+      "additionalProperties": false
+    },
+    "cx_policy_resolve_v1_response": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "parameters": {
+          "$ref": "#/$defs/PolicyParameters"
+        }
+      },
+      "required": [
+        "policy_version",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "cx_config_activate_v1_request": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "candidate_id",
+        "expected_revision",
+        "approval_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_config_activate_v1_response": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "prior_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "revision",
+        "prior_revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_config_stage_v1_request": {
+      "type": "object",
+      "properties": {
+        "reference_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "scope_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "patch": {
+          "$ref": "#/$defs/ConfigPatch"
+        }
+      },
+      "required": [
+        "reference_id",
+        "scope_ref",
+        "patch"
+      ],
+      "additionalProperties": false
+    },
+    "cx_config_stage_v1_response": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "validation_state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "candidate_id",
+        "validation_state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_tenant_provision_v1_request": {
+      "type": "object",
+      "properties": {
+        "onboarding_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "onboarding_ref",
+        "profile_id",
+        "approval_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_tenant_provision_v1_response": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "tenant_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_config_rollback_v1_request": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "revision",
+        "expected_revision",
+        "approval_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_config_rollback_v1_response": {
+      "type": "object",
+      "properties": {
+        "active_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "active_revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_provider_health_v1_request": {
+      "type": "object",
+      "properties": {
+        "reference_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "reference_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_provider_health_v1_response": {
+      "type": "object",
+      "properties": {
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProviderHealth"
+          },
+          "maxItems": 200
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "candidates",
+        "observed_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_auth_login_v1_request": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "provider",
+        "proof_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_auth_login_v1_response": {
+      "type": "object",
+      "properties": {
+        "session_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "AUTHENTICATED",
+            "REGISTRATION_REQUIRED",
+            "RECOVERY_REQUIRED"
+          ]
+        },
+        "registration_proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "AUTHENTICATED"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "session_ref",
+              "customer_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "REGISTRATION_REQUIRED"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "registration_proof_ref"
+            ]
+          }
+        }
+      ]
+    },
+    "cx_customer_me_v1_request": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_customer_me_v1_response": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "member_status": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "profile": {
+          "$ref": "#/$defs/Profile"
+        },
+        "membership": {
+          "type": "object",
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": [
+                "NOT_ACTIVE",
+                "ACTIVE",
+                "EXPIRED",
+                "UNKNOWN"
+              ]
+            },
+            "tier_ref": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            },
+            "valid_until": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            },
+            "policy_version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 160
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "customer_id",
+        "member_status",
+        "profile",
+        "membership"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_bind_v1_request": {
+      "type": "object",
+      "properties": {
+        "proof_a": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "proof_b": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "proof_a",
+        "proof_b"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_bind_v1_response": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "binding_status": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "customer_id",
+        "binding_status"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_age_v1_request": {
+      "type": "object",
+      "properties": {
+        "declared_adult": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "declared_adult"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_age_v1_response": {
+      "type": "object",
+      "properties": {
+        "declaration_state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "verification_state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "declaration_state",
+        "verification_state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_auth_challenge_send_v1_request": {
+      "type": "object",
+      "properties": {
+        "phone": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "purpose": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "phone",
+        "purpose"
+      ],
+      "additionalProperties": false
+    },
+    "cx_auth_challenge_send_v1_response": {
+      "type": "object",
+      "properties": {
+        "challenge_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "challenge_id",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_auth_challenge_verify_v1_request": {
+      "type": "object",
+      "properties": {
+        "challenge_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "challenge_id",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "cx_auth_challenge_verify_v1_response": {
+      "type": "object",
+      "properties": {
+        "proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "proof_ref",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_profile_update_v1_request": {
+      "type": "object",
+      "properties": {
+        "patch": {
+          "$ref": "#/$defs/ProfilePatch"
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "patch",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_profile_update_v1_response": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/Profile"
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "profile",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_consent_update_v1_request": {
+      "type": "object",
+      "properties": {
+        "purpose": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "notice_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "purpose",
+        "accepted",
+        "notice_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_consent_update_v1_response": {
+      "type": "object",
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "receipt_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_recovery_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "proof_ref",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_recovery_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "case_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_history_summary_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_customer_history_summary_v1_response": {
+      "type": "object",
+      "properties": {
+        "orders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OrderSummary"
+          },
+          "maxItems": 200
+        },
+        "total_discount_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "orders"
+      ],
+      "additionalProperties": false
+    },
+    "cx_member_code_issue_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_member_code_issue_v1_response": {
+      "type": "object",
+      "properties": {
+        "proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "proof_ref",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_age_verify_v1_request": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "method": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "result": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "customer_id",
+        "method",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_age_verify_v1_response": {
+      "type": "object",
+      "properties": {
+        "verification_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "verification_ref",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_close_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "proof_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_close_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "case_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_catalog_public_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "publication_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "store_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_catalog_public_v1_response": {
+      "type": "object",
+      "properties": {
+        "published_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Product"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "published_version",
+        "products"
+      ],
+      "additionalProperties": false
+    },
+    "cx_store_list_v1_request": {
+      "type": "object",
+      "properties": {
+        "profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_store_list_v1_response": {
+      "type": "object",
+      "properties": {
+        "stores": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Store"
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "stores"
+      ],
+      "additionalProperties": false
+    },
+    "cx_recommend_rank_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "budget_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "taste_tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 200
+        },
+        "alcohol_mode": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "store_id",
+        "taste_tags",
+        "alcohol_mode"
+      ],
+      "additionalProperties": false
+    },
+    "cx_recommend_rank_v1_response": {
+      "type": "object",
+      "properties": {
+        "products": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Product"
+          },
+          "maxItems": 200
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 200
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "products",
+        "reason_codes",
+        "policy_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_catalog_favorite_v1_request": {
+      "type": "object",
+      "properties": {
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "desired": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "product_id",
+        "desired"
+      ],
+      "additionalProperties": false
+    },
+    "cx_catalog_favorite_v1_response": {
+      "type": "object",
+      "properties": {
+        "saved": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "saved"
+      ],
+      "additionalProperties": false
+    },
+    "cx_catalog_availability_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "product_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "store_id",
+        "product_ids"
+      ],
+      "additionalProperties": false
+    },
+    "cx_catalog_availability_v1_response": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Availability"
+          },
+          "maxItems": 200
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "items",
+        "observed_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_list_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_entitlement_list_v1_response": {
+      "type": "object",
+      "properties": {
+        "entitlements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entitlement"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "entitlements"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_reserve_v1_request": {
+      "type": "object",
+      "properties": {
+        "entitlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quote_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "entitlement_id",
+        "visit_id",
+        "quantity",
+        "quote_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_reserve_v1_response": {
+      "type": "object",
+      "properties": {
+        "reservation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "reservation_id",
+        "expires_at",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_consume_v1_request": {
+      "type": "object",
+      "properties": {
+        "reservation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "fulfillment_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "reservation_id",
+        "fulfillment_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_consume_v1_response": {
+      "type": "object",
+      "properties": {
+        "ledger_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "ledger_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_release_v1_request": {
+      "type": "object",
+      "properties": {
+        "reservation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "reservation_id",
+        "evidence_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_release_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_adjust_v1_request": {
+      "type": "object",
+      "properties": {
+        "custody_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "custody_id",
+        "quantity",
+        "unit",
+        "action",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_adjust_v1_response": {
+      "type": "object",
+      "properties": {
+        "ledger_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "balance": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "ledger_id",
+        "balance"
+      ],
+      "additionalProperties": false
+    },
+    "cx_timer_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "service_session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "service_session_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_timer_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "server_now": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "remaining_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "elapsed_seconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "state",
+        "server_now",
+        "elapsed_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_issue_v1_request": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "template_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "source_event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "customer_id",
+        "template_ref",
+        "source_event_id",
+        "quantity"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_issue_v1_response": {
+      "type": "object",
+      "properties": {
+        "entitlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "entitlement_id",
+        "policy_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "custody_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "custody_id",
+        "quantity"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "task_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_timer_start_v1_request": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "visit_id",
+        "product_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_timer_start_v1_response": {
+      "type": "object",
+      "properties": {
+        "service_session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "service_session_id",
+        "start_at",
+        "policy_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_timer_end_v1_request": {
+      "type": "object",
+      "properties": {
+        "service_session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "service_session_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_timer_end_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "elapsed_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "charge_quote_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state",
+        "elapsed_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_create_v1_request": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "unit": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "physical_label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "customer_id",
+        "product_id",
+        "quantity",
+        "unit",
+        "physical_label"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_create_v1_response": {
+      "type": "object",
+      "properties": {
+        "custody_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "custody_id",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_adjust_v1_request": {
+      "type": "object",
+      "properties": {
+        "entitlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "delta": {
+          "type": "integer"
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "entitlement_id",
+        "delta",
+        "evidence_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_adjust_v1_response": {
+      "type": "object",
+      "properties": {
+        "ledger_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "balance": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "ledger_id",
+        "balance"
+      ],
+      "additionalProperties": false
+    },
+    "cx_timer_change_v1_request": {
+      "type": "object",
+      "properties": {
+        "service_session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "quote_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "service_session_id",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "cx_timer_change_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state",
+        "policy_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_gift_transfer_v1_request": {
+      "type": "object",
+      "properties": {
+        "entitlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "recipient_proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "entitlement_id",
+        "recipient_proof_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_gift_transfer_v1_response": {
+      "type": "object",
+      "properties": {
+        "transfer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "transfer_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_referral_claim_v1_request": {
+      "type": "object",
+      "properties": {
+        "invite_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "customer_confirmation_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "customer_confirmation_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_referral_claim_v1_response": {
+      "type": "object",
+      "properties": {
+        "attribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "attribution_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_accrue_v1_request": {
+      "type": "object",
+      "properties": {
+        "verified_payment_event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "fulfillment_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "verified_payment_event_id",
+        "fulfillment_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_accrue_v1_response": {
+      "type": "object",
+      "properties": {
+        "accrual_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "delta_minor": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "accrual_id",
+        "delta_minor",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_reverse_v1_request": {
+      "type": "object",
+      "properties": {
+        "refund_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "refund_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_reverse_v1_response": {
+      "type": "object",
+      "properties": {
+        "adjustment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "delta_minor": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "adjustment_id",
+        "delta_minor"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_eligible_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "beneficiary_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_commission_eligible_v1_response": {
+      "type": "object",
+      "properties": {
+        "liabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Liability"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "liabilities"
+      ],
+      "additionalProperties": false
+    },
+    "cx_referral_invite_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_referral_invite_v1_response": {
+      "type": "object",
+      "properties": {
+        "invite_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "invite_ref",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_policy_publish_v1_request": {
+      "type": "object",
+      "properties": {
+        "candidate_policy_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "candidate_policy_id",
+        "approval_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_policy_publish_v1_response": {
+      "type": "object",
+      "properties": {
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "policy_version",
+        "effective_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_settlement_prepare_v1_request": {
+      "type": "object",
+      "properties": {
+        "beneficiary_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "liability_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "beneficiary_id",
+        "liability_ids"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_settlement_prepare_v1_response": {
+      "type": "object",
+      "properties": {
+        "settlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "amount_minor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "settlement_id",
+        "amount_minor",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_referral_correct_v1_request": {
+      "type": "object",
+      "properties": {
+        "attribution_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "correction_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "attribution_id",
+        "correction_ref",
+        "approval_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_referral_correct_v1_response": {
+      "type": "object",
+      "properties": {
+        "correction_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "correction_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_service_relationship_update_v1_request": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "assignment_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "consent_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "assignment_ref",
+        "consent_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_service_relationship_update_v1_response": {
+      "type": "object",
+      "properties": {
+        "relationship_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "relationship_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_visit_join_v1_request": {
+      "type": "object",
+      "properties": {
+        "seat_locator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "join_proof": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "seat_locator",
+        "join_proof"
+      ],
+      "additionalProperties": false
+    },
+    "cx_visit_join_v1_response": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "access_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "visit_id",
+        "access_ref",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_submit_v1_request": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "maxItems": 200,
+          "minItems": 1
+        },
+        "quote_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quote_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "visit_id",
+        "items",
+        "quote_version",
+        "quote_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_submit_v1_response": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "PENDING_STAFF",
+            "ACCEPTED",
+            "IN_PRODUCTION",
+            "FULFILLED",
+            "CANCEL_REQUESTED",
+            "CANCELLED"
+          ]
+        },
+        "quote": {
+          "$ref": "#/$defs/Quote"
+        }
+      },
+      "required": [
+        "order_id",
+        "state",
+        "quote"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "order_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "PENDING_STAFF",
+            "ACCEPTED",
+            "IN_PRODUCTION",
+            "FULFILLED",
+            "CANCEL_REQUESTED",
+            "CANCELLED"
+          ]
+        },
+        "authorized_lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OrderLine"
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "order_id",
+        "state",
+        "authorized_lines"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_external_fulfill_v1_request": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "external_fact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "visit_id",
+        "external_fact_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_external_fulfill_v1_response": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "PENDING_STAFF",
+            "ACCEPTED",
+            "IN_PRODUCTION",
+            "FULFILLED",
+            "CANCEL_REQUESTED",
+            "CANCELLED"
+          ]
+        }
+      },
+      "required": [
+        "order_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "resource_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "party_size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "resource_ref",
+        "start_at",
+        "end_at",
+        "party_size"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "REQUESTED",
+            "CONFIRMED",
+            "REJECTED",
+            "CANCELLED",
+            "CHECKED_IN",
+            "NO_SHOW",
+            "COMPLETED"
+          ]
+        }
+      },
+      "required": [
+        "booking_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_service_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "kind": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "details": {
+          "$ref": "#/$defs/ServiceDetails"
+        }
+      },
+      "required": [
+        "kind",
+        "details"
+      ],
+      "additionalProperties": false
+    },
+    "cx_service_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "task_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_confirm_v1_request": {
+      "type": "object",
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "resource_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "booking_id",
+        "resource_ref",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_confirm_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "REQUESTED",
+            "CONFIRMED",
+            "REJECTED",
+            "CANCELLED",
+            "CHECKED_IN",
+            "NO_SHOW",
+            "COMPLETED"
+          ]
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_cancel_v1_request": {
+      "type": "object",
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "booking_id",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_cancel_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "REQUESTED",
+            "CONFIRMED",
+            "REJECTED",
+            "CANCELLED",
+            "CHECKED_IN",
+            "NO_SHOW",
+            "COMPLETED"
+          ]
+        },
+        "refund_request_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_service_update_v1_request": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "task_id",
+        "action",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_service_update_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_notify_list_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_notify_list_v1_response": {
+      "type": "object",
+      "properties": {
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Message"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "messages"
+      ],
+      "additionalProperties": false
+    },
+    "cx_feedback_submit_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "kind": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "kind",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "cx_feedback_submit_v1_response": {
+      "type": "object",
+      "properties": {
+        "feedback_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "feedback_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_quote_v1_request": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "maxItems": 200,
+          "minItems": 1
+        },
+        "benefit_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_quote_v1_response": {
+      "type": "object",
+      "properties": {
+        "quote_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quote_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "total_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "quote": {
+          "$ref": "#/$defs/Quote"
+        }
+      },
+      "required": [
+        "quote_id",
+        "quote_version",
+        "total_minor",
+        "expires_at",
+        "quote"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_cancel_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "order_id",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_cancel_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "task_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_queue_join_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "party_size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "store_id",
+        "party_size"
+      ],
+      "additionalProperties": false
+    },
+    "cx_queue_join_v1_response": {
+      "type": "object",
+      "properties": {
+        "ticket_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "ticket_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_queue_update_v1_request": {
+      "type": "object",
+      "properties": {
+        "ticket_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "ticket_id",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "cx_queue_update_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_notify_mark_read_v1_request": {
+      "type": "object",
+      "properties": {
+        "message_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "message_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_notify_mark_read_v1_response": {
+      "type": "object",
+      "properties": {
+        "read": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "read"
+      ],
+      "additionalProperties": false
+    },
+    "cx_service_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_service_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "state",
+        "updated_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_query_v1_request": {
+      "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "coupon_code": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "platform",
+        "coupon_code",
+        "store_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_query_v1_response": {
+      "type": "object",
+      "properties": {
+        "intent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "offer": {
+          "$ref": "#/$defs/Offer"
+        },
+        "query_expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "available_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "intent_id",
+        "offer",
+        "query_expires_at",
+        "available_count"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_consume_v1_request": {
+      "type": "object",
+      "properties": {
+        "intent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "confirmed_offer_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "selected_items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "intent_id",
+        "visit_id",
+        "count",
+        "confirmed_offer_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_consume_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "QUERIED",
+            "DISPATCHING",
+            "DISPATCHED",
+            "UNKNOWN",
+            "CONSUMED",
+            "FAILED_CONFIRMED"
+          ]
+        },
+        "external_fact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "consume_attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state",
+        "consume_attempt_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "intent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "intent_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "consume_state": {
+          "type": "string",
+          "enum": [
+            "QUERIED",
+            "DISPATCHING",
+            "DISPATCHED",
+            "UNKNOWN",
+            "CONSUMED",
+            "FAILED_CONFIRMED"
+          ]
+        },
+        "fulfillment_state": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "ORDERED",
+            "EXCEPTION",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "consumed_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cancelled_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "consume_state",
+        "fulfillment_state",
+        "consumed_count",
+        "cancelled_count"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_cancel_v1_request": {
+      "type": "object",
+      "properties": {
+        "consume_attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "consume_attempt_id",
+        "count",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_cancel_v1_response": {
+      "type": "object",
+      "properties": {
+        "cancel_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "cancelled_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "cancel_id",
+        "state",
+        "cancelled_count"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_manual_record_v1_request": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "platform": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "external_evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "items_snapshot": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "maxItems": 200,
+          "minItems": 1
+        }
+      },
+      "required": [
+        "visit_id",
+        "platform",
+        "external_evidence_ref",
+        "items_snapshot"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_manual_record_v1_response": {
+      "type": "object",
+      "properties": {
+        "external_fact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "external_fact_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_reconcile_v1_request": {
+      "type": "object",
+      "properties": {
+        "batch_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "batch_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_reconcile_v1_response": {
+      "type": "object",
+      "properties": {
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exceptions": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "matched",
+        "exceptions"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_create_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quote_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "amount_minor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channel": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "quote_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "allocation_scope_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "order_id",
+        "quote_version",
+        "amount_minor",
+        "channel",
+        "quote_id",
+        "allocation_scope_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_create_v1_response": {
+      "type": "object",
+      "properties": {
+        "payment_intent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "CREATED",
+            "DISPATCHING",
+            "DISPATCHED",
+            "UNKNOWN",
+            "VERIFIED_PAID",
+            "VERIFIED_UNPAID_CLOSED",
+            "CANCELLED"
+          ]
+        },
+        "launch_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "payment_intent_id",
+        "attempt_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "payment_intent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "payment_intent_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "verified_paid_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refunded_minor": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "state",
+        "verified_paid_minor",
+        "refunded_minor"
+      ],
+      "additionalProperties": false
+    },
+    "cx_refund_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "payment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "amount_minor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "payment_id",
+        "amount_minor",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_refund_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "refund_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "refund_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_prepaid_balance_v1_request": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_prepaid_balance_v1_response": {
+      "type": "object",
+      "properties": {
+        "principal_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "promo_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "principal_minor",
+        "promo_minor",
+        "policy_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payout_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "approved_settlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "approved_settlement_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payout_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "payout_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "APPROVED",
+            "DISPATCHING",
+            "UNKNOWN",
+            "VERIFIED_PAID",
+            "VERIFIED_FAILED"
+          ]
+        }
+      },
+      "required": [
+        "payout_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_shop_order_v1_request": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "maxItems": 200,
+          "minItems": 1
+        },
+        "delivery_mode": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "recipient_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "items",
+        "delivery_mode"
+      ],
+      "additionalProperties": false
+    },
+    "cx_shop_order_v1_response": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quote_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "order_id",
+        "quote_version",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_channel_select_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "client_channel": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "order_id",
+        "client_channel"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_channel_select_v1_response": {
+      "type": "object",
+      "properties": {
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Channel"
+          },
+          "maxItems": 200
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "channels",
+        "reason_codes"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_attempt_close_v1_request": {
+      "type": "object",
+      "properties": {
+        "attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "attempt_id",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_attempt_close_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "CREATED",
+            "DISPATCHING",
+            "DISPATCHED",
+            "UNKNOWN",
+            "VERIFIED_PAID",
+            "VERIFIED_UNPAID_CLOSED",
+            "CANCELLED"
+          ]
+        },
+        "verified_terminal": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "verified_terminal"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_reconcile_v1_request": {
+      "type": "object",
+      "properties": {
+        "batch_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "batch_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_reconcile_v1_response": {
+      "type": "object",
+      "properties": {
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exceptions": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "matched",
+        "exceptions"
+      ],
+      "additionalProperties": false
+    },
+    "cx_refund_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "refund_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "refund_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_refund_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "REQUESTED",
+            "APPROVED",
+            "DISPATCHING",
+            "UNKNOWN",
+            "VERIFIED_REFUNDED",
+            "VERIFIED_FAILED"
+          ]
+        },
+        "refunded_minor": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "state",
+        "refunded_minor"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payout_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "payout_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "payout_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payout_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "APPROVED",
+            "DISPATCHING",
+            "UNKNOWN",
+            "VERIFIED_PAID",
+            "VERIFIED_FAILED"
+          ]
+        },
+        "paid_minor": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "state",
+        "paid_minor"
+      ],
+      "additionalProperties": false
+    },
+    "cx_prepaid_refund_v1_request": {
+      "type": "object",
+      "properties": {
+        "recharge_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "amount_minor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "recharge_id",
+        "amount_minor",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_prepaid_refund_v1_response": {
+      "type": "object",
+      "properties": {
+        "refund_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "refund_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_shop_gift_claim_v1_request": {
+      "type": "object",
+      "properties": {
+        "claim_proof": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "claim_proof"
+      ],
+      "additionalProperties": false
+    },
+    "cx_shop_gift_claim_v1_response": {
+      "type": "object",
+      "properties": {
+        "entitlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "entitlement_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_webhook_accept_v1_request": {
+      "type": "object",
+      "properties": {
+        "raw_event_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "raw_event_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_webhook_accept_v1_response": {
+      "type": "object",
+      "properties": {
+        "accepted": {
+          "type": "boolean"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "accepted"
+      ],
+      "additionalProperties": false
+    },
+    "cx_prepaid_recharge_v1_request": {
+      "type": "object",
+      "properties": {
+        "amount_minor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "channel": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "amount_minor",
+        "channel",
+        "policy_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_prepaid_recharge_v1_response": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "payment_intent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "order_id",
+        "payment_intent_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_prepaid_spend_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "amount_minor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "authorization_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "order_id",
+        "amount_minor",
+        "authorization_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_prepaid_spend_v1_response": {
+      "type": "object",
+      "properties": {
+        "allocation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "allocation_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payout_apply_v1_request": {
+      "type": "object",
+      "properties": {
+        "liability_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "maxItems": 200
+        },
+        "recipient_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "liability_ids",
+        "recipient_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payout_apply_v1_response": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "application_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_invoice_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "invoice_profile_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "order_id",
+        "invoice_profile_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_invoice_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "application_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_shop_fulfillment_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "order_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_shop_fulfillment_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "fulfillment_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_manual_confirm_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "amount_minor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "order_id",
+        "amount_minor",
+        "evidence_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payment_manual_confirm_v1_response": {
+      "type": "object",
+      "properties": {
+        "payment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "payment_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_register_v1_request": {
+      "type": "object",
+      "properties": {
+        "proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "notice_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "consent_accepted": {
+          "type": "boolean"
+        },
+        "display_name": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "proof_ref",
+        "notice_version",
+        "consent_accepted"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_register_v1_response": {
+      "type": "object",
+      "properties": {
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "member_status": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "customer_id",
+        "member_status"
+      ],
+      "additionalProperties": false
+    },
+    "cx_member_card_bind_v1_request": {
+      "type": "object",
+      "properties": {
+        "card_proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "card_proof_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_member_card_bind_v1_response": {
+      "type": "object",
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "binding_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_privacy_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "kind",
+        "proof_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_customer_privacy_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "case_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_list_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "customer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_custody_list_v1_response": {
+      "type": "object",
+      "properties": {
+        "custodies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Custody"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "custodies"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_history_v1_request": {
+      "type": "object",
+      "properties": {
+        "entitlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "entitlement_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_history_v1_response": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssetEntry"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_proxy_authorize_v1_request": {
+      "type": "object",
+      "properties": {
+        "custody_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "recipient_proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "custody_id",
+        "recipient_proof_ref",
+        "quantity",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_custody_proxy_authorize_v1_response": {
+      "type": "object",
+      "properties": {
+        "authorization_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "authorization_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_template_stage_v1_request": {
+      "type": "object",
+      "properties": {
+        "template_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "template_ref",
+        "policy_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_template_stage_v1_response": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "candidate_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_batch_issue_v1_request": {
+      "type": "object",
+      "properties": {
+        "approved_batch_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "template_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "approved_batch_ref",
+        "template_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entitlement_batch_issue_v1_response": {
+      "type": "object",
+      "properties": {
+        "batch_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "batch_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_referral_summary_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_referral_summary_v1_response": {
+      "type": "object",
+      "properties": {
+        "referrals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Referral"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "referrals"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_policy_preview_v1_request": {
+      "type": "object",
+      "properties": {
+        "candidate_policy_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "fixture_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "candidate_policy_id",
+        "fixture_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_commission_policy_preview_v1_response": {
+      "type": "object",
+      "properties": {
+        "preview_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "preview_ref",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_visit_leave_v1_request": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "visit_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_visit_leave_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_list_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_booking_list_v1_response": {
+      "type": "object",
+      "properties": {
+        "bookings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Booking"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "bookings"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_modify_v1_request": {
+      "type": "object",
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "party_size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "booking_id",
+        "expected_revision",
+        "start_at",
+        "end_at",
+        "party_size"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_modify_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "REQUESTED",
+            "CONFIRMED",
+            "REJECTED",
+            "CANCELLED",
+            "CHECKED_IN",
+            "NO_SHOW",
+            "COMPLETED"
+          ]
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_queue_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "ticket_proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "ticket_proof_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_queue_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_accept_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "order_id",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_order_accept_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "PENDING_STAFF",
+            "ACCEPTED",
+            "IN_PRODUCTION",
+            "FULFILLED",
+            "CANCEL_REQUESTED",
+            "CANCELLED"
+          ]
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_prepaid_history_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_prepaid_history_v1_response": {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PrepaidEntry"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "additionalProperties": false
+    },
+    "cx_refund_approve_v1_request": {
+      "type": "object",
+      "properties": {
+        "refund_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "refund_id",
+        "approval_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_refund_approve_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "REQUESTED",
+            "APPROVED",
+            "DISPATCHING",
+            "UNKNOWN",
+            "VERIFIED_REFUNDED",
+            "VERIFIED_FAILED"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payout_application_review_v1_request": {
+      "type": "object",
+      "properties": {
+        "application_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "approval_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "application_id",
+        "approval_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_payout_application_review_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "settlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_aftersale_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "order_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "kind": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "order_id",
+        "kind",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_aftersale_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "case_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_aftersale_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "case_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_aftersale_status_v1_response": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "state",
+        "updated_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_coupon_history_v1_request": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_coupon_history_v1_response": {
+      "type": "object",
+      "properties": {
+        "redemptions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Redemption"
+          },
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "redemptions"
+      ],
+      "additionalProperties": false
+    },
+    "OptionChoice": {
+      "type": "object",
+      "properties": {
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "price_delta_minor": {
+          "type": "integer"
+        },
+        "availability": {
+          "type": "string",
+          "enum": [
+            "AVAILABLE",
+            "SOLD_OUT",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "required": [
+        "option_id",
+        "name",
+        "price_delta_minor",
+        "availability"
+      ],
+      "additionalProperties": false
+    },
+    "OptionGroup": {
+      "type": "object",
+      "properties": {
+        "group_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "min_select": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_select": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OptionChoice"
+          },
+          "minItems": 1,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "group_id",
+        "name",
+        "min_select",
+        "max_select",
+        "choices"
+      ],
+      "additionalProperties": false
+    },
+    "QuoteLine": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "unit_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "option_delta_minor": {
+          "type": "integer"
+        },
+        "gross_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "discount_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "net_minor": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "line_id",
+        "product_id",
+        "quantity",
+        "unit_minor",
+        "option_delta_minor",
+        "gross_minor",
+        "discount_minor",
+        "net_minor"
+      ],
+      "additionalProperties": false
+    },
+    "EventPublic": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "start_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "end_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "available_state": {
+          "type": "string",
+          "enum": [
+            "AVAILABLE",
+            "FULL",
+            "UNKNOWN"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "booking_resource_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "event_id",
+        "title",
+        "store_id",
+        "start_at",
+        "end_at",
+        "available_state",
+        "booking_resource_ref"
+      ],
+      "additionalProperties": false
+    },
+    "CartLine": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owner_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Option"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "line_id",
+        "product_id",
+        "quantity",
+        "owner_ref"
+      ],
+      "additionalProperties": false
+    },
+    "FeedbackSummary": {
+      "type": "object",
+      "properties": {
+        "feedback_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "RECEIVED",
+            "IN_REVIEW",
+            "ANSWERED",
+            "CLOSED"
+          ]
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "reply": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "feedback_id",
+        "state",
+        "updated_at"
+      ],
+      "additionalProperties": false
+    },
+    "ResourcePublic": {
+      "type": "object",
+      "properties": {
+        "resource_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "TABLE",
+            "ROOM",
+            "BILLIARD",
+            "OTHER"
+          ]
+        },
+        "availability": {
+          "type": "string",
+          "enum": [
+            "AVAILABLE",
+            "OCCUPIED",
+            "UNKNOWN"
+          ]
+        }
+      },
+      "required": [
+        "resource_id",
+        "store_id",
+        "kind",
+        "availability"
+      ],
+      "additionalProperties": false
+    },
+    "cx_event_list_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "store_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_event_list_v1_response": {
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EventPublic"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "next_cursor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_checkin_v1_request": {
+      "type": "object",
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "proof_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "booking_id",
+        "proof_ref",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "cx_booking_checkin_v1_response": {
+      "type": "object",
+      "properties": {
+        "booking_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "CHECKED_IN"
+          ]
+        },
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "booking_id",
+        "state",
+        "visit_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_cart_read_v1_request": {
+      "type": "object",
+      "properties": {
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "visit_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_cart_read_v1_response": {
+      "type": "object",
+      "properties": {
+        "cart_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "PERSONAL",
+            "SHARED"
+          ]
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CartLine"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "cart_id",
+        "revision",
+        "mode",
+        "lines"
+      ],
+      "additionalProperties": false
+    },
+    "cx_cart_update_v1_request": {
+      "type": "object",
+      "properties": {
+        "cart_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "expected_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "cart_id",
+        "expected_revision",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "cx_cart_update_v1_response": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CartLine"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        }
+      },
+      "required": [
+        "revision",
+        "lines"
+      ],
+      "additionalProperties": false
+    },
+    "cx_feedback_status_v1_request": {
+      "type": "object",
+      "properties": {
+        "feedback_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "feedback_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_feedback_status_v1_response": {
+      "$ref": "#/$defs/FeedbackSummary"
+    },
+    "cx_notification_preferences_v1_request": {
+      "type": "object",
+      "properties": {
+        "marketing_enabled": {
+          "type": "boolean"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "LIMITED",
+            "STANDARD"
+          ]
+        },
+        "notice_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "marketing_enabled",
+        "frequency",
+        "notice_version"
+      ],
+      "additionalProperties": false
+    },
+    "cx_notification_preferences_v1_response": {
+      "type": "object",
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "marketing_enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "marketing_enabled"
+      ],
+      "additionalProperties": false
+    },
+    "cx_resource_availability_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "TABLE",
+            "ROOM",
+            "BILLIARD",
+            "OTHER"
+          ]
+        }
+      },
+      "required": [
+        "store_id",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "cx_resource_availability_v1_response": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourcePublic"
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        }
+      },
+      "required": [
+        "resources",
+        "observed_at"
+      ],
+      "additionalProperties": false
+    },
+    "cx_asset_change_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "entitlement_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "PAUSE",
+            "RESUME",
+            "CHANGE",
+            "REFUND"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "entitlement_id",
+        "action",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "cx_asset_change_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "REQUESTED",
+            "REJECTED"
+          ]
+        }
+      },
+      "required": [
+        "case_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_survey_submit_v1_request": {
+      "type": "object",
+      "properties": {
+        "survey_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "answers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "answer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "question_id",
+              "answer"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 200
+        },
+        "consent_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "survey_ref",
+        "answers",
+        "consent_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_survey_submit_v1_response": {
+      "type": "object",
+      "properties": {
+        "response_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "RECEIVED"
+          ]
+        }
+      },
+      "required": [
+        "response_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_sample_request_v1_request": {
+      "type": "object",
+      "properties": {
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "product_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "visit_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "store_id",
+        "product_id",
+        "visit_id"
+      ],
+      "additionalProperties": false
+    },
+    "cx_sample_request_v1_response": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "REQUESTED"
+          ]
+        }
+      },
+      "required": [
+        "task_id",
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entry_resolve_v1_request": {
+      "type": "object",
+      "properties": {
+        "entry_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "entry_code"
+      ],
+      "additionalProperties": false
+    },
+    "cx_entry_resolve_v1_response": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "STORE",
+            "REFERRAL",
+            "MENU",
+            "MEMBER",
+            "VISIT"
+          ]
+        },
+        "public_target_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "kind",
+        "public_target_ref"
+      ],
+      "additionalProperties": false
+    },
+    "cx_referral_relationship_read_v1_request": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "cx_referral_relationship_read_v1_response": {
+      "type": "object",
+      "properties": {
+        "support_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "service_contact_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "support_ref"
+      ],
+      "additionalProperties": false
+    },
+    "RequestEnvelope": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "correlation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "context_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "contract_version",
+        "request_id",
+        "operation_id",
+        "correlation_id",
+        "context_ref"
+      ],
+      "additionalProperties": false
+    },
+    "ResponseEnvelope": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "OK",
+            "REJECTED",
+            "PENDING",
+            "UNKNOWN"
+          ]
+        },
+        "correlation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "error_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "request_id",
+        "status",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "EventEnvelope": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "event_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "legal_entity_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "store_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "aggregate_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "occurred_at_utc": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "producer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "correlation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "causation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "payload_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "event_version",
+        "tenant_id",
+        "legal_entity_id",
+        "aggregate_id",
+        "occurred_at_utc",
+        "producer",
+        "correlation_id",
+        "payload_ref"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyCommission": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string",
+          "enum": [
+            "VERIFIED_ELIGIBLE_NET_RECEIPTS"
+          ]
+        },
+        "rate_bps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "stage_coeff_bps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "attribution_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "min_wait_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligible_product_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "refund_rule": {
+          "type": "string",
+          "enum": [
+            "ORIGINAL_POLICY_DELTA"
+          ]
+        }
+      },
+      "required": [
+        "base",
+        "rate_bps",
+        "stage_coeff_bps",
+        "attribution_days",
+        "min_wait_seconds",
+        "eligible_product_ids",
+        "refund_rule"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyBenefit": {
+      "type": "object",
+      "properties": {
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "FIRST_QUALIFYING_VISIT",
+            "NEXT_QUALIFYING_VISIT",
+            "APPROVED_GIFT",
+            "VERIFIED_PURCHASE"
+          ]
+        },
+        "valid_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "discount_bps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "eligible_store_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "eligible_product_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "minItems": 0,
+          "maxItems": 200
+        },
+        "stacking": {
+          "type": "string",
+          "enum": [
+            "EXCLUSIVE",
+            "APPROVED_COMBINATION"
+          ]
+        },
+        "qualifying_fact": {
+          "type": "string",
+          "enum": [
+            "FULFILLED_AND_PAID",
+            "APPROVED_NONCASH_VISIT"
+          ]
+        }
+      },
+      "required": [
+        "trigger",
+        "valid_days",
+        "quantity",
+        "eligible_store_ids",
+        "eligible_product_ids",
+        "stacking",
+        "qualifying_fact"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyMembership": {
+      "type": "object",
+      "properties": {
+        "valid_days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "activation": {
+          "type": "string",
+          "enum": [
+            "QUALIFYING_VISIT",
+            "APPROVED_REGISTRATION"
+          ]
+        },
+        "tier_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "renewal": {
+          "type": "string",
+          "enum": [
+            "NEW_POLICY_ON_QUALIFYING_VISIT",
+            "MANUAL"
+          ]
+        }
+      },
+      "required": [
+        "valid_days",
+        "activation",
+        "tier_ref",
+        "renewal"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyTimer": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "string",
+          "enum": [
+            "SECOND",
+            "MINUTE"
+          ]
+        },
+        "included_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rate_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rounding": {
+          "type": "string",
+          "enum": [
+            "EXACT",
+            "CEILING_UNIT"
+          ]
+        },
+        "pause_allowed": {
+          "type": "boolean"
+        },
+        "extension_requires_quote": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "unit",
+        "included_seconds",
+        "rate_minor",
+        "rounding",
+        "pause_allowed",
+        "extension_requires_quote"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyBooking": {
+      "type": "object",
+      "properties": {
+        "confirmation": {
+          "type": "string",
+          "enum": [
+            "STAFF",
+            "AUTO_VALIDATED"
+          ]
+        },
+        "max_party_size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cancel_before_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deposit_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      },
+      "required": [
+        "confirmation",
+        "max_party_size",
+        "cancel_before_seconds",
+        "deposit_minor",
+        "currency"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyPayout": {
+      "type": "object",
+      "properties": {
+        "min_wait_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "batch_interval_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimum_minor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximum_minor": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "approval_required": {
+          "type": "boolean"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        }
+      },
+      "required": [
+        "min_wait_seconds",
+        "batch_interval_seconds",
+        "minimum_minor",
+        "maximum_minor",
+        "approval_required",
+        "currency"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyRecommendation": {
+      "type": "object",
+      "properties": {
+        "tag_weight_bps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "budget_weight_bps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "history_weight_bps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "popularity_weight_bps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "tag_weight_bps",
+        "budget_weight_bps",
+        "history_weight_bps",
+        "popularity_weight_bps",
+        "limit"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyRefund": {
+      "type": "object",
+      "properties": {
+        "legal_profile_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "approval_required": {
+          "type": "boolean"
+        },
+        "original_channel": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "legal_profile_ref",
+        "approval_required",
+        "original_channel"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyAge": {
+      "type": "object",
+      "properties": {
+        "admission_rule": {
+          "type": "string",
+          "enum": [
+            "ADULT_ONLY",
+            "GENERAL_ACCESS"
+          ]
+        },
+        "alcohol_sale_min_age": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "verification": {
+          "type": "string",
+          "enum": [
+            "STAFF_WHEN_IN_DOUBT",
+            "REQUIRED"
+          ]
+        }
+      },
+      "required": [
+        "admission_rule",
+        "alcohol_sale_min_age",
+        "verification"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyPrivacy": {
+      "type": "object",
+      "properties": {
+        "notice_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "retention_profile_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "marketing_default": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "notice_version",
+        "retention_profile_ref",
+        "marketing_default"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyPrice": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "rounding": {
+          "type": "string",
+          "enum": [
+            "HALF_UP"
+          ]
+        },
+        "price_source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "currency",
+        "rounding",
+        "price_source_ref"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyNotification": {
+      "type": "object",
+      "properties": {
+        "marketing_limit_per_period": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "period_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quiet_hours_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "marketing_limit_per_period",
+        "period_seconds",
+        "quiet_hours_ref"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyRetention": {
+      "type": "object",
+      "properties": {
+        "approved_schedule_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "legal_hold_supported": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "approved_schedule_ref",
+        "legal_hold_supported"
+      ],
+      "additionalProperties": false
+    },
+    "PolicyPrepaid": {
+      "type": "object",
+      "properties": {
+        "legal_profile_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "principal_refund_policy_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "promo_policy_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "legal_profile_ref",
+        "principal_refund_policy_ref",
+        "promo_policy_ref",
+        "enabled"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

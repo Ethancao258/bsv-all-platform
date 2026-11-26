@@ -1,0 +1,1771 @@
+{
+  "version": "2.0",
+  "operations": [
+    {
+      "id": "cx.tenant.resolve.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "invariant": "可信路由/会话一致，禁止浏览器指定数据库",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_tenant_resolve_v1_request",
+        "response": "#/$defs/cx_tenant_resolve_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.provider.resolve.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "invariant": "返回脱敏绑定，凭据仅内部受控对象",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_provider_resolve_v1_request",
+        "response": "#/$defs/cx_provider_resolve_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.flag.read.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "invariant": "服务端强制，不以UI隐藏替代",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_flag_read_v1_request",
+        "response": "#/$defs/cx_flag_read_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.reference.resolve.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "invariant": "无候选拒绝，不接受任意URL",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_reference_resolve_v1_request",
+        "response": "#/$defs/cx_reference_resolve_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.policy.resolve.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "invariant": "唯一适用版本，冲突拒绝",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_policy_resolve_v1_request",
+        "response": "#/$defs/cx_policy_resolve_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.config.activate.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "CAS原子发布；审批权限来自已有身份域",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_config_activate_v1_request",
+        "response": "#/$defs/cx_config_activate_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.config.stage.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "白名单配置字段；不接受明文secret",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_config_stage_v1_request",
+        "response": "#/$defs/cx_config_stage_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.tenant.provision.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "复用现有编号，DB及凭据创建受控",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_tenant_provision_v1_request",
+        "response": "#/$defs/cx_tenant_provision_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.config.rollback.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "只影响新操作，保留历史交易",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_config_rollback_v1_request",
+        "response": "#/$defs/cx_config_rollback_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.provider.health.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "R",
+      "invariant": "授权与技术健康分开",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_provider_health_v1_request",
+        "response": "#/$defs/cx_provider_health_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.auth.login.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "invariant": "会话通过受保护cookie/渠道凭证交付",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_auth_login_v1_request",
+        "response": "#/$defs/cx_auth_login_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.me.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "只读本人",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_me_v1_request",
+        "response": "#/$defs/cx_customer_me_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.bind.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "双证明新鲜且一次性",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_bind_v1_request",
+        "response": "#/$defs/cx_customer_bind_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.age.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "声明不等于现场核验",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_age_v1_request",
+        "response": "#/$defs/cx_customer_age_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.auth.challenge.send.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "invariant": "不泄露号码是否存在；限频",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_auth_challenge_send_v1_request",
+        "response": "#/$defs/cx_auth_challenge_send_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.auth.challenge.verify.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "invariant": "一次性，限尝试",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_auth_challenge_verify_v1_request",
+        "response": "#/$defs/cx_auth_challenge_verify_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.profile.update.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "允许字段白名单，不允许自行改核验状态",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_profile_update_v1_request",
+        "response": "#/$defs/cx_customer_profile_update_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.consent.update.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "撤回传播到通知，保留合法记录",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_consent_update_v1_request",
+        "response": "#/$defs/cx_customer_consent_update_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.recovery.request.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "invariant": "防账户接管，不自动合并",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_recovery_request_v1_request",
+        "response": "#/$defs/cx_customer_recovery_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.history.summary.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "缺可靠优惠基准时省略合计，禁止以零或虚构原价替代",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_history_summary_v1_request",
+        "response": "#/$defs/cx_customer_history_summary_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.member.code.issue.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "短期用途绑定，非支付码",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_member_code_issue_v1_request",
+        "response": "#/$defs/cx_member_code_issue_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.age.verify.v1",
+      "owner": "B",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "授权员工现场核验，仅留必要证据",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_age_verify_v1_request",
+        "response": "#/$defs/cx_customer_age_verify_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.close.request.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "撤销会话与合法留存分开",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_close_request_v1_request",
+        "response": "#/$defs/cx_customer_close_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.catalog.public.v1",
+      "owner": "C",
+      "scope": "P",
+      "mode": "R",
+      "invariant": "仅公开投影，不能作为可售授权",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_catalog_public_v1_request",
+        "response": "#/$defs/cx_catalog_public_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.store.list.v1",
+      "owner": "C",
+      "scope": "P",
+      "mode": "R",
+      "invariant": "营业状态、业态、公开地址",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_store_list_v1_request",
+        "response": "#/$defs/cx_store_list_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.recommend.rank.v1",
+      "owner": "C",
+      "scope": "P",
+      "mode": "R",
+      "invariant": "约束过滤在评分前",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_recommend_rank_v1_request",
+        "response": "#/$defs/cx_recommend_rank_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.catalog.favorite.v1",
+      "owner": "C",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "同一商品收藏幂等",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_catalog_favorite_v1_request",
+        "response": "#/$defs/cx_catalog_favorite_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.catalog.availability.v1",
+      "owner": "C",
+      "scope": "P",
+      "mode": "R",
+      "invariant": "UNKNOWN不等于可售；F仍重新校验",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_catalog_availability_v1_request",
+        "response": "#/$defs/cx_catalog_availability_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.list.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "本人资产",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_list_v1_request",
+        "response": "#/$defs/cx_entitlement_list_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.reserve.v1",
+      "owner": "D",
+      "scope": "S",
+      "mode": "W",
+      "invariant": "事务锁定；数量>0；关联报价",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_reserve_v1_request",
+        "response": "#/$defs/cx_entitlement_reserve_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.consume.v1",
+      "owner": "D",
+      "scope": "S",
+      "mode": "W",
+      "invariant": "仅可信履约/支付条件满足",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_consume_v1_request",
+        "response": "#/$defs/cx_entitlement_consume_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.release.v1",
+      "owner": "D",
+      "scope": "S",
+      "mode": "W",
+      "invariant": "外部状态UNKNOWN不释放",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_release_v1_request",
+        "response": "#/$defs/cx_entitlement_release_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.custody.adjust.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "员工现场实物确认；数量守恒",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_custody_adjust_v1_request",
+        "response": "#/$defs/cx_custody_adjust_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.timer.status.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "本人或授权会话",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_timer_status_v1_request",
+        "response": "#/$defs/cx_timer_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.issue.v1",
+      "owner": "D",
+      "scope": "Q/S",
+      "mode": "W",
+      "invariant": "总部批量或可信事件，唯一发放键",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_issue_v1_request",
+        "response": "#/$defs/cx_entitlement_issue_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.custody.request.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "仅创建F任务，不扣存酒",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_custody_request_v1_request",
+        "response": "#/$defs/cx_custody_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.timer.start.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "按POS已确认资格启动",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_timer_start_v1_request",
+        "response": "#/$defs/cx_timer_start_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.timer.end.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "冻结时长并经F报价",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_timer_end_v1_request",
+        "response": "#/$defs/cx_timer_end_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.custody.create.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "实物唯一标签、门店与员工来源",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_custody_create_v1_request",
+        "response": "#/$defs/cx_custody_create_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.adjust.v1",
+      "owner": "D",
+      "scope": "Q/S",
+      "mode": "W",
+      "invariant": "退款/纠偏冲正；不可负",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_adjust_v1_request",
+        "response": "#/$defs/cx_entitlement_adjust_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.timer.change.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "续时升档须明确报价与资格",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_timer_change_v1_request",
+        "response": "#/$defs/cx_timer_change_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.gift.transfer.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "授权可转让，双方确认，持有人唯一",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_gift_transfer_v1_request",
+        "response": "#/$defs/cx_gift_transfer_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.referral.claim.v1",
+      "owner": "E",
+      "scope": "U/T",
+      "mode": "W",
+      "invariant": "候选/确认分离，已确认不覆盖",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_referral_claim_v1_request",
+        "response": "#/$defs/cx_referral_claim_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.commission.accrue.v1",
+      "owner": "E",
+      "scope": "S",
+      "mode": "W",
+      "invariant": "累计差额、原政策；不得直接付款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_commission_accrue_v1_request",
+        "response": "#/$defs/cx_commission_accrue_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.commission.reverse.v1",
+      "owner": "E",
+      "scope": "S",
+      "mode": "W",
+      "invariant": "真实退款；重复事件无新差额",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_commission_reverse_v1_request",
+        "response": "#/$defs/cx_commission_reverse_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.commission.eligible.v1",
+      "owner": "E",
+      "scope": "U/Q",
+      "mode": "R",
+      "invariant": "客户仅本人；总部可按明确权限查指定beneficiary；不可直接付款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_commission_eligible_v1_request",
+        "response": "#/$defs/cx_commission_eligible_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.referral.invite.v1",
+      "owner": "E",
+      "scope": "U/T",
+      "mode": "W",
+      "invariant": "资格与用途；不自动现金推广",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_referral_invite_v1_request",
+        "response": "#/$defs/cx_referral_invite_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.commission.policy.publish.v1",
+      "owner": "E",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "试算、审批、同范围冲突拒绝",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_commission_policy_publish_v1_request",
+        "response": "#/$defs/cx_commission_policy_publish_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.commission.settlement.prepare.v1",
+      "owner": "E",
+      "scope": "Q/S",
+      "mode": "W",
+      "invariant": "锁定已核准负债，H付款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_commission_settlement_prepare_v1_request",
+        "response": "#/$defs/cx_commission_settlement_prepare_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.referral.correct.v1",
+      "owner": "E",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "留原历史，不重复佣金",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_referral_correct_v1_request",
+        "response": "#/$defs/cx_referral_correct_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.service.relationship.update.v1",
+      "owner": "E",
+      "scope": "Q/U",
+      "mode": "W",
+      "invariant": "服务联系与原始推荐人分离",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_service_relationship_update_v1_request",
+        "response": "#/$defs/cx_service_relationship_update_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.visit.join.v1",
+      "owner": "F",
+      "scope": "P/U",
+      "mode": "W",
+      "invariant": "现场证明与会话scope；游客受限",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_visit_join_v1_request",
+        "response": "#/$defs/cx_visit_join_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.order.submit.v1",
+      "owner": "F",
+      "scope": "V",
+      "mode": "W",
+      "invariant": "POS唯一写；重新计价与幂等",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_order_submit_v1_request",
+        "response": "#/$defs/cx_order_submit_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.order.status.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "R",
+      "invariant": "仅授权行",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_order_status_v1_request",
+        "response": "#/$defs/cx_order_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.order.external_fulfill.v1",
+      "owner": "F",
+      "scope": "S",
+      "mode": "W",
+      "invariant": "只接收可信G事实引用，F从G已确认不可变SKU/数量快照取值，客户端不能提交外部履约商品",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_order_external_fulfill_v1_request",
+        "response": "#/$defs/cx_order_external_fulfill_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.booking.request.v1",
+      "owner": "F",
+      "scope": "U/P",
+      "mode": "W",
+      "invariant": "未确认不保证座位",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_booking_request_v1_request",
+        "response": "#/$defs/cx_booking_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.service.request.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "W",
+      "invariant": "安全求助优先；防刷",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_service_request_v1_request",
+        "response": "#/$defs/cx_service_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.booking.confirm.v1",
+      "owner": "F",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "资源锁与容量原子校验",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_booking_confirm_v1_request",
+        "response": "#/$defs/cx_booking_confirm_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.booking.cancel.v1",
+      "owner": "F",
+      "scope": "U/T",
+      "mode": "W",
+      "invariant": "取消与退款事实独立",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_booking_cancel_v1_request",
+        "response": "#/$defs/cx_booking_cancel_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.service.update.v1",
+      "owner": "F",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "门店权限/状态转换",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_service_update_v1_request",
+        "response": "#/$defs/cx_service_update_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.notify.list.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "本人授权消息",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_notify_list_v1_request",
+        "response": "#/$defs/cx_notify_list_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.feedback.submit.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "评价有订单事实；其他意见可无订单",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_feedback_submit_v1_request",
+        "response": "#/$defs/cx_feedback_submit_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.order.quote.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "W",
+      "invariant": "持久化唯一报价ID及版本和有效期；不预占库存；游客通过受限visit；若现有确定性签名报价可等效替代",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_order_quote_v1_request",
+        "response": "#/$defs/cx_order_quote_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.order.cancel.request.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "W",
+      "invariant": "已出品/支付需员工审批及H退款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_order_cancel_request_v1_request",
+        "response": "#/$defs/cx_order_cancel_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.queue.join.v1",
+      "owner": "F",
+      "scope": "P/U",
+      "mode": "W",
+      "invariant": "候位非预约",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_queue_join_v1_request",
+        "response": "#/$defs/cx_queue_join_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.queue.update.v1",
+      "owner": "F",
+      "scope": "T/U",
+      "mode": "W",
+      "invariant": "叫号、取消、员工入座",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_queue_update_v1_request",
+        "response": "#/$defs/cx_queue_update_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.notify.mark_read.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "不修改业务状态",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_notify_mark_read_v1_request",
+        "response": "#/$defs/cx_notify_mark_read_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.service.status.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "R",
+      "invariant": "本人/会话任务",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_service_status_v1_request",
+        "response": "#/$defs/cx_service_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.coupon.query.v1",
+      "owner": "G",
+      "scope": "V/T",
+      "mode": "W",
+      "invariant": "虽不核销，但创建短期查券intent，限频、幂等、加密；门店/主体绑定",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_coupon_query_v1_request",
+        "response": "#/$defs/cx_coupon_query_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.coupon.consume.v1",
+      "owner": "G",
+      "scope": "V/T",
+      "mode": "W",
+      "invariant": "平台成功与POS接单分开",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_coupon_consume_v1_request",
+        "response": "#/$defs/cx_coupon_consume_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.coupon.status.v1",
+      "owner": "G",
+      "scope": "V/T",
+      "mode": "R",
+      "invariant": "结果原渠道查询",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_coupon_status_v1_request",
+        "response": "#/$defs/cx_coupon_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.coupon.cancel.v1",
+      "owner": "G",
+      "scope": "T/Q",
+      "mode": "W",
+      "invariant": "仅针对原核销流水；部分撤销累计成功+在途≤已核销；旧intent需映射到明确attempt，不允许猜测",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_coupon_cancel_v1_request",
+        "response": "#/$defs/cx_coupon_cancel_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.coupon.manual.record.v1",
+      "owner": "G",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "官方端证据，不能自报核销成功",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_coupon_manual_record_v1_request",
+        "response": "#/$defs/cx_coupon_manual_record_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.coupon.reconcile.v1",
+      "owner": "G",
+      "scope": "Q/S",
+      "mode": "W",
+      "invariant": "查核销/撤销/POS/结算；不直接改款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_coupon_reconcile_v1_request",
+        "response": "#/$defs/cx_coupon_reconcile_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payment.create.v1",
+      "owner": "H",
+      "scope": "V/U",
+      "mode": "W",
+      "invariant": "创建allocation且在外发前持久化DISPATCHING；launch_ref经受控渠道适配器返回客户端必要参数，不能包含商户密钥",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payment_create_v1_request",
+        "response": "#/$defs/cx_payment_create_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payment.status.v1",
+      "owner": "H",
+      "scope": "U/V/T",
+      "mode": "R",
+      "invariant": "原供应商确认；本人/账单权限",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payment_status_v1_request",
+        "response": "#/$defs/cx_payment_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.refund.request.v1",
+      "owner": "H",
+      "scope": "T/Q/U",
+      "mode": "W",
+      "invariant": "客户仅创建申请；授权财务批准/法定自动规则后才执行，禁止按用户输入直接退款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_refund_request_v1_request",
+        "response": "#/$defs/cx_refund_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.prepaid.balance.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "与佣金隔离",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_prepaid_balance_v1_request",
+        "response": "#/$defs/cx_prepaid_balance_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payout.request.v1",
+      "owner": "H",
+      "scope": "Q/S",
+      "mode": "W",
+      "invariant": "E负债锁定，H实际付款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payout_request_v1_request",
+        "response": "#/$defs/cx_payout_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.shop.order.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "调用F唯一订单入口；D发权益",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_shop_order_v1_request",
+        "response": "#/$defs/cx_shop_order_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payment.channel.select.v1",
+      "owner": "H",
+      "scope": "U/V",
+      "mode": "R",
+      "invariant": "只列已授权可用通道；不发交易",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payment_channel_select_v1_request",
+        "response": "#/$defs/cx_payment_channel_select_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payment.attempt.close.v1",
+      "owner": "H",
+      "scope": "S/T",
+      "mode": "W",
+      "invariant": "查原单并确认关单",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payment_attempt_close_v1_request",
+        "response": "#/$defs/cx_payment_attempt_close_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payment.reconcile.v1",
+      "owner": "H",
+      "scope": "Q/S",
+      "mode": "W",
+      "invariant": "回单匹配；异常保留",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payment_reconcile_v1_request",
+        "response": "#/$defs/cx_payment_reconcile_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.refund.status.v1",
+      "owner": "H",
+      "scope": "U/T/Q",
+      "mode": "R",
+      "invariant": "原退款事实",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_refund_status_v1_request",
+        "response": "#/$defs/cx_refund_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payout.status.v1",
+      "owner": "H",
+      "scope": "U/Q",
+      "mode": "R",
+      "invariant": "本人/财务权限",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payout_status_v1_request",
+        "response": "#/$defs/cx_payout_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.prepaid.refund.v1",
+      "owner": "H",
+      "scope": "U/Q",
+      "mode": "W",
+      "invariant": "法定退款审核；原渠道",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_prepaid_refund_v1_request",
+        "response": "#/$defs/cx_prepaid_refund_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.shop.gift.claim.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "调用D，持有人唯一",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_shop_gift_claim_v1_request",
+        "response": "#/$defs/cx_shop_gift_claim_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payment.webhook.accept.v1",
+      "owner": "H",
+      "scope": "X",
+      "mode": "W",
+      "invariant": "原始回调先验签且商户绑定到租户；raw_event_ref仅服务端生成，内部注册操作不得公开通用RPC",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payment_webhook_accept_v1_request",
+        "response": "#/$defs/cx_payment_webhook_accept_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.prepaid.recharge.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "真实功能默认关闭；本金支付后入账",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_prepaid_recharge_v1_request",
+        "response": "#/$defs/cx_prepaid_recharge_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.prepaid.spend.v1",
+      "owner": "H",
+      "scope": "S",
+      "mode": "W",
+      "invariant": "分账守恒，余额锁",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_prepaid_spend_v1_request",
+        "response": "#/$defs/cx_prepaid_spend_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payout.apply.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "申请与实际付款权限分离",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payout_apply_v1_request",
+        "response": "#/$defs/cx_payout_apply_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.invoice.request.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "先人工开票，供应商引用留空",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_invoice_request_v1_request",
+        "response": "#/$defs/cx_invoice_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.shop.fulfillment.status.v1",
+      "owner": "H",
+      "scope": "U/T",
+      "mode": "R",
+      "invariant": "F事实投影",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_shop_fulfillment_status_v1_request",
+        "response": "#/$defs/cx_shop_fulfillment_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payment.manual.confirm.v1",
+      "owner": "H",
+      "scope": "T/Q",
+      "mode": "W",
+      "invariant": "现有正规线下收款事实经授权核对",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payment_manual_confirm_v1_request",
+        "response": "#/$defs/cx_payment_manual_confirm_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.register.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "invariant": "核验认证证明、唯一身份；重复注册返回原主码",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_register_v1_request",
+        "response": "#/$defs/cx_customer_register_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.member.card.bind.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "纸卡仅定位已签发权益，不凭二维码发放",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_member_card_bind_v1_request",
+        "response": "#/$defs/cx_member_card_bind_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.customer.privacy.request.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "查询/更正/删除请求，依法保留必要记录",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_customer_privacy_request_v1_request",
+        "response": "#/$defs/cx_customer_privacy_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.custody.list.v1",
+      "owner": "D",
+      "scope": "U/T",
+      "mode": "R",
+      "invariant": "顾客本人，员工按门店权限查询",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_custody_list_v1_request",
+        "response": "#/$defs/cx_custody_list_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.history.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "历史流水不因过期消失",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_history_v1_request",
+        "response": "#/$defs/cx_entitlement_history_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.custody.proxy.authorize.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "代取仍须员工确认实物",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_custody_proxy_authorize_v1_request",
+        "response": "#/$defs/cx_custody_proxy_authorize_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.template.stage.v1",
+      "owner": "D",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "总部审批后才发放",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_template_stage_v1_request",
+        "response": "#/$defs/cx_entitlement_template_stage_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entitlement.batch.issue.v1",
+      "owner": "D",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "名单预览和逐客户幂等",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_entitlement_batch_issue_v1_request",
+        "response": "#/$defs/cx_entitlement_batch_issue_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.referral.summary.v1",
+      "owner": "E",
+      "scope": "U/T",
+      "mode": "R",
+      "invariant": "仅本人授权脱敏汇总",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_referral_summary_v1_request",
+        "response": "#/$defs/cx_referral_summary_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.commission.policy.preview.v1",
+      "owner": "E",
+      "scope": "Q",
+      "mode": "R",
+      "invariant": "不计真实应付，模拟规则",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_commission_policy_preview_v1_request",
+        "response": "#/$defs/cx_commission_policy_preview_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.visit.leave.v1",
+      "owner": "F",
+      "scope": "V",
+      "mode": "W",
+      "invariant": "只撤销本人加入权限，员工才能关桌",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_visit_leave_v1_request",
+        "response": "#/$defs/cx_visit_leave_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.booking.list.v1",
+      "owner": "F",
+      "scope": "U/T",
+      "mode": "R",
+      "invariant": "本人或获权员工",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_booking_list_v1_request",
+        "response": "#/$defs/cx_booking_list_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.booking.modify.v1",
+      "owner": "F",
+      "scope": "U/T",
+      "mode": "W",
+      "invariant": "确认中变更原子重验资源/容量",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_booking_modify_v1_request",
+        "response": "#/$defs/cx_booking_modify_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.queue.status.v1",
+      "owner": "F",
+      "scope": "P/U",
+      "mode": "R",
+      "invariant": "只显示自身候位状态，不泄露他人",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_queue_status_v1_request",
+        "response": "#/$defs/cx_queue_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.order.accept.v1",
+      "owner": "F",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "员工接单，通过既有POS状态变更",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_order_accept_v1_request",
+        "response": "#/$defs/cx_order_accept_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.prepaid.history.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "本金赠送分开展示",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_prepaid_history_v1_request",
+        "response": "#/$defs/cx_prepaid_history_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.refund.approve.v1",
+      "owner": "H",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "核对法律与金额，发起原渠道退款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_refund_approve_v1_request",
+        "response": "#/$defs/cx_refund_approve_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.payout.application.review.v1",
+      "owner": "H",
+      "scope": "Q",
+      "mode": "W",
+      "invariant": "E锁定合格负债后H付款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_payout_application_review_v1_request",
+        "response": "#/$defs/cx_payout_application_review_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.aftersale.request.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "售后申请不自动退款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_aftersale_request_v1_request",
+        "response": "#/$defs/cx_aftersale_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.aftersale.status.v1",
+      "owner": "H",
+      "scope": "U/T/Q",
+      "mode": "R",
+      "invariant": "本人/授权财务或门店",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_aftersale_status_v1_request",
+        "response": "#/$defs/cx_aftersale_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.coupon.history.v1",
+      "owner": "G",
+      "scope": "U/T",
+      "mode": "R",
+      "invariant": "本人或授权门店，券码脱敏",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN",
+      "schema_refs": {
+        "request": "#/$defs/cx_coupon_history_v1_request",
+        "response": "#/$defs/cx_coupon_history_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.event.list.v1",
+      "owner": "F",
+      "scope": "P",
+      "mode": "R",
+      "invariant": "仅批准公开活动",
+      "schema_refs": {
+        "request": "#/$defs/cx_event_list_v1_request",
+        "response": "#/$defs/cx_event_list_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.booking.checkin.v1",
+      "owner": "F",
+      "scope": "T",
+      "mode": "W",
+      "invariant": "员工核实、重复返回原visit；不等于已付",
+      "schema_refs": {
+        "request": "#/$defs/cx_booking_checkin_v1_request",
+        "response": "#/$defs/cx_booking_checkin_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.cart.read.v1",
+      "owner": "F",
+      "scope": "V",
+      "mode": "R",
+      "invariant": "只授权行",
+      "schema_refs": {
+        "request": "#/$defs/cx_cart_read_v1_request",
+        "response": "#/$defs/cx_cart_read_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.cart.update.v1",
+      "owner": "F",
+      "scope": "V",
+      "mode": "W",
+      "invariant": "草稿非订单；CAS冲突不覆盖",
+      "schema_refs": {
+        "request": "#/$defs/cx_cart_update_v1_request",
+        "response": "#/$defs/cx_cart_update_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.feedback.status.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "本人/授权查询",
+      "schema_refs": {
+        "request": "#/$defs/cx_feedback_status_v1_request",
+        "response": "#/$defs/cx_feedback_status_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.notification.preferences.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "交易通知与营销分离",
+      "schema_refs": {
+        "request": "#/$defs/cx_notification_preferences_v1_request",
+        "response": "#/$defs/cx_notification_preferences_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.resource.availability.v1",
+      "owner": "F",
+      "scope": "U/T/V",
+      "mode": "R",
+      "invariant": "非占用承诺，F事务锁",
+      "schema_refs": {
+        "request": "#/$defs/cx_resource_availability_v1_request",
+        "response": "#/$defs/cx_resource_availability_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.asset.change.request.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "合同变更不直接扣资产；退款由H",
+      "schema_refs": {
+        "request": "#/$defs/cx_asset_change_request_v1_request",
+        "response": "#/$defs/cx_asset_change_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.survey.submit.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "自愿，版本校验",
+      "schema_refs": {
+        "request": "#/$defs/cx_survey_submit_v1_request",
+        "response": "#/$defs/cx_survey_submit_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.sample.request.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "W",
+      "invariant": "只申请，员工验证酒精资格",
+      "schema_refs": {
+        "request": "#/$defs/cx_sample_request_v1_request",
+        "response": "#/$defs/cx_sample_request_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.entry.resolve.v1",
+      "owner": "A",
+      "scope": "P",
+      "mode": "R",
+      "invariant": "公开受控目标，不返回内部binding；桌码只定位",
+      "schema_refs": {
+        "request": "#/$defs/cx_entry_resolve_v1_request",
+        "response": "#/$defs/cx_entry_resolve_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    },
+    {
+      "id": "cx.referral.relationship.read.v1",
+      "owner": "E",
+      "scope": "U",
+      "mode": "R",
+      "invariant": "只授权公开联系信息",
+      "schema_refs": {
+        "request": "#/$defs/cx_referral_relationship_read_v1_request",
+        "response": "#/$defs/cx_referral_relationship_read_v1_response"
+      },
+      "status": "PROPOSED_NOT_RUN",
+      "transport": "map approved existing function/route first"
+    }
+  ]
+}

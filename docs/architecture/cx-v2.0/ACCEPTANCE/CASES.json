@@ -1,0 +1,671 @@
+{
+  "version": "2.0",
+  "prior_cases": [
+    {
+      "id": "A01",
+      "owner": "A",
+      "given": "租户T1/T2同商品ID、不同佣金配置",
+      "expected": "两边仅返回本企业数据",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "A02",
+      "owner": "A",
+      "given": "启用V2时V1支付未决",
+      "expected": "V1继续查询原商户，新单使用V2",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "A03",
+      "owner": "A",
+      "given": "配置缺密钥/URL、重复优先级、未知adapter",
+      "expected": "校验拒绝，原版本仍生效",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "A04",
+      "owner": "A",
+      "given": "T1恢复备份",
+      "expected": "T2数据不变，T1待决资金先对账",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "A05",
+      "owner": "A",
+      "given": "供应商授权到期",
+      "expected": "拒绝新请求，历史查询与退款依授权保留",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "B01",
+      "owner": "B",
+      "given": "重复注册同issuer与subject",
+      "expected": "返回原客户ID",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "B02",
+      "owner": "B",
+      "given": "不同appid同subject",
+      "expected": "不自动合并",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "B03",
+      "owner": "B",
+      "given": "短信过期/重放/错误次数达限",
+      "expected": "拒绝并不泄露是否已注册",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "B04",
+      "owner": "B",
+      "given": "客户调用员工接口",
+      "expected": "403或等效拒绝",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "B05",
+      "owner": "B",
+      "given": "未成年人声明/年龄存疑",
+      "expected": "酒吧不准入，非酒精合法业态按规则",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "B06",
+      "owner": "B",
+      "given": "撤销营销授权",
+      "expected": "停止后续营销，不删除法定账务",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "C01",
+      "owner": "C",
+      "given": "旧扫码URL",
+      "expected": "原菜单仍打开",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "C02",
+      "owner": "C",
+      "given": "公开投影含配方或内部字段",
+      "expected": "拦截发布或剔除",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "C03",
+      "owner": "C",
+      "given": "产品售罄/库存未知",
+      "expected": "不能直接提交购买",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "C04",
+      "owner": "C",
+      "given": "预算3000分、仅无酒精",
+      "expected": "结果全部满足硬约束",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "C05",
+      "owner": "C",
+      "given": "320/390/768px及断网",
+      "expected": "可读无横溢，静态快照标注过期",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "D01",
+      "owner": "D",
+      "given": "最后1次并发2个hold",
+      "expected": "仅一个成功",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "D02",
+      "owner": "D",
+      "given": "预占超时但付款UNKNOWN",
+      "expected": "不释放，查询原单",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "D03",
+      "owner": "D",
+      "given": "同一首访两次加单",
+      "expected": "不重复发放或触发返场",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "D04",
+      "owner": "D",
+      "given": "存酒700ml取200ml后再取600ml",
+      "expected": "余额500ml，拒绝第二次",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "D05",
+      "owner": "D",
+      "given": "计时120分钟跨午夜/客户端时钟错误",
+      "expected": "服务器同一结束时间",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "D06",
+      "owner": "D",
+      "given": "权益转赠后原持有人核销",
+      "expected": "拒绝",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "E01",
+      "owner": "E",
+      "given": "10000分、600bps、退款3000分（合成）",
+      "expected": "600分入账，-180分冲正，重复无新增",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "E02",
+      "owner": "E",
+      "given": "修改佣金费率后旧单退款",
+      "expected": "使用旧版费率",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "E03",
+      "owner": "E",
+      "given": "员工与消费者重复推荐",
+      "expected": "只按批准归因规则分配",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "E04",
+      "owner": "E",
+      "given": "demo付款/未履约/平台券面值",
+      "expected": "不产生可付",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "E05",
+      "owner": "E",
+      "given": "离职与联系人交接",
+      "expected": "客户资产与原始归因保持",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "F01",
+      "owner": "F",
+      "given": "关桌后重放旧join proof",
+      "expected": "拒绝",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "F02",
+      "owner": "F",
+      "given": "价格变更或售罄",
+      "expected": "返回新报价或拒绝，不静默加价",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "F03",
+      "owner": "F",
+      "given": "同幂等键重发/异参",
+      "expected": "同结果/冲突",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "F04",
+      "owner": "F",
+      "given": "换桌",
+      "expected": "原visit与订单保留",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "F05",
+      "owner": "F",
+      "given": "同一资源两个重叠确认",
+      "expected": "仅一个成功或容量内",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "F06",
+      "owner": "F",
+      "given": "G外部事实重发",
+      "expected": "同一POS履约记录",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "F07",
+      "owner": "F",
+      "given": "越权查同桌他人账单",
+      "expected": "拒绝或仅授权行",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "G01",
+      "owner": "G",
+      "given": "核销2份成功、POS写入失败",
+      "expected": "只补建一次含2份的履约",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "G02",
+      "owner": "G",
+      "given": "超时后切换供应商",
+      "expected": "继续原requestId查单",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "G03",
+      "owner": "G",
+      "given": "2份撤销仅1份成功",
+      "expected": "累计成功1份，失败1份进入待办",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "G04",
+      "owner": "G",
+      "given": "门店映射错误/未授权/无SKU映射",
+      "expected": "不核销",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "G05",
+      "owner": "G",
+      "given": "同券支持合法分次核销",
+      "expected": "每次独立事实，累计数量不超限",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "G06",
+      "owner": "G",
+      "given": "券面价5000分购买价4000分、结算未知",
+      "expected": "不能确认为4000分实收",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "H01",
+      "owner": "H",
+      "given": "主支付未发送即故障",
+      "expected": "提供已授权备用并要求确认",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "H02",
+      "owner": "H",
+      "given": "已发送超时/用户取消前端",
+      "expected": "不发第二attempt，查原单",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "H03",
+      "owner": "H",
+      "given": "并发分配7000+4000分、账单10000分",
+      "expected": "不允许总占用超过10000",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "H04",
+      "owner": "H",
+      "given": "已付10000分，退款6000后再退5000",
+      "expected": "第二笔拒绝",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "H05",
+      "owner": "H",
+      "given": "微信回调重放/迟到失败",
+      "expected": "只记一笔成功事实",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "H06",
+      "owner": "H",
+      "given": "未兑付法定冷静期内退款",
+      "expected": "保留合法退款路径，不强制转佣金提现",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "H07",
+      "owner": "H",
+      "given": "同一结算重复付款请求",
+      "expected": "只允许一个实际付款",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    },
+    {
+      "id": "H08",
+      "owner": "H",
+      "given": "商城付款后发券事件重复",
+      "expected": "仅发放一次",
+      "execution": "NOT_RUN",
+      "environment": "synthetic",
+      "evidence_ref": null
+    }
+  ],
+  "new_cases": [
+    {
+      "id": "CRASH-H",
+      "operation": "cx.payment.create.v1",
+      "given": {
+        "amount_minor": 10000,
+        "attempt_state": "DISPATCHING",
+        "provider_reply": null
+      },
+      "action": "crash before response persistence; retry with same request",
+      "expect": "query original merchant order; no second attempt; original allocation reserved",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "CRASH-G",
+      "operation": "cx.coupon.consume.v1",
+      "given": {
+        "count": 2,
+        "attempt_state": "DISPATCHING"
+      },
+      "action": "provider consumed; process crashes before response write",
+      "expect": "original query confirms two consumed; exactly one external fact and one POS fulfillment",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "G-PARTIAL",
+      "operation": "cx.coupon.cancel.v1",
+      "given": {
+        "attempt": "SYN-C1",
+        "consumed": 3,
+        "confirmed_cancelled": 1,
+        "pending_cancel": 1
+      },
+      "action": "request cancel 2",
+      "expect": "reject; at most 1 remaining for new cancellation",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "H-REFUND",
+      "operation": "cx.refund.approve.v1",
+      "given": {
+        "paid_minor": 10000,
+        "refunded_minor": 5000,
+        "inflight_minor": 4000
+      },
+      "action": "approve 2000",
+      "expect": "reject; available refund=1000",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "D-HOLD",
+      "operation": "cx.entitlement.release.v1",
+      "given": {
+        "hold_state": "HELD",
+        "expired": true,
+        "payment": "UNKNOWN"
+      },
+      "action": "expire",
+      "expect": "REVIEW, reservation still counts",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "E-ROUND",
+      "operation": "cx.commission.accrue.v1",
+      "given": {
+        "paid_minor": 10000,
+        "refund_minor": 3000,
+        "rate_bps": 600,
+        "coeff_bps": 10000,
+        "prior_minor": 600
+      },
+      "action": "compute target",
+      "expect": "420 target, -180 delta; event replay 0",
+      "status": "NOT_RUN"
+    }
+  ],
+  "v2_cases": [
+    {
+      "id": "V2-Q1",
+      "given": "quote_id missing or wrong subject",
+      "expected": "reject no order/payment",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "V2-Q2",
+      "given": "option count > max_select",
+      "expected": "reject",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "V2-Q3",
+      "given": "quote total != sum net lines",
+      "expected": "reject",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "V2-B1",
+      "given": "registration proof absent",
+      "expected": "schema rejects",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "V2-F1",
+      "given": "cart CAS stale revision",
+      "expected": "no overwrite",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "V2-A1",
+      "given": "same display code two tenants",
+      "expected": "no cross access",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "V2-H1",
+      "given": "late paid callback after prior close",
+      "expected": "quarantine reconcile; no duplicate credit",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "V2-D1",
+      "given": "refund asset request",
+      "expected": "H execution; D only verified adjustment",
+      "status": "NOT_RUN"
+    }
+  ],
+  "journeys": [
+    {
+      "id": "J01",
+      "name": "首访",
+      "owners": [
+        "C",
+        "B",
+        "F",
+        "H",
+        "D"
+      ],
+      "steps": "菜单→注册→到店→报价→付款→履约→权益",
+      "expected": "重复首访事件不重复发放",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "J02",
+      "name": "返场",
+      "owners": [
+        "B",
+        "D",
+        "F",
+        "H"
+      ],
+      "steps": "会员→预占→POS→付款履约→消费",
+      "expected": "权益符合政策且仅用一次",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "J03",
+      "name": "团购",
+      "owners": [
+        "G",
+        "F",
+        "H",
+        "D",
+        "E"
+      ],
+      "steps": "查券→核销→补单→结算",
+      "expected": "已核销POS失败只补单",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "J04",
+      "name": "推荐",
+      "owners": [
+        "E",
+        "B",
+        "F",
+        "H"
+      ],
+      "steps": "邀请→确认→消费→应付→付款",
+      "expected": "退款冲正不重付",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "J05",
+      "name": "存酒",
+      "owners": [
+        "D",
+        "F",
+        "B"
+      ],
+      "steps": "贴标→查看→申请→员工确认",
+      "expected": "700-200=500",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "J06",
+      "name": "支付故障",
+      "owners": [
+        "H",
+        "A",
+        "F"
+      ],
+      "steps": "原单查询→终态→备用",
+      "expected": "UNKNOWN不可换",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "J07",
+      "name": "开户",
+      "owners": [
+        "A",
+        "B",
+        "C",
+        "F",
+        "H"
+      ],
+      "steps": "租户→独立库→政策→绑定",
+      "expected": "两企业同码不串库",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "J08",
+      "name": "恢复",
+      "owners": [
+        "A",
+        "F",
+        "G",
+        "H",
+        "E"
+      ],
+      "steps": "重启→原单查询→补单→对账",
+      "expected": "无重复事实",
+      "status": "NOT_RUN"
+    }
+  ]
+}
