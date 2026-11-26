@@ -5,7 +5,8 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 from zipfile import ZipFile
 
 
-def write_fixture(path, *, approved=True):
+def write_fixture(path, *, approved=True, product_count=63, first_name=None, extra_header=False,
+                 duplicate_first_id=False):
     main = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
     rel = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
     wb = Element("workbook", {"xmlns": main, "xmlns:r": rel})
@@ -18,6 +19,7 @@ def write_fixture(path, *, approved=True):
         ("T_门店注册", "网点记录ID"),
     )
     with ZipFile(path, "w") as archive:
+        archive.writestr("[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>')
         for i, (page, label) in enumerate(pages, 1):
             target = f"sheet{i}.xml"
             ref = f"rId{i}"
@@ -29,8 +31,12 @@ def write_fixture(path, *, approved=True):
             if i == 1:
                 rows[0].update(M="商品名称", AJ="标注售价", AK="完整制作步骤", AL="制作时长（秒）",
                                AM="内容审核状态", AN="上架状态")
-                for n in range(1, 64):
-                    record = {"L": f"C{n:06}", "M": f"合成商品 {n}", "AK": "演练步骤", "AL": "45",
+                if extra_header:
+                    rows[0]["AX"] = "未登记新字段"
+                for n in range(1, product_count + 1):
+                    name = first_name if n == 1 and first_name is not None else f"合成商品 {n}"
+                    record_id = "C000001" if duplicate_first_id and n == 2 else f"C{n:06}"
+                    record = {"L": record_id, "M": name, "AK": "演练步骤", "AL": "45",
                               "AM": "已批准" if approved else "草案",
                               "AN": "在售" if approved else ""}
                     if n <= 52:
