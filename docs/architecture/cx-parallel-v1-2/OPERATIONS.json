@@ -1,0 +1,461 @@
+{
+  "version": "1.2",
+  "status": "PROPOSED_CONTRACT_INDEX",
+  "operations": [
+    {
+      "id": "cx.tenant.resolve.v1",
+      "owner": "A",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.provider.resolve.v1",
+      "owner": "A",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.flag.read.v1",
+      "owner": "A",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.reference.resolve.v1",
+      "owner": "A",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.policy.resolve.v1",
+      "owner": "A",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.config.activate.v1",
+      "owner": "A",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.auth.login.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.customer.me.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.customer.bind.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.customer.age.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.auth.challenge.send.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.auth.challenge.verify.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.customer.profile.update.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.customer.consent.update.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.customer.recovery.request.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.customer.history.summary.v1",
+      "owner": "B",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.catalog.public.v1",
+      "owner": "C",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.store.list.v1",
+      "owner": "C",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.recommend.rank.v1",
+      "owner": "C",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.catalog.favorite.v1",
+      "owner": "C",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.entitlement.list.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.entitlement.reserve.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.entitlement.consume.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.entitlement.release.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.custody.adjust.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.timer.status.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.entitlement.issue.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.custody.request.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.timer.start.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.timer.end.v1",
+      "owner": "D",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.referral.claim.v1",
+      "owner": "E",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.commission.accrue.v1",
+      "owner": "E",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.commission.reverse.v1",
+      "owner": "E",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.commission.eligible.v1",
+      "owner": "E",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.referral.invite.v1",
+      "owner": "E",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.commission.policy.publish.v1",
+      "owner": "E",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.commission.settlement.prepare.v1",
+      "owner": "E",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.visit.join.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.order.submit.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.order.status.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.order.external_fulfill.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.booking.request.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.service.request.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.booking.confirm.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.booking.cancel.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.service.update.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.notify.list.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.feedback.submit.v1",
+      "owner": "F",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.coupon.query.v1",
+      "owner": "G",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.coupon.consume.v1",
+      "owner": "G",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.coupon.status.v1",
+      "owner": "G",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.coupon.cancel.v1",
+      "owner": "G",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.payment.create.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.payment.status.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.refund.request.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.prepaid.balance.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.payout.request.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.shop.order.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.payment.channel.select.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.payment.attempt.close.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.payment.reconcile.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.refund.status.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.payout.status.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.prepaid.refund.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    },
+    {
+      "id": "cx.shop.gift.claim.v1",
+      "owner": "H",
+      "version": 1,
+      "classification": "PROPOSED_OPERATION",
+      "transport": "reuse approved in-process/API/event contract; no URL hardcoded in caller"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "version": "1.2",
+  "status": "SPECIFICATION_ONLY",
+  "cases": [
+    {
+      "id": "URA-01",
+      "owner": "A",
+      "scenario": "two synthetic tenants with same product display ID and different policy and DB",
+      "expect": "isolation, cache/route/callback not shared"
+    },
+    {
+      "id": "URA-02",
+      "owner": "A",
+      "scenario": "activate new config while historical payment pending",
+      "expect": "new operations new revision; old attempt pinned"
+    },
+    {
+      "id": "B-01",
+      "owner": "B",
+      "scenario": "same subject string from different issuer",
+      "expect": "no implicit merge"
+    },
+    {
+      "id": "C-01",
+      "owner": "C",
+      "scenario": "public catalog contains forbidden field or unpublished sku",
+      "expect": "filtered or rejected; no sale authorization"
+    },
+    {
+      "id": "D-01",
+      "owner": "D",
+      "scenario": "quantity=1, 2 competing holds",
+      "expect": "at most 1 success"
+    },
+    {
+      "id": "D-02",
+      "owner": "D",
+      "scenario": "hold expires while payment unknown",
+      "expect": "not released until verified"
+    },
+    {
+      "id": "E-01",
+      "owner": "E",
+      "scenario": "paid 10000 minor, 600bps, refund 3000",
+      "expect": "600 then -180 delta; duplicate ignored"
+    },
+    {
+      "id": "F-01",
+      "owner": "F",
+      "scenario": "old visit proof after closed visit",
+      "expect": "reject"
+    },
+    {
+      "id": "F-02",
+      "owner": "F",
+      "scenario": "same external_fact_id twice",
+      "expect": "one order"
+    },
+    {
+      "id": "G-01",
+      "owner": "G",
+      "scenario": "consume succeeds then POS write fails",
+      "expect": "repair order only, no repeated consume"
+    },
+    {
+      "id": "G-02",
+      "owner": "G",
+      "scenario": "consume timed out then provider switched",
+      "expect": "query original intent, no re-consume"
+    },
+    {
+      "id": "H-01",
+      "owner": "H",
+      "scenario": "primary unavailable before submission",
+      "expect": "offer authorized alternative with user confirmation"
+    },
+    {
+      "id": "H-02",
+      "owner": "H",
+      "scenario": "attempt submitted, timeout, user selects other channel",
+      "expect": "blocked until verified terminal unsuccessful"
+    },
+    {
+      "id": "H-03",
+      "owner": "H",
+      "scenario": "delayed success and duplicate callback",
+      "expect": "exactly one financial fact; exception reconciliation if duplicate money"
+    },
+    {
+      "id": "H-04",
+      "owner": "H",
+      "scenario": "refund and payout concurrent",
+      "expect": "balance invariant and no duplicate payout"
+    }
+  ]
+}
