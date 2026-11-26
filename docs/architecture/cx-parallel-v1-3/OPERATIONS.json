@@ -1,0 +1,946 @@
+{
+  "version": "1.3",
+  "status": "PROPOSED_TYPED_SIGNATURES",
+  "operations": [
+    {
+      "id": "cx.tenant.resolve.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "request": "host:s,session_ref:id?",
+      "response": "tenant_id:id,legal_entity_ids:ids,config_revision:id",
+      "invariant": "可信路由/会话一致，禁止浏览器指定数据库",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.provider.resolve.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "request": "reference_id:id,channel:s,store_id:id?",
+      "response": "binding_id:id,adapter_id:id,config_revision:id,eligible:b",
+      "invariant": "返回脱敏绑定，凭据仅内部受控对象",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.flag.read.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "request": "feature_id:id,store_id:id?",
+      "response": "enabled:b,revision:id,reason:s",
+      "invariant": "服务端强制，不以UI隐藏替代",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.reference.resolve.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "request": "reference_id:id,operation_id:id,context_ref:id?",
+      "response": "binding_id:id,revision:id,kind:s",
+      "invariant": "无候选拒绝，不接受任意URL",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.policy.resolve.v1",
+      "owner": "A",
+      "scope": "S",
+      "mode": "R",
+      "request": "policy_id:id,scope_ref:id,as_of:t",
+      "response": "policy_version:id,parameters:obj",
+      "invariant": "唯一适用版本，冲突拒绝",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.config.activate.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "W",
+      "request": "candidate_id:id,expected_revision:id,approval_ref:id",
+      "response": "revision:id,prior_revision:id",
+      "invariant": "CAS原子发布；审批权限来自已有身份域",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.config.stage.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "W",
+      "request": "reference_id:id,scope_ref:id,patch:obj",
+      "response": "candidate_id:id,validation_state:s",
+      "invariant": "白名单配置字段；不接受明文secret",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.tenant.provision.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "W",
+      "request": "onboarding_ref:id,profile_id:id,approval_ref:id",
+      "response": "tenant_id:id,state:s",
+      "invariant": "复用现有编号，DB及凭据创建受控",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.config.rollback.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "W",
+      "request": "revision:id,expected_revision:id,approval_ref:id",
+      "response": "active_revision:id",
+      "invariant": "只影响新操作，保留历史交易",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.provider.health.v1",
+      "owner": "A",
+      "scope": "Q",
+      "mode": "R",
+      "request": "reference_id:id,store_id:id?",
+      "response": "candidates:objs,observed_at:t",
+      "invariant": "授权与技术健康分开",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.auth.login.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "request": "provider:s,proof_ref:id",
+      "response": "session_ref:id,customer_id:id?,status:s",
+      "invariant": "会话通过受保护cookie/渠道凭证交付",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.me.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "R",
+      "request": "",
+      "response": "customer_id:id,member_status:s,profile:obj",
+      "invariant": "只读本人",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.bind.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "request": "proof_a:id,proof_b:id",
+      "response": "customer_id:id,binding_status:s",
+      "invariant": "双证明新鲜且一次性",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.age.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "request": "declared_adult:b",
+      "response": "declaration_state:s,verification_state:s",
+      "invariant": "声明不等于现场核验",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.auth.challenge.send.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "request": "phone:s,purpose:s",
+      "response": "challenge_id:id,expires_at:t",
+      "invariant": "不泄露号码是否存在；限频",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.auth.challenge.verify.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "request": "challenge_id:id,code:s",
+      "response": "proof_ref:id,expires_at:t",
+      "invariant": "一次性，限尝试",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.profile.update.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "request": "patch:obj,expected_revision:id",
+      "response": "profile:obj,revision:id",
+      "invariant": "允许字段白名单，不允许自行改核验状态",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.consent.update.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "request": "purpose:s,accepted:b,notice_version:id",
+      "response": "receipt_id:id",
+      "invariant": "撤回传播到通知，保留合法记录",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.recovery.request.v1",
+      "owner": "B",
+      "scope": "P",
+      "mode": "W",
+      "request": "proof_ref:id,reason:s",
+      "response": "case_id:id,state:s",
+      "invariant": "防账户接管，不自动合并",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.history.summary.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "R",
+      "request": "cursor:s?",
+      "response": "orders:objs,total_discount_minor:i,next_cursor:s?",
+      "invariant": "F/H事实投影；不虚构原价",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.member.code.issue.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "request": "store_id:id?",
+      "response": "proof_ref:id,expires_at:t",
+      "invariant": "短期用途绑定，非支付码",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.age.verify.v1",
+      "owner": "B",
+      "scope": "T",
+      "mode": "W",
+      "request": "customer_id:id,method:s,result:s",
+      "response": "verification_ref:id,state:s",
+      "invariant": "授权员工现场核验，仅留必要证据",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.customer.close.request.v1",
+      "owner": "B",
+      "scope": "U",
+      "mode": "W",
+      "request": "proof_ref:id",
+      "response": "case_id:id,state:s",
+      "invariant": "撤销会话与合法留存分开",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.catalog.public.v1",
+      "owner": "C",
+      "scope": "P",
+      "mode": "R",
+      "request": "store_id:id,publication_id:id?,cursor:s?",
+      "response": "published_version:id,products:objs,next_cursor:s?",
+      "invariant": "仅公开投影，不能作为可售授权",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.store.list.v1",
+      "owner": "C",
+      "scope": "P",
+      "mode": "R",
+      "request": "profile_id:id?",
+      "response": "stores:objs",
+      "invariant": "营业状态、业态、公开地址",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.recommend.rank.v1",
+      "owner": "C",
+      "scope": "P",
+      "mode": "R",
+      "request": "store_id:id,budget_minor:i?,taste_tags:ss,alcohol_mode:s",
+      "response": "products:objs,reason_codes:ss,policy_version:id",
+      "invariant": "约束过滤在评分前",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.catalog.favorite.v1",
+      "owner": "C",
+      "scope": "U",
+      "mode": "W",
+      "request": "product_id:id,desired:b",
+      "response": "saved:b",
+      "invariant": "同一商品收藏幂等",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.catalog.availability.v1",
+      "owner": "C",
+      "scope": "P",
+      "mode": "R",
+      "request": "store_id:id,product_ids:ids",
+      "response": "items:objs,observed_at:t",
+      "invariant": "UNKNOWN不等于可售；F仍重新校验",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.entitlement.list.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "R",
+      "request": "cursor:s?",
+      "response": "entitlements:objs,next_cursor:s?",
+      "invariant": "本人资产",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.entitlement.reserve.v1",
+      "owner": "D",
+      "scope": "S",
+      "mode": "W",
+      "request": "entitlement_id:id,visit_id:id,quantity:i,quote_id:id",
+      "response": "reservation_id:id,expires_at:t,state:s",
+      "invariant": "事务锁定；数量>0；关联报价",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.entitlement.consume.v1",
+      "owner": "D",
+      "scope": "S",
+      "mode": "W",
+      "request": "reservation_id:id,fulfillment_ref:id",
+      "response": "ledger_id:id,state:s",
+      "invariant": "仅可信履约/支付条件满足",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.entitlement.release.v1",
+      "owner": "D",
+      "scope": "S",
+      "mode": "W",
+      "request": "reservation_id:id,evidence_ref:id",
+      "response": "state:s",
+      "invariant": "外部状态UNKNOWN不释放",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.custody.adjust.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "request": "custody_id:id,quantity:i,unit:s,action:s,reason:s",
+      "response": "ledger_id:id,balance:i",
+      "invariant": "员工现场实物确认；数量守恒",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.timer.status.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "R",
+      "request": "service_session_id:id",
+      "response": "state:s,server_now:t,remaining_seconds:i?,elapsed_seconds:i",
+      "invariant": "本人或授权会话",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.entitlement.issue.v1",
+      "owner": "D",
+      "scope": "Q/S",
+      "mode": "W",
+      "request": "customer_id:id,template_ref:id,source_event_id:id,quantity:i",
+      "response": "entitlement_id:id,policy_version:id",
+      "invariant": "总部批量或可信事件，唯一发放键",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.custody.request.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "W",
+      "request": "custody_id:id,quantity:i",
+      "response": "task_id:id,state:s",
+      "invariant": "仅创建F任务，不扣存酒",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.timer.start.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "request": "visit_id:id,product_id:id",
+      "response": "service_session_id:id,start_at:t,policy_version:id",
+      "invariant": "按POS已确认资格启动",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.timer.end.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "request": "service_session_id:id",
+      "response": "state:s,elapsed_seconds:i,charge_quote_ref:id?",
+      "invariant": "冻结时长并经F报价",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.custody.create.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "request": "customer_id:id,product_id:id,quantity:i,unit:s,physical_label:id",
+      "response": "custody_id:id,expires_at:t",
+      "invariant": "实物唯一标签、门店与员工来源",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.entitlement.adjust.v1",
+      "owner": "D",
+      "scope": "Q/S",
+      "mode": "W",
+      "request": "entitlement_id:id,delta:i,evidence_ref:id",
+      "response": "ledger_id:id,balance:i",
+      "invariant": "退款/纠偏冲正；不可负",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.timer.change.v1",
+      "owner": "D",
+      "scope": "T",
+      "mode": "W",
+      "request": "service_session_id:id,action:s,quote_ref:id?",
+      "response": "state:s,policy_version:id",
+      "invariant": "续时升档须明确报价与资格",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.gift.transfer.v1",
+      "owner": "D",
+      "scope": "U",
+      "mode": "W",
+      "request": "entitlement_id:id,recipient_proof_ref:id",
+      "response": "transfer_id:id,state:s",
+      "invariant": "授权可转让，双方确认，持有人唯一",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.referral.claim.v1",
+      "owner": "E",
+      "scope": "U/T",
+      "mode": "W",
+      "request": "invite_ref:id?,customer_confirmation_ref:id",
+      "response": "attribution_id:id,state:s",
+      "invariant": "候选/确认分离，已确认不覆盖",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.commission.accrue.v1",
+      "owner": "E",
+      "scope": "S",
+      "mode": "W",
+      "request": "verified_payment_event_id:id,fulfillment_ref:id",
+      "response": "accrual_id:id,delta_minor:i,state:s",
+      "invariant": "累计差额、原政策；不得直接付款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.commission.reverse.v1",
+      "owner": "E",
+      "scope": "S",
+      "mode": "W",
+      "request": "refund_id:id",
+      "response": "adjustment_id:id,delta_minor:i",
+      "invariant": "真实退款；重复事件无新差额",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.commission.eligible.v1",
+      "owner": "E",
+      "scope": "U/Q",
+      "mode": "R",
+      "request": "cursor:s?",
+      "response": "liabilities:objs,next_cursor:s?",
+      "invariant": "本人或获权财务；非储值",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.referral.invite.v1",
+      "owner": "E",
+      "scope": "U/T",
+      "mode": "W",
+      "request": "store_id:id?",
+      "response": "invite_ref:id,expires_at:t",
+      "invariant": "资格与用途；不自动现金推广",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.commission.policy.publish.v1",
+      "owner": "E",
+      "scope": "Q",
+      "mode": "W",
+      "request": "candidate_policy_id:id,approval_ref:id",
+      "response": "policy_version:id,effective_at:t",
+      "invariant": "试算、审批、同范围冲突拒绝",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.commission.settlement.prepare.v1",
+      "owner": "E",
+      "scope": "Q/S",
+      "mode": "W",
+      "request": "beneficiary_id:id,liability_ids:ids",
+      "response": "settlement_id:id,amount_minor:i,state:s",
+      "invariant": "锁定已核准负债，H付款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.referral.correct.v1",
+      "owner": "E",
+      "scope": "Q",
+      "mode": "W",
+      "request": "attribution_id:id,correction_ref:id,approval_ref:id",
+      "response": "correction_id:id,state:s",
+      "invariant": "留原历史，不重复佣金",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.service.relationship.update.v1",
+      "owner": "E",
+      "scope": "Q/U",
+      "mode": "W",
+      "request": "customer_id:id?,assignment_ref:id,consent_ref:id",
+      "response": "relationship_id:id,state:s",
+      "invariant": "服务联系与原始推荐人分离",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.visit.join.v1",
+      "owner": "F",
+      "scope": "P/U",
+      "mode": "W",
+      "request": "seat_locator:id,join_proof:id",
+      "response": "visit_id:id,access_ref:id,expires_at:t",
+      "invariant": "现场证明与会话scope；游客受限",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.order.submit.v1",
+      "owner": "F",
+      "scope": "V",
+      "mode": "W",
+      "request": "visit_id:id,items:items,quote_version:id",
+      "response": "order_id:id,state:s,quote:obj",
+      "invariant": "POS唯一写；重新计价与幂等",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.order.status.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "R",
+      "request": "order_id:id",
+      "response": "order_id:id,state:s,authorized_lines:objs",
+      "invariant": "仅授权行",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.order.external_fulfill.v1",
+      "owner": "F",
+      "scope": "S",
+      "mode": "W",
+      "request": "visit_id:id,external_fact_id:id,items_snapshot:items",
+      "response": "order_id:id,state:s",
+      "invariant": "唯一外部事实行；G调用",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.booking.request.v1",
+      "owner": "F",
+      "scope": "U/P",
+      "mode": "W",
+      "request": "resource_ref:id,start_at:t,end_at:t,party_size:i",
+      "response": "booking_id:id,state:s",
+      "invariant": "未确认不保证座位",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.service.request.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "W",
+      "request": "visit_id:id?,kind:s,details:obj",
+      "response": "task_id:id,state:s",
+      "invariant": "安全求助优先；防刷",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.booking.confirm.v1",
+      "owner": "F",
+      "scope": "T",
+      "mode": "W",
+      "request": "booking_id:id,resource_ref:id,expected_revision:id",
+      "response": "state:s,revision:id",
+      "invariant": "资源锁与容量原子校验",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.booking.cancel.v1",
+      "owner": "F",
+      "scope": "U/T",
+      "mode": "W",
+      "request": "booking_id:id,reason:s",
+      "response": "state:s,refund_request_ref:id?",
+      "invariant": "取消与退款事实独立",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.service.update.v1",
+      "owner": "F",
+      "scope": "T",
+      "mode": "W",
+      "request": "task_id:id,action:s,expected_revision:id",
+      "response": "state:s,revision:id",
+      "invariant": "门店权限/状态转换",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.notify.list.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "R",
+      "request": "cursor:s?",
+      "response": "messages:objs,next_cursor:s?",
+      "invariant": "本人授权消息",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.feedback.submit.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "W",
+      "request": "order_id:id?,kind:s,content:s",
+      "response": "feedback_id:id,state:s",
+      "invariant": "评价有订单事实；其他意见可无订单",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.order.quote.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "R",
+      "request": "visit_id:id?,items:items,benefit_ids:ids?",
+      "response": "quote_id:id,quote_version:id,total_minor:i,expires_at:t",
+      "invariant": "唯一计价入口；非承诺库存",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.order.cancel.request.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "W",
+      "request": "order_id:id,reason:s",
+      "response": "task_id:id,state:s",
+      "invariant": "已出品/支付需员工审批及H退款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.queue.join.v1",
+      "owner": "F",
+      "scope": "P/U",
+      "mode": "W",
+      "request": "store_id:id,party_size:i",
+      "response": "ticket_id:id,state:s",
+      "invariant": "候位非预约",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.queue.update.v1",
+      "owner": "F",
+      "scope": "T/U",
+      "mode": "W",
+      "request": "ticket_id:id,action:s",
+      "response": "state:s,visit_id:id?",
+      "invariant": "叫号、取消、员工入座",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.notify.mark_read.v1",
+      "owner": "F",
+      "scope": "U",
+      "mode": "W",
+      "request": "message_id:id",
+      "response": "read:b",
+      "invariant": "不修改业务状态",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.service.status.v1",
+      "owner": "F",
+      "scope": "V/U",
+      "mode": "R",
+      "request": "task_id:id",
+      "response": "state:s,updated_at:t",
+      "invariant": "本人/会话任务",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.coupon.query.v1",
+      "owner": "G",
+      "scope": "V/T",
+      "mode": "R",
+      "request": "platform:s,coupon_code:s,store_id:id",
+      "response": "intent_id:id,offer:obj,query_expires_at:t,available_count:i",
+      "invariant": "记录加密短期intent；无资金/核销写入",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.coupon.consume.v1",
+      "owner": "G",
+      "scope": "V/T",
+      "mode": "W",
+      "request": "intent_id:id,visit_id:id,count:i,confirmed_offer_version:id",
+      "response": "state:s,external_fact_id:id?,order_id:id?",
+      "invariant": "平台成功与POS接单分开",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.coupon.status.v1",
+      "owner": "G",
+      "scope": "V/T",
+      "mode": "R",
+      "request": "intent_id:id",
+      "response": "consume_state:s,fulfillment_state:s,consumed_count:i,cancelled_count:i",
+      "invariant": "结果原渠道查询",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.coupon.cancel.v1",
+      "owner": "G",
+      "scope": "T/Q",
+      "mode": "W",
+      "request": "intent_id:id,count:i,reason:s",
+      "response": "cancel_id:id,state:s,cancelled_count:i",
+      "invariant": "保留供应商订单号；部分撤销",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.coupon.manual.record.v1",
+      "owner": "G",
+      "scope": "T",
+      "mode": "W",
+      "request": "visit_id:id,platform:s,external_evidence_ref:id,items_snapshot:items",
+      "response": "external_fact_id:id,state:s",
+      "invariant": "官方端证据，不能自报核销成功",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.coupon.reconcile.v1",
+      "owner": "G",
+      "scope": "Q/S",
+      "mode": "W",
+      "request": "batch_ref:id",
+      "response": "matched:i,exceptions:i",
+      "invariant": "查核销/撤销/POS/结算；不直接改款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payment.create.v1",
+      "owner": "H",
+      "scope": "V/U",
+      "mode": "W",
+      "request": "order_id:id,quote_version:id,amount_minor:i,channel:s",
+      "response": "payment_intent_id:id,attempt_id:id,state:s,client_package:obj?",
+      "invariant": "分配锁；用户确认通道；真实金额服务端校验",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payment.status.v1",
+      "owner": "H",
+      "scope": "U/V/T",
+      "mode": "R",
+      "request": "payment_intent_id:id",
+      "response": "state:s,verified_paid_minor:i,refunded_minor:i",
+      "invariant": "原供应商确认；本人/账单权限",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.refund.request.v1",
+      "owner": "H",
+      "scope": "T/Q/U",
+      "mode": "W",
+      "request": "payment_id:id,amount_minor:i,reason:s",
+      "response": "refund_id:id,state:s",
+      "invariant": "用户请求不直接获得退款执行权",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.prepaid.balance.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "R",
+      "request": "",
+      "response": "principal_minor:i,promo_minor:i,policy_version:id",
+      "invariant": "与佣金隔离",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payout.request.v1",
+      "owner": "H",
+      "scope": "Q/S",
+      "mode": "W",
+      "request": "approved_settlement_id:id",
+      "response": "payout_id:id,state:s",
+      "invariant": "E负债锁定，H实际付款",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.shop.order.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "request": "items:items,delivery_mode:s,recipient_ref:id?",
+      "response": "order_id:id,quote_version:id,state:s",
+      "invariant": "调用F唯一订单入口；D发权益",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payment.channel.select.v1",
+      "owner": "H",
+      "scope": "U/V",
+      "mode": "R",
+      "request": "order_id:id,client_channel:s",
+      "response": "channels:objs,reason_codes:ss",
+      "invariant": "只列已授权可用通道；不发交易",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payment.attempt.close.v1",
+      "owner": "H",
+      "scope": "S/T",
+      "mode": "W",
+      "request": "attempt_id:id,reason:s",
+      "response": "state:s,verified_terminal:b",
+      "invariant": "查原单并确认关单",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payment.reconcile.v1",
+      "owner": "H",
+      "scope": "Q/S",
+      "mode": "W",
+      "request": "batch_ref:id",
+      "response": "matched:i,exceptions:i",
+      "invariant": "回单匹配；异常保留",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.refund.status.v1",
+      "owner": "H",
+      "scope": "U/T/Q",
+      "mode": "R",
+      "request": "refund_id:id",
+      "response": "state:s,refunded_minor:i",
+      "invariant": "原退款事实",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payout.status.v1",
+      "owner": "H",
+      "scope": "U/Q",
+      "mode": "R",
+      "request": "payout_id:id",
+      "response": "state:s,paid_minor:i",
+      "invariant": "本人/财务权限",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.prepaid.refund.v1",
+      "owner": "H",
+      "scope": "U/Q",
+      "mode": "W",
+      "request": "recharge_id:id,amount_minor:i,reason:s",
+      "response": "refund_id:id,state:s",
+      "invariant": "法定退款审核；原渠道",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.shop.gift.claim.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "request": "claim_proof:id",
+      "response": "entitlement_id:id,state:s",
+      "invariant": "调用D，持有人唯一",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payment.webhook.accept.v1",
+      "owner": "H",
+      "scope": "X",
+      "mode": "W",
+      "request": "raw_event_ref:id",
+      "response": "accepted:b,event_id:id?",
+      "invariant": "原始验签后落库；不接受浏览器",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.prepaid.recharge.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "request": "amount_minor:i,channel:s,policy_version:id",
+      "response": "order_id:id,payment_intent_id:id",
+      "invariant": "真实功能默认关闭；本金支付后入账",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.prepaid.spend.v1",
+      "owner": "H",
+      "scope": "S",
+      "mode": "W",
+      "request": "order_id:id,amount_minor:i,authorization_ref:id",
+      "response": "allocation_id:id,state:s",
+      "invariant": "分账守恒，余额锁",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payout.apply.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "request": "liability_ids:ids,recipient_ref:id",
+      "response": "application_id:id,state:s",
+      "invariant": "申请与实际付款权限分离",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.invoice.request.v1",
+      "owner": "H",
+      "scope": "U",
+      "mode": "W",
+      "request": "order_id:id,invoice_profile_ref:id",
+      "response": "application_id:id,state:s",
+      "invariant": "先人工开票，供应商引用留空",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.shop.fulfillment.status.v1",
+      "owner": "H",
+      "scope": "U/T",
+      "mode": "R",
+      "request": "order_id:id",
+      "response": "state:s,fulfillment_ref:id?",
+      "invariant": "F事实投影",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    },
+    {
+      "id": "cx.payment.manual.confirm.v1",
+      "owner": "H",
+      "scope": "T/Q",
+      "mode": "W",
+      "request": "order_id:id,amount_minor:i,evidence_ref:id",
+      "response": "payment_id:id,state:s",
+      "invariant": "现有正规线下收款事实经授权核对",
+      "implementation_status": "NOT_IMPLEMENTED_BY_THIS_DESIGN"
+    }
+  ]
+}

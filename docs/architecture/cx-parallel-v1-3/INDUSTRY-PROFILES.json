@@ -1,0 +1,141 @@
+{
+  "status": "PROPOSED_TEMPLATES_NOT_LIVE",
+  "profiles": [
+    {
+      "id": "BAR_COCKTAIL",
+      "industry": "鸡尾酒吧",
+      "initial": [
+        "menu",
+        "member",
+        "visit",
+        "order",
+        "benefit",
+        "coupon",
+        "pay"
+      ],
+      "optional": [
+        "custody",
+        "timer",
+        "booking",
+        "gift",
+        "events",
+        "referral"
+      ],
+      "constraints": [
+        "酒吧未成年人准入限制",
+        "酒精和过敏原提示"
+      ],
+      "config_values": null
+    },
+    {
+      "id": "BAR_CRAFT_SOCIAL",
+      "industry": "精酿社交酒馆",
+      "initial": [
+        "menu",
+        "member",
+        "visit",
+        "order",
+        "coupon",
+        "timer"
+      ],
+      "optional": [
+        "billiards",
+        "custody",
+        "group_booking",
+        "pay"
+      ],
+      "constraints": [
+        "按真实经营业态与证照配置年龄/准入"
+      ],
+      "config_values": null
+    },
+    {
+      "id": "CAFE_LOUNGE",
+      "industry": "咖啡与会客厅",
+      "initial": [
+        "menu",
+        "member",
+        "order",
+        "booking"
+      ],
+      "optional": [
+        "room_timer",
+        "events",
+        "gift",
+        "pay",
+        "pickup"
+      ],
+      "constraints": [
+        "非酒精默认展示；酒类及场地许可待核"
+      ],
+      "config_values": null
+    },
+    {
+      "id": "RESTAURANT",
+      "industry": "普通餐饮",
+      "initial": [
+        "menu",
+        "member",
+        "visit",
+        "order",
+        "coupon",
+        "pay"
+      ],
+      "optional": [
+        "queue",
+        "booking",
+        "gift",
+        "prepaid",
+        "pickup"
+      ],
+      "constraints": [
+        "根据营业许可与真实企业政策"
+      ],
+      "config_values": null
+    },
+    {
+      "id": "RETAIL_PICKUP",
+      "industry": "零售自提（未来）",
+      "initial": [
+        "menu",
+        "member",
+        "shop",
+        "pickup"
+      ],
+      "optional": [
+        "gift",
+        "delivery",
+        "pay"
+      ],
+      "constraints": [
+        "商品销售、配送及酒类资格待核"
+      ],
+      "config_values": null
+    },
+    {
+      "id": "OTHER",
+      "industry": null,
+      "initial": [],
+      "optional": [],
+      "constraints": [
+        "未知业态不自动启用任何交易能力"
+      ],
+      "config_values": null
+    }
+  ],
+  "onboarding_required": [
+    "tenant_id",
+    "legal_entity_id",
+    "store_registry_ref",
+    "profile_id",
+    "db_ref",
+    "staff_authority_ref",
+    "catalog_publication_ref",
+    "policy_refs",
+    "provider_bindings",
+    "privacy_notice_ref",
+    "backup_restore_evidence",
+    "release_approval"
+  ],
+  "note": "initial means proposed feature set, not production enablement; actual flags default false."
+}

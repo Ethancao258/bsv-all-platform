@@ -1,0 +1,201 @@
+{
+  "version": "1.3",
+  "status": "DESIGN_ONLY",
+  "machines": {
+    "payment": {
+      "initial": "CREATED",
+      "transitions": [
+        [
+          "CREATED",
+          "DISPATCHED",
+          "已持久化唯一attempt且实际发送"
+        ],
+        [
+          "CREATED",
+          "CANCELLED",
+          "未发请求"
+        ],
+        [
+          "DISPATCHED",
+          "UNKNOWN",
+          "网络超时或无可信结果"
+        ],
+        [
+          "DISPATCHED",
+          "VERIFIED_PAID",
+          "验签+核对可信成功"
+        ],
+        [
+          "UNKNOWN",
+          "VERIFIED_PAID",
+          "原单可信查询成功"
+        ],
+        [
+          "DISPATCHED",
+          "VERIFIED_UNPAID_CLOSED",
+          "原单不可再成功的终态"
+        ],
+        [
+          "UNKNOWN",
+          "VERIFIED_UNPAID_CLOSED",
+          "原单不可再成功的终态"
+        ]
+      ],
+      "invariant": "Only CREATED never dispatched or VERIFIED_UNPAID_CLOSED/CANCELLED permits replacement; refund separate state."
+    },
+    "coupon": {
+      "initial": "QUERIED",
+      "transitions": [
+        [
+          "QUERIED",
+          "DISPATCHED",
+          "有效查询、已确认offer、份数、门店及SKU"
+        ],
+        [
+          "DISPATCHED",
+          "UNKNOWN",
+          "超时/处理中"
+        ],
+        [
+          "DISPATCHED",
+          "CONSUMED",
+          "可信成功且保存外部事实"
+        ],
+        [
+          "UNKNOWN",
+          "CONSUMED",
+          "原请求查询确认"
+        ],
+        [
+          "DISPATCHED",
+          "FAILED_CONFIRMED",
+          "可信终态未核销"
+        ],
+        [
+          "UNKNOWN",
+          "FAILED_CONFIRMED",
+          "可信终态未核销"
+        ]
+      ],
+      "invariant": "Separate fulfillment state PENDING/ORDERED/EXCEPTION and cancel attempt state; partial cancellation cumulative success <= consumed count."
+    },
+    "hold": {
+      "initial": "HELD",
+      "transitions": [
+        [
+          "HELD",
+          "CONSUMED",
+          "可信履约/付款满足权益政策"
+        ],
+        [
+          "HELD",
+          "RELEASED",
+          "终态确认未履约或未支付且可释放"
+        ],
+        [
+          "HELD",
+          "REVIEW",
+          "到期但支付未知"
+        ],
+        [
+          "REVIEW",
+          "CONSUMED",
+          "可信成功"
+        ],
+        [
+          "REVIEW",
+          "RELEASED",
+          "确认未发生"
+        ]
+      ],
+      "invariant": "Available qty nonnegative; REVIEW continues reservation."
+    },
+    "booking": {
+      "initial": "REQUESTED",
+      "transitions": [
+        [
+          "REQUESTED",
+          "CONFIRMED",
+          "资源锁内容量校验"
+        ],
+        [
+          "REQUESTED",
+          "REJECTED",
+          "员工拒绝"
+        ],
+        [
+          "REQUESTED",
+          "CANCELLED",
+          "取消"
+        ],
+        [
+          "CONFIRMED",
+          "CHECKED_IN",
+          "员工确认"
+        ],
+        [
+          "CONFIRMED",
+          "CANCELLED",
+          "政策允许"
+        ],
+        [
+          "CONFIRMED",
+          "NO_SHOW",
+          "超时经规则确认"
+        ],
+        [
+          "CHECKED_IN",
+          "COMPLETED",
+          "服务完成"
+        ]
+      ],
+      "invariant": "Only confirmed bookings reserve capacity; request not a promise."
+    },
+    "settlement": {
+      "initial": "PROVISIONAL",
+      "transitions": [
+        [
+          "PROVISIONAL",
+          "ELIGIBLE",
+          "可信实收履约、等待、合同均符合"
+        ],
+        [
+          "ELIGIBLE",
+          "LOCKED",
+          "审批锁定负债"
+        ],
+        [
+          "LOCKED",
+          "PAYMENT_PENDING",
+          "H持久化付款指令"
+        ],
+        [
+          "PAYMENT_PENDING",
+          "UNKNOWN",
+          "结果未知"
+        ],
+        [
+          "PAYMENT_PENDING",
+          "PAID",
+          "可信回单"
+        ],
+        [
+          "UNKNOWN",
+          "PAID",
+          "原付款确认"
+        ],
+        [
+          "PAYMENT_PENDING",
+          "FAILED_CONFIRMED",
+          "明确未付"
+        ],
+        [
+          "UNKNOWN",
+          "FAILED_CONFIRMED",
+          "明确未付"
+        ]
+      ],
+      "invariant": "E owns liability; H payout facts; never unlock UNKNOWN."
+    }
+  }
+}

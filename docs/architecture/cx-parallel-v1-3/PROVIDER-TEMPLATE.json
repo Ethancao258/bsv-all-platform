@@ -1,0 +1,338 @@
+{
+  "status": "TEMPLATE_ONLY_NO_LIVE_CONFIG",
+  "tenant": {
+    "tenant_id": null,
+    "legal_entity_id": null,
+    "domain": null,
+    "db_ref": null,
+    "bootstrap_admin_ref": null,
+    "profile_id": null,
+    "stores": []
+  },
+  "bindings": [
+    {
+      "reference_id": "cx.auth.wechat",
+      "adapter_candidate": "wechat.oauth",
+      "purpose": "公众号/小程序按入口",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "appid": null,
+        "secret_ref": null,
+        "redirect_uri": null,
+        "approved_domain": null
+      }
+    },
+    {
+      "reference_id": "cx.auth.sms",
+      "adapter_candidate": "tencent.sms",
+      "purpose": "SendSms",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "secret_ref": null,
+        "app_id": null,
+        "sign_name": null,
+        "template_id": null,
+        "region": null,
+        "quota": null
+      }
+    },
+    {
+      "reference_id": "cx.auth.realname",
+      "adapter_candidate": null,
+      "purpose": "按需身份核验",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "vendor": null,
+        "credential_ref": null,
+        "approved_purpose": null
+      }
+    },
+    {
+      "reference_id": "cx.coupon.verify",
+      "adapter_candidate": "sqb.coupon",
+      "purpose": "聚合核销候选",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "base_url_ref": null,
+        "credential_ref": null,
+        "merchant_ref": null,
+        "store_mapping_ref": null,
+        "isv_license_ref": null,
+        "self_service_authorization_ref": null,
+        "quote_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.coupon.verify",
+      "adapter_candidate": "meituan.direct",
+      "purpose": "直连备用候选",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "app_id": null,
+        "credential_ref": null,
+        "store_mapping_ref": null,
+        "authorization_ref": null,
+        "quote_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.coupon.verify",
+      "adapter_candidate": "douyin.direct",
+      "purpose": "直连备用候选",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "app_id": null,
+        "credential_ref": null,
+        "store_mapping_ref": null,
+        "authorization_ref": null,
+        "quote_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.pay.collect",
+      "adapter_candidate": "wechat.pay.v3",
+      "purpose": "微信商户收款",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "appid": null,
+        "mchid": null,
+        "credential_ref": null,
+        "cert_ref": null,
+        "notify_url_ref": null,
+        "authorized_directory": null,
+        "quote_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.pay.collect",
+      "adapter_candidate": "alipay.wap",
+      "purpose": "支付宝备用",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "appid": null,
+        "merchant_ref": null,
+        "credential_ref": null,
+        "notify_url_ref": null,
+        "authorized_product": null,
+        "quote_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.pay.refund",
+      "adapter_candidate": null,
+      "purpose": "原渠道退款",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "provider_binding_ref": null,
+        "approval_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.pay.payout",
+      "adapter_candidate": "wechat.transfer",
+      "purpose": "佣金商家转账候选",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "mchid": null,
+        "scene_id": null,
+        "credential_ref": null,
+        "authorization_ref": null,
+        "limit_ref": null,
+        "tax_policy_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.notify.send",
+      "adapter_candidate": null,
+      "purpose": "站内优先、外部订阅可选",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "adapter_ref": null,
+        "template_ref": null,
+        "consent_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.map.navigate",
+      "adapter_candidate": null,
+      "purpose": "官方地图链接优先",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "adapter_ref": null,
+        "api_key_ref": null,
+        "terms_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.catalog.read",
+      "adapter_candidate": null,
+      "purpose": "原商品发布源",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "source_ref": null,
+        "snapshot_ref": null,
+        "publication_ref": null
+      }
+    },
+    {
+      "reference_id": "cx.customer.authority",
+      "adapter_candidate": null,
+      "purpose": "原客户权威源",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "source_ref": null,
+        "schema_revision": null
+      }
+    },
+    {
+      "reference_id": "cx.commerce.pos",
+      "adapter_candidate": null,
+      "purpose": "原POS命令桥",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "source_ref": null,
+        "contract_revision": null
+      }
+    },
+    {
+      "reference_id": "cap.invoice.issue",
+      "adapter_candidate": null,
+      "purpose": "电子发票/人工申请",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "vendor": null,
+        "credential_ref": null,
+        "authorization_ref": null
+      }
+    },
+    {
+      "reference_id": "res.media.product",
+      "adapter_candidate": null,
+      "purpose": "原图片存储",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "source_ref": null,
+        "backup_ref": null
+      }
+    },
+    {
+      "reference_id": "cap.delivery.dispatch",
+      "adapter_candidate": null,
+      "purpose": "配送待需求",
+      "actual_binding": null,
+      "enabled": false,
+      "authorization_status": "NOT_VERIFIED",
+      "required_fields": {
+        "vendor": null,
+        "credential_ref": null,
+        "authorization_ref": null
+      }
+    }
+  ],
+  "policies": {
+    "policy.membership": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.benefit": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.commission": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.timer": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.booking": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.recommendation": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.refund": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.payout": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.age": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.privacy": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.price": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.notification": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.retention": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    },
+    "policy.prepaid": {
+      "active_version": null,
+      "parameters": null,
+      "approval_ref": null
+    }
+  }
+}
