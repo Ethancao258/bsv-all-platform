@@ -1,0 +1,355 @@
+{
+  "version": "1.1",
+  "status": "DESIGN_ONLY",
+  "namespace": "cx",
+  "base_rule": "integrator chooses one immutable baseline after reconciling existing POS hot-upgrade patches; never develop from deployed release directory",
+  "lanes": [
+    {
+      "lane": "A",
+      "id": "CX-WP-A",
+      "name": "租户、路由与功能开关",
+      "req": [
+        "CX-19",
+        "CX-20"
+      ],
+      "modules": [
+        "TENANT",
+        "PROVIDER",
+        "CXFLAGS"
+      ],
+      "owns": [
+        "services/api/shared/cx/",
+        "tests/cx/A/"
+      ],
+      "domains": [
+        "partnership",
+        "identity_access",
+        "event_audit"
+      ],
+      "deps": [],
+      "ops": [
+        "cx.tenant.resolve.v1",
+        "cx.provider.resolve.v1",
+        "cx.flag.read.v1"
+      ],
+      "gate": "A契约与两租户隔离通过；生产配置、迁移另批",
+      "deps_kind": "integration_only; all lanes may develop against frozen fixture contracts"
+    },
+    {
+      "lane": "B",
+      "id": "CX-WP-B",
+      "name": "ACCWX与客户身份、会员、隐私",
+      "req": [
+        "CX-03",
+        "CX-18",
+        "CX-31"
+      ],
+      "modules": [
+        "ACCWX",
+        "CUSPROFILE",
+        "MEMBER",
+        "CXGUARD"
+      ],
+      "owns": [
+        "services/api/customer_growth/cx_auth/",
+        "apps/guest-web/member/cx-auth/",
+        "integrations/auth/cx/",
+        "tests/cx/B/"
+      ],
+      "domains": [
+        "customer",
+        "identity_access",
+        "compliance"
+      ],
+      "deps": [
+        "A"
+      ],
+      "ops": [
+        "cx.auth.login.v1",
+        "cx.customer.me.v1",
+        "cx.customer.bind.v1",
+        "cx.customer.age.v1"
+      ],
+      "gate": "真实身份源、微信/短信授权、隐私与年龄核验",
+      "deps_kind": "integration_only; all lanes may develop against frozen fixture contracts"
+    },
+    {
+      "lane": "C",
+      "id": "CX-WP-C",
+      "name": "客用菜单、门店、推荐与门户",
+      "req": [
+        "CX-01",
+        "CX-02",
+        "CX-04",
+        "CX-15"
+      ],
+      "modules": [
+        "CXPORTAL",
+        "CATVIEW",
+        "TASTEREC"
+      ],
+      "owns": [
+        "apps/guest-web/cx/",
+        "tests/cx/C/"
+      ],
+      "domains": [
+        "catalog",
+        "organization",
+        "customer"
+      ],
+      "deps": [
+        "A",
+        "B"
+      ],
+      "ops": [
+        "cx.catalog.public.v1",
+        "cx.store.list.v1",
+        "cx.recommend.rank.v1"
+      ],
+      "gate": "公开投影审核、菜单版本一致、原印刷URL保持",
+      "deps_kind": "integration_only; all lanes may develop against frozen fixture contracts"
+    },
+    {
+      "lane": "D",
+      "id": "CX-WP-D",
+      "name": "权益、存酒、积分、次卡与计时",
+      "req": [
+        "CX-08",
+        "CX-10",
+        "CX-23",
+        "CX-25",
+        "CX-26"
+      ],
+      "modules": [
+        "ENTITLE",
+        "CUSTODY",
+        "TIMESVC"
+      ],
+      "owns": [
+        "services/api/customer_growth/cx_assets/",
+        "apps/guest-web/cx-assets/",
+        "tests/cx/D/"
+      ],
+      "domains": [
+        "customer",
+        "commerce",
+        "service_ops",
+        "marketing"
+      ],
+      "deps": [
+        "A",
+        "B",
+        "F"
+      ],
+      "ops": [
+        "cx.entitlement.list.v1",
+        "cx.entitlement.reserve.v1",
+        "cx.entitlement.consume.v1",
+        "cx.entitlement.release.v1",
+        "cx.custody.adjust.v1",
+        "cx.timer.status.v1"
+      ],
+      "gate": "真实权益/存酒/计时所有权核对；员工权限、原子扣减",
+      "deps_kind": "integration_only; all lanes may develop against frozen fixture contracts"
+    },
+    {
+      "lane": "E",
+      "id": "CX-WP-E",
+      "name": "推荐归因、佣金政策及服务关系",
+      "req": [
+        "CX-11",
+        "CX-30"
+      ],
+      "modules": [
+        "REFERRAL",
+        "COMMISSION"
+      ],
+      "owns": [
+        "services/api/customer_growth/cx_referral/",
+        "apps/staff-center/growth/cx-referral/",
+        "tests/cx/E/"
+      ],
+      "domains": [
+        "marketing",
+        "operating_finance",
+        "customer",
+        "workforce"
+      ],
+      "deps": [
+        "A",
+        "B",
+        "F",
+        "H"
+      ],
+      "ops": [
+        "cx.referral.claim.v1",
+        "cx.commission.accrue.v1",
+        "cx.commission.reverse.v1",
+        "cx.commission.eligible.v1"
+      ],
+      "gate": "合同税务审核、可信支付/履约、重复归因与退款对账",
+      "deps_kind": "integration_only; all lanes may develop against frozen fixture contracts"
+    },
+    {
+      "lane": "F",
+      "id": "CX-WP-F",
+      "name": "POS桥、到店会话、预约与服务任务",
+      "req": [
+        "CX-05",
+        "CX-07",
+        "CX-12",
+        "CX-13",
+        "CX-14",
+        "CX-17",
+        "CX-27",
+        "CX-28",
+        "CX-32"
+      ],
+      "modules": [
+        "VISITSESSION",
+        "CXORDER",
+        "BOOKING",
+        "CXCARE",
+        "CXMSG",
+        "CXANALYTICS"
+      ],
+      "owns": [
+        "services/api/customer_growth/cx_visit/",
+        "apps/guest-web/cx-visit/",
+        "tests/cx/F/"
+      ],
+      "domains": [
+        "commerce",
+        "service_ops",
+        "event_audit",
+        "organization"
+      ],
+      "deps": [
+        "A",
+        "B",
+        "C"
+      ],
+      "ops": [
+        "cx.visit.join.v1",
+        "cx.order.submit.v1",
+        "cx.order.status.v1",
+        "cx.order.external_fulfill.v1",
+        "cx.booking.request.v1",
+        "cx.service.request.v1"
+      ],
+      "gate": "既有POS负责人批准桥接；真实订单权威和桌次安全验收",
+      "deps_kind": "integration_only; all lanes may develop against frozen fixture contracts"
+    },
+    {
+      "lane": "G",
+      "id": "CX-WP-G",
+      "name": "美团抖音聚合验券",
+      "req": [
+        "CX-22"
+      ],
+      "modules": [
+        "COUPONBRIDGE"
+      ],
+      "owns": [
+        "integrations/marketplaces/cx/",
+        "services/api/customer_growth/cx_coupon/",
+        "apps/guest-web/cx-coupon/",
+        "tests/cx/G/"
+      ],
+      "domains": [
+        "commerce",
+        "payments",
+        "marketing"
+      ],
+      "deps": [
+        "A",
+        "B",
+        "C",
+        "F"
+      ],
+      "ops": [
+        "cx.coupon.query.v1",
+        "cx.coupon.consume.v1",
+        "cx.coupon.status.v1",
+        "cx.coupon.cancel.v1"
+      ],
+      "gate": "商户真实授权、测试券、门店SKU映射、核销补单对账",
+      "deps_kind": "integration_only; all lanes may develop against frozen fixture contracts"
+    },
+    {
+      "lane": "H",
+      "id": "CX-WP-H",
+      "name": "消费支付退款、储值、佣金付款与商城",
+      "req": [
+        "CX-06",
+        "CX-09",
+        "CX-16",
+        "CX-21",
+        "CX-24",
+        "CX-29"
+      ],
+      "modules": [
+        "CXPAY",
+        "PREPAID",
+        "PAYOUT",
+        "CXSHOP"
+      ],
+      "owns": [
+        "integrations/payment/cx/",
+        "services/api/customer_growth/cx_finance/",
+        "apps/guest-web/cx-finance/",
+        "tests/cx/H/"
+      ],
+      "domains": [
+        "payments",
+        "operating_finance",
+        "commerce",
+        "customer"
+      ],
+      "deps": [
+        "A",
+        "B",
+        "C",
+        "F"
+      ],
+      "ops": [
+        "cx.payment.create.v1",
+        "cx.payment.status.v1",
+        "cx.refund.request.v1",
+        "cx.prepaid.balance.v1",
+        "cx.payout.request.v1",
+        "cx.shop.order.v1"
+      ],
+      "gate": "独立账本、真实支付退款、资质/法定退款/税务、付款审批",
+      "deps_kind": "integration_only; all lanes may develop against frozen fixture contracts"
+    }
+  ],
+  "shared_owner": "INTEGRATOR + existing POS owner for POS paths",
+  "source_aliases": [
+    "cx.auth.wechat",
+    "cx.auth.sms",
+    "cx.auth.realname",
+    "cx.catalog.read",
+    "cx.customer.authority",
+    "cx.commerce.pos",
+    "cx.coupon.verify",
+    "cx.pay.collect",
+    "cx.pay.refund",
+    "cx.pay.payout",
+    "cx.notify.send",
+    "cx.map.navigate"
+  ],
+  "state": [
+    "DESIGN_READY",
+    "CONTRACT_READY",
+    "DEV_READY",
+    "MOCK_ONLY",
+    "PR_READY",
+    "CI_PASSED",
+    "INTEGRATED",
+    "STAGING_ACCEPTED",
+    "BLOCKED_LIVE",
+    "PRODUCTION_APPROVED"
+  ],
+  "production_default": false
+}
