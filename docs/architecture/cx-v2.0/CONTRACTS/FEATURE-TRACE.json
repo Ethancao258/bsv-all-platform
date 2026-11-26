@@ -15,7 +15,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-01.01"
+      "test_id": "T-CX-01.01",
+      "execution_spec": "catalog发布白名单投影",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-01.02",
@@ -31,7 +34,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-01.02"
+      "test_id": "T-CX-01.02",
+      "execution_spec": "按category_id和规范化名称本地过滤，空搜索恢复列表",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-01.03",
@@ -47,7 +53,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-01.03"
+      "test_id": "T-CX-01.03",
+      "execution_spec": "商品详情读规格、成分、ABV来源与未知标记",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-01.04",
@@ -63,7 +72,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-01.04"
+      "test_id": "T-CX-01.04",
+      "execution_spec": "读option_groups，检查min/max、SKU可选和补差；F重新报价",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-01.05",
@@ -79,7 +91,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-01.05"
+      "test_id": "T-CX-01.05",
+      "execution_spec": "按store_id+publication展示价格/availability，售罄和未知禁止购买",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-01.06",
@@ -95,7 +110,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-01.06"
+      "test_id": "T-CX-01.06",
+      "execution_spec": "收藏以customer+product唯一；分享只生成公开链接",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-02.01",
@@ -111,7 +129,10 @@
       "delivery_owner": "C",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-02.01"
+      "test_id": "T-CX-02.01",
+      "execution_spec": "从organization公开投影门店",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-02.02",
@@ -127,7 +148,10 @@
       "delivery_owner": "C",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-02.02"
+      "test_id": "T-CX-02.02",
+      "execution_spec": "营业状态引用营业时段/临时停业，未知标UNKNOWN",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-02.03",
@@ -143,7 +167,10 @@
       "delivery_owner": "C",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-02.03"
+      "test_id": "T-CX-02.03",
+      "execution_spec": "审核设施、准入内容及门店配置",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-02.04",
@@ -159,7 +186,10 @@
       "delivery_owner": "C",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-02.04"
+      "test_id": "T-CX-02.04",
+      "execution_spec": "guide_ref定位既有图文，保留旧二维码",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-02.05",
@@ -175,7 +205,10 @@
       "delivery_owner": "C",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-02.05"
+      "test_id": "T-CX-02.05",
+      "execution_spec": "support_ref提供公开联系；定位可选",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-02.06",
@@ -191,7 +224,10 @@
       "delivery_owner": "C",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-02.06"
+      "test_id": "T-CX-02.06",
+      "execution_spec": "feature flag按门店服务端过滤并渲染",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-03.01",
@@ -207,7 +243,10 @@
       "delivery_owner": "B",
       "page_id": "B-MEMBER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-03.01"
+      "test_id": "T-CX-03.01",
+      "execution_spec": "认证证明注册，事务查重及绑定唯一customer_id",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-03.02",
@@ -223,7 +262,10 @@
       "delivery_owner": "B",
       "page_id": "B-MEMBER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-03.02"
+      "test_id": "T-CX-03.02",
+      "execution_spec": "双侧新鲜证明绑定已有主码",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-03.03",
@@ -239,7 +281,10 @@
       "delivery_owner": "B",
       "page_id": "B-MEMBER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-03.03"
+      "test_id": "T-CX-03.03",
+      "execution_spec": "一次短期动态码绑定用途/门店/主体，不授予支付权限",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-03.04",
@@ -255,7 +300,10 @@
       "delivery_owner": "B",
       "page_id": "B-MEMBER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-03.04"
+      "test_id": "T-CX-03.04",
+      "execution_spec": "投影MembershipCycle的激活/期限/等级",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-03.05",
@@ -271,7 +319,10 @@
       "delivery_owner": "B",
       "page_id": "B-MEMBER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-03.05"
+      "test_id": "T-CX-03.05",
+      "execution_spec": "从F/H授权事实生成跨店历史，缺优惠基准不伪造累计额",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-03.06",
@@ -287,7 +338,10 @@
       "delivery_owner": "B",
       "page_id": "B-MEMBER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-03.06"
+      "test_id": "T-CX-03.06",
+      "execution_spec": "卡凭证绑定既有权益，纸卡复制不可重复发放",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-04.01",
@@ -303,7 +357,10 @@
       "delivery_owner": "C",
       "page_id": "C-RECOMMEND",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-04.01"
+      "test_id": "T-CX-04.01",
+      "execution_spec": "口味选择转taste_tags，空偏好编辑精选",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-04.02",
@@ -319,7 +376,10 @@
       "delivery_owner": "C",
       "page_id": "C-RECOMMEND",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-04.02"
+      "test_id": "T-CX-04.02",
+      "execution_spec": "预算以整数分过滤、场景标签仅影响排序",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-04.03",
@@ -335,7 +395,10 @@
       "delivery_owner": "C",
       "page_id": "C-RECOMMEND",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-04.03"
+      "test_id": "T-CX-04.03",
+      "execution_spec": "酒精限制硬过滤，未知不视为无酒精",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-04.04",
@@ -351,7 +414,10 @@
       "delivery_owner": "C",
       "page_id": "C-RECOMMEND",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-04.04"
+      "test_id": "T-CX-04.04",
+      "execution_spec": "本人自愿偏好经授权使用，撤回停止",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-04.05",
@@ -367,7 +433,10 @@
       "delivery_owner": "C",
       "page_id": "C-RECOMMEND",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-04.05"
+      "test_id": "T-CX-04.05",
+      "execution_spec": "只可供商品进入购买推荐，F最终校验",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-04.06",
@@ -383,7 +452,10 @@
       "delivery_owner": "C",
       "page_id": "C-RECOMMEND",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-04.06"
+      "test_id": "T-CX-04.06",
+      "execution_spec": "评分按政策，Jaccard标签相似度、稳定同分排序，展示原因",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-05.01",
@@ -399,7 +471,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-05.01"
+      "test_id": "T-CX-05.01",
+      "execution_spec": "静态seat locator仅定位，短期join proof授权活跃visit",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-05.02",
@@ -415,7 +490,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-05.02"
+      "test_id": "T-CX-05.02",
+      "execution_spec": "购物车选SKU→quote→POS待确认/已接单",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-05.03",
@@ -431,7 +509,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-05.03"
+      "test_id": "T-CX-05.03",
+      "execution_spec": "选项组/备注白名单校验，价格以F为准",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-05.04",
@@ -447,7 +528,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-05.04"
+      "test_id": "T-CX-05.04",
+      "execution_spec": "同键同参复用订单，加单保留visit",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-05.05",
@@ -463,7 +547,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-05.05"
+      "test_id": "T-CX-05.05",
+      "execution_spec": "POS出品事实投影给有权顾客",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-05.06",
@@ -479,7 +566,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-05.06"
+      "test_id": "T-CX-05.06",
+      "execution_spec": "撤单申请生成待办；已付退款需H",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-06.01",
@@ -495,7 +585,10 @@
       "delivery_owner": "H",
       "page_id": "H-CHECKOUT",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-06.01"
+      "test_id": "T-CX-06.01",
+      "execution_spec": "核对正规线下回执和原订单，重复回执拒绝",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-06.02",
@@ -511,7 +604,10 @@
       "delivery_owner": "H",
       "page_id": "H-CHECKOUT",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-06.02"
+      "test_id": "T-CX-06.02",
+      "execution_spec": "账单优惠从冻结quote逐行汇总",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-06.03",
@@ -527,7 +623,10 @@
       "delivery_owner": "H",
       "page_id": "H-CHECKOUT",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-06.03"
+      "test_id": "T-CX-06.03",
+      "execution_spec": "锁应收分配、已付+在途≤应收",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-06.04",
@@ -543,7 +642,10 @@
       "delivery_owner": "H",
       "page_id": "H-CHECKOUT",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-06.04"
+      "test_id": "T-CX-06.04",
+      "execution_spec": "代付授权仅显示允许金额/行，混合付款不重占",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-06.05",
@@ -559,7 +661,10 @@
       "delivery_owner": "H",
       "page_id": "H-CHECKOUT",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-06.05"
+      "test_id": "T-CX-06.05",
+      "execution_spec": "原交易号查询未知，确认终态才换通道",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-06.06",
@@ -575,7 +680,10 @@
       "delivery_owner": "H",
       "page_id": "H-CHECKOUT",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-06.06"
+      "test_id": "T-CX-06.06",
+      "execution_spec": "凭证从真实回单生成；退款累积成功+在途≤已付",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-07.01",
@@ -591,7 +699,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-07.01"
+      "test_id": "T-CX-07.01",
+      "execution_spec": "请求日期/时间/人数、门店资源，end>start",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-07.02",
@@ -607,7 +718,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-07.02"
+      "test_id": "T-CX-07.02",
+      "execution_spec": "座位偏好仅意向，员工确认资源锁",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-07.03",
@@ -623,7 +737,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-07.03"
+      "test_id": "T-CX-07.03",
+      "execution_spec": "附加服务以catalog SKU及F报价，不足时人工",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-07.04",
@@ -639,7 +756,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-07.04"
+      "test_id": "T-CX-07.04",
+      "execution_spec": "订金/低消政策先展示并确认；H支付单独事实",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-07.05",
@@ -655,7 +775,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-07.05"
+      "test_id": "T-CX-07.05",
+      "execution_spec": "修改在同事务重验容量，冲突保留原有效预约",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-07.06",
@@ -671,7 +794,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-07.06"
+      "test_id": "T-CX-07.06",
+      "execution_spec": "本人查看booking状态、时间及凭证",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-08.01",
@@ -687,7 +813,10 @@
       "delivery_owner": "D",
       "page_id": "D-CUSTODY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-08.01"
+      "test_id": "T-CX-08.01",
+      "execution_spec": "存取流水投影剩余量，最小单位守恒",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-08.02",
@@ -703,7 +832,10 @@
       "delivery_owner": "D",
       "page_id": "D-CUSTODY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-08.02"
+      "test_id": "T-CX-08.02",
+      "execution_spec": "实物标签关联店、产品、期限、办理时间",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-08.03",
@@ -719,7 +851,10 @@
       "delivery_owner": "D",
       "page_id": "D-CUSTODY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-08.03"
+      "test_id": "T-CX-08.03",
+      "execution_spec": "已取完/过期不能误作可用",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-08.04",
@@ -735,7 +870,10 @@
       "delivery_owner": "D",
       "page_id": "D-CUSTODY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-08.04"
+      "test_id": "T-CX-08.04",
+      "execution_spec": "申请创建F任务，员工核对实物后才扣减",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-08.05",
@@ -751,7 +889,10 @@
       "delivery_owner": "D",
       "page_id": "D-CUSTODY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-08.05"
+      "test_id": "T-CX-08.05",
+      "execution_spec": "代取凭证限人/量/时，员工核验",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-08.06",
@@ -767,7 +908,10 @@
       "delivery_owner": "D",
       "page_id": "D-CUSTODY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-08.06"
+      "test_id": "T-CX-08.06",
+      "execution_spec": "到期提醒按同意及去重，历史保留",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-09.01",
@@ -783,7 +927,10 @@
       "delivery_owner": "H",
       "page_id": "H-BALANCE",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-09.01"
+      "test_id": "T-CX-09.01",
+      "execution_spec": "仅获授权及合法政策启用充值，显示本金/赠送条款",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-09.02",
@@ -799,7 +946,10 @@
       "delivery_owner": "H",
       "page_id": "H-BALANCE",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-09.02"
+      "test_id": "T-CX-09.02",
+      "execution_spec": "各资金账户分别守恒，赠送不当可提现本金",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-09.03",
@@ -815,7 +965,10 @@
       "delivery_owner": "H",
       "page_id": "H-BALANCE",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-09.03"
+      "test_id": "T-CX-09.03",
+      "execution_spec": "支付分配锁可用余额并生成消费流水",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-09.04",
@@ -831,7 +984,10 @@
       "delivery_owner": "H",
       "page_id": "H-BALANCE",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-09.04"
+      "test_id": "T-CX-09.04",
+      "execution_spec": "不可变流水含来源及冲正，历史可查",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-09.05",
@@ -847,7 +1003,10 @@
       "delivery_owner": "H",
       "page_id": "H-BALANCE",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-09.05"
+      "test_id": "T-CX-09.05",
+      "execution_spec": "原充值渠道退款，合法权利不缩短",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-09.06",
@@ -863,7 +1022,10 @@
       "delivery_owner": "H",
       "page_id": "H-BALANCE",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-09.06"
+      "test_id": "T-CX-09.06",
+      "execution_spec": "重复回调/并发/异常金额拦截并对账",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-10.01",
@@ -879,7 +1041,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-10.01"
+      "test_id": "T-CX-10.01",
+      "execution_spec": "首个合格visit发返场/同行权益，来源唯一",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-10.02",
@@ -895,7 +1060,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-10.02"
+      "test_id": "T-CX-10.02",
+      "execution_spec": "范围、有效期、商品、次数、折扣按原政策",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-10.03",
@@ -911,7 +1079,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-10.03"
+      "test_id": "T-CX-10.03",
+      "execution_spec": "纸卡proof定位已发行权益，确认主体",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-10.04",
@@ -927,7 +1098,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-10.04"
+      "test_id": "T-CX-10.04",
+      "execution_spec": "锁余额预占/确认消耗，未知不释放",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-10.05",
@@ -943,7 +1117,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-10.05"
+      "test_id": "T-CX-10.05",
+      "execution_spec": "报价冻结叠加顺序，不能客户端叠券",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-10.06",
@@ -959,7 +1136,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-10.06"
+      "test_id": "T-CX-10.06",
+      "execution_spec": "已用/过期/冲正流水保持历史",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-11.01",
@@ -975,7 +1155,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-11.01"
+      "test_id": "T-CX-11.01",
+      "execution_spec": "邀请码签名绑定主体/用途/期限",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-11.02",
@@ -991,7 +1174,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-11.02"
+      "test_id": "T-CX-11.02",
+      "execution_spec": "公开分享明确是否附推荐，默认不泄露身份",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-11.03",
@@ -1007,7 +1193,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-11.03"
+      "test_id": "T-CX-11.03",
+      "execution_spec": "候选→客户确认→真实首访/消费确认",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-11.04",
@@ -1023,7 +1212,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-11.04"
+      "test_id": "T-CX-11.04",
+      "execution_spec": "政策候选试算、审批及版本范围",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-11.05",
@@ -1039,7 +1231,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-11.05"
+      "test_id": "T-CX-11.05",
+      "execution_spec": "真实净实收和履约才计合法应付，非人数奖励",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-11.06",
@@ -1055,7 +1250,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-11.06"
+      "test_id": "T-CX-11.06",
+      "execution_spec": "保留原归因、授权纠偏生成冲正",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-12.01",
@@ -1071,7 +1269,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-12.01"
+      "test_id": "T-CX-12.01",
+      "execution_spec": "访问凭证绑定tenant/store/visit/actor",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-12.02",
@@ -1087,7 +1288,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-12.02"
+      "test_id": "T-CX-12.02",
+      "execution_spec": "按个人或共享行权限存草稿，CAS修订",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-12.03",
@@ -1103,7 +1307,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-12.03"
+      "test_id": "T-CX-12.03",
+      "execution_spec": "组织者仅按授权提交或代点",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-12.04",
@@ -1119,7 +1326,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-12.04"
+      "test_id": "T-CX-12.04",
+      "execution_spec": "订单查询返回授权行，隐私隔离",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-12.05",
@@ -1135,7 +1345,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-12.05"
+      "test_id": "T-CX-12.05",
+      "execution_spec": "H按授权分配付款，不重复占用",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-12.06",
@@ -1151,7 +1364,10 @@
       "delivery_owner": "F",
       "page_id": "F-CART",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-12.06"
+      "test_id": "T-CX-12.06",
+      "execution_spec": "leave撤本人权限；POS换桌保留visit",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-13.01",
@@ -1167,7 +1383,10 @@
       "delivery_owner": "F",
       "page_id": "F-SERVICE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-13.01"
+      "test_id": "T-CX-13.01",
+      "execution_spec": "同类短时呼叫防刷，服务任务唯一",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-13.02",
@@ -1183,7 +1402,10 @@
       "delivery_owner": "F",
       "page_id": "F-SERVICE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-13.02"
+      "test_id": "T-CX-13.02",
+      "execution_spec": "加水等请求归统一员工待办",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-13.03",
@@ -1199,7 +1421,10 @@
       "delivery_owner": "F",
       "page_id": "F-SERVICE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-13.03"
+      "test_id": "T-CX-13.03",
+      "execution_spec": "读取真实POS出品状态",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-13.04",
@@ -1215,7 +1440,10 @@
       "delivery_owner": "F",
       "page_id": "F-SERVICE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-13.04"
+      "test_id": "T-CX-13.04",
+      "execution_spec": "换桌请求由员工在原POS操作",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-13.05",
@@ -1231,7 +1459,10 @@
       "delivery_owner": "F",
       "page_id": "F-SERVICE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-13.05"
+      "test_id": "T-CX-13.05",
+      "execution_spec": "失物记录限制查看权限，个人信息最小化",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-13.06",
@@ -1247,7 +1478,10 @@
       "delivery_owner": "F",
       "page_id": "F-SERVICE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-13.06"
+      "test_id": "T-CX-13.06",
+      "execution_spec": "任务状态由员工动作与revision更新",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-14.01",
@@ -1263,7 +1497,10 @@
       "delivery_owner": "F",
       "page_id": "F-EVENTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-14.01"
+      "test_id": "T-CX-14.01",
+      "execution_spec": "已发布活动公开资源投影",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-14.02",
@@ -1279,7 +1516,10 @@
       "delivery_owner": "F",
       "page_id": "F-EVENTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-14.02"
+      "test_id": "T-CX-14.02",
+      "execution_spec": "报名/候位/容量复用booking，购票走H",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-14.03",
@@ -1295,7 +1535,10 @@
       "delivery_owner": "F",
       "page_id": "F-EVENTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-14.03"
+      "test_id": "T-CX-14.03",
+      "execution_spec": "员工签到核对已确认凭证",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-14.04",
@@ -1311,7 +1554,10 @@
       "delivery_owner": "F",
       "page_id": "F-EVENTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-14.04"
+      "test_id": "T-CX-14.04",
+      "execution_spec": "时间地点来自门店与批准活动资源",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-14.05",
@@ -1327,7 +1573,10 @@
       "delivery_owner": "F",
       "page_id": "F-EVENTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-14.05"
+      "test_id": "T-CX-14.05",
+      "execution_spec": "取消状态与退款执行分离",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-14.06",
@@ -1343,7 +1592,10 @@
       "delivery_owner": "F",
       "page_id": "F-EVENTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-14.06"
+      "test_id": "T-CX-14.06",
+      "execution_spec": "社群邀请自愿、授权可撤回",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-15.01",
@@ -1359,7 +1611,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-15.01"
+      "test_id": "T-CX-15.01",
+      "execution_spec": "品牌门店故事使用approved content ref",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-15.02",
@@ -1375,7 +1630,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-15.02"
+      "test_id": "T-CX-15.02",
+      "execution_spec": "商品故事随publication发布",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-15.03",
@@ -1391,7 +1649,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-15.03"
+      "test_id": "T-CX-15.03",
+      "execution_spec": "饮品知识使用审核静态内容，不公开内部配方",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-15.04",
@@ -1407,7 +1668,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-15.04"
+      "test_id": "T-CX-15.04",
+      "execution_spec": "季节发布及下架沿目录版本",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-15.05",
@@ -1423,7 +1687,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-15.05"
+      "test_id": "T-CX-15.05",
+      "execution_spec": "新品通知走同意/频控，F消息",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-15.06",
@@ -1439,7 +1706,10 @@
       "delivery_owner": "C",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-15.06"
+      "test_id": "T-CX-15.06",
+      "execution_spec": "稳定公开链接，不泄露session",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-16.01",
@@ -1455,7 +1725,10 @@
       "delivery_owner": "H",
       "page_id": "H-HISTORY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-16.01"
+      "test_id": "T-CX-16.01",
+      "execution_spec": "F订单/H交易按本人生成授权历史",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-16.02",
@@ -1471,7 +1744,10 @@
       "delivery_owner": "H",
       "page_id": "H-HISTORY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-16.02"
+      "test_id": "T-CX-16.02",
+      "execution_spec": "复购重新选SKU、实时quote",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-16.03",
@@ -1487,7 +1763,10 @@
       "delivery_owner": "H",
       "page_id": "H-HISTORY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-16.03"
+      "test_id": "T-CX-16.03",
+      "execution_spec": "人工发票申请case，实际开票供应商留空",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-16.04",
@@ -1503,7 +1782,10 @@
       "delivery_owner": "H",
       "page_id": "H-HISTORY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-16.04"
+      "test_id": "T-CX-16.04",
+      "execution_spec": "售后case区分退款/退货/争议，财务审批",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-16.05",
@@ -1519,7 +1801,10 @@
       "delivery_owner": "H",
       "page_id": "H-HISTORY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-16.05"
+      "test_id": "T-CX-16.05",
+      "execution_spec": "本人查case状态及处理时间",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-16.06",
@@ -1535,7 +1820,10 @@
       "delivery_owner": "H",
       "page_id": "H-HISTORY",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-16.06"
+      "test_id": "T-CX-16.06",
+      "execution_spec": "支付凭证来自真实回单、退款独立",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-17.01",
@@ -1551,7 +1839,10 @@
       "delivery_owner": "F",
       "page_id": "F-NOTICES",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-17.01"
+      "test_id": "T-CX-17.01",
+      "execution_spec": "订单/支付事件去重后投影消息",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-17.02",
@@ -1567,7 +1858,10 @@
       "delivery_owner": "F",
       "page_id": "F-NOTICES",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-17.02"
+      "test_id": "T-CX-17.02",
+      "execution_spec": "预约/候位事件通知按真实状态",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-17.03",
@@ -1583,7 +1877,10 @@
       "delivery_owner": "F",
       "page_id": "F-NOTICES",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-17.03"
+      "test_id": "T-CX-17.03",
+      "execution_spec": "服务任务更新触发通知",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-17.04",
@@ -1599,7 +1896,10 @@
       "delivery_owner": "F",
       "page_id": "F-NOTICES",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-17.04"
+      "test_id": "T-CX-17.04",
+      "execution_spec": "权益到期事件去重、尊重通知授权",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-17.05",
@@ -1615,7 +1915,10 @@
       "delivery_owner": "F",
       "page_id": "F-NOTICES",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-17.05"
+      "test_id": "T-CX-17.05",
+      "execution_spec": "营销需明确同意且频率受政策约束",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-17.06",
@@ -1631,7 +1934,10 @@
       "delivery_owner": "B",
       "page_id": "F-NOTICES",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-17.06"
+      "test_id": "T-CX-17.06",
+      "execution_spec": "退订/频率设置不影响必要交易通知",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-18.01",
@@ -1647,7 +1953,10 @@
       "delivery_owner": "B",
       "page_id": "B-PROFILE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-18.01"
+      "test_id": "T-CX-18.01",
+      "execution_spec": "未登录可看菜单；必要动作才认证",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-18.02",
@@ -1663,7 +1972,10 @@
       "delivery_owner": "B",
       "page_id": "B-PROFILE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-18.02"
+      "test_id": "T-CX-18.02",
+      "execution_spec": "新鲜双证明绑定手机号微信",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-18.03",
@@ -1679,7 +1991,10 @@
       "delivery_owner": "B",
       "page_id": "B-PROFILE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-18.03"
+      "test_id": "T-CX-18.03",
+      "execution_spec": "冲突进入恢复case，禁止静默合并",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-18.04",
@@ -1695,7 +2010,10 @@
       "delivery_owner": "B",
       "page_id": "B-PROFILE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-18.04"
+      "test_id": "T-CX-18.04",
+      "execution_spec": "本人查改白名单资料，身份核验字段不可自改",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-18.05",
@@ -1711,7 +2029,10 @@
       "delivery_owner": "B",
       "page_id": "B-PROFILE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-18.05"
+      "test_id": "T-CX-18.05",
+      "execution_spec": "隐私请求依法审核，状态可查",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-18.06",
@@ -1727,7 +2048,10 @@
       "delivery_owner": "B",
       "page_id": "B-PROFILE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-18.06"
+      "test_id": "T-CX-18.06",
+      "execution_spec": "注销撤销session，财务合法留存单独处理",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-19.01",
@@ -1743,7 +2067,10 @@
       "delivery_owner": "A",
       "page_id": "C-STORE",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-19.01"
+      "test_id": "T-CX-19.01",
+      "execution_spec": "小程序入口获权才开放，H5替代",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-19.02",
@@ -1759,7 +2086,10 @@
       "delivery_owner": "A",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-19.02"
+      "test_id": "T-CX-19.02",
+      "execution_spec": "保留原H5路径，受控入口解析",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-19.03",
@@ -1775,7 +2105,10 @@
       "delivery_owner": "A",
       "page_id": "C-STORE",
       "disposition": "DEFERRED_WITH_FALLBACK",
-      "test_id": "T-CX-19.03"
+      "test_id": "T-CX-19.03",
+      "execution_spec": "卡包未获权延期，现有会员码替代",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "fallback_and_disabled_path"
     },
     {
       "feature_id": "CX-19.04",
@@ -1791,7 +2124,10 @@
       "delivery_owner": "A",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-19.04"
+      "test_id": "T-CX-19.04",
+      "execution_spec": "外链白名单，不传session及交易凭据",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-19.05",
@@ -1807,7 +2143,10 @@
       "delivery_owner": "A",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-19.05"
+      "test_id": "T-CX-19.05",
+      "execution_spec": "区分店码、员工推荐、桌码、会员码用途",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-19.06",
@@ -1823,7 +2162,10 @@
       "delivery_owner": "A",
       "page_id": "C-STORE",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-19.06"
+      "test_id": "T-CX-19.06",
+      "execution_spec": "issuer+subject+tenant唯一映射",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-20.01",
@@ -1839,7 +2181,10 @@
       "delivery_owner": "A",
       "page_id": "A-CONFIG",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-20.01"
+      "test_id": "T-CX-20.01",
+      "execution_spec": "按门店和角色开关，UI隐藏且服务端拦截",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-20.02",
@@ -1855,7 +2200,10 @@
       "delivery_owner": "A",
       "page_id": "A-CONFIG",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-20.02"
+      "test_id": "T-CX-20.02",
+      "execution_spec": "按业态模板选择既有组件，不复制程序",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-20.03",
@@ -1871,7 +2219,10 @@
       "delivery_owner": "A",
       "page_id": "A-CONFIG",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-20.03"
+      "test_id": "T-CX-20.03",
+      "execution_spec": "计时资源由F、D共享唯一资源占用",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-20.04",
@@ -1887,7 +2238,10 @@
       "delivery_owner": "C",
       "page_id": "A-CONFIG",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-20.04"
+      "test_id": "T-CX-20.04",
+      "execution_spec": "中文文案/键盘/读屏/320px适配",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-20.05",
@@ -1903,7 +2257,10 @@
       "delivery_owner": "A",
       "page_id": "A-CONFIG",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-20.05"
+      "test_id": "T-CX-20.05",
+      "execution_spec": "公共只读快照标版本，关键写失败关闭",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-20.06",
@@ -1919,7 +2276,10 @@
       "delivery_owner": "A",
       "page_id": "A-CONFIG",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-20.06"
+      "test_id": "T-CX-20.06",
+      "execution_spec": "可信租户/法人/门店范围，拒绝跨库",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-21.01",
@@ -1935,7 +2295,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-21.01"
+      "test_id": "T-CX-21.01",
+      "execution_spec": "单双多人套餐选择组及人数限制",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-21.02",
@@ -1951,7 +2314,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-21.02"
+      "test_id": "T-CX-21.02",
+      "execution_spec": "未来服务生成有期限权益凭证而非假visit",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-21.03",
@@ -1967,7 +2333,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-21.03"
+      "test_id": "T-CX-21.03",
+      "execution_spec": "真实支付事件唯一发券",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-21.04",
@@ -1983,7 +2352,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-21.04"
+      "test_id": "T-CX-21.04",
+      "execution_spec": "适用店、日期、资格按版本校验",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-21.05",
@@ -1999,7 +2371,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-21.05"
+      "test_id": "T-CX-21.05",
+      "execution_spec": "预约与消费核销关联唯一权益事实",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-21.06",
@@ -2015,7 +2390,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-21.06"
+      "test_id": "T-CX-21.06",
+      "execution_spec": "真实退款触发D冲正，原支付渠道",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-22.01",
@@ -2031,7 +2409,10 @@
       "delivery_owner": "G",
       "page_id": "G-REDEEM",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-22.01"
+      "test_id": "T-CX-22.01",
+      "execution_spec": "平台门店及SKU版本映射，缺映射拒绝",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-22.02",
@@ -2047,7 +2428,10 @@
       "delivery_owner": "G",
       "page_id": "G-REDEEM",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-22.02"
+      "test_id": "T-CX-22.02",
+      "execution_spec": "查券记录offer及可核份数，过期重新查",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-22.03",
@@ -2063,7 +2447,10 @@
       "delivery_owner": "G",
       "page_id": "G-REDEEM",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-22.03"
+      "test_id": "T-CX-22.03",
+      "execution_spec": "确认份数→持久化→平台结果→F补单",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-22.04",
@@ -2079,7 +2466,10 @@
       "delivery_owner": "G",
       "page_id": "G-REDEEM",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-22.04"
+      "test_id": "T-CX-22.04",
+      "execution_spec": "补差仅F额外报价和H支付，不改平台金额",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-22.05",
@@ -2095,7 +2485,10 @@
       "delivery_owner": "G",
       "page_id": "G-REDEEM",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-22.05"
+      "test_id": "T-CX-22.05",
+      "execution_spec": "本人或员工查核销历史、份数/撤销状态",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-22.06",
@@ -2111,7 +2504,10 @@
       "delivery_owner": "G",
       "page_id": "G-REDEEM",
       "disposition": "BLOCKED_LIVE_EXTERNAL_OR_COMPLIANCE",
-      "test_id": "T-CX-22.06"
+      "test_id": "T-CX-22.06",
+      "execution_spec": "精确consume_attempt撤销，成功+在途≤已核数量",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "synthetic_then_authorized_live"
     },
     {
       "feature_id": "CX-23.01",
@@ -2127,7 +2523,10 @@
       "delivery_owner": "D",
       "page_id": "D-TIMER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-23.01"
+      "test_id": "T-CX-23.01",
+      "execution_spec": "批准档位/费率/适用SKU版本",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-23.02",
@@ -2143,7 +2542,10 @@
       "delivery_owner": "D",
       "page_id": "D-TIMER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-23.02"
+      "test_id": "T-CX-23.02",
+      "execution_spec": "服务器UTC起止、暂停区间",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-23.03",
@@ -2159,7 +2561,10 @@
       "delivery_owner": "D",
       "page_id": "D-TIMER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-23.03"
+      "test_id": "T-CX-23.03",
+      "execution_spec": "客户端倒计时只展示服务器计算",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-23.04",
@@ -2175,7 +2580,10 @@
       "delivery_owner": "D",
       "page_id": "D-TIMER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-23.04"
+      "test_id": "T-CX-23.04",
+      "execution_spec": "续时升档先报价确认，保留历史版本",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-23.05",
@@ -2191,7 +2599,10 @@
       "delivery_owner": "D",
       "page_id": "D-TIMER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-23.05"
+      "test_id": "T-CX-23.05",
+      "execution_spec": "多人资格引用已确认visit/成员",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-23.06",
@@ -2207,7 +2618,10 @@
       "delivery_owner": "D",
       "page_id": "D-TIMER",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-23.06"
+      "test_id": "T-CX-23.06",
+      "execution_spec": "F唯一资源锁+D计时绑定",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-24.01",
@@ -2223,7 +2637,10 @@
       "delivery_owner": "H",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-24.01"
+      "test_id": "T-CX-24.01",
+      "execution_spec": "购买人、收礼人和持有人分开",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-24.02",
@@ -2239,7 +2656,10 @@
       "delivery_owner": "H",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-24.02"
+      "test_id": "T-CX-24.02",
+      "execution_spec": "H真实成功后D唯一发电子权益",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-24.03",
@@ -2255,7 +2675,10 @@
       "delivery_owner": "H",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-24.03"
+      "test_id": "T-CX-24.03",
+      "execution_spec": "claim proof一次性，验证资格",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-24.04",
@@ -2271,7 +2694,10 @@
       "delivery_owner": "H",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-24.04"
+      "test_id": "T-CX-24.04",
+      "execution_spec": "授权转赠双侧确认，原持有人失权",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-24.05",
@@ -2287,7 +2713,10 @@
       "delivery_owner": "H",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-24.05"
+      "test_id": "T-CX-24.05",
+      "execution_spec": "送达/领取/消费分别记状态",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-24.06",
@@ -2303,7 +2732,10 @@
       "delivery_owner": "H",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-24.06"
+      "test_id": "T-CX-24.06",
+      "execution_spec": "企业批量礼赠先名单预览及审批，逐人去重",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-25.01",
@@ -2319,7 +2751,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-25.01"
+      "test_id": "T-CX-25.01",
+      "execution_spec": "积分账户独立单位，非现金",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-25.02",
@@ -2335,7 +2770,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-25.02"
+      "test_id": "T-CX-25.02",
+      "execution_spec": "合格消费唯一事件发行，退款冲正",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-25.03",
@@ -2351,7 +2789,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-25.03"
+      "test_id": "T-CX-25.03",
+      "execution_spec": "兑换时锁可用积分并按政策换权益",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-25.04",
@@ -2367,7 +2808,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-25.04"
+      "test_id": "T-CX-25.04",
+      "execution_spec": "流水记录发放、兑换、过期、冲正",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-25.05",
@@ -2383,7 +2827,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-25.05"
+      "test_id": "T-CX-25.05",
+      "execution_spec": "成长规则D计算，B展示版本与等级",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-25.06",
@@ -2399,7 +2846,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-25.06"
+      "test_id": "T-CX-25.06",
+      "execution_spec": "异常/重复事件审计，不自动负余额",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-26.01",
@@ -2415,7 +2865,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-26.01"
+      "test_id": "T-CX-26.01",
+      "execution_spec": "购买后次数/适用范围取批准policy",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-26.02",
@@ -2431,7 +2884,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-26.02"
+      "test_id": "T-CX-26.02",
+      "execution_spec": "长期权益有效期与服务条件明确",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-26.03",
@@ -2447,7 +2903,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-26.03"
+      "test_id": "T-CX-26.03",
+      "execution_spec": "余额/剩余期限从权威流水投影",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-26.04",
@@ -2463,7 +2922,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-26.04"
+      "test_id": "T-CX-26.04",
+      "execution_spec": "预约资源与权益范围双校验",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-26.05",
@@ -2479,7 +2941,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-26.05"
+      "test_id": "T-CX-26.05",
+      "execution_spec": "暂停恢复变更申请；H依法退款",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-26.06",
@@ -2495,7 +2960,10 @@
       "delivery_owner": "D",
       "page_id": "D-RIGHTS",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-26.06"
+      "test_id": "T-CX-26.06",
+      "execution_spec": "续期创建新政策版本及记录，不覆写历史",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-27.01",
@@ -2511,7 +2979,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-27.01"
+      "test_id": "T-CX-27.01",
+      "execution_spec": "按店排队票序号及唯一有效凭证",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-27.02",
@@ -2527,7 +2998,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-27.02"
+      "test_id": "T-CX-27.02",
+      "execution_spec": "本人proof查候位状态",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-27.03",
@@ -2543,7 +3017,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-27.03"
+      "test_id": "T-CX-27.03",
+      "execution_spec": "员工叫号/超时/取消按状态转换",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-27.04",
@@ -2559,7 +3036,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-27.04"
+      "test_id": "T-CX-27.04",
+      "execution_spec": "已确认预约核验签到，重复返回同visit",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-27.05",
@@ -2575,7 +3055,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-27.05"
+      "test_id": "T-CX-27.05",
+      "execution_spec": "短期现场凭证关联真实活跃visit",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-27.06",
@@ -2591,7 +3074,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-27.06"
+      "test_id": "T-CX-27.06",
+      "execution_spec": "员工入座通过原POS创建/关联visit",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-28.01",
@@ -2607,7 +3093,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-28.01"
+      "test_id": "T-CX-28.01",
+      "execution_spec": "包场申请复用资源预约，未确认不承诺",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-28.02",
@@ -2623,7 +3112,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-28.02"
+      "test_id": "T-CX-28.02",
+      "execution_spec": "同资源半开区间事务锁/容量约束",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-28.03",
@@ -2639,7 +3131,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-28.03"
+      "test_id": "T-CX-28.03",
+      "execution_spec": "人数预算意向与实际服务报价分开",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-28.04",
@@ -2655,7 +3150,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-28.04"
+      "test_id": "T-CX-28.04",
+      "execution_spec": "附加套餐SKU走F报价",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-28.05",
@@ -2671,7 +3169,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-28.05"
+      "test_id": "T-CX-28.05",
+      "execution_spec": "订金H独立真实支付，与预约状态分开",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-28.06",
@@ -2687,7 +3188,10 @@
       "delivery_owner": "F",
       "page_id": "F-BOOKING",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-28.06"
+      "test_id": "T-CX-28.06",
+      "execution_spec": "组织者仅付授权账单，资金分配守恒",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-29.01",
@@ -2703,7 +3207,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-29.01"
+      "test_id": "T-CX-29.01",
+      "execution_spec": "零售SKU按目录/可售状态购买",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-29.02",
@@ -2719,7 +3226,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-29.02"
+      "test_id": "T-CX-29.02",
+      "execution_spec": "自提凭证经员工验证才变已取",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-29.03",
@@ -2735,7 +3245,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "DEFERRED_WITH_FALLBACK",
-      "test_id": "T-CX-29.03"
+      "test_id": "T-CX-29.03",
+      "execution_spec": "未获配送授权明确延期，继续自提",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "fallback_and_disabled_path"
     },
     {
       "feature_id": "CX-29.04",
@@ -2751,7 +3264,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-29.04"
+      "test_id": "T-CX-29.04",
+      "execution_spec": "规格/库存权威校验，未知不承诺",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-29.05",
@@ -2767,7 +3283,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-29.05"
+      "test_id": "T-CX-29.05",
+      "execution_spec": "F履约事实投影交付状态",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-29.06",
@@ -2783,7 +3302,10 @@
       "delivery_owner": "H",
       "page_id": "H-SHOP",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-29.06"
+      "test_id": "T-CX-29.06",
+      "execution_spec": "售后申请，H批准退款与D冲正",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-30.01",
@@ -2799,7 +3321,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-30.01"
+      "test_id": "T-CX-30.01",
+      "execution_spec": "本人可见授权服务联系人",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-30.02",
@@ -2815,7 +3340,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-30.02"
+      "test_id": "T-CX-30.02",
+      "execution_spec": "官方客服独立于个人佣金关系",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-30.03",
@@ -2831,7 +3359,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-30.03"
+      "test_id": "T-CX-30.03",
+      "execution_spec": "选品/预约申请进入统一服务待办",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-30.04",
@@ -2847,7 +3378,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-30.04"
+      "test_id": "T-CX-30.04",
+      "execution_spec": "更换负责人保留原归因及审计",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-30.05",
@@ -2863,7 +3397,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-30.05"
+      "test_id": "T-CX-30.05",
+      "execution_spec": "员工离职承接按批准政策，客户资产不变",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-30.06",
@@ -2879,7 +3416,10 @@
       "delivery_owner": "E",
       "page_id": "E-REFERRAL",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-30.06"
+      "test_id": "T-CX-30.06",
+      "execution_spec": "撤回联系授权停止相关营销",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-31.01",
@@ -2895,7 +3435,10 @@
       "delivery_owner": "B",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-31.01"
+      "test_id": "T-CX-31.01",
+      "execution_spec": "声明与实际核验分开，员工按适用政策准入",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-31.02",
@@ -2911,7 +3454,10 @@
       "delivery_owner": "B",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-31.02"
+      "test_id": "T-CX-31.02",
+      "execution_spec": "准确酒精度及饮用提示，不鼓励过量",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-31.03",
@@ -2927,7 +3473,10 @@
       "delivery_owner": "B",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-31.03"
+      "test_id": "T-CX-31.03",
+      "execution_spec": "成分过敏信息未知明确标注，员工确认",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-31.04",
@@ -2943,7 +3492,10 @@
       "delivery_owner": "B",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-31.04"
+      "test_id": "T-CX-31.04",
+      "execution_spec": "安全求助高优先级员工任务",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-31.05",
@@ -2959,7 +3511,10 @@
       "delivery_owner": "B",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-31.05"
+      "test_id": "T-CX-31.05",
+      "execution_spec": "官方返程导航链接及提示",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-31.06",
@@ -2975,7 +3530,10 @@
       "delivery_owner": "B",
       "page_id": "C-MENU",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-31.06"
+      "test_id": "T-CX-31.06",
+      "execution_spec": "酒吧未成年人禁入；实际酒类销售服务端校验",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-32.01",
@@ -2991,7 +3549,10 @@
       "delivery_owner": "F",
       "page_id": "F-FEEDBACK",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-32.01"
+      "test_id": "T-CX-32.01",
+      "execution_spec": "评价绑定真实授权订单与商品",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-32.02",
@@ -3007,7 +3568,10 @@
       "delivery_owner": "F",
       "page_id": "F-FEEDBACK",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-32.02"
+      "test_id": "T-CX-32.02",
+      "execution_spec": "一般意见不强制订单，类型化反馈",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-32.03",
@@ -3023,7 +3587,10 @@
       "delivery_owner": "F",
       "page_id": "F-FEEDBACK",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-32.03"
+      "test_id": "T-CX-32.03",
+      "execution_spec": "调查版本+自愿授权，不影响服务",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-32.04",
@@ -3039,7 +3606,10 @@
       "delivery_owner": "F",
       "page_id": "F-FEEDBACK",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-32.04"
+      "test_id": "T-CX-32.04",
+      "execution_spec": "试饮申请F待办，员工核验资格及库存",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-32.05",
@@ -3055,7 +3625,10 @@
       "delivery_owner": "F",
       "page_id": "F-FEEDBACK",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-32.05"
+      "test_id": "T-CX-32.05",
+      "execution_spec": "反馈case状态/回复仅本人",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     },
     {
       "feature_id": "CX-32.06",
@@ -3071,7 +3644,10 @@
       "delivery_owner": "F",
       "page_id": "F-FEEDBACK",
       "disposition": "PLAN_REUSE_OR_EXTEND",
-      "test_id": "T-CX-32.06"
+      "test_id": "T-CX-32.06",
+      "execution_spec": "分享授权单独、撤回有效，不泄露私密资料",
+      "design_evidence": "V2.0 proposed; implementation mapping/actual authorization pending",
+      "acceptance_type": "positive_and_negative"
     }
   ]
 }
