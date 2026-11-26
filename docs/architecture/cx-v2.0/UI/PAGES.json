@@ -1,0 +1,597 @@
+{
+  "pages": [
+    {
+      "id": "C-STORE",
+      "owner": "C",
+      "role": "客",
+      "access": "公开",
+      "title": "门店/首页",
+      "layout": "门店、营业状态、找店指南",
+      "actions": [
+        "查看菜单",
+        "导航",
+        "联系门店"
+      ],
+      "operations": [
+        "cx.store.list.v1",
+        "cx.entry.resolve.v1"
+      ],
+      "state_copy": "暂时无法确认营业状态，请联系门店。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "C-MENU",
+      "owner": "C",
+      "role": "客",
+      "access": "公开",
+      "title": "菜单",
+      "layout": "分类、产品、价格、规格、成分、套餐选项",
+      "actions": [
+        "筛选",
+        "查看详情",
+        "加入点单"
+      ],
+      "operations": [
+        "cx.catalog.public.v1",
+        "cx.catalog.availability.v1"
+      ],
+      "state_copy": "当前商品暂不可点单。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "C-RECOMMEND",
+      "owner": "C",
+      "role": "客",
+      "access": "公开",
+      "title": "帮我选",
+      "layout": "口味、预算、酒精偏好、原因",
+      "actions": [
+        "查看推荐",
+        "返回完整菜单"
+      ],
+      "operations": [
+        "cx.recommend.rank.v1"
+      ],
+      "state_copy": "暂无符合条件的饮品，可调整筛选条件。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "B-MEMBER",
+      "owner": "B",
+      "role": "客",
+      "access": "本人",
+      "title": "我的会员",
+      "layout": "动态会员码、等级期限、权益入口",
+      "actions": [
+        "出示会员码",
+        "查看权益"
+      ],
+      "operations": [
+        "cx.customer.me.v1",
+        "cx.member.code.issue.v1"
+      ],
+      "state_copy": "会员资格待确认。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "B-LOGIN",
+      "owner": "B",
+      "role": "客",
+      "access": "公开",
+      "title": "登录 / 注册",
+      "layout": "微信、短信、隐私告知、返回",
+      "actions": [
+        "微信登录",
+        "短信验证",
+        "先看看菜单"
+      ],
+      "operations": [
+        "cx.auth.login.v1",
+        "cx.auth.challenge.send.v1",
+        "cx.customer.register.v1"
+      ],
+      "state_copy": "登录暂不可用，你仍可浏览菜单。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "B-PROFILE",
+      "owner": "B",
+      "role": "客",
+      "access": "本人",
+      "title": "个人资料与隐私",
+      "layout": "昵称、偏好、账号绑定、授权、注销",
+      "actions": [
+        "保存",
+        "绑定账号",
+        "隐私设置"
+      ],
+      "operations": [
+        "cx.customer.profile.update.v1",
+        "cx.customer.bind.v1",
+        "cx.customer.privacy.request.v1"
+      ],
+      "state_copy": "账号关联需要进一步核实。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "D-RIGHTS",
+      "owner": "D",
+      "role": "客",
+      "access": "本人",
+      "title": "我的权益",
+      "layout": "可用/已用/过期、条件、有效期",
+      "actions": [
+        "查看使用条件",
+        "申请变更"
+      ],
+      "operations": [
+        "cx.entitlement.list.v1",
+        "cx.entitlement.history.v1",
+        "cx.asset.change.request.v1"
+      ],
+      "state_copy": "当前暂无可使用的权益。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "D-CUSTODY",
+      "owner": "D",
+      "role": "客",
+      "access": "本人",
+      "title": "我的存酒",
+      "layout": "门店、剩余量、有效期、历史",
+      "actions": [
+        "申请取酒",
+        "授权代取"
+      ],
+      "operations": [
+        "cx.custody.list.v1",
+        "cx.custody.request.v1",
+        "cx.custody.proxy.authorize.v1"
+      ],
+      "state_copy": "取酒申请已提交，请等待员工确认。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "D-TIMER",
+      "owner": "D",
+      "role": "客",
+      "access": "授权桌次",
+      "title": "计时服务",
+      "layout": "档位、服务器时间、剩余、续时条件",
+      "actions": [
+        "查看计时",
+        "申请续时"
+      ],
+      "operations": [
+        "cx.timer.status.v1"
+      ],
+      "state_copy": "计时状态正在同步，请联系员工。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "E-REFERRAL",
+      "owner": "E",
+      "role": "客",
+      "access": "本人",
+      "title": "我的推荐",
+      "layout": "推荐码、已确认人数、佣金状态、客服",
+      "actions": [
+        "分享推荐码",
+        "查看结算记录"
+      ],
+      "operations": [
+        "cx.referral.invite.v1",
+        "cx.referral.summary.v1",
+        "cx.commission.eligible.v1",
+        "cx.referral.relationship.read.v1"
+      ],
+      "state_copy": "佣金以实际消费和结算结果为准。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "F-CART",
+      "owner": "F",
+      "role": "客",
+      "access": "现场授权",
+      "title": "点单",
+      "layout": "桌次、选项、购物车、优惠、报价",
+      "actions": [
+        "确认点单",
+        "继续选购"
+      ],
+      "operations": [
+        "cx.visit.join.v1",
+        "cx.cart.read.v1",
+        "cx.cart.update.v1",
+        "cx.order.quote.v1",
+        "cx.order.submit.v1"
+      ],
+      "state_copy": "订单已提交，等待门店接单。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "F-ORDER",
+      "owner": "F",
+      "role": "客",
+      "access": "本人/桌次",
+      "title": "消费订单",
+      "layout": "授权商品行、出品、账单、撤单申请",
+      "actions": [
+        "查看进度",
+        "申请撤单",
+        "去付款"
+      ],
+      "operations": [
+        "cx.order.status.v1",
+        "cx.order.cancel.request.v1"
+      ],
+      "state_copy": "门店正在处理你的订单。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "F-BOOKING",
+      "owner": "F",
+      "role": "客",
+      "access": "本人/公开申请",
+      "title": "预约与候位",
+      "layout": "门店日期人数、资源、待确认及候位",
+      "actions": [
+        "提交预约",
+        "查看候位",
+        "修改预约"
+      ],
+      "operations": [
+        "cx.booking.request.v1",
+        "cx.booking.list.v1",
+        "cx.booking.modify.v1",
+        "cx.queue.status.v1"
+      ],
+      "state_copy": "预约已提交，尚未确认座位。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "F-EVENTS",
+      "owner": "F",
+      "role": "客",
+      "access": "公开",
+      "title": "活动",
+      "layout": "已发布活动、时间地点、报名名额",
+      "actions": [
+        "查看活动",
+        "申请报名"
+      ],
+      "operations": [
+        "cx.event.list.v1",
+        "cx.booking.request.v1"
+      ],
+      "state_copy": "名额以门店确认结果为准。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "F-SERVICE",
+      "owner": "F",
+      "role": "客",
+      "access": "本人/现场",
+      "title": "门店服务",
+      "layout": "服务请求、取酒、换桌、帮助",
+      "actions": [
+        "呼叫员工",
+        "查看处理进度"
+      ],
+      "operations": [
+        "cx.service.request.v1",
+        "cx.service.status.v1"
+      ],
+      "state_copy": "请求已发送，请等待员工回应。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "F-NOTICES",
+      "owner": "F",
+      "role": "客",
+      "access": "本人",
+      "title": "消息",
+      "layout": "交易、预约、到期、营销设置",
+      "actions": [
+        "查看",
+        "标记已读",
+        "通知设置"
+      ],
+      "operations": [
+        "cx.notify.list.v1",
+        "cx.notify.mark_read.v1",
+        "cx.notification.preferences.v1"
+      ],
+      "state_copy": "暂无新消息。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "F-FEEDBACK",
+      "owner": "F",
+      "role": "客",
+      "access": "本人",
+      "title": "意见与帮助",
+      "layout": "订单评价、一般意见、反馈状态",
+      "actions": [
+        "提交反馈",
+        "查看进度"
+      ],
+      "operations": [
+        "cx.feedback.submit.v1",
+        "cx.feedback.status.v1"
+      ],
+      "state_copy": "反馈已收到，感谢你的建议。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "G-REDEEM",
+      "owner": "G",
+      "role": "客",
+      "access": "授权桌次",
+      "title": "团购验券",
+      "layout": "平台、券码、套餐、份数、核销/接单状态",
+      "actions": [
+        "查询团购券",
+        "确认使用"
+      ],
+      "operations": [
+        "cx.coupon.query.v1",
+        "cx.coupon.consume.v1",
+        "cx.coupon.status.v1"
+      ],
+      "state_copy": "团购券已核销，门店正在确认订单。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "H-CHECKOUT",
+      "owner": "H",
+      "role": "客",
+      "access": "本人/授权账单",
+      "title": "付款",
+      "layout": "商品、优惠、应付、已付、可用渠道",
+      "actions": [
+        "确认付款",
+        "查看付款结果"
+      ],
+      "operations": [
+        "cx.payment.channel.select.v1",
+        "cx.payment.create.v1",
+        "cx.payment.status.v1"
+      ],
+      "state_copy": "付款结果正在确认，请勿重复付款。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "H-HISTORY",
+      "owner": "H",
+      "role": "客",
+      "access": "本人",
+      "title": "消费记录",
+      "layout": "订单、凭证、退款状态、售后",
+      "actions": [
+        "查看账单",
+        "申请售后",
+        "申请开票"
+      ],
+      "operations": [
+        "cx.customer.history.summary.v1",
+        "cx.aftersale.request.v1",
+        "cx.refund.status.v1",
+        "cx.invoice.request.v1"
+      ],
+      "state_copy": "退款申请已提交，等待处理。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "H-BALANCE",
+      "owner": "H",
+      "role": "客",
+      "access": "本人/启用后",
+      "title": "余额与结算",
+      "layout": "预付本金、赠送资产、佣金分别展示",
+      "actions": [
+        "查看流水",
+        "申请退款",
+        "申请佣金结算"
+      ],
+      "operations": [
+        "cx.prepaid.balance.v1",
+        "cx.prepaid.history.v1",
+        "cx.prepaid.refund.v1",
+        "cx.payout.apply.v1"
+      ],
+      "state_copy": "该项服务暂未开放。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "H-SHOP",
+      "owner": "H",
+      "role": "客",
+      "access": "本人/启用后",
+      "title": "购买礼券与套餐",
+      "layout": "商品、适用门店、期限、自提、礼赠",
+      "actions": [
+        "确认购买",
+        "查看领取方式"
+      ],
+      "operations": [
+        "cx.shop.order.v1",
+        "cx.shop.gift.claim.v1",
+        "cx.shop.fulfillment.status.v1"
+      ],
+      "state_copy": "请确认适用门店及使用条件。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "F-STAFF",
+      "owner": "F",
+      "role": "员",
+      "access": "门店权限",
+      "title": "门店工作台",
+      "layout": "接单、出品、服务、换桌、预约及异常",
+      "actions": [
+        "接单",
+        "处理",
+        "完成"
+      ],
+      "operations": [
+        "cx.order.accept.v1",
+        "cx.service.update.v1",
+        "cx.booking.confirm.v1",
+        "cx.booking.checkin.v1"
+      ],
+      "state_copy": "有待处理事项。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "D-STAFF",
+      "owner": "D",
+      "role": "员",
+      "access": "门店权限",
+      "title": "客户资产办理",
+      "layout": "会员核验、存酒标签、取酒、计时",
+      "actions": [
+        "确认存酒",
+        "确认取酒",
+        "开始计时"
+      ],
+      "operations": [
+        "cx.custody.create.v1",
+        "cx.custody.adjust.v1",
+        "cx.timer.start.v1",
+        "cx.timer.end.v1"
+      ],
+      "state_copy": "请核对实物与客户凭证。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "G-STAFF",
+      "owner": "G",
+      "role": "员",
+      "access": "门店权限",
+      "title": "团购核销异常",
+      "layout": "平台结果、POS关联、补单、部分撤销",
+      "actions": [
+        "查询原结果",
+        "人工核销登记",
+        "申请撤销"
+      ],
+      "operations": [
+        "cx.coupon.status.v1",
+        "cx.coupon.manual.record.v1",
+        "cx.coupon.cancel.v1"
+      ],
+      "state_copy": "核销结果未知，请勿重复验券。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "A-CONFIG",
+      "owner": "A",
+      "role": "总",
+      "access": "总部权限",
+      "title": "企业与服务配置",
+      "layout": "企业、门店、引用、主备、候选及版本",
+      "actions": [
+        "校验配置",
+        "提交审批",
+        "回退"
+      ],
+      "operations": [
+        "cx.tenant.provision.v1",
+        "cx.config.stage.v1",
+        "cx.config.activate.v1",
+        "cx.config.rollback.v1"
+      ],
+      "state_copy": "配置尚未验证，不能启用。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "D-HQ",
+      "owner": "D",
+      "role": "总",
+      "access": "总部权限",
+      "title": "权益管理",
+      "layout": "模板、名单、期限、规则、异常",
+      "actions": [
+        "试算",
+        "提交发放",
+        "查询流水"
+      ],
+      "operations": [
+        "cx.entitlement.template.stage.v1",
+        "cx.entitlement.batch.issue.v1"
+      ],
+      "state_copy": "请核对发放范围与政策版本。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "E-HQ",
+      "owner": "E",
+      "role": "总",
+      "access": "总部/财务",
+      "title": "推荐与佣金政策",
+      "layout": "纠偏、规则版本、试算、待付",
+      "actions": [
+        "试算政策",
+        "提交审批",
+        "准备结算"
+      ],
+      "operations": [
+        "cx.commission.policy.preview.v1",
+        "cx.commission.policy.publish.v1",
+        "cx.commission.settlement.prepare.v1"
+      ],
+      "state_copy": "当前政策尚未生效。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "H-HQ",
+      "owner": "H",
+      "role": "总",
+      "access": "财务权限",
+      "title": "交易与对账",
+      "layout": "支付、退款、结算、付款、差异",
+      "actions": [
+        "查询原交易",
+        "处理异常",
+        "审核退款"
+      ],
+      "operations": [
+        "cx.payment.reconcile.v1",
+        "cx.refund.approve.v1",
+        "cx.payout.application.review.v1"
+      ],
+      "state_copy": "存在未确认交易，暂不能重复处理。",
+      "implementation": "reuse existing role shell, no new dashboard per lane",
+      "status": "DESIGN_ONLY"
+    }
+  ]
+}

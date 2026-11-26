@@ -1,0 +1,158 @@
+{
+  "status": "HISTORICAL_SOURCE_ONLY",
+  "items": [
+    {
+      "owner": "A",
+      "path": "services/api/supply/gateway.py",
+      "symbol": "Gateway.read/write",
+      "lines": "18–65",
+      "note": "reuse pattern only; cache authorization and tenant/version isolation",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "A",
+      "path": "integrations/auth/identity_client.py",
+      "symbol": "request_identity/authorize_pos/authorize_device",
+      "lines": "15–74",
+      "note": "extend bindings; preserve live permission checks",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "B",
+      "path": "services/api/customer_growth/app.py",
+      "symbol": "Customer/CustomerIdentity/BrowserSession/OAuthState",
+      "lines": "107–158",
+      "note": "reuse candidate; issuer/tenant uniqueness, conflict scan",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "B",
+      "path": "services/api/customer_growth/app.py",
+      "symbol": "wechat_start/wechat_callback/register/guest_me",
+      "lines": "514–657",
+      "note": "reuse candidate; no duplicate customer ID",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "B",
+      "path": "services/api/customer_growth/app.py",
+      "symbol": "marketing_preference/delete_request/member_page/member_privacy",
+      "lines": "1261–1307",
+      "note": "reuse candidate; consent/privacy",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "C",
+      "path": "services/api/bsv1/bsv_catalog_config.py",
+      "symbol": "_active_catalog/get_excel_path",
+      "lines": "18–70",
+      "note": "reuse candidate; approved publication pointer",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "C",
+      "path": "services/api/bsv1/bsv_catalog_repository.py",
+      "symbol": "SQLiteCatalogReadRepository/PostgresCatalogReadRepository",
+      "lines": "46–271",
+      "note": "read projection only; no confidential fields",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "D",
+      "path": "services/api/customer_growth/app.py",
+      "symbol": "MembershipCycle/Benefit/BenefitReservation",
+      "lines": "207–236",
+      "note": "reuse candidate; hold/quantity, custody/timer UNKNOWN",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "D",
+      "path": "services/api/customer_growth/app.py",
+      "symbol": "/internal/benefits/reserve",
+      "lines": "1116–1167",
+      "note": "extend candidate; verify unknown external result before release",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "E",
+      "path": "services/api/customer_growth/app.py",
+      "symbol": "ClaimTicket/Claim/Attribution/Policy/Commission/CommissionLedger",
+      "lines": "159–302",
+      "note": "reuse candidate; one commission authority",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "E",
+      "path": "services/api/customer_growth/app.py",
+      "symbol": "staff_invite/claim/confirm_claim/commission_for/create_policy",
+      "lines": "821–1169",
+      "note": "reuse candidate; verify exact contract and real facts",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "F",
+      "path": "services/api/bsv1/app.py",
+      "symbol": "live_visit/order_for/get_lines",
+      "lines": "476–489",
+      "note": "reuse candidate; POS owns write",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "F",
+      "path": "services/api/bsv1/bsv_growth_pos.py",
+      "symbol": "make_guest_link/verify_guest_link/make_visit_context",
+      "lines": "82–108",
+      "note": "proof reuse only; read proof not order authority",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "F",
+      "path": "services/api/bsv1/app.py",
+      "symbol": "growth_customer_link/growth_visit_context/growth_visit_verify",
+      "lines": "1236–1381",
+      "note": "extend candidate; scoped join",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "F",
+      "path": "services/api/bsv1/app.py",
+      "symbol": "do_GET /api/state,/api/history,/api/receipt",
+      "lines": "1922–2115",
+      "note": "private projection; never expose raw staff state",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "G",
+      "path": null,
+      "symbol": null,
+      "lines": null,
+      "note": "UNKNOWN; provider authorization, actual adapter, SKU mapping",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    },
+    {
+      "owner": "H",
+      "path": "services/api/customer_growth/app.py",
+      "symbol": "PaymentFact /internal/payment-event",
+      "lines": "237–246,1045–1115",
+      "note": "reuse verified fact contract only; real payment adapter UNKNOWN",
+      "source_ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "runtime_status": "UNKNOWN"
+    }
+  ]
+}

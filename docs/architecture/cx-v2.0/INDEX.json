@@ -1,0 +1,650 @@
+{
+  "version": "2.0",
+  "status": "DESIGN_HANDOFF_CANDIDATE",
+  "entry": "START-HERE.md",
+  "workpackages": {
+    "A": "WORKPACKAGES/A.md",
+    "B": "WORKPACKAGES/B.md",
+    "C": "WORKPACKAGES/C.md",
+    "D": "WORKPACKAGES/D.md",
+    "E": "WORKPACKAGES/E.md",
+    "F": "WORKPACKAGES/F.md",
+    "G": "WORKPACKAGES/G.md",
+    "H": "WORKPACKAGES/H.md"
+  },
+  "operation_file": "CONTRACTS/OPERATIONS.json",
+  "schema_file": "CONTRACTS/PAYLOAD-SCHEMAS.json",
+  "feature_file": "CONTRACTS/FEATURE-TRACE.json",
+  "page_file": "UI/PAGES.json",
+  "environment_file": "CONFIG/ENVIRONMENT.json",
+  "tests": "ACCEPTANCE/CASES.json",
+  "fixtures": "ACCEPTANCE/FIXTURES.json",
+  "operations": [
+    {
+      "id": "cx.tenant.resolve.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.provider.resolve.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.flag.read.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.reference.resolve.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.policy.resolve.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.config.activate.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.config.stage.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.tenant.provision.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.config.rollback.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.provider.health.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.auth.login.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.me.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.bind.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.age.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.auth.challenge.send.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.auth.challenge.verify.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.profile.update.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.consent.update.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.recovery.request.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.history.summary.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.member.code.issue.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.age.verify.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.close.request.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.catalog.public.v1",
+      "owner": "C"
+    },
+    {
+      "id": "cx.store.list.v1",
+      "owner": "C"
+    },
+    {
+      "id": "cx.recommend.rank.v1",
+      "owner": "C"
+    },
+    {
+      "id": "cx.catalog.favorite.v1",
+      "owner": "C"
+    },
+    {
+      "id": "cx.catalog.availability.v1",
+      "owner": "C"
+    },
+    {
+      "id": "cx.entitlement.list.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.entitlement.reserve.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.entitlement.consume.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.entitlement.release.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.custody.adjust.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.timer.status.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.entitlement.issue.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.custody.request.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.timer.start.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.timer.end.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.custody.create.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.entitlement.adjust.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.timer.change.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.gift.transfer.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.referral.claim.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.commission.accrue.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.commission.reverse.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.commission.eligible.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.referral.invite.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.commission.policy.publish.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.commission.settlement.prepare.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.referral.correct.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.service.relationship.update.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.visit.join.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.order.submit.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.order.status.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.order.external_fulfill.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.booking.request.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.service.request.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.booking.confirm.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.booking.cancel.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.service.update.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.notify.list.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.feedback.submit.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.order.quote.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.order.cancel.request.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.queue.join.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.queue.update.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.notify.mark_read.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.service.status.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.coupon.query.v1",
+      "owner": "G"
+    },
+    {
+      "id": "cx.coupon.consume.v1",
+      "owner": "G"
+    },
+    {
+      "id": "cx.coupon.status.v1",
+      "owner": "G"
+    },
+    {
+      "id": "cx.coupon.cancel.v1",
+      "owner": "G"
+    },
+    {
+      "id": "cx.coupon.manual.record.v1",
+      "owner": "G"
+    },
+    {
+      "id": "cx.coupon.reconcile.v1",
+      "owner": "G"
+    },
+    {
+      "id": "cx.payment.create.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payment.status.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.refund.request.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.prepaid.balance.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payout.request.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.shop.order.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payment.channel.select.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payment.attempt.close.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payment.reconcile.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.refund.status.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payout.status.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.prepaid.refund.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.shop.gift.claim.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payment.webhook.accept.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.prepaid.recharge.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.prepaid.spend.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payout.apply.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.invoice.request.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.shop.fulfillment.status.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payment.manual.confirm.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.customer.register.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.member.card.bind.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.customer.privacy.request.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.custody.list.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.entitlement.history.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.custody.proxy.authorize.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.entitlement.template.stage.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.entitlement.batch.issue.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.referral.summary.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.commission.policy.preview.v1",
+      "owner": "E"
+    },
+    {
+      "id": "cx.visit.leave.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.booking.list.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.booking.modify.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.queue.status.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.order.accept.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.prepaid.history.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.refund.approve.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.payout.application.review.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.aftersale.request.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.aftersale.status.v1",
+      "owner": "H"
+    },
+    {
+      "id": "cx.coupon.history.v1",
+      "owner": "G"
+    },
+    {
+      "id": "cx.event.list.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.booking.checkin.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.cart.read.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.cart.update.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.feedback.status.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.notification.preferences.v1",
+      "owner": "B"
+    },
+    {
+      "id": "cx.resource.availability.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.asset.change.request.v1",
+      "owner": "D"
+    },
+    {
+      "id": "cx.survey.submit.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.sample.request.v1",
+      "owner": "F"
+    },
+    {
+      "id": "cx.entry.resolve.v1",
+      "owner": "A"
+    },
+    {
+      "id": "cx.referral.relationship.read.v1",
+      "owner": "E"
+    }
+  ],
+  "pages": [
+    {
+      "id": "C-STORE",
+      "owner": "C"
+    },
+    {
+      "id": "C-MENU",
+      "owner": "C"
+    },
+    {
+      "id": "C-RECOMMEND",
+      "owner": "C"
+    },
+    {
+      "id": "B-MEMBER",
+      "owner": "B"
+    },
+    {
+      "id": "B-LOGIN",
+      "owner": "B"
+    },
+    {
+      "id": "B-PROFILE",
+      "owner": "B"
+    },
+    {
+      "id": "D-RIGHTS",
+      "owner": "D"
+    },
+    {
+      "id": "D-CUSTODY",
+      "owner": "D"
+    },
+    {
+      "id": "D-TIMER",
+      "owner": "D"
+    },
+    {
+      "id": "E-REFERRAL",
+      "owner": "E"
+    },
+    {
+      "id": "F-CART",
+      "owner": "F"
+    },
+    {
+      "id": "F-ORDER",
+      "owner": "F"
+    },
+    {
+      "id": "F-BOOKING",
+      "owner": "F"
+    },
+    {
+      "id": "F-EVENTS",
+      "owner": "F"
+    },
+    {
+      "id": "F-SERVICE",
+      "owner": "F"
+    },
+    {
+      "id": "F-NOTICES",
+      "owner": "F"
+    },
+    {
+      "id": "F-FEEDBACK",
+      "owner": "F"
+    },
+    {
+      "id": "G-REDEEM",
+      "owner": "G"
+    },
+    {
+      "id": "H-CHECKOUT",
+      "owner": "H"
+    },
+    {
+      "id": "H-HISTORY",
+      "owner": "H"
+    },
+    {
+      "id": "H-BALANCE",
+      "owner": "H"
+    },
+    {
+      "id": "H-SHOP",
+      "owner": "H"
+    },
+    {
+      "id": "F-STAFF",
+      "owner": "F"
+    },
+    {
+      "id": "D-STAFF",
+      "owner": "D"
+    },
+    {
+      "id": "G-STAFF",
+      "owner": "G"
+    },
+    {
+      "id": "A-CONFIG",
+      "owner": "A"
+    },
+    {
+      "id": "D-HQ",
+      "owner": "D"
+    },
+    {
+      "id": "E-HQ",
+      "owner": "E"
+    },
+    {
+      "id": "H-HQ",
+      "owner": "H"
+    }
+  ]
+}

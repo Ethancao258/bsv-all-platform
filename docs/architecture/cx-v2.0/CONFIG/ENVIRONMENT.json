@@ -1,0 +1,128 @@
+{
+  "status": "TEMPLATE_ONLY",
+  "design_parent": "18740fc2679ae274b76a7aad36b3783f322aef2b",
+  "historical_source_sha": "2052ef51f011be3c5898d816932d8982f420b752",
+  "runtime_sha": null,
+  "items": [
+    {
+      "key": "release",
+      "resource": "current active release",
+      "owner": "integrator",
+      "verify": "read-only git SHA, service ExecStart/workdir and pending POS changes",
+      "fallback": "retain current release, no old main overwrite",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "pos",
+      "resource": "POS app/store DB/command routes",
+      "owner": "F + POS owner",
+      "verify": "read service config/schema/health; actual order owner",
+      "fallback": "existing POS/manual service",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "identity",
+      "resource": "CloudBase auth/employee role grants",
+      "owner": "B + identity owner",
+      "verify": "authorized auth environment/issuer/roles; no secret logs",
+      "fallback": "existing login",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "catalog",
+      "resource": "CloudBase PG/Excel approved catalog/publication",
+      "owner": "C + catalog owner",
+      "verify": "official queryPgDatabase read-only, product tables and hash",
+      "fallback": "approved local read snapshot",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "customer",
+      "resource": "customer_growth service and DB",
+      "owner": "B/D/E",
+      "verify": "read schema/constraints/authority",
+      "fallback": "existing membership if verified",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "hq",
+      "resource": "HQ console/config routes",
+      "owner": "A",
+      "verify": "inspect current routes, permissions, components",
+      "fallback": "existing HQ",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "public",
+      "resource": "guest-web/EdgeOne menu HTTPS",
+      "owner": "C",
+      "verify": "actual route, TLS, old QR",
+      "fallback": "keep prior public menu",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "payments",
+      "resource": "merchant bindings/callbacks/reconciliation",
+      "owner": "H",
+      "verify": "official console/contract, test environment",
+      "fallback": "verified offline receipts",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "coupons",
+      "resource": "platform merchant/store/SKU binding",
+      "owner": "G",
+      "verify": "official authorization/test coupon/result query",
+      "fallback": "official manual redemption",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "database",
+      "resource": "tenant DB roles/migration history/backup",
+      "owner": "A + integrator",
+      "verify": "G0 read-only schema/roles, G1 isolated restore; official migration plan/apply only approved",
+      "fallback": "no automatic second writer",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "resources",
+      "resource": "CPU/RAM/disk/ports/logs",
+      "owner": "integrator",
+      "verify": "actual utilization/space; no repeated expensive tests",
+      "fallback": "limit heavy process concurrency",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    },
+    {
+      "key": "recovery",
+      "resource": "RPO/RTO/restore/reconciliation",
+      "owner": "integrator",
+      "verify": "agreed targets; isolated restore; pending external queries",
+      "fallback": "old release + safe forward correction",
+      "actual_reference": null,
+      "actual_evidence": null,
+      "state": "UNKNOWN"
+    }
+  ]
+}
