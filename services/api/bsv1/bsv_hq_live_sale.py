@@ -170,7 +170,7 @@ def write_menu(path,payload):
         finally:os.close(fd)
     finally:Path(temp).unlink(missing_ok=True)
 
-def execute_sale(draft,source,pos_db,menu_path):
+def execute_sale(draft,source,pos_db,menu_path,public_url=None):
     from bsv_v9_import import sync_v9
     pos_db=checked_database(pos_db);menu=checked_menu(menu_path)
     release=prepare_release(draft,source,pos_db)
@@ -183,12 +183,15 @@ def execute_sale(draft,source,pos_db,menu_path):
     # durable release id is idempotent; never replay a different draft.
     activate_release(release)
     finalize_pos(pos_db,release)
-    write_menu(menu,payload)
+    if json.loads(menu.read_text(encoding="utf-8")).get("sale_release_id")!=release["id"]:
+        write_menu(menu,payload)
     readback=json.loads(menu.read_text(encoding="utf-8"))
     if readback.get("sale_release_id")!=release["id"]:raise ValueError("顾客菜单写入未核验")
+    if not public_url:raise ValueError("必须登记真实顾客HTTPS酒单数据入口")
+    verify_public_menu(public_url,release)
     return {"status":"SALE_ACTIVE","draft_id":draft["id"],"sale_release_id":release["id"],
             "source_sha256":release["source_sha256"],"sellable_count":len(release["items"]),
-            "pos_projection":"VERIFIED","menu_origin":"VERIFIED","edge_cache":"NOT_VERIFIED"}
+            "pos_projection":"VERIFIED","menu_origin":"VERIFIED","public_https":"VERIFIED"}
 
 
 def sale_record_state(draft_id):
@@ -229,3 +232,23 @@ def archive_for_projection(source,catalog_dir,digest):
         finally:os.close(fd)
     finally:Path(temp).unlink(missing_ok=True)
     return target
+
+
+def verify_public_menu(url,release):
+    from urllib.parse import urlsplit
+    from urllib.request import build_opener,ProxyHandler,HTTPRedirectHandler,Request
+    p=urlsplit(url)
+    if (p.scheme!="https" or p.hostname not in {"menu.bsvm.cn","bsvm.cn"} or p.username or p.password
+            or p.port not in (None,443) or p.query or p.fragment or not p.path.endswith("/menu-public.json")):
+        raise ValueError("公开酒单数据URL须为核验后的正式HTTPS同域资源")
+    class NoRedirect(HTTPRedirectHandler):
+        def redirect_request(self,*args,**kwargs):raise ValueError("正式酒单数据地址不得重定向")
+    with build_opener(ProxyHandler({}),NoRedirect()).open(Request(url,headers={"Accept":"application/json"}),timeout=8) as response:
+        raw=response.read(8*1024*1024+1)
+        if len(raw)>8*1024*1024:raise ValueError("公开投影超限")
+        data=json.loads(raw)
+    if data.get("sale_release_id")!=release["id"] or data.get("source_sha256")!=release["source_sha256"]:
+        raise ValueError("正式HTTPS酒单尚未同步该发布批次")
+    actual={i["product_id"]:cents_from_price(i["reference_price"]["amount"]) for i in data["items"] if i["kind"]=="prepared"}
+    if actual!={k:v["price_cents"] for k,v in release["items"].items()}:
+        raise ValueError("正式HTTPS酒单商品/价格不一致")

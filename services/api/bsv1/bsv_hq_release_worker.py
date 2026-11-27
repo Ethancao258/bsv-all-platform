@@ -64,7 +64,7 @@ def run_once(info):
                     d=read_draft(root,key);require_grants(d)
                     source=assert_source(d["baseline_sha256"],root,catalog)
                     source=archive_for_projection(source,catalog,d["baseline_sha256"])
-                    result=execute_sale(d,source,Path(info["pos_database"]),Path(info["public_menu_json"]))
+                    result=execute_sale(d,source,Path(info["pos_database"]),Path(info["public_menu_json"]),info["public_menu_url"])
                     receipt(root,key,result);return result
                 if approval.exists():raise RuntimeError("prior signing attempt")
                 if d["kind"]=="rollback":

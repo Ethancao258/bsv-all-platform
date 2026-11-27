@@ -271,6 +271,11 @@ def sync_v9(dbpath:Path, excelpath:Path, force=False, *, sale_release=None):
         old=db.execute('SELECT source_sha FROM bsv_v9_sync WHERE one=1').fetchone()
         # 版本切换：即使Excel文件未变，旧的逐店Q表/临时价仍需强制转换为AJ统一价。
         prior=db.execute('SELECT summary_json FROM bsv_v9_sync WHERE one=1').fetchone() if old else None
+        if prior and sale_release is None:
+            try:previous_meta=json.loads(prior[0])
+            except (ValueError,TypeError):previous_meta={}
+            if previous_meta.get("sale_release_id"):
+                raise PermissionError("已接管的正式销售投影禁止被旧Excel同步任务覆盖")
         try: old_policy=json.loads(prior[0]).get('price_policy') if prior else None
         except (ValueError,TypeError):old_policy=None
         try: old_store_ids=json.loads(prior[0]).get('store_ids') if prior else None

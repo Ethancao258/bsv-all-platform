@@ -418,6 +418,33 @@ class CatalogPostgres17Tests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "too small"):
             stage.catalog_restore_database_name(
                 "a" * 40, 8, timestamp="20261124123456", nonce="0123456789abcdef")
+    def test_zz_production_sale_ledger_preserves_other_domains(self):
+        # Synthetic PG17 only. Exercise the live migration and actual production
+        # schema gate without changing the isolated fixture's existing relations.
+        from bsv_catalog_live import require_live_layout,reject_pending_sale
+        migration=ROOT/"platform/lighthouse/bsv1/catalog/live_migrations/0001_sale_release.sql"
+        conn=importer._connect()
+        try:
+            conn.execute(migration.read_text(encoding="utf-8"),prepare=False)
+            conn.execute("CREATE SCHEMA IF NOT EXISTS live_other_domain")
+            conn.execute("CREATE TABLE live_other_domain.sentinel(id integer PRIMARY KEY)")
+            conn.execute("INSERT INTO live_other_domain.sentinel VALUES(1)")
+            conn.commit()
+            self.assertEqual(require_live_layout(conn),"REGISTERED_LIVE_SCHEMA")
+            conn.commit()
+            with conn.transaction():
+                conn.execute("""INSERT INTO catalog.sale_release(release_id,source_sha256,draft_id,created_by,reviewed_by,legal_entity_id,decisions,items,status)
+                                VALUES(%s,%s,%s,'TRA0001','TRA0002','TEST',%s,%s,'PENDING_PROJECTION')""",
+                             ("88888888-8888-4888-8888-888888888888",SHA,"f"*32,Jsonb({"C000001":"LIST"}),Jsonb({})))
+                with mock.patch.dict(os.environ,{"BSV_APP_ENV":"production","BSV_CATALOG_LIVE":"1"}):
+                    with self.assertRaisesRegex(RuntimeError,"pending sale"):reject_pending_sale(conn)
+                self.assertEqual(conn.execute("SELECT id FROM live_other_domain.sentinel").fetchone()[0],1)
+        finally:
+            conn.rollback()
+            conn.execute("DROP TABLE IF EXISTS catalog.sale_release")
+            conn.execute("DROP SCHEMA IF EXISTS live_other_domain CASCADE")
+            conn.commit();conn.close()
+
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls, "http_server"):
