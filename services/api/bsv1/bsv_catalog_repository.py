@@ -25,8 +25,9 @@ SHEET_BY_PREFIX = {"C": "C_现场成品", "P": "P_预调半成品", "M": "M_采�
 
 def postgres_catalog_enabled() -> bool:
     """PostgreSQL is an opt-in catalog read source in an explicitly isolated stack."""
+    from bsv_catalog_live import live_enabled
     return (os.environ.get("BSV_CATALOG_READ_SOURCE", "sqlite").strip().lower() == "postgres"
-            and os.environ.get("BSV_APP_ENV") == "isolated"
+            and (os.environ.get("BSV_APP_ENV") == "isolated" or live_enabled())
             and bool(os.environ.get("BSV_DB_URL", "").strip()))
 
 

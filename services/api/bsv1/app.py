@@ -335,8 +335,11 @@ def init_db():
     with tx() as db:
         bsv_one.seed_revisions(db)
     # V9只是源文件；生产订单/价格快照和事务仍存储在SQLite。任一源文件损坏则阻止本地启动.
+    from bsv_catalog_live import live_enabled
+    if live_enabled() and not postgres_catalog_enabled():
+        raise RuntimeError("正式目录必须启用登记的PG读取，禁止回退Excel自动覆盖销售投影")
     if postgres_catalog_enabled():
-        print('BSV ALL catalog read source: PostgreSQL 17 (isolated opt-in); SQLite V9 import is paused.')
+        print('BSV ALL catalog read source: PostgreSQL 17; independent sales projection is preserved.')
     else:
         from bsv_v9_import import sync_v9
         report=sync_v9(DB_PATH,get_excel_path(ROOT))

@@ -246,8 +246,23 @@ def ensure_catalog_schema(db:sqlite3.Connection):
                      ('sale_enabled','INTEGER NOT NULL DEFAULT 1'),('catalog_sha','TEXT'),('price_policy','TEXT')]:
         if col not in cols:db.execute(f'ALTER TABLE bsv_products ADD COLUMN {col} {spec}')
 
-def sync_v9(dbpath:Path, excelpath:Path, force=False):
+def sync_v9(dbpath:Path, excelpath:Path, force=False, *, sale_release=None):
+    from bsv_catalog_live import live_enabled
+    if live_enabled() and sale_release is None:
+        raise PermissionError("正式商品投影必须由获批销售版本执行器生成")
     data,extras,quotes,summary=unpack_v9(excelpath)
+    if sale_release is not None:
+        from bsv_hq_live_sale import facts
+        current=facts(data)
+        if sale_release["source_sha256"]!=summary["source_sha256"] or any(current.get(k)!=v for k,v in sale_release["items"].items()):
+            raise ValueError("核准销售版本与原始商品内容不匹配")
+        # Effective approvals are a projection of the PG sale ledger, not
+        # fabricated or modified original Excel status cells.
+        for row in data["C_现场成品"]:
+            listed=row["id"] in sale_release["items"]
+            row["fields"]["内容审核状态"]="已批准" if listed else "待审核"
+            row["fields"]["上架状态"]="已上架" if listed else "未上架"
+        summary.update(sale_release_id=sale_release["id"],sale_projection_ready=False,c_sale_eligible=len(sale_release["items"]))
     db=sqlite3.connect(str(dbpath),timeout=20)
     try:
         db.execute('PRAGMA busy_timeout=20000')
@@ -256,6 +271,11 @@ def sync_v9(dbpath:Path, excelpath:Path, force=False):
         old=db.execute('SELECT source_sha FROM bsv_v9_sync WHERE one=1').fetchone()
         # 版本切换：即使Excel文件未变，旧的逐店Q表/临时价仍需强制转换为AJ统一价。
         prior=db.execute('SELECT summary_json FROM bsv_v9_sync WHERE one=1').fetchone() if old else None
+        if prior and sale_release is None:
+            try:previous_meta=json.loads(prior[0])
+            except (ValueError,TypeError):previous_meta={}
+            if previous_meta.get("sale_release_id"):
+                raise PermissionError("已接管的正式销售投影禁止被旧Excel同步任务覆盖")
         try: old_policy=json.loads(prior[0]).get('price_policy') if prior else None
         except (ValueError,TypeError):old_policy=None
         try: old_store_ids=json.loads(prior[0]).get('store_ids') if prior else None
@@ -318,6 +338,13 @@ def price_is_current(db,product,store_id):
 
     绑定Excel版本和销售镜像：改价后旧草稿需重新确认，历史订单价格快照不改变。
     """
+    from bsv_catalog_live import live_enabled
+    if live_enabled():
+        state=db.execute("SELECT summary_json FROM bsv_v9_sync WHERE one=1").fetchone()
+        if not state:return False
+        try:metadata=json.loads(state[0])
+        except (ValueError,TypeError):return False
+        if not metadata.get("sale_release_id") or metadata.get("sale_projection_ready") is not True:return False
     if not product or not product['sale_enabled'] or product['store_id'] not in (None,store_id):
         return False
     if product['source_domain']!='C' or product['price_policy']!=PRICE_POLICY:

@@ -831,3 +831,8 @@ def legacy_rollback(body: LegacyRollback, request: Request):
 from .academy_api import academy_router  # noqa: E402
 
 app.include_router(academy_router)
+
+
+# Additive HQ catalog routes; use existing identity session, CSRF and grant guard.
+from .hq_catalog_api import install_catalog_routes
+install_catalog_routes(app, router, settings, grant_guard, person_for_subject, HQ)

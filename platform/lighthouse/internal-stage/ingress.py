@@ -35,7 +35,7 @@ INTERNAL_PAGE_HEADERS = {
 # Unknown API names stay 404, without trying another subsystem or exposing a page.
 HQ_LAYOUT_FILES = {"/hq/stores/layout", "/hq/stores/layout/assets/app.js",
                    "/hq/stores/layout/assets/style.css"}
-IDENTITY_PAGES = {"/identity", "/staff", "/hq", "/health/ready", "/health/live"}
+IDENTITY_PAGES = {"/identity", "/staff", "/hq", "/hq/catalog", "/health/ready", "/health/live"}
 IDENTITY_ASSETS = {"/assets/common.js", "/assets/staff.js", "/assets/style.css"}
 POS_PAGES = {"/pos", "/index.html", "/app.js", "/style.css",
              "/assets/BSV_徽记.png", "/assets/BSV_完整徽标.png",
@@ -128,7 +128,10 @@ async def proxy(request: Request):
     headers = [(k, v) for k, v in request.headers.raw if k in INBOUND]
     headers.append((b"host", request.headers["host"].encode("ascii")))
     try:
-        async with httpx.AsyncClient(timeout=8, trust_env=False) as client:
+        # Only the bounded HQ scan/conversion paths need longer than ordinary API calls.
+        catalog_long = (path in {"/api/v1/hq/catalog/preview", "/api/v1/hq/catalog/excel-drafts"}
+                        or (path.startswith("/api/v1/hq/catalog/drafts/") and path.endswith("/prepare")))
+        async with httpx.AsyncClient(timeout=100 if catalog_long else 8, trust_env=False) as client:
             url = httpx.URL(UPSTREAM[key]).copy_with(path=target, query=request.scope["query_string"])
             async with client.stream(request.method, url, headers=headers, content=bytes(body)) as result:
                 data = bytearray()
