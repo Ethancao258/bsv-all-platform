@@ -91,6 +91,11 @@ class Consume(Open):
     amount: Amount
 
 
+class OpeningImport(Command):
+    store_id: Reference
+    evidence_ids: PackageIds
+
+
 class Label(Command):
     package_ids: PackageIds
     store_id: Reference
@@ -101,10 +106,10 @@ class Label(Command):
 COMMANDS = {
     "plan-preview": PlanPreview, "plan": Plan, "batch": Batch, "create": ShipmentCreate,
     "prepare": Transition, "dispatch": Dispatch, "receive": Receipt, "open": Open,
-    "consume": Consume, "dispose": Dispose, "recall": Recall, "label": Label,
+    "consume": Consume, "dispose": Dispose, "recall": Recall, "label": Label, "opening-import": OpeningImport,
 }
-DISPATCH_COMMANDS = {"plan-preview", "plan", "batch", "create", "prepare", "dispatch", "recall", "label"}
-SNAPSHOTS = {"inventory", "shipment", "shipments", "labels", "tasks", "exceptions", "plans"}
+DISPATCH_COMMANDS = {"plan-preview", "plan", "batch", "create", "prepare", "dispatch", "recall", "label", "opening-import"}
+SNAPSHOTS = {"inventory", "shipment", "shipments", "labels", "tasks", "exceptions", "plans", "opening-candidates"}
 INSPECTION_ROLES = {"inspect_independent", "review_independent"}
 OPERATION_ROLES = {"dispatch", "receive"}
 
@@ -152,12 +157,14 @@ def central_router(*, mode, demo, enabled, gateway, actor, token_of):
         require_enabled()
         if kind not in SNAPSHOTS:
             raise HTTPException(404, "未知供货视图")
-        roles = {"dispatch"} if kind in {"plans", "labels"} else OPERATION_ROLES
+        roles = {"dispatch"} if kind in {"plans", "labels", "opening-candidates"} else OPERATION_ROLES
         if kind == "exceptions":
             roles = roles | INSPECTION_ROLES
         _authorized(current, roles, store_id)
         if (kind == "shipment" and not shipment_id) or (kind != "shipment" and not store_id):
             raise HTTPException(422, "缺少配送单或门店编号")
+        if local and kind=="opening-candidates":
+            raise HTTPException(503,"历史期初库存仅可从真实D导入")
         if local:
             try:
                 return local.snapshot(kind, current, store_id=store_id, shipment_id=shipment_id,
@@ -201,6 +208,8 @@ def central_router(*, mode, demo, enabled, gateway, actor, token_of):
             raise HTTPException(422, "缺少配送单编号")
         roles = {"dispatch"} if operation in DISPATCH_COMMANDS else {"receive"}
         _authorized(current, roles, payload.get("source_store_id") or payload.get("store_id"))
+        if local and operation=="opening-import":
+            raise HTTPException(503,"历史期初库存仅可从真实D导入")
         if local:
             try:
                 if operation == "plan-preview":

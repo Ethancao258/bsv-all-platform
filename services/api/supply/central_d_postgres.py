@@ -94,7 +94,7 @@ def projection(row, now):
 
 class DWorker:
     def __init__(self, *, connect, identity, location, policy, consume_ingredients, record_event,
-                 clock=lambda:datetime.now(timezone.utc)):
+                 clock=lambda:datetime.now(timezone.utc), opening_provider=None):
         # The provided connection MUST be clean psycopg tuple-row connection to D.
         # identity(cursor, token) resolves CURRENT grants. For writes the D owner
         # must ensure authorization remains valid for the transaction.
@@ -106,6 +106,7 @@ class DWorker:
         if not all(callable(f) for f in callbacks):
             raise TypeError("all authoritative callbacks are required")
         self.connect,self.identity,self.location,self.policy,self.consume_ingredients,self.record_event,self.clock=callbacks
+        self.opening_provider=opening_provider
 
     def context(self, c, token, *, write=False, payload=None):
         me=self.identity(c, token)
@@ -160,6 +161,9 @@ class DWorker:
                 for pid in selection(p["package_ids"]):
                     if self.pack(c,ctx,pid,True)["stock_location_id"] not in {p["source_store_id"],p["dest_store_id"]}:
                         fail(403,"包装不在来源仓")
+        elif op=="opening-import":
+            self.permit(c,ctx,"dispatch",p["store_id"])
+            self.permit(c,ctx,"receive",p["store_id"])
         elif op=="batch":
             r=self.plan_row(c,ctx,p["plan_id"],True)
             self.permit(c,ctx,"dispatch",r["source_location_id"])
@@ -274,6 +278,64 @@ class DWorker:
             self.movement(c,ctx,f,"SUP59:PRODUCTION:"+f.store_id,f.store_id,f.amount,"PRODUCTION")
             packages.append({**orig,"version":1})
         return {**facts,"packages":packages}
+
+    def opening_candidates(self,c,ctx,store):
+        self.permit(c,ctx,"dispatch",store)
+        self.permit(c,ctx,"receive",store)
+        if not self.opening_provider:
+            return []
+        records=self.opening_provider(c,ctx,store)
+        if not isinstance(records,list) or len(records)>10000:
+            fail(503,"期初凭证来源无效")
+        existing={r["opening_evidence_id"] for r in rows(c,"SELECT opening_evidence_id FROM supply.shipment_package WHERE central_legal=%s AND opening_evidence_id IS NOT NULL",(ctx["legal"],))}
+        seen=set(); result=[]
+        for r in records:
+            if r.get("legal_entity_id")!=ctx["legal"] or r.get("store_id")!=store:
+                fail(403,"期初凭证越权")
+            eid=ident(r["evidence_id"])
+            if eid in seen:fail(409,"重复期初凭证")
+            seen.add(eid)
+            if eid not in existing:result.append(r)
+        return result
+
+    def opening_import(self,c,ctx,p):
+        candidates={r["evidence_id"]:r for r in self.opening_candidates(c,ctx,p["store_id"])}
+        ids=unique_codes(p["evidence_ids"])
+        if len(ids)!=len(p["evidence_ids"]):fail(422,"重复期初凭证")
+        result=[]
+        for eid in ids:
+            r=candidates.get(eid)
+            if not r or r.get("approved") is not True or r.get("not_already_accounted") is not True:
+                fail(409,"无已批准且未入账期初凭证")
+            ident(r["approval_reference"])
+            policy=self.approved(c,ctx,r["item_id"])
+            if r["rule_version"]!=policy["rule"].version or r["unit"]!=policy["unit"]:
+                fail(409,"历史规则须由权威目录复核")
+            start=at(r["produced_at"]); observed=at(r["observed_at"]); end=at(r["expires_at"])
+            if not start<=observed<=ctx["now"] or (ctx["now"]-observed).total_seconds()>86400:
+                fail(409,"历史库存须在最近24小时内实盘")
+            if type(r.get("opened")) is not bool or bool(r.get("opened_at"))!=r["opened"]:
+                fail(409,"开封记录缺失")
+            opened=at(r["opened_at"]) if r["opened"] else None
+            if opened and not start<=opened<=observed:fail(409,"历史开封时间无效")
+            if end>expiry(policy["rule"],start,opened_at=opened):
+                fail(409,"历史有效期超出已批准规则")
+            state="HOLD" if r.get("quality_accepted") is not True or end<=ctx["now"] else "ACCEPTED"
+            pid=uid(r["package_id"]); batch=uid(r["batch_id"])
+            f=PackageFact(pid,batch,r["item_id"],policy["name"],p["store_id"],r["amount"],r["remaining"],r["unit"],start,end,r["rule_version"],r["producer_id"],policy["storage"],policy["usage"],state)
+            if f.remaining<=0:fail(409,"零库存无需入账")
+            if rows(c,"SELECT package_id FROM supply.shipment_package WHERE package_id=%s",(pid,)):fail(409,"包装已存在，不得重复期初入账")
+            batch_facts=dict(batch_id=batch,item_id=f.item_id,origin_kind="OPENING",approved_rule=asdict(policy["rule"]),recipe_version=policy["recipe_version"])
+            c.execute("INSERT INTO supply.central_batch(batch_id,plan_id,legal_entity_id,facts) VALUES (%s,NULL,%s,%s::jsonb) ON CONFLICT(batch_id) DO NOTHING",(batch,ctx["legal"],dump(batch_facts)))
+            prior=one(c,"SELECT legal_entity_id,facts FROM supply.central_batch WHERE batch_id=%s",(batch,))
+            if prior["legal_entity_id"]!=ctx["legal"] or prior["facts"]!=batch_facts:fail(409,"批次与已存在事实不一致")
+            c.execute("""INSERT INTO supply.shipment_package(package_id,shipment_id,item_id,lot_id,base_uom,qty_base,state,
+                central_legal,stock_location_id,remaining_base,version,opened_at,expires_at,original,opening_evidence_id)
+                VALUES (%s,NULL,%s,%s,%s,%s,%s,%s,%s,%s,1,%s,%s,%s::jsonb,%s)""",
+                (pid,f.item_id,batch,f.unit,f.amount,state,ctx["legal"],f.store_id,f.remaining,opened,end,dump(serial(f)),eid))
+            self.movement(c,ctx,f,"SUP59:OPENING:"+f.store_id,f.store_id if state=="ACCEPTED" else "SUP59:HOLD:"+f.store_id,f.remaining,"OPENING")
+            result.append({**serial(f),"evidence_id":eid,"approval_reference":r["approval_reference"],"observed_at":iso(observed),"version":1})
+        return {"packages":result}
 
     def ship_result(self,c,ctx,r):
         sid=str(r["shipment_id"])
@@ -412,6 +474,7 @@ class DWorker:
                         c.execute("INSERT INTO supply.central_plan VALUES (%s,%s,%s,%s,%s,%s::jsonb,%s)",
                                   (data["plan_id"],ctx["legal"],p["source_store_id"],p["dest_store_id"],p["item_id"],dump(data),ctx["now"]))
                     elif operation=="batch":data=self.release(c,ctx,p,resource)
+                    elif operation=="opening-import":data=self.opening_import(c,ctx,p)
                     elif operation=="create":data=self.create(c,ctx,p)
                     elif operation in {"prepare","dispatch","receive"}:data=self.ship_step(c,ctx,operation,p,resource)
                     elif operation=="label":data=self.label(c,ctx,p)
@@ -443,11 +506,13 @@ class DWorker:
                          sender_id=s["sender_id"],sent_at=iso(s["sent_at"]),eta=iso(s["eta"]),arrived_at=iso(s["arrived_at"]),revision=str(s["version"]))
                     return result
                 if not store_id:fail(422,"缺少门店")
-                roles={"dispatch"} if kind in {"plans","labels"} else {"dispatch","receive"}
+                roles={"dispatch"} if kind in {"plans","labels","opening-candidates"} else {"dispatch","receive"}
                 if kind=="exceptions":roles|={"inspect","inspect_independent","review_independent"}
                 allowed=next((r for r in sorted(roles) if store_id in ctx["grants"].get(r,[])),None)
                 if not allowed:fail(403,"无门店权限")
                 self.permit(c,ctx,allowed,store_id)
+                if kind=="opening-candidates":
+                    return {"items":self.opening_candidates(c,ctx,store_id)}
                 if kind=="shipments":
                     found=rows(c,"""SELECT shipment_id,source_location_id,dest_location_id,state,version,created_at
                           FROM supply.shipment WHERE central_legal=%s AND (source_location_id=%s OR dest_location_id=%s)

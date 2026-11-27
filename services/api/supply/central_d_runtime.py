@@ -132,7 +132,7 @@ def record_event(c,ctx,operation,data):
 
 REQUIRED_COLUMNS={
     "supply.shipment":{"shipment_id","central_legal","eta","dispatched","version"},
-    "supply.shipment_package":{"package_id","central_legal","stock_location_id","remaining_base","original","recall_reason"},
+    "supply.shipment_package":{"package_id","central_legal","stock_location_id","remaining_base","original","recall_reason","opening_evidence_id"},
     "supply.central_plan":{"plan_id","facts","legal_entity_id"},
     "supply.central_batch":{"batch_id","plan_id","facts"},
     "supply.central_receipt":{"shipment_id","package_id","facts"},
@@ -158,6 +158,17 @@ def schema_report(connection):
         return {"compatible_columns":not missing,"missing":missing,"tables_present":sorted(actual)}
 
 
+def opening_from_env(c,ctx,store):
+    from .central_source_adapter import pinned
+    path=os.getenv("BSV_SUP59_OPENING_FILE","")
+    digest=os.getenv("BSV_SUP59_OPENING_SHA256","")
+    if not path and not digest:return []
+    value=pinned(path,digest)
+    if value.get("legal_entity_id")!=ctx["legal"] or not isinstance(value.get("items"),list):
+        refuse(403,"历史期初凭证法人不一致")
+    return [r for r in value["items"] if r.get("store_id")==store]
+
+
 def create_authority_app():
     """Uvicorn --factory entry; not enabled by importing or installing files."""
     if os.getenv("BSV_SUP59_D_AUTHORITY_ENABLED")!="1" or os.getenv("BSV_SUP59_D_SCHEMA_REVIEWED")!="1":
@@ -176,7 +187,7 @@ def create_authority_app():
         raise RuntimeError("authority service requires approved remote source configuration")
     sources=AuthoritySources(Gateway(settings,None))
     worker=DWorker(connect=connect,identity=sources.identity,location=sources.location,policy=sources.policy,
-                   consume_ingredients=consume_ingredients,record_event=record_event)
+                   consume_ingredients=consume_ingredients,record_event=record_event,opening_provider=opening_from_env)
     def authenticate(request):
         token=request.headers.get("X-BSV-Service-Token","")
         if not token or not compare_digest(token,secret):

@@ -13,10 +13,11 @@ ALTER TABLE supply.shipment_package ALTER COLUMN shipment_id DROP NOT NULL,
  ADD COLUMN central_legal text, ADD COLUMN stock_location_id text,
  ADD COLUMN remaining_base numeric(18,4), ADD COLUMN version integer,
  ADD COLUMN opened_at timestamptz, ADD COLUMN expires_at timestamptz,
- ADD COLUMN original jsonb, ADD COLUMN recall_reason text, ADD COLUMN recalled_at timestamptz,
+ ADD COLUMN original jsonb, ADD COLUMN opening_evidence_id text, ADD COLUMN recall_reason text, ADD COLUMN recalled_at timestamptz,
  ADD CONSTRAINT sup59_package_facts CHECK (central_legal IS NULL OR
  (stock_location_id IS NOT NULL AND remaining_base IS NOT NULL AND remaining_base>=0
  AND remaining_base<=qty_base AND version IS NOT NULL AND version>=1 AND expires_at IS NOT NULL AND original IS NOT NULL));
+CREATE UNIQUE INDEX sup59_opening_once ON supply.shipment_package(central_legal,opening_evidence_id) WHERE opening_evidence_id IS NOT NULL;
 CREATE INDEX sup59_stock_location ON supply.shipment_package(central_legal,stock_location_id,item_id);
 ALTER TABLE supply.movement ADD COLUMN central_kind text;
 CREATE TABLE supply.central_plan (
@@ -24,7 +25,7 @@ CREATE TABLE supply.central_plan (
  dest_location_id text NOT NULL, item_id text NOT NULL, facts jsonb NOT NULL,
  created_at timestamptz NOT NULL, CHECK(source_location_id<>dest_location_id));
 CREATE TABLE supply.central_batch (
- batch_id uuid PRIMARY KEY, plan_id uuid NOT NULL UNIQUE REFERENCES supply.central_plan(plan_id),
+ batch_id uuid PRIMARY KEY, plan_id uuid UNIQUE REFERENCES supply.central_plan(plan_id),
  legal_entity_id text NOT NULL, facts jsonb NOT NULL);
 CREATE TABLE supply.central_receipt (
  shipment_id uuid NOT NULL REFERENCES supply.shipment(shipment_id),
