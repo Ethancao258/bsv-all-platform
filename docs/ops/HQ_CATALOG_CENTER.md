@@ -48,3 +48,6 @@
 现场至少完成：未授权拒绝、只有读取权限无机密值、真实目录SHA一致、同人审批拒绝、异人审核通过、历史ID重用拒绝、重复Excel幂等、无扫描器拒绝、未知模板拒绝、合法候选生成、签名预检、隔离资料提交及旧版恢复、重启后实际活动SHA一致。检查POS旧交易数据、金额、权限和销售审批未变；单独用获准销售投影完成门店真实浏览器验证。直接编辑含公式真实模板、套餐槽位、退役、自动签名、正式PG共享schema迁移及消费者投影均不能当作已通过。
 回退程序：在C唯一工作树恢复旧代码配置并关闭 BSV_HQ_CATALOG_ENABLE；不删除历史源、签名、预留ID或业务数据。资料回退必须使用上面独立签名激活旧版，订单和收款不可回退覆盖。
 最终回执：BASE_SHA、HEAD_SHA、实际运行SHA、CI/浏览器证据、活动源SHA（非敏感）、是否保持销售投影不变、未完成阻断、回退记录。未满足正式上线条件一律 RELEASE_BLOCKED，停止，不开新项目。
+
+## 7. 可选一次配置、日常网页操作（仅隔离候选）
+新增 bsv_hq_release_worker.py 供原root受控调度器调用；不监听新端口、不建新数据库。必须先取得负责人独立授权、验证实际运行SHA及隔离数据范围，再由root设置私有0600政策文件。命令： "$PYTHON" "$REPO/services/api/bsv1/bsv_hq_release_worker.py" --policy "$ROOT_PRIVATE_POLICY_JSON" 。政策字段：status=APPROVED_ISOLATED_RAW_ONLY；legal_entity=核验候选法人；approved_git_sha=获批运行完整SHA；approval_ref=真实授权索引；expires_at=带时区失效时间；draft_root/approval_dir/catalog_dir=实际私有绝对路径；rollback_archives={历史源SHA:原始私有ZIP绝对路径}。在安装和每次代码升级时核对实际运行SHA；未授权不安装或启用。原root签发环境，建议沿用现有受控调度器每分钟一次，每次最多处理一条已经双人审核且申请发布的请求。重新核验权限和签名约束，网页可读回执。失败后不盲重试，已有签名时标记RELEASE_RECONCILIATION_REQUIRED。关停调度器或政策过期即停止。正式生产始终拒绝；人工签发路径保留。不得让网页进程持有root签名密钥或PG owner权限。

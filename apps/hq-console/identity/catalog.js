@@ -1,7 +1,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
 const labels={C:"现场成品",K:"套餐组合",P:"预调半成品",M:"采购纯饮",R:"配方耗用",Q:"门店报价",T:"门店注册"};
-const statusLabels={PENDING_REVIEW:"待另一位管理员审核",REVIEWED_NOT_PUBLISHED:"已审核 · 未发布",VERIFIED_PACKAGE_NOT_PUBLISHED:"候选规范包已校验 · 未发布",RELEASE_REQUESTED:"待受控签名执行",RAW_REVISION_ACTIVE:"原始资料版本已生效 · 销售状态未改变",REJECTED:"已拒绝",IDEMPOTENT_NOOP:"与当前版本相同",PREVIEW_ONLY:"预览完成 · 未写入"};
+const statusLabels={PENDING_REVIEW:"待另一位管理员审核",REVIEWED_NOT_PUBLISHED:"已审核 · 未发布",VERIFIED_PACKAGE_NOT_PUBLISHED:"候选规范包已校验 · 未发布",RELEASE_REQUESTED:"待受控签名执行",RAW_REVISION_ACTIVE:"原始资料版本已生效 · 销售状态未改变",RELEASE_BLOCKED:"发布未执行 · 需要处理",RELEASE_RECONCILIATION_REQUIRED:"发布结果待核对 · 请勿重试",REJECTED:"已拒绝",IDEMPOTENT_NOOP:"与当前版本相同",PREVIEW_ONLY:"预览完成 · 未写入"};
 const fieldsFor={C:["商品名称","销售系列","配方文字","完整制作步骤","标注售价"],K:["套餐名称"],P:["半成品名称","完整制作步骤"],M:["物料名称"],R:["工序名称","完整制作步骤"],Q:["核准售价","币种","销售渠道","生效日期","失效日期"],T:[]};
 const forbidden=new Set(["商品ID","半成品ID","物料ID","套餐ID","门店ID"]);
 let active="",offset=0,selected=null,excel=null,allowedFields=[];

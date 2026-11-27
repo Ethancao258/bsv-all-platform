@@ -226,9 +226,9 @@ def list_drafts(root, entity):
             receipt=root/(file.stem+".release.json")
             if receipt.is_file() and not receipt.is_symlink():
                 result=json.loads(receipt.read_text(encoding="utf-8"))
-                if result.get("draft_id")==data["id"] and result.get("status")=="RAW_REVISION_ACTIVE":
+                if result.get("draft_id")==data["id"] and result.get("status") in {"RAW_REVISION_ACTIVE","RELEASE_BLOCKED","RELEASE_RECONCILIATION_REQUIRED"}:
                     data["release_result"]=result
-                    data["status"]="RAW_REVISION_ACTIVE"
+                    data["status"]=result["status"]
             output.append(data)
     return sorted(output, key=lambda x:x["created_at"], reverse=True)
 
