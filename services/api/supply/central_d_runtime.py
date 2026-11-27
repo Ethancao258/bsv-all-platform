@@ -137,7 +137,7 @@ REQUIRED_COLUMNS={
     "supply.central_batch":{"batch_id","plan_id","facts"},
     "supply.central_receipt":{"shipment_id","package_id","facts"},
     "supply.central_print":{"request_id","package_id","operation"},
-    "supply.stock_lot":{"stock_lot_id","legal_entity_id","material_id","remaining_base","expires_at"},
+    "supply.stock_lot":{"stock_lot_id","legal_entity_id","material_id","remaining_base","expires_at","opening_evidence_id"},
     "supply.movement":{"movement_id","central_kind","qty_base"},
     "supply.idempotent_result":{"actor_scope","request_id","fingerprint","response"},
     "event_audit.supply_event":{"audit_event_id","request_id","facts"},

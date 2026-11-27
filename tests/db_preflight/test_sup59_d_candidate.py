@@ -62,6 +62,7 @@ def scenario():
         if fail_event[0]:raise HTTPException(503,"fixture outbox failure")
         record_event(c,ctx,op,facts)
     opening=[dict(legal_entity_id="SYNTH",store_id="BSVS",evidence_id="OPEN-1",approved=True,not_already_accounted=True,approval_reference="FIXTURE",item_id="SYNTH-P",rule_version="E1",unit="mL",produced_at=now[0].isoformat(),observed_at=now[0].isoformat(),expires_at=(now[0]+timedelta(hours=4)).isoformat(),opened=False,package_id=rid(),batch_id=rid(),amount="100",remaining="80",producer_id="EMP-HQ",quality_accepted=True)]
+    opening.append(dict(legal_entity_id="SYNTH",store_id="BSVS",evidence_id="RAW-OPEN-1",kind="RAW_LOT",approved=True,not_already_accounted=True,approval_reference="FIXTURE",item_id="M001",recipe_item_id="SYNTH-P",recipe_version="R1",unit="mL",received_at=now[0].isoformat(),observed_at=now[0].isoformat(),expires_at=(now[0]+timedelta(hours=6)).isoformat(),opened=False,stock_lot_id="LOT-OPEN-1",remaining="300",supplier_lot_ref="SUPPLIER-1",expiry_evidence_ref="LABEL-1",quality_accepted=True))
     worker=DWorker(connect=connect,identity=identity,location=location,policy=policy,consume_ingredients=consume_ingredients,record_event=event,clock=lambda:now[0],opening_provider=lambda c,ctx,store:opening if ctx["legal"]=="SYNTH" and store=="BSVS" else [])
     app=FastAPI()
     def service(request):
@@ -168,13 +169,16 @@ def test_real_postgres_complete_candidate_transaction(scenario):
         assert c.execute("SELECT count(*) FROM event_audit.supply_event").fetchone()[0]==c.execute("SELECT count(*) FROM event_audit.supply_outbox").fetchone()[0]
         assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='RAW_CONSUMED'").fetchone()[0]==800
 
-    assert len(read("opening-candidates",store_id="BSVS")["items"])==1
+    assert len(read("opening-candidates",store_id="BSVS")["items"])==2
     read("opening-candidates",actor="shop",store_id="BSVS",expected=403)
-    op=dict(store_id="BSVS",evidence_ids=["OPEN-1"],request_id=rid())
+    op=dict(store_id="BSVS",evidence_ids=["OPEN-1","RAW-OPEN-1"],request_id=rid())
     imported=command("opening-import",**op)
     assert Decimal(imported["packages"][0]["remaining"])==80
+    assert Decimal(imported["raw_lots"][0]["remaining"])==300
+    assert read("inventory",actor="shop",store_id="BSVS")["raw_lots"][0]["stock_lot_id"]=="LOT-OPEN-1"
     assert command("opening-import",**op)==imported
     command("opening-import",expected=409,**{**op,"request_id":rid()})
     assert read("opening-candidates",store_id="BSVS")["items"]==[]
     with connect() as c:
         assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='OPENING'").fetchone()[0]==80
+        assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='RAW_OPENING'").fetchone()[0]==300

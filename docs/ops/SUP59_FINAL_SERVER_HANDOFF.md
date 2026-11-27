@@ -18,3 +18,8 @@ D owner 可发布私有 SHA 固定文件 `BSV_SUP59_OPENING_FILE`、`BSV_SUP59_O
 
 ## 私有配置
 使用原服务配置与既有 secrets，不上传真实投影/凭据到 GitHub。预检读取 BSV_SUP59_ORG_PROJECTION_FILE / SHA256（实际名称按代码）、BSV_SUP59_POLICY_FILE / SHA256、BSV_SUP59_D_DSN。预检成功仅代表元数据列形状，不代表真实 schema 语义或正式上线通过。
+
+## 2026-11-28｜已知中央 PostgreSQL 17 结构的首次建账接续
+实机回执确认 bsv_all_prod 已有 catalog/core/audit 等21张表，但该库未列出 supply 或 event_audit；身份库是独立演练数据。不能据此断言全企业没有其他库存账本，C仅需按既有服务登记确认 D 是否已有权威事实。若确认为首次 D，使用同一 PostgreSQL 实例、同一 bsv_all_prod 内的新 supply schema，不建第二主库；事件审计仅在既有全公司事件所有者确认无重复时使用该新 ledger。已补充 `contracts/supply/sup59_first_ledger_production.sql`，它与经测试参考表形一致，额外包含数据库名、专属 NOLOGIN D owner、受限运行角色、首次无冲突及审批引用门禁，原目录表不改、默认不执行。C/D 准备数据库 owner 授权的角色、审查真实授权、备份恢复演练，固定合并SHA后集中审批再执行；若任何表/事件域已存在，停止该脚本并映射既有事实。不把审批引用/开关当作授权凭证。运行角色不得加入目录写角色、数据库管理角色或获得目录/身份数据直读权限。
+原料首批入账在既有历史期初库存页面支持 `kind=RAW_LOT`，与分装包装共享唯一凭证校验及事务；除公共字段外需要 item_id（真实M）、recipe_item_id（真实P）、recipe_version、unit、remaining、stock_lot_id、received_at、observed_at、expires_at、opened=false、quality_accepted=true、supplier_lot_ref、expiry_evidence_ref。只接受最近24h真实盘点、原包装效期依据及批准配方投入单位；未知/开封/未验收原料不得作为可用量。禁止以手工 INSERT 绕过。原料库存随库存 API 返回 raw_lots；常规采购到货需由 D 既有入库流程接入，不将一次性期初入口伪装成反复采购。原料日常入库、管理端批准规则录入以及正式事件连接若缺，仍是正式营业阻断。
+目录权限：原 PostgresCatalogReadRepository 会先 SET ROLE bsv_catalog_reader，直接以 NOINHERIT 运行登录角色 SELECT 基表失败并不证明角色缺权限；复用此现有 A repository，禁止使用 importer 作为业务读取账号或扩大授权。P 读 catalog.semifinished，M 读 catalog.material，原始行/已审核内容分开；C 商品销售状态不等于 P 生产许可。当前真实资料仍需由 #63/PR64 已有总部商品中心维护、审核并发布；原始 recipe_text、shelf_life 不能自动编造成可执行配方。组织资料由 C 从真实法人、门店和仓库注册核验取得，不能用演练身份行。所有已暴露的数据库及服务凭据由C按既有秘密管理统一轮换，不在日志、命令或GitHub重复输出。

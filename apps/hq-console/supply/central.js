@@ -619,9 +619,9 @@ async function showCentralOpening(current){
   const content=$('central-content');
   const rows=items.map(r=>[
     `<label><input type="checkbox" name="opening" value="${escapeHtml(r.evidence_id)}" ${r.approved===true&&r.not_already_accounted===true?'':'disabled'}> ${escapeHtml(r.evidence_id)}</label>`,
-    escapeHtml(r.item_id),escapeHtml(r.package_id),escapeHtml(r.remaining+' '+r.unit),escapeHtml(beijingTime(r.expires_at)),escapeHtml(r.approval_reference||'待核验')
+    escapeHtml(r.item_id),escapeHtml(r.stock_lot_id||r.package_id),escapeHtml(r.remaining+' '+r.unit),escapeHtml(beijingTime(r.expires_at)),escapeHtml(r.approval_reference||'待核验')
   ]);
-  content.innerHTML=`<form id="central-opening"><p class="hint">仅显示库存所有者批准的最近实盘凭证。未知效期、重复台账或无凭证物料不得作为可用库存入账。</p>${centralTable(['凭证','物料','包装','实盘余量','死期','批准引用'],rows)}<button type="submit" class="primary" ${items.length?'':'disabled'}>确认所选期初库存</button></form>`;
+  content.innerHTML=`<form id="central-opening"><p class="hint">仅显示库存所有者批准的最近实盘凭证。未知效期、重复台账或无凭证物料不得作为可用库存入账。</p>${centralTable(['凭证','物料','包装/原料批次','实盘余量','死期','批准引用'],rows)}<button type="submit" class="primary" ${items.length?'':'disabled'}>确认所选期初库存</button></form>`;
   const form=$('central-opening');
   form.onsubmit=busyCentral(form,async values=>{
     const ids=form.querySelectorAll('input[name="opening"]:checked');

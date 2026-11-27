@@ -288,6 +288,7 @@ class DWorker:
         if not isinstance(records,list) or len(records)>10000:
             fail(503,"期初凭证来源无效")
         existing={r["opening_evidence_id"] for r in rows(c,"SELECT opening_evidence_id FROM supply.shipment_package WHERE central_legal=%s AND opening_evidence_id IS NOT NULL",(ctx["legal"],))}
+        existing.update(r["opening_evidence_id"] for r in rows(c,"SELECT opening_evidence_id FROM supply.stock_lot WHERE legal_entity_id=%s AND opening_evidence_id IS NOT NULL",(ctx["legal"],)))
         seen=set(); result=[]
         for r in records:
             if r.get("legal_entity_id")!=ctx["legal"] or r.get("store_id")!=store:
@@ -298,16 +299,52 @@ class DWorker:
             if eid not in existing:result.append(r)
         return result
 
+    def raw_opening(self,c,ctx,store,r):
+        # Only an owner-approved, physically observed, unopened supplier lot.
+        # A recipe association checks an approved material ID and base unit.
+        if r.get("opened") is not False or r.get("quality_accepted") is not True:
+            fail(409,"开封或未验收的原料不得作为可用期初库存")
+        material=ident(r["item_id"])
+        policy=self.approved(c,ctx,r["recipe_item_id"])
+        ingredient=policy.get("recipe_inputs",{}).get(material)
+        if not ingredient or ingredient["unit"]!=r["unit"] or r.get("recipe_version")!=policy["recipe_version"]:
+            fail(409,"原料须对应当前批准配方及基础单位")
+        amount=quantity(r["remaining"],r["unit"])
+        received=at(r["received_at"]); observed=at(r["observed_at"]); end=at(r["expires_at"])
+        if not received<=observed<=ctx["now"]<end or (ctx["now"]-observed).total_seconds()>86400:
+            fail(409,"原料实际收货、实盘或原包装有效期无效")
+        ident(r["supplier_lot_ref"])
+        ident(r["expiry_evidence_ref"])
+        lot=ident(r["stock_lot_id"])
+        if rows(c,"SELECT stock_lot_id FROM supply.stock_lot WHERE stock_lot_id=%s",(lot,)):
+            fail(409,"原料批次已存在，不得重复入账")
+        c.execute("""INSERT INTO supply.stock_lot(stock_lot_id,legal_entity_id,material_id,stock_location_id,
+            base_uom,remaining_base,received_at,expires_at,state,version,opening_evidence_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'ACCEPTED',1,%s)""",
+            (lot,ctx["legal"],material,store,r["unit"],amount,received,end,r["evidence_id"]))
+        c.execute("""INSERT INTO supply.movement(movement_id,request_id,item_id,lot_id,from_location_id,
+            to_location_id,qty_base,actor_employee_id,occurred_at,central_kind)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'RAW_OPENING')""",
+            (uid(),ctx["rid"],material,lot,"SUP59:OPENING:"+store,store,amount,ctx["actor"],ctx["now"]))
+        return dict(stock_lot_id=lot,item_id=material,store_id=store,unit=r["unit"],remaining=str(amount),
+                    expires_at=iso(end),received_at=iso(received),state="ACCEPTED",version=1,
+                    evidence_id=r["evidence_id"],approval_reference=r["approval_reference"],
+                    supplier_lot_ref=r["supplier_lot_ref"],expiry_evidence_ref=r["expiry_evidence_ref"],observed_at=iso(observed))
+
     def opening_import(self,c,ctx,p):
         candidates={r["evidence_id"]:r for r in self.opening_candidates(c,ctx,p["store_id"])}
         ids=unique_codes(p["evidence_ids"])
         if len(ids)!=len(p["evidence_ids"]):fail(422,"重复期初凭证")
-        result=[]
+        result=[]; raw_lots=[]
         for eid in ids:
             r=candidates.get(eid)
             if not r or r.get("approved") is not True or r.get("not_already_accounted") is not True:
                 fail(409,"无已批准且未入账期初凭证")
             ident(r["approval_reference"])
+            if r.get("kind")=="RAW_LOT":
+                raw_lots.append(self.raw_opening(c,ctx,p["store_id"],r))
+                continue
+            if r.get("kind","PACKAGE")!="PACKAGE":fail(422,"未知期初凭证类型")
             policy=self.approved(c,ctx,r["item_id"])
             if r["rule_version"]!=policy["rule"].version or r["unit"]!=policy["unit"]:
                 fail(409,"历史规则须由权威目录复核")
@@ -335,7 +372,7 @@ class DWorker:
                 (pid,f.item_id,batch,f.unit,f.amount,state,ctx["legal"],f.store_id,f.remaining,opened,end,dump(serial(f)),eid))
             self.movement(c,ctx,f,"SUP59:OPENING:"+f.store_id,f.store_id if state=="ACCEPTED" else "SUP59:HOLD:"+f.store_id,f.remaining,"OPENING")
             result.append({**serial(f),"evidence_id":eid,"approval_reference":r["approval_reference"],"observed_at":iso(observed),"version":1})
-        return {"packages":result}
+        return {"packages":result,"raw_lots":raw_lots}
 
     def ship_result(self,c,ctx,r):
         sid=str(r["shipment_id"])
@@ -533,7 +570,13 @@ class DWorker:
                     if any(x["stock_location_id"]!=store_id for x in stock):fail(403,"包装不在授权网点")
                 packs=[projection(x,now) for x in stock]; facts=[fact(x) for x in stock]
                 if kind=="inventory":
-                    return dict(store_id=store_id,packages=packs,revision=sha256(dump(packs).encode()).hexdigest()[:16])
+                    raw=rows(c,"""SELECT stock_lot_id,material_id,base_uom,remaining_base,expires_at,state,version
+                        FROM supply.stock_lot WHERE legal_entity_id=%s AND stock_location_id=%s
+                        ORDER BY expires_at,stock_lot_id""",(legal,store_id))
+                    lots=[dict(stock_lot_id=x["stock_lot_id"],item_id=x["material_id"],unit=x["base_uom"],
+                        remaining=str(x["remaining_base"]),expires_at=iso(x["expires_at"]),state=x["state"],
+                        version=x["version"],usable=x["state"]=="ACCEPTED" and x["remaining_base"]>0 and x["expires_at"]>now) for x in raw]
+                    return dict(store_id=store_id,packages=packs,raw_lots=lots,revision=sha256(dump([packs,lots]).encode()).hexdigest()[:16])
                 if kind=="labels":
                     history=[]
                     for x in stock:
