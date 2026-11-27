@@ -35,7 +35,7 @@ INTERNAL_PAGE_HEADERS = {
 # Unknown API names stay 404, without trying another subsystem or exposing a page.
 HQ_LAYOUT_FILES = {"/hq/stores/layout", "/hq/stores/layout/assets/app.js",
                    "/hq/stores/layout/assets/style.css"}
-IDENTITY_PAGES = {"/identity", "/staff", "/hq", "/health/ready", "/health/live"}
+IDENTITY_PAGES = {"/identity", "/staff", "/hq", "/hq/catalog", "/health/ready", "/health/live"}
 IDENTITY_ASSETS = {"/assets/common.js", "/assets/staff.js", "/assets/style.css"}
 POS_PAGES = {"/pos", "/index.html", "/app.js", "/style.css",
              "/assets/BSV_徽记.png", "/assets/BSV_完整徽标.png",

@@ -14,7 +14,9 @@
       "purpose": "唯一人员身份可写事实",
       "config": "config/modules/identity-data-sources.json",
       "runtime_env": "BSV_DB_URL",
-      "compatibility_envs": ["BSV_DB_A_URL"],
+      "compatibility_envs": [
+        "BSV_DB_A_URL"
+      ],
       "allow_use": "isolated_current; production_blocked"
     },
     "identity.B": {
@@ -415,6 +417,33 @@
       ],
       "risk": "HIGH_PRIVACY",
       "stage": "ISOLATED_ONLY_REAL_IMPORT_NOT_RUN"
+    },
+    {
+      "module_id": "hq-catalog-center",
+      "examples": [
+        "总部商品管理",
+        "Excel差异预览",
+        "配方维护",
+        "商品资料草稿"
+      ],
+      "primary_domain": "catalog",
+      "code_paths": [
+        "services/api/identity/hq_catalog_api.py",
+        "services/api/bsv1/bsv_catalog_workbook_preview.py",
+        "apps/hq-console/identity/catalog.html",
+        "apps/hq-console/identity/catalog.js"
+      ],
+      "runtime_units": [
+        "bsv-all-internal-stage@identity.service"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "test_paths": [
+        "tests/bsv1"
+      ],
+      "risk": "HIGH_CATALOG_DATA",
+      "stage": "ISOLATED_CANDIDATE_ONLY"
     }
   ],
   "change_type_rules": {
