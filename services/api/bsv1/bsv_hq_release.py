@@ -151,8 +151,11 @@ def execute(args):
             _validate_xlsx_bytes(original.read_bytes())
             if not rollback:
                 if sha256(folder/"manifest.json")!=d["package"]["manifest_sha256"]:refuse("清单已改变")
-                from bsv_hq_sale_gate import validate_raw_change
-                if validate_raw_change(old,originals[0])["bundle_aux_changed"]:refuse("套餐子区未独立核验")
+                from bsv_hq_sale_gate import validate_raw_change,detailed_changes
+                gate=validate_raw_change(old,originals[0]);details=detailed_changes(old,originals[0])
+                if details["blocked_count"] or details["truncated"]:refuse("候选含未经核验的数据变化")
+                if gate["bundle_aux_changed"] and d["kind"]!="excel":refuse("套餐子区未独立核验")
+                if d["kind"]=="excel" and details!=d.get("preview",{}).get("changes",{}).get("cell_review"):refuse("已审核细项与发布包不匹配")
                 verify_draft_change(d,old,originals[0])
             if active!=baseline:
                 # A crash after PG commit but before receipt never triggers a

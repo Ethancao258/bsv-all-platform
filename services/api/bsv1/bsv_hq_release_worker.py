@@ -1,6 +1,6 @@
 """Optional isolated release worker, no listening port, disabled without root approval."""
 from __future__ import annotations
-import argparse, fcntl, json, os, re
+import argparse, fcntl, json, os, re, subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,6 +20,12 @@ def policy(path):
     if expiry.tzinfo is None or expiry<=datetime.now(timezone.utc):raise PermissionError("policy expired")
     if not re.fullmatch(r"[a-f0-9]{40}",info.get("approved_git_sha","")) or not info.get("approval_ref"):
         raise PermissionError("approved deployment evidence missing")
+    repo=Path(__file__).resolve().parents[3]
+    try:
+        head=subprocess.check_output(["git","-C",str(repo),"rev-parse","HEAD"],text=True,timeout=5).strip()
+        changes=subprocess.check_output(["git","-C",str(repo),"status","--porcelain","--untracked-files=no"],text=True,timeout=5).strip()
+    except (OSError,subprocess.SubprocessError) as exc:raise PermissionError("approved Git worktree required") from exc
+    if head!=info["approved_git_sha"] or changes:raise PermissionError("running source is not the clean approved revision")
     return info
 
 def run_once(info):

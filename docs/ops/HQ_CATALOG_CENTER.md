@@ -32,7 +32,7 @@
 先在私有临时目录用本仓库 identity venv Python 运行：
   PYTHONPATH="$REPO:$REPO/services/api/bsv1" "$PYTHON" -c 'from bsv_hq_workbook_package import make_package; from pathlib import Path; import sys; make_package(Path(sys.argv[1]),Path(sys.argv[2]))' "$BASELINE_XLSX" "$PRIVATE_EMPTY_OUTPUT_DIR"
 将生成包与现有已审核WorkBuddy包逐表、逐字段、公式及原始SHA比对；真实基线中辅助映射和派生行键可能与旧生成器不同，未核实前仅候选。字段契约不符先停，不自行猜测。此程序不会执行SQL，不覆盖任何数据。
-公式、K槽位/NPS子区、审批/上架状态、T门店主数据变化均有门禁：缺行不等于删除；当前公式结构与K子区修改不得从普通Excel发布，必须独立审核。需要正式处理K槽位等原本未绑定业务数据时应在现有表与契约上增量实现，不能造第二套套餐主表。
+Excel提供逐格差异（单次最多300处，超过则拆批），审核人可查看注册字段前后值；K槽位允许通过此途径提交并校验固定ID关联，NPS、公式结构、审批/上架状态、T门店、字典/合法路径及未登记列变化被拒绝。缺行不等于删除。套餐导入不等于销售审批。
 
 ## 5. 受控发布/恢复命令（隔离数据；非生产）
 网页：提交草稿 → 另一位有权限的TR审核 → 生成候选规范包 → 审核人点击申请资料生效。回退：查看历史版本 → 选择历史SHA → 提交恢复申请 → 异人审核 → 申请生效。

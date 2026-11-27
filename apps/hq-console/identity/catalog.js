@@ -4,7 +4,8 @@ const labels={C:"现场成品",K:"套餐组合",P:"预调半成品",M:"采购纯
 const statusLabels={PENDING_REVIEW:"待另一位管理员审核",REVIEWED_NOT_PUBLISHED:"已审核 · 未发布",VERIFIED_PACKAGE_NOT_PUBLISHED:"候选规范包已校验 · 未发布",RELEASE_REQUESTED:"待受控签名执行",RAW_REVISION_ACTIVE:"原始资料版本已生效 · 销售状态未改变",RELEASE_BLOCKED:"发布未执行 · 需要处理",RELEASE_RECONCILIATION_REQUIRED:"发布结果待核对 · 请勿重试",REJECTED:"已拒绝",IDEMPOTENT_NOOP:"与当前版本相同",PREVIEW_ONLY:"预览完成 · 未写入"};
 const fieldsFor={C:["商品名称","销售系列","配方文字","完整制作步骤","标注售价"],K:["套餐名称"],P:["半成品名称","完整制作步骤"],M:["物料名称"],R:["工序名称","完整制作步骤"],Q:["核准售价","币种","销售渠道","生效日期","失效日期"],T:[]};
 const forbidden=new Set(["商品ID","半成品ID","物料ID","套餐ID","门店ID"]);
-let active="",offset=0,selected=null,excel=null,allowedFields=[];
+let active="",offset=0,selected=null,excel=null,allowedFields=[],caps={},actor="";
+const kindLabels={edit:"修改资料",create:"新增资料",excel:"Excel批量修改",retire:"退役申请",rollback:"版本恢复"};
 const csrf=()=>decodeURIComponent((document.cookie.split("; ").find(x=>x.startsWith("bsv_csrf="))||"").split("=").slice(1).join("="));
 function say(s,error=false){$("notice").textContent=s;$("notice").className=error?"error":"";}
 function el(tag,text){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;}
@@ -19,7 +20,9 @@ async function call(path,method="GET",body=null,raw=false){
 function run(fn){return async e=>{e?.preventDefault();try{await fn();}catch(err){say(err.message||"操作失败",true);}};}
 async function refresh(){
  active="";excel=null;$("submitExcel").disabled=true;$("source").textContent="正在核验";
- const data=await call("/status");active=data.active_sha256;
+ const data=await call("/status");active=data.active_sha256;caps=data.capabilities||{};actor=data.actor;
+ $("preview").disabled=!caps.draft;$("file").disabled=!caps.draft;$("rollback").querySelector("button").disabled=!caps.draft;
+ $("loadDrafts").disabled=!caps.draft&&!caps.review;
  $("source").textContent="活动版本："+active+" · 当前管理者："+data.actor;
  $("counts").replaceChildren(...Object.keys(labels).map(k=>{let box=el("div",labels[k]);box.append(el("strong",data.counts[k]??0));return box;}));
  offset=0;await records();say("活动版本已核验。正式发布未开放。");
@@ -64,17 +67,19 @@ async function preview(){
  const rows=d.changes[key]||[];$("diff").append(el("p",label+"："+rows.length));for(const x of rows.slice(0,50))$("diff").append(el("p",typeof x==="string"?x:x.sheet+" / "+x.record_id+" "+(x.changed_fields||[]).join("、")));
  if(rows.length>50)$("diff").append(el("p","仅展示前50条；总数如上。"));
  }
- if(d.changes.bundle_aux_changed)$("diff").append(el("p","套餐槽位/NPS子区发生变化，当前需单独核验，不能提交。"));
+ renderCellReview($("diff"),d.changes.cell_review);
  $("submitExcel").disabled=!d.review_ready||d.status==="IDEMPOTENT_NOOP";say("预览完成，未写入商品主库。");
 }
+function renderCellReview(box,review){if(!review)return;box.append(el("h3","逐格差异 · "+review.total+"处"));for(const x of review.cells||[]){box.append(el("p",x.address+" · "+x.field+"： "+String(x.before??"空")+" → "+String(x.after??"空")+(x.formula_cache?"（公式缓存，未验证计算）":"")));}if(review.blocked_count){box.append(el("p","受保护或未登记变更："+review.blocked_count));for(const x of review.blocked||[])box.append(el("p",x));}if(review.truncated)box.append(el("p","超过单次300处可完整审核上限，请拆分批次。"));}
 async function drafts(){
  const d=await call("/drafts");$("drafts").replaceChildren();
- for(const x of d.items){const box=el("div");box.className="catalog-entry";box.append(el("strong",(statusLabels[x.status]||x.status)+" · "+x.kind+" · "+(x.record_id||x.id)),el("p","提交者："+x.created_by+" · "+x.created_at),el("p",x.reason));
+ for(const x of d.items){const box=el("div");box.className="catalog-entry";box.append(el("strong",(statusLabels[x.status]||x.status)+" · "+(kindLabels[x.kind]||x.kind)+" · "+(x.record_id||x.id)),el("p","提交者："+x.created_by+" · "+x.created_at),el("p",x.reason));
+ if(x.preview?.changes?.cell_review){const detail=el("details");detail.append(el("summary","查看完整逐格差异"));renderCellReview(detail,x.preview.changes.cell_review);box.append(detail);}
  if(x.fields)for(const [k,v] of Object.entries(x.fields))box.append(el("p",k+"："+v));
- if(x.status==="PENDING_REVIEW"){let reason=el("textarea");reason.placeholder="审核理由（至少8字）";reason.maxLength=500;box.append(reason);
+ if(x.status==="PENDING_REVIEW"&&caps.review&&x.created_by!==actor){let reason=el("textarea");reason.placeholder="审核理由（至少8字）";reason.maxLength=500;box.append(reason);
  for(const decision of ["approve","reject"]){let b=el("button",decision==="approve"?"审核通过（不发布）":"拒绝");b.type="button";b.onclick=run(async()=>{if(reason.value.trim().length<8)throw Error("请填写审核理由。");await call("/drafts/"+x.id+"/review","POST",{decision,reason:reason.value});say("审核已记录；未发布。");await drafts();});box.append(b);}}
- if(x.status==="REVIEWED_NOT_PUBLISHED"&&["edit","excel","create"].includes(x.kind)){let b=el("button","生成待发布规范包");b.type="button";b.onclick=run(async()=>{await call("/drafts/"+x.id+"/prepare","POST",{});say("候选包已校验，尚未发布。");await drafts();});box.append(b);}
- if(x.status==="VERIFIED_PACKAGE_NOT_PUBLISHED"||(x.kind==="rollback"&&x.status==="REVIEWED_NOT_PUBLISHED")){let b=el("button","申请资料生效（不自动上架）");b.type="button";b.onclick=run(async()=>{if(!confirm("提交受控发布申请？本操作不直接改变门店销售状态。"))return;await call("/drafts/"+x.id+"/release-request","POST",{});say("发布申请已登记，等待受控签名执行。");await drafts();});box.append(b);}
+ if(x.status==="REVIEWED_NOT_PUBLISHED"&&caps.review&&x.reviewed_by===actor&&["edit","excel","create"].includes(x.kind)){let b=el("button","生成待发布规范包");b.type="button";b.onclick=run(async()=>{await call("/drafts/"+x.id+"/prepare","POST",{});say("候选包已校验，尚未发布。");await drafts();});box.append(b);}
+ if(caps.release&&x.reviewed_by===actor&&(x.status==="VERIFIED_PACKAGE_NOT_PUBLISHED"||(x.kind==="rollback"&&x.status==="REVIEWED_NOT_PUBLISHED"))){let b=el("button","申请资料生效（不自动上架）");b.type="button";b.onclick=run(async()=>{if(!confirm("提交受控发布申请？本操作不直接改变门店销售状态。"))return;await call("/drafts/"+x.id+"/release-request","POST",{});say("发布申请已登记，等待受控签名执行。");await drafts();});box.append(b);}
  if(x.package)box.append(el("p","候选包SHA："+x.package.archive_sha256));
  $("drafts").append(box);}
  if(!d.items.length)$("drafts").append(el("p","暂无草稿。"));

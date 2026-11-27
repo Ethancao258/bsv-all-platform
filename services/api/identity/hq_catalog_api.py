@@ -175,10 +175,11 @@ def inspect_upload(content, path, digest):
     scan(content)
     try:
         result = preview_workbook(content, path, digest)
-        from bsv_hq_sale_gate import validate_raw_change
+        from bsv_hq_sale_gate import validate_raw_change,detailed_changes
         with tempfile.TemporaryDirectory(prefix="bsv-hq-gate-") as temp:
             candidate=Path(temp)/"candidate.xlsx";candidate.write_bytes(content)
             gate=validate_raw_change(path,candidate)
+            details=detailed_changes(path,candidate)
     except (ValueError, KeyError, AssertionError, zipfile.BadZipFile, ElementTree.ParseError):
         fail("WORKBOOK_INVALID", "Excel模板、固定ID或工作簿结构异常，请检查七表。", 422)
     # Do not expose raw protected field values or import warnings that may include them.
@@ -189,13 +190,14 @@ def inspect_upload(content, path, digest):
                              for x in changes.get(key, [])]
     safe_changes["formula_cells"] = changes.get("formula_cells", [])
     safe_changes["bundle_aux_changed"]=gate["bundle_aux_changed"]
+    safe_changes["cell_review"]=details
     return {"status": result["status"], "source_sha256": result["source_sha256"],
             "baseline_sha256": digest, "schema_compatible": result.get("schema_compatible", False),
             "changes": safe_changes, "write_performed": False,
             "review_ready": result.get("content_contract_compatible", False)
                             and not safe_changes["pending_retire"] and not safe_changes["formula_cells"]
-                            and not safe_changes["bundle_aux_changed"],
-            "activation": "BLOCKED_PACKAGE_CONVERTER_AND_PG_APPROVAL"}
+                            and not details["blocked_count"] and not details["truncated"],
+            "activation": "ISOLATED_RAW_ONLY"}
 
 def save_json(path, value):
     fd, temp = tempfile.mkstemp(prefix=".draft-", dir=path.parent)
@@ -271,10 +273,10 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
                 fail("AUTH_REQUIRED", "需要统一人员身份。", 403)
             return entity, person.tr_code
 
-    def can_confidential(request,entity):
+    def can_action(request,entity,action):
         from domains.workforce.identity.core import DomainError
         with router.session() as db:
-            try:grant_guard(request,db,"hq.catalog.confidential",entity)
+            try:grant_guard(request,db,action,entity)
             except DomainError as exc:
                 if exc.status==403:return False
                 raise
@@ -300,12 +302,13 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
         rows = rows_for(path)
         return {"actor":tr, "legal_entity":entity, "active_sha256":digest,
                 "counts":{k[0]:len(v) for k,v in rows.items()},
-                "activation":"BLOCKED_PACKAGE_CONVERTER_AND_PG_APPROVAL"}
+                "capabilities":{k:can_action(request,entity,a) and can_action(request,entity,"hq.catalog.confidential") for k,a in ACTIONS.items() if k!="read"},
+                "activation":"ISOLATED_RAW_ONLY"}
 
     @app.get("/api/v1/hq/catalog/records", include_in_schema=False)
     def records(request: Request, domain: str="C", q: str="", offset: int=0):
         entity,_=actor(request, "read")
-        confidential=can_confidential(request,entity)
+        confidential=can_action(request,entity,"hq.catalog.confidential")
         if domain not in tuple(PREFIXES) or len(q)>100 or not 0<=offset<=100000:
             fail("BAD_QUERY", "筛选参数无效。", 422)
         path, digest = active_source()
@@ -313,7 +316,7 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
         q = q.casefold()
         data = [visible_record(x,domain,confidential) for x in data]
         data = [x for x in data if q in x["id"].casefold() or q in x["name"].casefold()]
-        return {"active_sha256":digest, "total":len(data), "items":data[offset:offset+100], "editable_fields":sorted(editable_fields(domain)) if confidential and domain!="T" else []}
+        return {"active_sha256":digest, "total":len(data), "items":data[offset:offset+100], "editable_fields":sorted(editable_fields(domain)) if confidential and domain!="T" and can_action(request,entity,"hq.catalog.draft") else []}
 
     @app.post("/api/v1/hq/catalog/preview", include_in_schema=False)
     async def preview(request: Request):
