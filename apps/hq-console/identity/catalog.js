@@ -22,6 +22,7 @@ async function refresh(){
  active="";excel=null;$("submitExcel").disabled=true;$("source").textContent="正在核验";
  const data=await call("/status");active=data.active_sha256;caps=data.capabilities||{};actor=data.actor;
  $("salePanel").hidden=!caps.sale||!caps.draft;
+ if(caps.sale&&caps.draft)await sales();
  $("preview").disabled=!caps.draft;$("file").disabled=!caps.draft;$("rollback").querySelector("button").disabled=!caps.draft;
  $("loadDrafts").disabled=!caps.draft&&!caps.review;
  $("source").textContent="活动版本："+active+" · 当前管理者："+data.actor;
@@ -91,5 +92,7 @@ $("newBtn").onclick=()=>{selected=null;$("kind").value="create";renderEdit();};$
 $("preview").onclick=run(preview);$("file").onchange=()=>{excel=null;$("submitExcel").disabled=true;$("diff").replaceChildren();};
 $("submitExcel").onclick=run(async()=>{if(!excel)throw Error("请先预览。");const {file,data}=excel;const d=await call("/excel-drafts?"+new URLSearchParams({sha:data.source_sha256,baseline:data.baseline_sha256}),"POST",file,true);$("submitExcel").disabled=true;say("Excel草稿已提交："+d.id+"；未发布。");await drafts();});
 $("loadDrafts").onclick=run(drafts);$("loadVersions").onclick=run(async()=>{const d=await call("/versions");$("versions").replaceChildren();for(const x of d.items){const b=el("button",x.sha256+" · "+x.imported_at);b.type="button";b.className="catalog-record secondary";b.disabled=x.sha256===active;b.onclick=()=>{$("targetSha").value=x.sha256;$("rollbackReason").focus();};$("versions").append(b);}});$("rollback").onsubmit=run(async()=>{await call("/drafts","POST",{kind:"rollback",baseline_sha256:active,record_id:$("targetSha").value,reason:$("rollbackReason").value});say("恢复申请已提交；未切换活动版本。");await drafts();});
+async function sales(){const d=await call("/sales");$("saleState").textContent=(d.sale_release_id?"当前销售版本："+d.sale_release_id:"尚未接管现有营业商品")+(d.pending_release_id?" · 发布执行中":"");$("saleRows").replaceChildren();for(const x of d.items){const line=el("div");line.className="catalog-entry";line.append(el("p",x.id+" · "+x.name+" · "+(x.price_cents===null?"未定价":"¥"+(x.price_cents/100).toFixed(2))+" · "+(x.changed?"原有在售资料已变更":x.listed?"在售":"未上架")));for(const [field,label] of [["saleList","选择上架"],["saleUnlist","选择下架"]]){const b=el("button",label);b.type="button";b.disabled=field==="saleList"&&x.price_cents===null;b.onclick=()=>{const other=field==="saleList"?"saleUnlist":"saleList";const tokens=id=>$(id).value.trim().split(/[\s,，、]+/).filter(Boolean);$(other).value=tokens(other).filter(k=>k!==x.id).join(" ");$(field).value=[...new Set([...tokens(field),x.id])].join(" ");};line.append(b);}$("saleRows").append(line);}}
+$("saleRefresh").onclick=run(sales);
 $("saleForm").onsubmit=run(async()=>{const fields={};for(const [id,action] of [["saleList","LIST"],["saleUnlist","UNLIST"]])for(const key of $(id).value.trim().split(/[\s,，、]+/).filter(Boolean)){if(fields[key])throw Error("同一编号重复或动作冲突："+key);fields[key]=action;}if(!Object.keys(fields).length)throw Error("请填写商品固定编号");const d=await call("/drafts","POST",{kind:"sale",domain:"C",baseline_sha256:active,fields,reason:$("saleReason").value});say("销售审批已提交："+d.id);await drafts();});
 run(refresh)();

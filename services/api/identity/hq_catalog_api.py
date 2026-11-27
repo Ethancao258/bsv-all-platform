@@ -34,7 +34,8 @@ SAFE_FIELDS = {"商品名称", "半成品名称", "物料名称", "套餐名称"
                "完整制作步骤｜制作记录", "计价单位", "包装量", "包装单位", "保质期", "储存条件",
                "运输条件", "套餐包含内容", "完整商品文案", "门店差异文案", "标注原价",
                "区域参考售价", "核心参考售价", "规格量", "规格单位", "售卖扣减量",
-               "英文名称", "产品故事", "风味描述", "过敏原", "酒精属性", "成品图文件名"}
+               "英文名称", "产品故事", "风味描述", "过敏原", "酒精属性", "成品图文件名",
+               "L1","L2","L3","L4","展示风味说明","风味标签","杯具","操作方式","份量","份量单位"}
 EDIT_FIELDS = SAFE_FIELDS - {"商品ID", "半成品ID", "物料ID", "套餐ID", "门店ID"}
 
 def registered_fields(prefix, confidential=False):
@@ -390,6 +391,24 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
                 return new_draft(root,entity,tr,{"kind":"excel","baseline_sha256":baseline,
                     "source_sha256":expected,"preview":result,"reason":"Excel批量资料变更"})
         return await run_in_threadpool(persist)
+
+    @app.get("/api/v1/hq/catalog/sales", include_in_schema=False)
+    def sales(request:Request):
+        entity,_=actor(request,"read");require_sale_action(request,entity)
+        from bsv_catalog_live import live_enabled
+        if not live_enabled():fail("SALE_DISABLED","正式销售模块未启用。",403)
+        from bsv_hq_ids import repository
+        from bsv_hq_live_sale import facts
+        source,digest=active_source();current=facts(rows_for(source))
+        with repository()._connection() as conn,conn.cursor() as cur:
+            cur.execute("SELECT release_id::text,source_sha256,status,items FROM catalog.sale_release WHERE status IN ('ACTIVE','PENDING_PROJECTION')")
+            records=cur.fetchall()
+        active=next((r for r in records if r[2]=="ACTIVE"),None)
+        pending=next((r for r in records if r[2]=="PENDING_PROJECTION"),None)
+        old=active[3] if active else {}
+        return {"raw_sha256":digest,"sale_release_id":active[0] if active else None,"sale_source_sha256":active[1].strip() if active else None,
+                "pending_release_id":pending[0] if pending else None,
+                "items":[{"id":k,"name":v["name"],"price_cents":v["price_cents"],"listed":k in old,"changed":k in old and old[k]!=v} for k,v in current.items()]}
 
     @app.get("/api/v1/hq/catalog/versions", include_in_schema=False)
     def versions(request:Request):
