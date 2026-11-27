@@ -125,7 +125,7 @@ OWASP object authorization：https://owasp.org/projects/api-security-project
 - 新需求：先阅读固定正文和最新标注，核对真实代码/契约，登记受影响模块并更新执行Issue；Issue记录任务代码、决策状态、执行阶段、owner、代码/API、数据库边界、依赖、验收、证据、回退。状态只以Issue为权威；A仅索引，可注明最近核对时间。Excel只需A的最新入口与本任务C的链接。
 - 否决/延期：从活动列撤下该任务标注，Issue记录原因和日期；正式上线：移除活动标注，在本节新增已验收变更记录（功能/工单/发布SHA），不覆盖原基线。历史由Git与Issue保存。未经批准不把候选视为上线。重大架构变更另走ADR，批准后发布新版固定SHA；日常禁止修改正文。
 - 并发：只维护涉及任务的单元格，更新前读取最新blob SHA并核对Issue；冲突重新读取，不覆盖其他任务。一个共享文件写入负责人；技术代码/测试按原PR规则执行。公开Git不写敏感数据。
-- 当前关联任务：**[SUP-59 / NEXT-SUPPLY01](https://github.com/Ethancao258/bsv-all-platform/issues/52)**（2026-11-27：[PR #61 隔离候选](https://github.com/Ethancao258/bsv-all-platform/pull/61)已交本地业务与浏览器验证，SHA `d4b46ef9cba2cb7cda196c885989540522d91e24`；状态 BLOCKED，待 #58 交接及实际 D、班次、打印机接入，未部署）。原始需求参考[#59](https://github.com/Ethancao258/bsv-all-platform/issues/59)。16个相关模块。以 #52 为交付状态权威。
+- 当前关联任务：**[SUP-59 / NEXT-SUPPLY01](https://github.com/Ethancao258/bsv-all-platform/issues/52)**（2026-11-27：[PR #61 隔离候选](https://github.com/Ethancao258/bsv-all-platform/pull/61)已交本地业务与浏览器验证，SHA `5459566cdb26cc8f25a8227d1fe74378f51fe55f`；状态 BLOCKED，待 #58 交接及实际 D、班次、打印机接入，未部署）。原始需求参考[#59](https://github.com/Ethancao258/bsv-all-platform/issues/59)。16个相关模块。以 #52 为交付状态权威。
 - 已验收变更记录：暂无本机制下已验收发布记录。不得依据CI代替实机证据。
 
 ## 9. 实施、数据库、API、事件、研发和AI交接（完整手册）
