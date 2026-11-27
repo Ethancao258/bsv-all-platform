@@ -1,11 +1,11 @@
 "use strict";
 const $=id=>document.getElementById(id);
 const labels={C:"现场成品",K:"套餐组合",P:"预调半成品",M:"采购纯饮",R:"配方耗用",Q:"门店报价",T:"门店注册"};
-const statusLabels={PENDING_REVIEW:"待另一位管理员审核",REVIEWED_NOT_PUBLISHED:"已审核 · 未发布",VERIFIED_PACKAGE_NOT_PUBLISHED:"候选规范包已校验 · 未发布",RELEASE_REQUESTED:"待受控签名执行",RAW_REVISION_ACTIVE:"原始资料版本已生效 · 销售状态未改变",RELEASE_BLOCKED:"发布未执行 · 需要处理",RELEASE_RECONCILIATION_REQUIRED:"发布结果待核对 · 请勿重试",REJECTED:"已拒绝",IDEMPOTENT_NOOP:"与当前版本相同",PREVIEW_ONLY:"预览完成 · 未写入"};
+const statusLabels={PENDING_REVIEW:"待另一位管理员审核",REVIEWED_NOT_PUBLISHED:"已审核 · 未发布",VERIFIED_PACKAGE_NOT_PUBLISHED:"候选规范包已校验 · 未发布",RELEASE_REQUESTED:"待受控签名执行",RAW_REVISION_ACTIVE:"原始资料已写入中央数据库 · 销售版本未改变",SALE_ACTIVE:"销售版本已生效 · POS及酒单源站已更新",RELEASE_BLOCKED:"发布未执行 · 需要处理",RELEASE_RECONCILIATION_REQUIRED:"发布结果待核对 · 请勿重试",REJECTED:"已拒绝",IDEMPOTENT_NOOP:"与当前版本相同",PREVIEW_ONLY:"预览完成 · 未写入"};
 const fieldsFor={C:["商品名称","销售系列","配方文字","完整制作步骤","标注售价"],K:["套餐名称"],P:["半成品名称","完整制作步骤"],M:["物料名称"],R:["工序名称","完整制作步骤"],Q:["核准售价","币种","销售渠道","生效日期","失效日期"],T:[]};
 const forbidden=new Set(["商品ID","半成品ID","物料ID","套餐ID","门店ID"]);
 let active="",offset=0,selected=null,excel=null,allowedFields=[],caps={},actor="";
-const kindLabels={edit:"修改资料",create:"新增资料",excel:"Excel批量修改",retire:"退役申请",rollback:"版本恢复"};
+const kindLabels={edit:"修改资料",create:"新增资料",excel:"Excel批量修改",retire:"退役申请",rollback:"版本恢复",sale:"商品上下架"};
 const csrf=()=>decodeURIComponent((document.cookie.split("; ").find(x=>x.startsWith("bsv_csrf="))||"").split("=").slice(1).join("="));
 function say(s,error=false){$("notice").textContent=s;$("notice").className=error?"error":"";}
 function el(tag,text){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;}
@@ -21,11 +21,12 @@ function run(fn){return async e=>{e?.preventDefault();try{await fn();}catch(err)
 async function refresh(){
  active="";excel=null;$("submitExcel").disabled=true;$("source").textContent="正在核验";
  const data=await call("/status");active=data.active_sha256;caps=data.capabilities||{};actor=data.actor;
+ $("salePanel").hidden=!caps.sale||!caps.draft;
  $("preview").disabled=!caps.draft;$("file").disabled=!caps.draft;$("rollback").querySelector("button").disabled=!caps.draft;
  $("loadDrafts").disabled=!caps.draft&&!caps.review;
  $("source").textContent="活动版本："+active+" · 当前管理者："+data.actor;
  $("counts").replaceChildren(...Object.keys(labels).map(k=>{let box=el("div",labels[k]);box.append(el("strong",data.counts[k]??0));return box;}));
- offset=0;await records();say("活动版本已核验。正式发布未开放。");
+ offset=0;await records();say(data.activation==="PRODUCTION"?"正式目录活动版本已核验。":"活动版本已核验；隔离模式不执行销售发布。");
 }
 async function records(){
  if(!active)throw Error("请先核验活动版本。");
@@ -75,11 +76,11 @@ async function drafts(){
  const d=await call("/drafts");$("drafts").replaceChildren();
  for(const x of d.items){const box=el("div");box.className="catalog-entry";box.append(el("strong",(statusLabels[x.status]||x.status)+" · "+(kindLabels[x.kind]||x.kind)+" · "+(x.record_id||x.id)),el("p","提交者："+x.created_by+" · "+x.created_at),el("p",x.reason));
  if(x.preview?.changes?.cell_review){const detail=el("details");detail.append(el("summary","查看完整逐格差异"));renderCellReview(detail,x.preview.changes.cell_review);box.append(detail);}
- if(x.fields)for(const [k,v] of Object.entries(x.fields))box.append(el("p",k+"："+v));
- if(x.status==="PENDING_REVIEW"&&caps.review&&x.created_by!==actor){let reason=el("textarea");reason.placeholder="审核理由（至少8字）";reason.maxLength=500;box.append(reason);
+ if(x.fields)for(const [k,v] of Object.entries(x.fields)){const fact=x.sale_facts?.[k];box.append(el("p",fact?k+" · "+fact.name+" · "+(fact.price_cents===null?"无有效价格":"¥"+(fact.price_cents/100).toFixed(2))+" · "+(v==="LIST"?"上架":"下架"):k+"："+v));}
+ if(x.status==="PENDING_REVIEW"&&caps.review&&x.created_by!==actor&&(x.kind!=="sale"||caps.sale)){let reason=el("textarea");reason.placeholder="审核理由（至少8字）";reason.maxLength=500;box.append(reason);
  for(const decision of ["approve","reject"]){let b=el("button",decision==="approve"?"审核通过（不发布）":"拒绝");b.type="button";b.onclick=run(async()=>{if(reason.value.trim().length<8)throw Error("请填写审核理由。");await call("/drafts/"+x.id+"/review","POST",{decision,reason:reason.value});say("审核已记录；未发布。");await drafts();});box.append(b);}}
  if(x.status==="REVIEWED_NOT_PUBLISHED"&&caps.review&&x.reviewed_by===actor&&["edit","excel","create"].includes(x.kind)){let b=el("button","生成待发布规范包");b.type="button";b.onclick=run(async()=>{await call("/drafts/"+x.id+"/prepare","POST",{});say("候选包已校验，尚未发布。");await drafts();});box.append(b);}
- if(caps.release&&x.reviewed_by===actor&&(x.status==="VERIFIED_PACKAGE_NOT_PUBLISHED"||(x.kind==="rollback"&&x.status==="REVIEWED_NOT_PUBLISHED"))){let b=el("button","申请资料生效（不自动上架）");b.type="button";b.onclick=run(async()=>{if(!confirm("提交受控发布申请？本操作不直接改变门店销售状态。"))return;await call("/drafts/"+x.id+"/release-request","POST",{});say("发布申请已登记，等待受控签名执行。");await drafts();});box.append(b);}
+ if(caps.release&&x.reviewed_by===actor&&(x.status==="VERIFIED_PACKAGE_NOT_PUBLISHED"||(["rollback","sale"].includes(x.kind)&&x.status==="REVIEWED_NOT_PUBLISHED"))){let b=el("button",x.kind==="sale"?"确认发布至POS与顾客酒单":"申请资料生效（不自动上架）");b.type="button";b.onclick=run(async()=>{if(!confirm(x.kind==="sale"?"确认更新正式门店可售商品及顾客酒单？":"提交受控资料发布申请？销售版本暂不改变。"))return;await call("/drafts/"+x.id+"/release-request","POST",{});say("发布申请已登记，等待受控签名执行。");await drafts();});box.append(b);}
  if(x.package)box.append(el("p","候选包SHA："+x.package.archive_sha256));
  $("drafts").append(box);}
  if(!d.items.length)$("drafts").append(el("p","暂无草稿。"));
@@ -90,4 +91,5 @@ $("newBtn").onclick=()=>{selected=null;$("kind").value="create";renderEdit();};$
 $("preview").onclick=run(preview);$("file").onchange=()=>{excel=null;$("submitExcel").disabled=true;$("diff").replaceChildren();};
 $("submitExcel").onclick=run(async()=>{if(!excel)throw Error("请先预览。");const {file,data}=excel;const d=await call("/excel-drafts?"+new URLSearchParams({sha:data.source_sha256,baseline:data.baseline_sha256}),"POST",file,true);$("submitExcel").disabled=true;say("Excel草稿已提交："+d.id+"；未发布。");await drafts();});
 $("loadDrafts").onclick=run(drafts);$("loadVersions").onclick=run(async()=>{const d=await call("/versions");$("versions").replaceChildren();for(const x of d.items){const b=el("button",x.sha256+" · "+x.imported_at);b.type="button";b.className="catalog-record secondary";b.disabled=x.sha256===active;b.onclick=()=>{$("targetSha").value=x.sha256;$("rollbackReason").focus();};$("versions").append(b);}});$("rollback").onsubmit=run(async()=>{await call("/drafts","POST",{kind:"rollback",baseline_sha256:active,record_id:$("targetSha").value,reason:$("rollbackReason").value});say("恢复申请已提交；未切换活动版本。");await drafts();});
+$("saleForm").onsubmit=run(async()=>{const fields={};for(const [id,action] of [["saleList","LIST"],["saleUnlist","UNLIST"]])for(const key of $(id).value.trim().split(/[\s,，、]+/).filter(Boolean)){if(fields[key])throw Error("同一编号重复或动作冲突："+key);fields[key]=action;}if(!Object.keys(fields).length)throw Error("请填写商品固定编号");const d=await call("/drafts","POST",{kind:"sale",domain:"C",baseline_sha256:active,fields,reason:$("saleReason").value});say("销售审批已提交："+d.id);await drafts();});
 run(refresh)();

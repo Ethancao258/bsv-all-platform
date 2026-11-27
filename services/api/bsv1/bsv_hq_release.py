@@ -57,6 +57,7 @@ def require_grants(d):
         with router.session() as db:
             for tr,actions in [(d["created_by"],["hq.catalog.draft","hq.catalog.confidential"]),
                                (d["reviewed_by"],["hq.catalog.review","hq.catalog.confidential","hq.catalog.release.request"])]:
+                if d.get("kind")=="sale":actions=actions+["hq.catalog.sale"]
                 subjects=list(db.scalars(select(AuthLink.auth_subject_id).where(AuthLink.tr_code==tr,AuthLink.revoked_at.is_(None))))
                 if not any(all(has_action(db,sub,action,None,d["legal_entity"]) for action in actions) for sub in subjects):
                     refuse("提交或审核人员已失去当前授权")

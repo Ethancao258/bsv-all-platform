@@ -48,6 +48,15 @@ def run_once(info):
             args=SimpleNamespace(draft_root=root,draft_id=key,approval_dir=approvals,catalog_dir=catalog,
                     rollback_archive=None,apply=True,confirm_isolated=d.get("baseline_sha256"))
             try:
+                if d["kind"]=="sale":
+                    from bsv_catalog_live import live_enabled
+                    from bsv_hq_live_sale import execute_sale
+                    from bsv_hq_release import read_draft,require_grants,assert_source
+                    if not live_enabled():raise PermissionError("正式销售发布未启用")
+                    d=read_draft(root,key);require_grants(d)
+                    source=assert_source(d["baseline_sha256"],root,catalog)
+                    result=execute_sale(d,source,Path(info["pos_database"]),Path(info["public_menu_json"]))
+                    receipt(root,key,result);return result
                 if approval.exists():raise RuntimeError("prior signing attempt")
                 if d["kind"]=="rollback":
                     archive=info.get("rollback_archives",{}).get(d["record_id"])
@@ -55,7 +64,7 @@ def run_once(info):
                     args.rollback_archive=Path(archive)
                 return execute(args)
             except Exception as exc:
-                result={"status":"RELEASE_RECONCILIATION_REQUIRED" if approval.exists() else "RELEASE_BLOCKED",
+                result={"status":"RELEASE_RECONCILIATION_REQUIRED" if approval.exists() or d.get("kind")=="sale" else "RELEASE_BLOCKED",
                         "draft_id":key,"error_type":type(exc).__name__}
                 if not (root/(key+".release.json")).exists():receipt(root,key,result)
                 return result

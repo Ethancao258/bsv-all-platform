@@ -120,8 +120,20 @@ def visible_record(row, prefix, confidential=False):
 def check_draft(body, rows, active):
     if body.baseline_sha256 != active:
         fail("STALE_BASELINE", "活动版本已更新，请刷新后重新提交。")
-    if body.kind not in {"create", "edit", "retire", "rollback"}:
+    if body.kind not in {"create", "edit", "retire", "rollback", "sale"}:
         fail("BAD_KIND", "未知变更类型。", 422)
+    if body.kind=="sale":
+        from bsv_catalog_live import live_enabled
+        from bsv_v9_import import cents_from_price
+        if not live_enabled() or body.domain!="C" or body.record_id or not 1<=len(body.fields)<=500:
+            fail("SALE_DISABLED","正式销售权限尚未启用或商品范围无效。",403)
+        current={r["id"]:r for r in rows["C_现场成品"]}
+        for key,action in body.fields.items():
+            if key not in current or action not in {"LIST","UNLIST"}:
+                fail("BAD_SALE_ITEM","商品不存在或上下架动作错误。",422)
+            if action=="LIST" and not cents_from_price(current[key]["fields"].get("标注售价")):
+                fail("PRICE_REQUIRED","上架必须有正金额AJ售价。",422)
+        return
     if body.kind == "rollback":
         if not HEX.fullmatch(body.record_id) or body.record_id == active or body.fields or body.domain:
             fail("BAD_TARGET", "请填写不同于当前版本的目标SHA。", 422)
@@ -228,7 +240,7 @@ def list_drafts(root, entity):
             receipt=root/(file.stem+".release.json")
             if receipt.is_file() and not receipt.is_symlink():
                 result=json.loads(receipt.read_text(encoding="utf-8"))
-                if result.get("draft_id")==data["id"] and result.get("status") in {"RAW_REVISION_ACTIVE","RELEASE_BLOCKED","RELEASE_RECONCILIATION_REQUIRED"}:
+                if result.get("draft_id")==data["id"] and result.get("status") in {"RAW_REVISION_ACTIVE","SALE_ACTIVE","RELEASE_BLOCKED","RELEASE_RECONCILIATION_REQUIRED"}:
                     data["release_result"]=result
                     data["status"]=result["status"]
             output.append(data)
@@ -283,6 +295,9 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
                 raise
             return True
 
+    def require_sale_action(request,entity):
+        if not can_action(request,entity,"hq.catalog.sale"):fail("SALE_FORBIDDEN","需要总部销售上架权限。",403)
+
     @app.get("/hq/catalog", include_in_schema=False)
     def page():
         # Shell contains no sensitive data; all APIs require live authorization.
@@ -303,7 +318,7 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
         rows = rows_for(path)
         return {"actor":tr, "legal_entity":entity, "active_sha256":digest,
                 "counts":{k[0]:len(v) for k,v in rows.items()},
-                "capabilities":{k:can_action(request,entity,a) and can_action(request,entity,"hq.catalog.confidential") for k,a in ACTIONS.items() if k!="read"},
+                "capabilities":{**{k:can_action(request,entity,a) and can_action(request,entity,"hq.catalog.confidential") for k,a in ACTIONS.items() if k!="read"}, "sale":os.getenv("BSV_APP_ENV")=="production" and can_action(request,entity,"hq.catalog.sale")},
                 "activation":("PRODUCTION" if os.getenv("BSV_APP_ENV")=="production" else "ISOLATED_RAW_ONLY")}
 
     @app.get("/api/v1/hq/catalog/records", include_in_schema=False)
@@ -402,6 +417,10 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
         path,digest = active_source()
         rows=rows_for(path);check_draft(body,rows,digest)
         root=private_root();payload=body.model_dump()
+        if body.kind=="sale":
+            require_sale_action(request,entity)
+            from bsv_hq_live_sale import facts
+            current=facts(rows);payload["sale_facts"]={k:current[k] for k in body.fields}
         if body.kind=="create":
             from bsv_hq_ids import allocate
             try:payload["record_id"]=allocate(root,body.domain,tr,{row["id"] for group in rows.values() for row in group})[0]
@@ -411,8 +430,14 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
     @app.post("/api/v1/hq/catalog/drafts/{key}/review", include_in_schema=False)
     def review(request: Request, key: str, body: Review):
         entity,tr = actor(request,"review")
+        root=private_root()
+        if DRAFT_ID.fullmatch(key):
+            f=root/(key+".json")
+            if f.is_file() and not f.is_symlink():
+                d=json.loads(f.read_text(encoding="utf-8"))
+                if d.get("legal_entity")==entity and d.get("kind")=="sale":require_sale_action(request,entity)
         _,digest=active_source()
-        return review_draft(private_root(),key,entity,tr,body,digest)
+        return review_draft(root,key,entity,tr,body,digest)
 
 
     @app.post("/api/v1/hq/catalog/drafts/{key}/prepare", include_in_schema=False)
@@ -471,7 +496,8 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
             if d.get("legal_entity")!=entity:fail("NOT_FOUND","未找到草稿。",404)
             if d.get("reviewed_by")!=tr or tr==d["created_by"]:fail("REVIEWER_REQUIRED","须由独立审核人申请发布。",403)
             if d["status"]=="RELEASE_REQUESTED":return d
-            expected="REVIEWED_NOT_PUBLISHED" if d["kind"]=="rollback" else "VERIFIED_PACKAGE_NOT_PUBLISHED"
+            if d["kind"]=="sale":require_sale_action(request,entity)
+            expected="REVIEWED_NOT_PUBLISHED" if d["kind"] in {"rollback","sale"} else "VERIFIED_PACKAGE_NOT_PUBLISHED"
             if d["status"]!=expected:fail("PACKAGE_REQUIRED","请先审核并生成候选包。")
             _,digest=active_source()
             if digest!=d["baseline_sha256"]:fail("STALE_BASELINE","活动版本已变更。")
