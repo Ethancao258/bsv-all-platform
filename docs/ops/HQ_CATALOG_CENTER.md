@@ -1,22 +1,50 @@
-# HQ-CATALOG-01 / #63 候选交接
-独立基线 2052ef51f011be3c5898d816932d8982f420b752（PR #40）；选取 PR #42 的只读校验器和单元测试，不合并整条旧分支。沿用 identity.A、统一会话、CSRF、HQ 工作台和既有 catalog PG 读取。新页面 /hq/catalog；接口 /api/v1/hq/catalog/*。无新端口、数据库、登录或POS写入者。
- 
-## 隔离启用（不部署正式）
-在 #58 唯一集成工作树由 C 确认运行基线后，逐文件核对增量，严禁覆盖本地更新。仅现有 isolated identity 服务配置 BSV_HQ_CATALOG_ENABLE=1、BSV_HQ_CATALOG_LEGAL_ENTITY_ID（已核验法人）、BSV_IMPORT_ROOT（已有私有目录，同服务账号0700）、BSV_CATALOG_DIR（现有私有原始版本目录）、BSV_APP_ENV=isolated，以及 BSV_HQ_CATALOG_READ_DB_URL（仅用经核验的现有同库PG17目录只读连接，数据库名必须为注册的 bsv_all_prod；该别名不修改 identity.A 的任何连接配置）。BSV_HQ_CATALOG_SCANNER 是既有受审的本地扫描器绝对路径，参数为文件路径，0表示干净，任何其他状态拒绝；不设置假扫描器。现有 ingress 4MiB 上限不扩大全站限制。通过原身份授权工作流分别授予 hq.catalog.read/draft/review（HQ、同法人、双人审批，不从地图权限派生）。本分支无预设授权。真实生产模式仍拒绝。
- 
-## 已编写
-- 工作台和总部入口、移动端页面、C/P/M/K/R/Q/T 搜索分页、有限安全字段展示；原始Excel与PG活动SHA核验。
-- Excel安全扫描与 #42 差异预览，候选同SHA幂等入队；网页新增、修改、退役、历史恢复申请使用同一私有草稿队列。T在页面只读；未分配永久ID，不猜号；草稿不是业务主数据。
-- 两位不同TR审核，审核不发布、审计保留、活动版本变化拒绝审核；未配置或无权限拒绝。正式销售和历史交易不修改。
- 
-## 不完整/硬阻断
-- Excel -> WorkBuddy规范包转换及完整字段字典、K槽位/NPS/公式缓存/全量引用校验、现有永久ID分配器及历史ID不重用核验、行级草稿应用到统一候选版本、PG事务签名/审批桥、恢复目标校验及激活、POS投影验证尚未完成；现有 importer 限制隔离且要求OS签名，严禁伪造或改成直接写SQL。草稿批准只记 REVIEWED_NOT_PUBLISHED，不是发布权限。
-- 真实目录及身份/主机未核验。新代码与现场集成测试需执行。不要把本 PR 当生产可用。
- 
-## 腾讯云增量执行
-1. 读取 #63、PR #40/#42、#44/#58；本次独立候选不阻断M1。独立worktree，核对运行SHA及备份；接入现有身份服务和路由，不新增服务。运行 bash tests/bsv1/check.sh、identity和internal-stage回归，检查浏览器未授权拒绝、草稿/同人拒绝/异人审核、重复Excel、不匹配SHA、扫描失败、实际目录读。
-2. 结合主机上已批准 WorkBuddy 生成器和字段字典实现原始Excel及网页草稿到同一标准包，保留公式原文/缓存、K子区/引用/列，固定ID从历史账本分配，缺行默认退役申请。复用 bsv_catalog_import.py 的 _verified_package/import_package/activate_source_revision，建立经独立审查的身份双人审批到签名桥与受控执行账号。绝不能为了界面显示成功而跳过审批或放行可售。通过现有PG事务及审批激活、恢复和POS投影验收。不能确认条件时冻结阻断，禁止改正式库。
-3. 交付实际候选SHA、浏览器验证、回退步骤、未完成项；生产启用独立批准。不得改订单、地图、收款、配送等并行模块；不泄露私有资料。
+# HQ-CATALOG-01｜总部商品与数据库管理中心：部署接管唯一入口（#63 / PR #64）
 
-## 标准包候选转换接线（新增）
-现有HQ页面审核人可以点“生成待发布规范包”。仅支持已审核Excel和已有记录的精确编辑；服务通过 BSV_HQ_CATALOG_CONVERTER 绝对路径调用经过审查的转换器，传 --baseline 原始.xlsx --draft 审核JSON --output 私有临时目录，以及Excel草稿的 --candidate 已审核.xlsx。转换器必须产出 package/ 与 package.zip，完全符合原 WorkBuddy V2.x 契约；服务复用 _verified_package、核对原始Excel SHA、同一基线、字段级变更、缺行和公式差异。候选存私有目录并仅回显SHA，状态 VERIFIED_PACKAGE_NOT_PUBLISHED，不签名、不导入。转换器未安装、输出不匹配、已有记录改动涉及未知依赖等均拒绝。该适配器不是转换器本体；腾讯云需在已核验环境提供既有 WorkBuddy 转换器或实现符合真实字典的转换器。新增/退役/回退正式变更和发布桥仍需接入权威永久ID及原事务导入/激活服务。没有真实字段字典及运行数据库凭据时不构造假的数据包。
+状态：SOURCE_CANDIDATE / PRODUCTION_BLOCKED。此文替代旧版适配器说明。必须在 #58 唯一集成工作树增量接入，不解冻 #44 A/B，不阻断M1。GitHub公开仓库只含代码、合成测试和契约，不放经营资料、凭据、员工信息。真实主机没有由GitHub端验证。
+
+## 1. 产品入口与真实状态
+- / → 业务 → 总部商品与数据库；/hq → 商品与数据库；/hq/catalog 为唯一页面；API /api/v1/hq/catalog/* 属于原 identity 服务，不开新端口。
+- C现场成品、P预调、M采购/供货、K套餐、R配方、Q报价、T门店（只读）。检索、分页、字段分权、永久ID预留、网页新增/改名/改配方草稿、Excel预览、异人审核、候选规范包、历史版本与恢复申请。
+- 状态必须逐级：PENDING_REVIEW → REVIEWED_NOT_PUBLISHED → VERIFIED_PACKAGE_NOT_PUBLISHED → RELEASE_REQUESTED → RAW_REVISION_ACTIVE。恢复申请无需生成新包，必须使用已存在的原始目标包。退役申请当前只登记，不删除。
+- RAW_REVISION_ACTIVE 只表示PG原始目录活动版本，不等于销售审批或POS价格已变。禁止设置销售自动放行、伪造AS/AX/Q审批。现有POS SQLite交易、客户、地图、收款、库存账本保持原样。
+
+## 2. 部署前检查与停止条件
+1. C核对现有运行SHA、#58状态、实际进程环境和源码；独立worktree以当前正式候选为基线增量合并PR #64。不得用PR #64基线替换现场私有补丁。记录完整Git SHA；有冲突仅保留两线有效功能。
+2. 核对原 identity.A 与 catalog PG17 实际连接和角色。现有 bsv_catalog_import.py 只接受精确已登记的**隔离**catalog数据库结构，现有身份库单独维持。绝不能为了通过预检改名数据库、删schema、移除迁移账本或将正式经营库冒充隔离库。
+3. 保全原始WorkBuddy ZIP、原始Excel、当前活动PG源SHA及所有历史Excel/包，执行原加密备份流程，验证可恢复。身份与商品数据库各自配置不变。暂停其他目录同步写入者（包括自动Excel/CloudBase同步）直到本轮验收结束；不能影响营业订单。
+4. 先在候选环境运行 bash tests/bsv1/check.sh、bash tests/identity/check.sh、tests/bsv1/catalog_pg17.sh 以及内部stage现有验收。PR最新HEAD的CI未通过或未完成则不得标记已验收；外部软件源安装失败单独记录并重试该步骤。不能凭历史CI放行新提交。
+
+## 3. 环境配置（沿用原identity service；变量名固定）
+在现有内部候选身份服务环境文件增量添加，不打印真实值，不修改 BSV_DB_A_URL：
+- BSV_HQ_CATALOG_ENABLE=1；BSV_APP_ENV=isolated（只在隔离候选）。
+- BSV_HQ_CATALOG_LEGAL_ENTITY_ID：已核验的候选法人，不自动授予真实公司权限。
+- BSV_HQ_CATALOG_READ_DB_URL：原 bsv_catalog_runtime 同库PG17只读连接，loopback、数据库名 bsv_all_prod；禁止用导入owner。不要把此值赋给 BSV_DB_URL，否则破坏隔离身份配置。
+- BSV_IMPORT_ROOT：现有受控导入根目录、由身份服务账号拥有、0700。草稿、私有候选包、永久ID账本、原始Excel均在其 hq-catalog-drafts 子目录，不是第二主库。目录须处于服务器加密存储并纳入现有备份。
+- BSV_CATALOG_DIR：原有受管Excel版本目录；原始文件可从 versions/<源SHA>.xlsx 或草稿目录同名归档读取。HQ只按PG活动SHA选择原始文件，不修改旧POS current.json。
+- BSV_HQ_CATALOG_SCANNER：受审的本机扫描器绝对路径，输入文件路径，退出0才允许，无扫描器拒绝上传。隔离网关默认4MiB，不扩大全站限制。
+- BSV_HQ_CATALOG_ID_HISTORY_VERIFIED=1：仅在实际核对PG全部历史版本、旧Excel/旧系统已用ID、未生效但预留ID、既有永久ID分配规则后启用；在 hq-catalog-drafts/verified-legacy-ids.json 写入 {"status":"HISTORY_RECONCILED","evidence_ref":"私有核验记录索引","ids":[实际已使用历史ID]}，0600。不得填假清单或用当前最大ID代替历史核验。永久预留账本必须备份，不可删除重置。
+- BSV_HQ_CATALOG_CONVERTER 可选；默认使用仓库 bsv_hq_workbook_package.py（381项注册字段、原文件、公式文字及缓存、业务表/辅助表/来源映射、哈希清单、已有导入器复核）。如果原WorkBuddy生成器已经在服务器可用，允许配置其审查后的绝对路径适配原参数 --baseline --draft --output [--candidate]，不得把未验证产物交给签名器。
+- 真实工作簿含公式时，内置直接XML编辑器会拒绝以旧缓存生成网页变更；现有Excel上传可保持公式表达式原样并带Excel已保存缓存。需要可信的公式重算路径和独立公式审核，未接通不得声称所有网页编辑可直接生效。原始公式缓存为空仍保持空，不补零。
+
+通过原总部权限管理申请并独立审批：hq.catalog.read；hq.catalog.confidential（配方/受控字段）；hq.catalog.draft；hq.catalog.review；hq.catalog.release.request。均为HQ法人级，不能从地图/门店权限推导。不自动给现有所有BM。草稿提交及审核还需 confidential；读权限单独不返回机密。原授权不改。
+
+## 4. 原始规范包核验
+先在私有临时目录用本仓库 identity venv Python 运行：
+  PYTHONPATH="$REPO:$REPO/services/api/bsv1" "$PYTHON" -c 'from bsv_hq_workbook_package import make_package; from pathlib import Path; import sys; make_package(Path(sys.argv[1]),Path(sys.argv[2]))' "$BASELINE_XLSX" "$PRIVATE_EMPTY_OUTPUT_DIR"
+将生成包与现有已审核WorkBuddy包逐表、逐字段、公式及原始SHA比对；真实基线中辅助映射和派生行键可能与旧生成器不同，未核实前仅候选。字段契约不符先停，不自行猜测。此程序不会执行SQL，不覆盖任何数据。
+公式、K槽位/NPS子区、审批/上架状态、T门店主数据变化均有门禁：缺行不等于删除；当前公式结构与K子区修改不得从普通Excel发布，必须独立审核。需要正式处理K槽位等原本未绑定业务数据时应在现有表与契约上增量实现，不能造第二套套餐主表。
+
+## 5. 受控发布/恢复命令（隔离数据；非生产）
+网页：提交草稿 → 另一位有权限的TR审核 → 生成候选规范包 → 审核人点击申请资料生效。回退：查看历史版本 → 选择历史SHA → 提交恢复申请 → 异人审核 → 申请生效。
+独立操作账号（原签发人/root）使用原受保护 catalog-import.env 和核验后的 identity.A 环境。不要把 BSV_CATALOG_ADMIN_DB_URL 或 BSV_CATALOG_APPROVAL_KEY_FILE 放进网页进程。BSV_ALLOW_ISOLATED_CATALOG_IMPORT=1 仅在已批准的隔离任务设置。现有审批私有目录0700，与网页草稿目录分离。
+命令：
+  "$PYTHON" "$REPO/services/api/bsv1/bsv_hq_release.py" --draft-root "$DRAFT_ROOT" --draft-id "$DRAFT_ID" --approval-dir "$PRIVATE_APPROVAL_DIR" --catalog-dir "$BSV_CATALOG_DIR"
+预检成功输出 PREFLIGHT_OK_NOT_APPLIED；根据网页审核和实际隔离源SHA，经负责人授权后同命令添加 --apply --confirm-isolated "$EXPECTED_ACTIVE_SHA"。
+恢复时额外传 --rollback-archive "$EXISTING_TARGET_WORKBUDDY_ZIP"。该ZIP必须对应历史源SHA；不生成伪造旧包。
+执行器重新核验两个TR当前权限、法人、活动SHA、原始文件、包与清单；复制到签发人私有临时目录；复用现有create_approval、import_package或activate_source_revision；确认PG活动SHA后写回执。仅更新原始PG版本，不修改POS SQLite或current.json。异常时不盲重试，先核查audit.import_batch/content_activation_event及实际活动SHA；如果PG已经生效但回执失败，先恢复/补齐审核回执，绝不二次写入。
+本版仍保留原人工签发边界；尚未实现无服务器操作的正式生产自动发布执行器，不得把root签发改成网页进程可调用的任意命令。后续经安全审批的服务化执行应复用这个精确执行器、固定参数、隔离角色、原密钥归属，不给网页任何PG owner能力。
+
+## 6. 验收与回退
+现场至少完成：未授权拒绝、只有读取权限无机密值、真实目录SHA一致、同人审批拒绝、异人审核通过、历史ID重用拒绝、重复Excel幂等、无扫描器拒绝、未知模板拒绝、合法候选生成、签名预检、隔离资料提交及旧版恢复、重启后实际活动SHA一致。检查POS旧交易数据、金额、权限和销售审批未变；单独用获准销售投影完成门店真实浏览器验证。直接编辑含公式真实模板、套餐槽位、退役、自动签名、正式PG共享schema迁移及消费者投影均不能当作已通过。
+回退程序：在C唯一工作树恢复旧代码配置并关闭 BSV_HQ_CATALOG_ENABLE；不删除历史源、签名、预留ID或业务数据。资料回退必须使用上面独立签名激活旧版，订单和收款不可回退覆盖。
+最终回执：BASE_SHA、HEAD_SHA、实际运行SHA、CI/浏览器证据、活动源SHA（非敏感）、是否保持销售投影不变、未完成阻断、回退记录。未满足正式上线条件一律 RELEASE_BLOCKED，停止，不开新项目。

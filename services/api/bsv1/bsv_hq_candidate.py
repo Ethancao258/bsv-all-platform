@@ -129,7 +129,7 @@ def prepare(root, draft, baseline):
             raise ValueError("原始Excel与规范包来源哈希不符")
         from bsv_hq_sale_gate import validate_raw_change
         aux=validate_raw_change(baseline,candidate)
-        if aux["bundle_aux_changed"] and draft["kind"]!="excel":raise ValueError("套餐子区未审核")
+        if aux["bundle_aux_changed"]:raise ValueError("套餐子区未独立审核")
         verify_draft_change(draft,baseline,candidate)
         preview=preview_workbook(candidate.read_bytes(),baseline,draft["baseline_sha256"])
         if (not preview.get("content_contract_compatible") or preview["changes"]["pending_retire"]

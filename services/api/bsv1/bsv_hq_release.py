@@ -135,7 +135,15 @@ def execute(args):
         old=assert_source(baseline,root,catalog_dir)
         with tempfile.TemporaryDirectory(prefix="bsv-hq-release-",dir=approval_dir) as tmp:
             folder=Path(tmp)
-            safe_extract(archive,folder)
+            # Copy the web-owned archive into operator-private storage before
+            # extracting/signing; never approve mutable browser-owned bytes.
+            snapshot=folder/"snapshot.zip"
+            if archive.is_symlink() or not archive.is_file() or archive.stat().st_size>128*1024*1024:refuse("候选包异常")
+            with archive.open("rb") as src,snapshot.open("xb") as out:shutil.copyfileobj(src,out)
+            if not rollback and sha256(snapshot)!=d["package"]["archive_sha256"]:refuse("候选包复制后不匹配")
+            extracted=folder/"package";extracted.mkdir(mode=0o700)
+            safe_extract(snapshot,extracted)
+            folder=extracted;archive=snapshot
             manifest,archive_sha,_=_verified_package(folder,archive)
             originals=list((folder/"original").glob("*.xlsx"))
             if len(originals)!=1 or sha256(originals[0])!=target or manifest["source_sha256"]!=target:
@@ -143,7 +151,9 @@ def execute(args):
             _validate_xlsx_bytes(original.read_bytes())
             if not rollback:
                 if sha256(folder/"manifest.json")!=d["package"]["manifest_sha256"]:refuse("清单已改变")
-                verify_draft_change(d,old,original)
+                from bsv_hq_sale_gate import validate_raw_change
+                if validate_raw_change(old,originals[0])["bundle_aux_changed"]:refuse("套餐子区未独立核验")
+                verify_draft_change(d,old,originals[0])
             if active!=baseline:
                 # A crash after PG commit but before receipt never triggers a
                 # second write. A separate operator must reconcile the audit.
