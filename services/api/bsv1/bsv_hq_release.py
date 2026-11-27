@@ -47,7 +47,11 @@ def require_grants(d):
     from domains.workforce.identity.core import has_action
     from sqlalchemy import select
     settings=load_settings()
-    if settings.env!="isolated" or not os.getenv("BSV_DB_A_URL"):refuse("未明确配置原隔离身份A")
+    from bsv_catalog_live import live_enabled
+    if settings.env=="isolated":
+        if not os.getenv("BSV_DB_A_URL"):refuse("未明确配置原隔离身份A")
+    elif not live_enabled() or settings.env!="production" or settings.auth_provider!="cloudbase_jwks" or not settings.cookie_secure:
+        refuse("未配置正式统一身份A及安全认证")
     router=SourceRouter(settings)
     try:
         with router.session() as db:
@@ -76,9 +80,11 @@ def safe_extract(archive,folder):
 def current_sha():
     conn=_connect()
     try:
-        # Never migrate a live/shared/unregistered database.
-        state,_=_catalog_layout_state(conn)
-        if state!="MANAGED_SCHEMA":refuse("现有隔离库未完成审核迁移")
+        from bsv_catalog_live import live_enabled,require_live_layout
+        if live_enabled():require_live_layout(conn)
+        else:
+            state,_=_catalog_layout_state(conn)
+            if state!="MANAGED_SCHEMA":refuse("现有隔离库未完成审核迁移")
         return _active_source(conn)
     finally:conn.close()
 
@@ -101,8 +107,8 @@ def receipt(root,key,result):
     finally:Path(tmp).unlink(missing_ok=True)
 
 def execute(args):
-    if os.getenv("BSV_APP_ENV")!="isolated" or os.getenv("BSV_ALLOW_ISOLATED_CATALOG_IMPORT")!="1":
-        refuse("只允许经明确批准的原隔离目录")
+    from bsv_catalog_live import import_enabled
+    if not import_enabled():refuse("未取得当前环境明确的目录发布授权")
     root=args.draft_root
     if not root.is_absolute() or not root.is_dir() or root.is_symlink() or root.stat().st_mode&0o077:
         refuse("草稿根目录不安全")

@@ -197,7 +197,7 @@ def inspect_upload(content, path, digest):
             "review_ready": result.get("content_contract_compatible", False)
                             and not safe_changes["pending_retire"] and not safe_changes["formula_cells"]
                             and not details["blocked_count"] and not details["truncated"],
-            "activation": "ISOLATED_RAW_ONLY"}
+            "activation": ("PRODUCTION" if os.getenv("BSV_APP_ENV")=="production" else "ISOLATED_RAW_ONLY")}
 
 def save_json(path, value):
     fd, temp = tempfile.mkstemp(prefix=".draft-", dir=path.parent)
@@ -260,7 +260,8 @@ def review_draft(root, key, entity, actor, body, active):
 
 def install_catalog_routes(app, router, settings, grant_guard, person_for_subject, hq):
     def actor(request, action):
-        if settings.env != "isolated" or os.getenv("BSV_HQ_CATALOG_ENABLE") != "1":
+        from bsv_catalog_live import live_enabled
+        if (settings.env!="isolated" and not live_enabled()) or os.getenv("BSV_HQ_CATALOG_ENABLE") != "1":
             fail("MODULE_DISABLED", "商品中心尚未获准启用。", 503)
         entity = os.getenv("BSV_HQ_CATALOG_LEGAL_ENTITY_ID", "")
         if not entity:
@@ -303,7 +304,7 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
         return {"actor":tr, "legal_entity":entity, "active_sha256":digest,
                 "counts":{k[0]:len(v) for k,v in rows.items()},
                 "capabilities":{k:can_action(request,entity,a) and can_action(request,entity,"hq.catalog.confidential") for k,a in ACTIONS.items() if k!="read"},
-                "activation":"ISOLATED_RAW_ONLY"}
+                "activation":("PRODUCTION" if os.getenv("BSV_APP_ENV")=="production" else "ISOLATED_RAW_ONLY")}
 
     @app.get("/api/v1/hq/catalog/records", include_in_schema=False)
     def records(request: Request, domain: str="C", q: str="", offset: int=0):

@@ -12,8 +12,9 @@ def policy(path):
     st=path.stat()
     if st.st_uid!=0 or st.st_mode&0o077:raise PermissionError("private root policy required")
     info=json.loads(path.read_text(encoding="utf-8"))
-    if info.get("status")!="APPROVED_ISOLATED_RAW_ONLY" or os.getenv("BSV_APP_ENV")!="isolated":
-        raise PermissionError("worker disabled")
+    from bsv_catalog_live import live_enabled,import_enabled
+    wanted="APPROVED_PRODUCTION_CATALOG" if live_enabled() else "APPROVED_ISOLATED_RAW_ONLY"
+    if info.get("status")!=wanted or not import_enabled():raise PermissionError("worker disabled")
     if info.get("legal_entity")!=os.getenv("BSV_HQ_CATALOG_LEGAL_ENTITY_ID") or not info.get("legal_entity"):
         raise PermissionError("legal scope differs")
     expiry=datetime.fromisoformat(info["expires_at"])

@@ -310,8 +310,9 @@ def _verified_package(package: Path, archive: Path) -> tuple[dict, str, dict[str
 
 
 def _safe_dsn(env_name: str = "BSV_CATALOG_ADMIN_DB_URL") -> str:
-    if os.environ.get("BSV_APP_ENV") != "isolated" or os.environ.get("BSV_ALLOW_ISOLATED_CATALOG_IMPORT") != "1":
-        raise PermissionError("set BSV_APP_ENV=isolated and BSV_ALLOW_ISOLATED_CATALOG_IMPORT=1 for an approved isolated run")
+    from bsv_catalog_live import import_enabled
+    if not import_enabled():
+        raise PermissionError("explicit catalog environment and approved import capability required")
     dsn = os.environ.get(env_name, "").strip()
     parsed = urlsplit(dsn.replace("postgresql+psycopg://", "postgresql://", 1))
     if parsed.scheme not in {"postgres", "postgresql"} or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
@@ -541,7 +542,13 @@ def import_package(package: Path, archive: Path, approval_file: Path) -> dict:
                 active_before_migration = None
         if active_before_migration != approval["expected_active_source_sha256"]:
             raise RuntimeError("active content differs from the package approval; request a new approval")
-        migration_state = migrate(conn)
+        from bsv_catalog_live import live_enabled,require_live_layout,reject_pending_sale
+        if live_enabled():
+            migration_state=require_live_layout(conn)
+            reject_pending_sale(conn)
+            conn.commit()
+        else:
+            migration_state = migrate(conn)
         sha = manifest["source_sha256"]
         with conn.cursor() as cur:
             cur.execute("SELECT batch_id, status FROM audit.import_batch WHERE source_sha256=%s", (sha,))
@@ -566,6 +573,7 @@ def import_package(package: Path, archive: Path, approval_file: Path) -> dict:
             from psycopg.types.json import Jsonb
             with conn.cursor() as cur:
                 cur.execute("LOCK TABLE catalog.active_content IN EXCLUSIVE MODE")
+                reject_pending_sale(conn)
                 cur.execute("SELECT source_sha256 FROM catalog.active_content WHERE singleton_id=1")
                 active_row = cur.fetchone()
                 active_source = active_row[0].strip() if active_row else None
@@ -803,12 +811,15 @@ def activate_source_revision(source_sha: str, package: Path, archive: Path, appr
             server_version = cur.fetchone()[0]
         if server_version // 10000 != 17:
             raise RuntimeError("PostgreSQL 17 is required")
+        from bsv_catalog_live import live_enabled,require_live_layout,reject_pending_sale
+        if live_enabled():require_live_layout(conn)
         # End the implicit read transaction so the activation block is a real
         # commit, not a savepoint discarded when this short-lived connection closes.
         conn.commit()
         with conn.transaction():
             with conn.cursor() as cur:
                 cur.execute("LOCK TABLE catalog.active_content IN EXCLUSIVE MODE")
+                reject_pending_sale(conn)
                 cur.execute("SELECT source_sha256 FROM catalog.active_content WHERE singleton_id=1")
                 active = cur.fetchone()
                 active_sha = active[0].strip() if active else None
