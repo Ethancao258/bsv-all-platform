@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 export PYTHONDONTWRITEBYTECODE=1
 node --check apps/hq-console/supply/app.js
+node --check apps/hq-console/supply/central.js
 python -m pytest -q -p no:cacheprovider tests/supply
 tmp=$(mktemp -d)
 pid=

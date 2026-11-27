@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>BSV｜中央供货与库存</title><link rel="stylesheet" href="/assets/style.css"></head><body>
 <header><div class="brand"><span class="mark">BSV</span><div><strong>中央供货与库存</strong><small>BSV ALL · 统一数据模块</small></div></div><div class="pill" id="mode">检查连接中…</div></header>
-<div class="shell"><aside><nav id="nav"><button data-tab="tasks" class="active">▦　待办与配送</button><button data-tab="create">＋　建立配送单</button><button data-tab="stock">▤　库存查询</button><button data-tab="inspect">☑　门店快检</button><button data-tab="sources">⌁　数据源状态</button></nav><div class="aside-info"><p>操作说明</p><span>总部生成单据 → 扫码出库 → 门店扫码收货。图片识别只能辅助，必须人工确认。</span></div></aside>
+<div class="shell"><aside><nav id="nav"><button data-tab="tasks" class="active">▦　待办与配送</button><button data-tab="create">＋　建立配送单</button><button data-tab="stock">▤　库存查询</button><button data-tab="inspect">☑　门店快检</button><button data-tab="central" hidden>中央生产与签收</button><button data-tab="sources">⌁　数据源状态</button></nav><div class="aside-info"><p>操作说明</p><span>总部生成单据 → 扫码出库 → 门店扫码收货。图片识别只能辅助，必须人工确认。</span></div></aside>
 <main><div id="feedback" role="status" aria-live="polite"></div>
 <section class="panel hidden" id="stage-limits" aria-labelledby="stage-title">
   <div class="heading"><div><h1 id="stage-title">供货与库存</h1><p id="stage-availability" role="status" aria-live="polite">正在核对服务与权限…</p></div></div>
@@ -10,7 +10,23 @@
 <section class="panel hidden" id="panel-create"><div class="heading"><div><h1>建立配送单</h1><p>选择真实的来源与目的地，先创建草稿。测试产品均标注演示。</p></div></div><div class="grid2"><label>发货网点<select id="source-store"></select></label><label>收货网点<select id="dest-store"></select></label></div><div class="grid2"><label>产品中文名<select id="create-item"></select></label><label>包装数量<input id="create-count" type="number" inputmode="numeric" min="1" max="100" value="10"></label></div><button class="primary" id="create-submit">创建草稿</button></section>
 <section class="panel hidden" id="panel-stock"><div class="heading"><div><h1>库存查询</h1><p>正式库存来自中央账本；离线快照会明确标出“旧数据”。</p></div><button id="stock-reload" class="outline">刷新</button></div><label>网点筛选<select id="stock-store"><option value="">全部有权限网点</option></select></label><div id="stock-status" class="hint"></div><div class="tablewrap"><table><thead><tr><th>库存位置</th><th>物料（中文）</th><th>固定ID</th><th>数量（份）</th></tr></thead><tbody id="stock-list"></tbody></table></div><div class="soft"><strong>快速盘点记录（不直接调库存）</strong><div class="grid2"><label>盘点网点<select id="count-store"></select></label><label>盘点产品<select id="count-item"></select></label></div><div class="grid2"><label>完整未开封数量<input id="count-whole" type="number" min="0" value="0"></label><label>已开封数量<select id="count-open"><option value="0">无</option><option value="1">1份</option><option value="2">多份/未知</option></select></label></div><label>开封余量档位<select id="count-percent"><option value="">未知/未开封</option><option value="0">已用尽 0%</option><option value="25">25%</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label><button id="count-submit" class="outline">记录盘点事实</button></div><div class="soft"><strong>五档盘点只是观察</strong><p>“完整2瓶＋开封50%”只能估计为2.5瓶当量，不会自动冲减正式库存。</p></div></section>
 <section class="panel hidden" id="panel-inspect"><div class="heading"><div><h1>门店六项快检</h1><p>只勾观察结果。异常会单独留下可追溯记录。</p></div></div><label>被核查网点<select id="inspect-store"></select></label><div class="grid2"><label>被核查部门<input id="subject-dept" placeholder="公司 department_id"></label><label>当班负责人<input id="subject-person" placeholder="公司 employee_id，非直接认责"></label></div><div id="inspect-fields"></div><button id="inspect-submit" class="primary">提交快检记录</button><h3>最近记录</h3><div id="inspections" class="cards"></div></section>
+<section class="panel hidden central" id="panel-central" aria-labelledby="central-title">
+  <div class="heading"><div><h1 id="central-title">中央生产与签收</h1><p id="central-mode"></p></div></div>
+  <div class="grid2">
+    <label>工作门店<select id="central-store"></select></label>
+    <label>操作<select id="central-view"></select></label>
+  </div>
+  <div id="central-summary"></div>
+  <div id="central-content"></div>
+  <dialog id="central-print-dialog" aria-labelledby="central-print-title">
+    <div class="heading"><h2 id="central-print-title">打印预览</h2>
+      <div class="actions"><button id="central-print-now" class="primary" type="button" disabled>打印</button><form method="dialog"><button>关闭</button></form></div>
+    </div>
+    <p id="central-print-feedback" role="alert"></p>
+    <iframe id="central-print-frame" sandbox="allow-same-origin allow-modals" title="打印版式" referrerpolicy="no-referrer"></iframe>
+  </dialog>
+</section>
 <section class="panel hidden" id="panel-sources"><div class="heading"><div><h1>数据源目录</h1><p>数据库位置只在配置文件里修改；程序业务算法不写固定数据库地址。</p></div></div><div id="source-list" class="cards"></div><div class="soft"><strong>运行限制</strong><p>数据源主备切换仅允许读取；写入永远指向中央权威业务 API。断网暂存的操作未正式入账，必须等待同步并确认。</p></div><button class="outline" id="pending-sync">尝试同步本人待提交记录</button><div id="pending-status"></div></section>
 </main></div>
 <div class="modal hidden" id="camera-modal"><div class="modal-box"><h2>连续扫码</h2><video autoplay playsinline id="camera-video"></video><p class="hint" id="camera-hint">对准瓶身唯一二维码。识别不成功可手动输入。</p><button id="camera-close" class="outline">关闭摄像头</button></div></div>
-<script src="/assets/app.js" defer></script></body></html>
+<script src="/assets/central.js" defer></script><script src="/assets/app.js" defer></script></body></html>

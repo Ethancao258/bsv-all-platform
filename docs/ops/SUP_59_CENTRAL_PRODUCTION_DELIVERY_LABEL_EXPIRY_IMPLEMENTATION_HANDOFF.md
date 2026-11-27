@@ -1,4 +1,47 @@
 # SUP-59 中央生产、配送、标签、效期、库存与员工任务｜唯一开发接管手册
+
+## 当前交付｜可运行隔离候选
+
+以 [#52](https://github.com/Ethancao258/bsv-all-platform/issues/52) 的最终回执和 [PR #61](https://github.com/Ethancao258/bsv-all-platform/pull/61) 的对应提交为准。下文第 0–7 节保留原隔离规则交付及业务验收背景，历史“尚未实现”见本节更新。
+
+| 位置 | 已交付 |
+|---|---|
+| `services/api/supply/central_routes.py`、`main.py`、`gateway.py` | 原供货进程内的授权路由，合成和 D 主源运行路径。D 业务回执需明确提交并返回原请求号 |
+| `services/api/supply/central_transactions.py`、`demo.py` | 原演示账本 SQLite 内的生产计划、分装、逐件配送、隔离、开封、处置与打印历史。共用原配送清单、幂等和审计，旧写入路径拒绝受控包装配送单 |
+| `services/api/supply/central_authority.py`、`contracts/supply/central-v1.md` | A 批准规则适配与 D PostgreSQL 幂等提交代码，现行 schema 对照及兼容迁移清单。需要接入 D 所有者真实事务与确认 A 映射 |
+| `services/api/supply/central_print.py`、`integrations/devices/SUP_59_PRINT.md` | 使用既有 OpenCV 的包装 QR、50×40 mm 标签、到货与效期 A4，浏览器通过门店现有 T260L 系统驱动出纸。打印确认由员工单独操作 |
+| `apps/hq-console/supply/central.js`、`index.html`、`app.js`、`style.css` | 现有总部、门店、督查共享页面中的中央生产和收货工作区，角色入口与供货服务耦合 |
+| `contracts/supply/openapi.json`、`tests/supply/test_central_*.py`、`check.sh` | 追加路由契约、业务 HTTP、事务和权限反例、打印投影及扫码验证 |
+
+### 本机或隔离工作树验收
+
+在仓库根目录使用 Python 3.12 和 Node 22。使用现有供货环境或安装 `services/api/supply/requirements.lock`。
+运行 `bash tests/supply/check.sh`，预期测试全绿并启动 Uvicorn 烟测。人工复核可在已授权的独立候选树运行：
+
+```bash
+export BSV_MODE=demo
+export BSV_SUPPLY_STATE_DIR="$(mktemp -d)"
+export BSV_SUPPLY_PORT=0
+bash platform/lighthouse/supply/launch.sh
+```
+
+从进程输出读取实际 loopback 端口。本机打开 `/hq/supply`、`/store/supply`、`/inspector/supply`。服务器操作用现有获准的 SSH 隧道，有启用转发来源头的公网入口不适用于 demo。合成操作选择演示中央仓、BSVS、DEMO-P001、DEMO-RECIPE-1 及 DEMO-LOT-1。制作时间须早于提交，预计到货须在未来且先于合成死期。用 800mL 分装 450 与 350，先合格接收 450，再把 350 以温控异常隔离。同请求重放不增加库存，布局及标签确认另测。保持测试与现行统一隔离实例各自独立。
+
+浏览器回归脚本为 `tests/ui/supply_central_browser.py`。安装 Playwright 并使用可用 Chromium 后运行 `python tests/ui/supply_central_browser.py http://127.0.0.1:<实际端口>`，可通过 `BSV_TEST_CHROMIUM` 指定可执行文件。脚本要求空白 demo 状态，会提交合成业务记录。预期打印预览与确认历史均可见；实际出纸另行验证。
+
+### 腾讯云增量接管
+
+1. 按 #44/#58 确认 C 的集成工作树、获准接管范围及发布基线。核对实际供货进程、D owner、schema 及注册表。审查后移植 #61 供应增量，禁止用参考分支覆盖共享运行树。
+2. 按 `contracts/supply/central-v1.md` 核对已有 A、B、C、D、E。复用已核实的实体与权限。接入真实 D 命令和读投影，保留 authority helper 的顶层事务和显式回执；角色核对必须覆盖动作、对象、法人、仓库和目的店。已有等价路由只做映射。计划、包装、库存、打印及考勤中的未知字段应留有清晰阻断。
+3. 先识别旧库存中已有获批效期及永久包装身份者，接入同一全店余额投影；缺少可信资料的存量列出待核或隔离，由店方实际核清。不可把历史件数猜成毫升或自动补有效期。将已确认班次的任务投影接入现有员工工作台，考勤、任务确认和报损/销毁仍分开。
+4. 在独立候选中用合成 HTTP、真实浏览器和打印驱动验收；先执行逐件收货、重复重试、过期/隔离、历史库存、打印、任务及跨店拒绝。接入获批的 D 主源后才配置 `BSV_MODE=remote` 和 `BSV_SUP59_D_V1=1`。原 `internal-stage` 模式继续关闭新写入。校验 `/api/health` 与实际访问路径；健康可用不等于 D 权威数据核验。
+5. 以现行 D 官方迁移计划生成精确 DDL。变更前保留版本、配置、受控加密备份与恢复演练记录；验收通过才接受集成候选。真实数据、主机、打印机与最终生产授权分别记录于 #52。
+6. 回退先关闭候选开关并恢复前一实际服务版本和配置。已经提交的权威库存或生产事实须保全，使用现有 D 补偿流程；不得以回切源码替代数据修复。数据库回退使用已批准的恢复路径，在独立环境核对数量、审计和权限后再决定切换。
+
+### 剩余实机证据
+
+D 正式事务绑定和 schema、正式 A 规则版本、未映射历史库存、独立督查整改及真实班次事件、实体 T260L、服务器浏览器、现场备份恢复和发布。现有照片辅助仍只返回草稿，POS 扣库与外部 AI 直写不在本候选。没有生产数据库迁移或生产部署。
+
 状态：ISOLATED_CANDIDATE / NO_SERVER_WRITE。经营负责人已要求开展研发；此分支从公开参考SHA 2052ef51f011be3c5898d816932d8982f420b752 派生，仅新增独立纯逻辑和测试，不改变当前运行路径；#44/#58 集成发布边界保持不变。不得直接部署此参考分支；必须由获准的集成人将最小增量应用于实际已交接候选SHA。
 唯一工单：https://github.com/Ethancao258/bsv-all-platform/issues/52 ；原始需求 #59；统一架构A：https://github.com/Ethancao258/bsv-all-platform/blob/docs/living-architecture-register-v1/docs/architecture/five-year-foundation/BSV_ALL_2026_2031_ENTERPRISE_ARCHITECTURE_FOUNDATION.md 。不修改固定正文，不新建服务或主库。
 

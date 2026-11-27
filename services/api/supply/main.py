@@ -14,6 +14,7 @@ from .demo import DemoCentral, DEMO_STORES, DEMO_ITEMS, DEMO_ACTORS
 from .domain import calc_reorder, validate_count, unique_codes
 from .gateway import Gateway, Unreachable
 from .shipment_contract import shipment_for_console
+from .central_routes import central_router
 
 settings=load_settings()
 cache=LocalCache(settings.cache_dir)
@@ -148,6 +149,13 @@ def remote_mutation(k,path,body,request,me,allow_queue=True):
         return JSONResponse(status_code=202,content={'state':'QUEUED_NOT_COMMITTED','request_id':body['request_id'],
                              'warning':'中央服务离线，未入正式库存，请勿当作收货成功','queue':row['state']})
 
+central_enabled = settings.mode == 'demo' or (
+    settings.mode == 'remote' and os.environ.get('BSV_SUP59_D_V1') == '1'
+    and bool(settings.sources['D'].primary) and not settings.sources['D'].read_only
+)
+app.include_router(central_router(mode=settings.mode, demo=demo, enabled=central_enabled,
+                                 gateway=gateway, actor=actor, token_of=token_of))
+
 @app.get('/',response_class=HTMLResponse)
 @app.get('/hq/supply',response_class=HTMLResponse)
 @app.get('/store/supply',response_class=HTMLResponse)
@@ -161,7 +169,7 @@ def index():
 @app.get('/api/health')
 def health():
     return {"status":"OK","mode":settings.mode,"version":"2.0.0","production_connected":False if settings.mode != 'remote' else 'NOT_VERIFIED',
-            "source_aliases":{k:{'name':v.name,'configured':bool(v.primary and '.invalid' not in v.primary),
+            "central_candidate":central_enabled, "source_aliases":{k:{'name':v.name,'configured':bool(v.primary and '.invalid' not in v.primary),
                            'standby_read':bool(v.standby_read)} for k,v in settings.sources.items()}}
 
 @app.get('/api/me')
