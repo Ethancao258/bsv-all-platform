@@ -99,7 +99,7 @@ class DWorker:
         # identity(cursor, token) resolves CURRENT grants. For writes the D owner
         # must ensure authorization remains valid for the transaction.
         # policy(cursor, legal, item) reads the approved A snapshot from its owner.
-        # consume_ingredients(cursor, ctx, policy, raw_lots, total, batch_id)
+        # consume_ingredients(cursor, ctx, policy, raw_lots, total, batch_id, source, produced_at)
         # atomically validates actual recipe/lot quantities and posts raw consumption.
         # record_event(cursor, ctx, operation, data) posts existing D audit + outbox.
         callbacks=(connect,identity,location,policy,consume_ingredients,record_event,clock)
@@ -121,14 +121,14 @@ class DWorker:
             # D operations must use the same guard or reject central packages.
             c.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",("SUP59/"+legal,))
             c.execute("SELECT set_config('bsv.sup59_command','1',true)")
-        return dict(legal=legal,actor=actor,grants=grants,now=aware(self.clock()),
+        return dict(legal=legal,actor=actor,grants=grants,now=aware(self.clock()),token=token,
                     rid=uid(payload["request_id"]) if write else None)
 
     def permit(self,c,ctx,role,store):
         ident(store)
         if store not in ctx["grants"].get(role,[]):
             fail(403,"无该门店动作权限")
-        value=self.location(c,ctx["legal"],store)
+        value=self.location(c,ctx,store)
         if not isinstance(value,dict) or value.get("store_id")!=store or value.get("kind") not in {"warehouse","store","partner"}:
             fail(403,"无有效网点或库位")
         return value
@@ -186,7 +186,7 @@ class DWorker:
             return r
 
     def approved(self,c,ctx,item):
-        policy=self.policy(c,ctx["legal"],item)
+        policy=self.policy(c,ctx,item)
         if not isinstance(policy,dict) or policy.get("item_id")!=item or not isinstance(policy.get("rule"),ApprovedRule):
             fail(409,"缺少已批准的生产规则")
         for k in ("name","recipe_version","sop_version","storage","usage"):
@@ -256,7 +256,7 @@ class DWorker:
         if quantity(p["remainder"],policy["unit"],zero=True)>0:
             fail(409,"剩余物料须独立分装或确认损耗后再放行")
         batch=uid(); lots=unique_codes(p["ingredient_lot_ids"])
-        self.consume_ingredients(c,ctx,policy,lots,total,batch)
+        self.consume_ingredients(c,ctx,policy,lots,total,batch,plan["source_location_id"],start)
         facts=dict(batch_id=batch,plan_id=str(plan["plan_id"]),item_id=plan["item_id"],producer_id=ctx["actor"],
              produced_at=iso(start),expires_at=iso(end),recipe_version=policy["recipe_version"],sop_version=policy["sop_version"],
              ingredient_lot_ids=lots,total=str(total),packed=str(packed),unit=policy["unit"],remainder=p["remainder"],loss=p["loss"],

@@ -72,3 +72,25 @@ BEGIN
 END $$;
 CREATE TRIGGER sup59_movement_guard BEFORE INSERT OR UPDATE OR DELETE ON supply.movement
  FOR EACH ROW EXECUTE FUNCTION supply.sup59_guard_movement();
+
+-- Reference-only bindings for a D owner with no pre-existing lot/outbox tables.
+-- For a real owner with existing tables, map these operations to that authority;
+-- never create another lot or audit/outbox ledger. The fixture guard above applies.
+CREATE TABLE supply.stock_lot (
+ stock_lot_id text PRIMARY KEY, legal_entity_id text NOT NULL, material_id text NOT NULL,
+ stock_location_id text NOT NULL, base_uom text NOT NULL,
+ remaining_base numeric(18,4) NOT NULL CHECK(remaining_base>=0),
+ received_at timestamptz NOT NULL, expires_at timestamptz NOT NULL,
+ state text NOT NULL CHECK(state IN ('ACCEPTED','HOLD','SCRAPPED')),
+ version integer NOT NULL CHECK(version>=1), CHECK(expires_at>received_at)
+);
+CREATE SCHEMA event_audit;
+CREATE TABLE event_audit.supply_event (
+ audit_event_id uuid PRIMARY KEY, legal_entity_id text NOT NULL, actor_employee_id text NOT NULL,
+ request_id uuid NOT NULL, operation text NOT NULL, occurred_at timestamptz NOT NULL,
+ facts jsonb NOT NULL, UNIQUE(legal_entity_id,actor_employee_id,request_id)
+);
+CREATE TABLE event_audit.supply_outbox (
+ sync_event_id uuid PRIMARY KEY, audit_event_id uuid NOT NULL UNIQUE REFERENCES event_audit.supply_event(audit_event_id),
+ state text NOT NULL CHECK(state IN ('PENDING','DELIVERED')), created_at timestamptz NOT NULL
+);

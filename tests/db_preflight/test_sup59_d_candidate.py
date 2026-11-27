@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from services.api.supply.central_d_postgres import DWorker, d_router
 from services.api.supply.central_production_rules import ApprovedRule
+from services.api.supply.central_d_runtime import consume_ingredients, record_event, schema_report
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -34,11 +35,11 @@ def scenario():
         c.execute("SELECT set_config('bsv.sup59_schema_fixture','yes',true)")
         c.execute((ROOT/"contracts/supply/central_schema_proposal.sql").read_text())
         c.execute((ROOT/"contracts/supply/sup59_postgres_isolated_candidate.sql").read_text())
-        c.execute("""CREATE SCHEMA fixture_support;
-          CREATE TABLE fixture_support.raw_lot(id text PRIMARY KEY, remaining numeric NOT NULL CHECK(remaining>=0));
-          INSERT INTO fixture_support.raw_lot VALUES ('LOT-1',4000);
-          CREATE TABLE fixture_support.events(request_id uuid PRIMARY KEY, actor text, operation text, facts jsonb);
+        c.execute("""INSERT INTO supply.stock_lot VALUES
+          ('LOT-1','SYNTH','M001','WH','mL',4000,'2026-11-26T00:00:00Z','2026-11-30T00:00:00Z','ACCEPTED',1)
         """)
+    with connect() as c:
+        assert schema_report(c)["compatible_columns"]
     now=[datetime(2026,11,27,12,tzinfo=timezone.utc)]
     identities={
         "hq":dict(employee_id="EMP-HQ",legal_entity_id="SYNTH",role_stores={"dispatch":["WH","BSVS"],"receive":["BSVS"]}),
@@ -49,21 +50,18 @@ def scenario():
     def identity(c,token):
         if token not in identities:raise HTTPException(401)
         return identities[token]
-    def location(c,legal,store):
+    def location(c,ctx,store):
         return dict(store_id=store,kind="warehouse" if store=="WH" else "store") if store in {"WH","BSVS","BSVT"} else None
-    def policy(c,legal,item):
+    def policy(c,ctx,item):
         if item!="SYNTH-P":return None
         return dict(item_id=item,name="Synthetic prep",unit="mL",standard_amount="450",recipe_version="R1",sop_version="S1",
-                    storage="synthetic storage",usage="synthetic usage",rule=ApprovedRule("E1",True,172800,3600))
-    def consume(c,ctx,policy,lots,total,batch):
-        assert lots==["LOT-1"]
-        result=c.execute("UPDATE fixture_support.raw_lot SET remaining=remaining-%s WHERE id='LOT-1' AND remaining>=%s RETURNING remaining",(total,total)).fetchone()
-        if not result:raise HTTPException(409,"fixture raw lot shortage")
+                    storage="synthetic storage",usage="synthetic usage",rule=ApprovedRule("E1",True,172800,3600),
+                    yield_amount="800",recipe_inputs={"M001":{"unit":"mL","amount":Decimal("800")}})
     fail_event=[False]
     def event(c,ctx,op,facts):
         if fail_event[0]:raise HTTPException(503,"fixture outbox failure")
-        c.execute("INSERT INTO fixture_support.events VALUES (%s,%s,%s,%s::jsonb)",(ctx["rid"],ctx["actor"],op,json.dumps(facts)))
-    worker=DWorker(connect=connect,identity=identity,location=location,policy=policy,consume_ingredients=consume,record_event=event,clock=lambda:now[0])
+        record_event(c,ctx,op,facts)
+    worker=DWorker(connect=connect,identity=identity,location=location,policy=policy,consume_ingredients=consume_ingredients,record_event=event,clock=lambda:now[0])
     app=FastAPI()
     def service(request):
         if request.headers.get("X-BSV-Service-Token")!="isolated-service":raise HTTPException(403)
@@ -73,7 +71,7 @@ def scenario():
     finally:
         with connect() as c:
             c.execute("DROP SCHEMA supply CASCADE")
-            c.execute("DROP SCHEMA fixture_support CASCADE")
+            c.execute("DROP SCHEMA event_audit CASCADE")
 
 
 def test_real_postgres_complete_candidate_transaction(scenario):
@@ -107,14 +105,14 @@ def test_real_postgres_complete_candidate_transaction(scenario):
     fail_event[0]=True
     command("batch",expected=503,**body)
     with connect() as c:
-        assert c.execute("SELECT remaining FROM fixture_support.raw_lot").fetchone()[0]==4000
+        assert c.execute("SELECT remaining_base FROM supply.stock_lot").fetchone()[0]==4000
         assert c.execute("SELECT count(*) FROM supply.shipment_package").fetchone()[0]==0
     fail_event[0]=False
     batch=command("batch",**body)
     assert command("batch",**body)==batch
     first,second=[x["package_id"] for x in batch["packages"]]
     with connect() as c:
-        assert c.execute("SELECT remaining FROM fixture_support.raw_lot").fetchone()[0]==3200
+        assert c.execute("SELECT remaining_base FROM supply.stock_lot").fetchone()[0]==3200
     print_id=rid()
     command("label",request_id=print_id,package_ids=[first,second],store_id="WH",operation="PRINT")
     command("label",package_ids=[first,second],store_id="WH",operation="CONFIRM",print_request_id=print_id)
@@ -164,5 +162,7 @@ def test_real_postgres_complete_candidate_transaction(scenario):
     assert any(x["kind"]=="EXPIRY_REVIEW" for x in read("tasks",actor="shop",store_id="BSVS",phase="END")["tasks"])
     with connect() as c:
         assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='CONSUMED'").fetchone()[0]==120
-        assert c.execute("SELECT count(*) FROM fixture_support.events WHERE operation='consume'").fetchone()[0]==1
+        assert c.execute("SELECT count(*) FROM event_audit.supply_event WHERE operation='consume'").fetchone()[0]==1
         assert c.execute("SELECT sum(remaining_base) FROM supply.shipment_package").fetchone()[0]==330
+        assert c.execute("SELECT count(*) FROM event_audit.supply_event").fetchone()[0]==c.execute("SELECT count(*) FROM event_audit.supply_outbox").fetchone()[0]
+        assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='RAW_CONSUMED'").fetchone()[0]==800
