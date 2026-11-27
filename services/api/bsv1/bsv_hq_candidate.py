@@ -52,17 +52,29 @@ def verify_draft_change(draft, baseline, candidate):
         raise ValueError("新增未取得永久ID")
     before,bextras,_=_indexes(baseline)
     after,aextras,_=_indexes(candidate)
+    from bsv_hq_sale_gate import detailed_changes
+    from bsv_catalog_workbook_preview import _formula_index
+    if _formula_index(baseline)!=_formula_index(candidate):raise ValueError("公式定义已改变")
+    details=detailed_changes(baseline,candidate)
+    if details["blocked_count"] or details["truncated"]:raise ValueError("存在受保护变更")
+    computed={(x["address"],x["field"]) for x in details["cells"] if x["formula_cache"]}
+    data,_,_,_=unpack_v9(candidate)
+    positions={(s,r["id"]):r["row"] for s,rows in data.items() for r in rows}
+    def derived(k,field):
+        rn=positions[k]
+        return any(name==field and address.startswith(k[0]+"!") and address.rsplit("!",1)[1].lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ")==str(rn) for address,name in computed)
+    aux_ok=bextras==aextras or all(x["formula_cache"] for x in details["cells"] if x["table"] in {"catalog.bundle_slot","catalog.store_nps"})
     key=next((k for k in after if k[1]==draft["record_id"] and k[0].startswith(draft["domain"]+"_")),None)
     if draft["kind"]=="create":
-        if not key or key in before or set(after)!=set(before)|{key} or bextras!=aextras:
+        if not key or key in before or set(after)!=set(before)|{key} or not aux_ok:
             raise ValueError("新增必须只增加已预留的永久ID")
         for field,value in draft["fields"].items():
             if str(after[key].get(field))!=value:raise ValueError("新增值不匹配已审核草稿")
         from bsv_hq_workbook_package import MAIN,table_specs
         ids={s["source_header"] for _,s in table_specs()[MAIN[draft["domain"]]] if s["source_column"]=="L"}
-        if any(v not in (None,"") for f,v in after[key].items() if f not in draft["fields"] and f not in ids):
+        if any(v not in (None,"") for f,v in after[key].items() if f not in draft["fields"] and f not in ids and not derived(key,f)):
             raise ValueError("新增出现未审核字段")
-    elif not key or set(before)!=set(after) or bextras!=aextras:
+    elif not key or set(before)!=set(after) or not aux_ok:
         raise ValueError("可视化修改不得改变固定ID、记录集合或套餐子区")
     for k,row in before.items():
         current=after[k]
@@ -74,7 +86,7 @@ def verify_draft_change(draft, baseline, candidate):
                 # Values have been proposed as text; no hidden coercion.
                 if str(current[field])!=allowed[field]:
                     raise ValueError("转换结果与已审核字段值不同")
-            elif current[field]!=value:
+            elif current[field]!=value and not derived(k,field):
                 raise ValueError("转换器产生了未审核字段变更")
 
 def prepare(root, draft, baseline):
@@ -131,7 +143,7 @@ def prepare(root, draft, baseline):
         aux=validate_raw_change(baseline,candidate)
         details=detailed_changes(baseline,candidate)
         if details["blocked_count"] or details["truncated"]:raise ValueError("候选含受保护或超出审核上限的变更")
-        if aux["bundle_aux_changed"] and draft["kind"]!="excel":raise ValueError("套餐子区未独立审核")
+        if aux["bundle_aux_changed"] and draft["kind"]!="excel" and any(not x["formula_cache"] for x in details["cells"] if x["table"] in {"catalog.bundle_slot","catalog.store_nps"}):raise ValueError("套餐子区未独立审核")
         if draft["kind"]=="excel" and details!=draft.get("preview",{}).get("changes",{}).get("cell_review"):
             raise ValueError("候选Excel细项与已审核内容不匹配")
         verify_draft_change(draft,baseline,candidate)
@@ -163,4 +175,5 @@ def prepare(root, draft, baseline):
         return {"status":"VERIFIED_PACKAGE_NOT_PUBLISHED","archive_sha256":archive_sha,
                 "source_sha256":manifest["source_sha256"],
                 "manifest_sha256":sha256(package/"manifest.json"),
+                "computed_changes":[x for x in details["cells"] if x["formula_cache"]],
                 "write_performed":False}

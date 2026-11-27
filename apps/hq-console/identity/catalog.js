@@ -82,7 +82,7 @@ async function drafts(){
  for(const decision of ["approve","reject"]){let b=el("button",decision==="approve"?"审核通过（不发布）":"拒绝");b.type="button";b.onclick=run(async()=>{if(reason.value.trim().length<8)throw Error("请填写审核理由。");await call("/drafts/"+x.id+"/review","POST",{decision,reason:reason.value});say("审核已记录；未发布。");await drafts();});box.append(b);}}
  if(x.status==="REVIEWED_NOT_PUBLISHED"&&caps.review&&x.reviewed_by===actor&&["edit","excel","create"].includes(x.kind)){let b=el("button","生成待发布规范包");b.type="button";b.onclick=run(async()=>{await call("/drafts/"+x.id+"/prepare","POST",{});say("候选包已校验，尚未发布。");await drafts();});box.append(b);}
  if(caps.release&&x.reviewed_by===actor&&(x.status==="VERIFIED_PACKAGE_NOT_PUBLISHED"||(["rollback","sale"].includes(x.kind)&&x.status==="REVIEWED_NOT_PUBLISHED"))){let b=el("button",x.kind==="sale"?"确认发布至POS与顾客酒单":"申请资料生效（不自动上架）");b.type="button";b.onclick=run(async()=>{if(!confirm(x.kind==="sale"?"确认更新正式门店可售商品及顾客酒单？":"提交受控资料发布申请？销售版本暂不改变。"))return;await call("/drafts/"+x.id+"/release-request","POST",{});say("发布申请已登记，等待受控签名执行。");await drafts();});box.append(b);}
- if(x.package)box.append(el("p","候选包SHA："+x.package.archive_sha256));
+ if(x.package){box.append(el("p","候选包SHA："+x.package.archive_sha256));if(x.package.computed_changes?.length){const detail=el("details");detail.append(el("summary","重算结果："+x.package.computed_changes.length+"处"));renderCellReview(detail,{total:x.package.computed_changes.length,cells:x.package.computed_changes});box.append(detail);}}
  $("drafts").append(box);}
  if(!d.items.length)$("drafts").append(el("p","暂无草稿。"));
 }

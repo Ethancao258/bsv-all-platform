@@ -252,8 +252,9 @@ def patch_workbook(baseline:Path,draft:dict,target:Path):
     with ZipFile(baseline) as zin:
         paths=sheet_paths(zin)
         roots={name:ET.fromstring(zin.read(p)) for name,p in paths.items()}
-        if any(root.findall(".//m:f",NS) for root in roots.values()):
-            raise ValueError("公式模板需可信重算后上传Excel；不允许网页编辑沿用过期缓存")
+        # Edit literal cells only. Formula expressions remain byte-semantically
+        # unchanged; their caches are verified by a separate calculator below.
+        has_formulas=any(root.findall(".//m:f",NS) for root in roots.values())
         root=roots[sheet];sd=root.find("m:sheetData",NS)
         rows={int(x.get("r")):x for x in sd.findall("m:row",NS)}
         existing=workbook_read(baseline)[sheet]
@@ -275,6 +276,7 @@ def patch_workbook(baseline:Path,draft:dict,target:Path):
             spec=specs[name];letter=spec["source_column"];address=f"{letter}{rn}"
             cell=next((c for c in row.findall("m:c",NS) if c.get("r")==address),None)
             if cell is None:cell=ET.SubElement(row,q("c"),{"r":address})
+            if cell.find("m:f",NS) is not None:raise ValueError("计算字段不可直接修改："+address)
             for child in list(cell):cell.remove(child)
             cell.set("t","inlineStr")
             ET.SubElement(ET.SubElement(cell,q("is")),q("t")).text=str(value)
@@ -293,3 +295,6 @@ def patch_workbook(baseline:Path,draft:dict,target:Path):
             for info in zin.infolist():
                 data=ET.tostring(root,encoding="utf-8",xml_declaration=True) if info.filename==paths[sheet] else zin.read(info)
                 zout.writestr(info,data)
+    if has_formulas:
+        from bsv_hq_recalculate import recalculate
+        recalculate(target)

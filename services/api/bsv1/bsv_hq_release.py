@@ -161,7 +161,8 @@ def execute(args):
                 from bsv_hq_sale_gate import validate_raw_change,detailed_changes
                 gate=validate_raw_change(old,originals[0]);details=detailed_changes(old,originals[0])
                 if details["blocked_count"] or details["truncated"]:refuse("候选含未经核验的数据变化")
-                if gate["bundle_aux_changed"] and d["kind"]!="excel":refuse("套餐子区未独立核验")
+                if gate["bundle_aux_changed"] and d["kind"]!="excel" and any(not x["formula_cache"] for x in details["cells"] if x["table"] in {"catalog.bundle_slot","catalog.store_nps"}):refuse("套餐子区未独立核验")
+                if [x for x in details["cells"] if x["formula_cache"]]!=d["package"].get("computed_changes",[]):refuse("重算结果与审核候选不一致")
                 if d["kind"]=="excel" and details!=d.get("preview",{}).get("changes",{}).get("cell_review"):refuse("已审核细项与发布包不匹配")
                 verify_draft_change(d,old,originals[0])
             if active!=baseline:
