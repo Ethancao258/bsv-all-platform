@@ -121,7 +121,7 @@ class PackageFact:
         object.__setattr__(self,"remaining",r)
 
 def available(p, now):
-    return p.state=="ACCEPTED" and p.remaining>0 and aware(now)<aware(p.expires_at)
+    return p.state=="ACCEPTED" and p.remaining>0 and aware(p.produced_at)<=aware(now)<aware(p.expires_at)
 
 def receipt_intent(packages, accepted_ids, hold_ids, *, store_id, now):
     """Pure validation under a D transaction lock. No stock mutation."""
@@ -139,8 +139,8 @@ def receipt_intent(packages, accepted_ids, hold_ids, *, store_id, now):
         p=by_id.get(pid)
         if p is None or p.state!="IN_TRANSIT" or p.store_id!=store_id:
             raise ValueError("wrong store, shipment or package state")
-        if p.remaining<=0:
-            raise ValueError("no quantity to receive")
+        if p.remaining<=0 or now<aware(p.produced_at):
+            raise ValueError("no quantity to receive or invalid chronology")
         if pid in accepted and now>=aware(p.expires_at):
             raise ValueError("expired package must be held")
         result.append((pid,"ACCEPTED" if pid in accepted else "HOLD",p.remaining,p.unit))
@@ -215,3 +215,49 @@ def arrival_sheet(receipts, *, store_id, as_of, revision, demo=True):
     # Totals are separated by unit; unlike quantities never summed.
     totals_text=" / ".join(f"{v} {u}" for u,v in sorted(totals.items()))
     return _table(f"到货清单 · {store_id} · 合格实收合计 {totals_text}",["物料","批次","包装","装量","单位","合格","隔离","制作","死期","制作人","来源","发货人","发货时间","收货人","收货时间","储存","用法","签字"],rows,demo=demo,revision=revision,as_of=as_of)
+
+def label_preview(p, *, as_of, demo=True):
+    """50x40 mm textual preview ONLY; actual approved device/QR adapter separate."""
+    if p.state!="READY" or not aware(p.produced_at)<=aware(as_of)<aware(p.expires_at):
+        raise ValueError("label release not eligible")
+    h=lambda x: escape(str(x),quote=True)
+    return ('<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
+            '<style>@page{size:50mm 40mm;margin:2mm}body{font:8pt sans-serif;margin:0}h1{font-size:11pt;margin:0 0 1mm}p{margin:0;overflow-wrap:anywhere}small{font-size:7pt}</style>'
+            f"<h1>{h(p.name)} · {h(p.amount)} {h(p.unit)}</h1>"
+            f"<p>制作：{h(cn_time(p.produced_at))}</p>"
+            f"<p><strong>死期：{h(cn_time(p.expires_at))}</strong></p>"
+            f"<p>{h(p.storage)} | {h(p.producer_id)}</p>"
+            f"<p>批次：{h(p.batch_id)}</p><p>包装：{h(p.package_id)}</p>"
+            "<small>预览·非正式标签；实际二维码、法定字段及打印须设备验收</small></html>")
+
+def shipment_reconciliation(expected_packages, receipts, *, store_id, as_of, revision):
+    """Plan/receipt reconciliation, pure demo projection from a single D snapshot.
+    Expected package list is immutable dispatch snapshot; rows are receipt facts.
+    Missing package remains unresolved, not necessarily physically missing.
+    """
+    expected=list(expected_packages); actual=list(receipts)
+    by_id={p.package_id:p for p in expected}
+    if not expected or len(by_id)!=len(expected) or any(p.store_id!=store_id for p in expected):
+        raise ValueError("invalid shipment scope or duplicate planned package")
+    # Reuse the receipt validation and rendering; reject unconfirmed facts first.
+    arrival_sheet(actual,store_id=store_id,as_of=as_of,revision=revision)
+    received={r["package"].package_id:r for r in actual}
+    if len(received)!=len(actual) or not received.keys()<=by_id.keys():
+        raise ValueError("receipt outside shipment")
+    rows=[]; totals={}
+    for p in expected:
+        r=received.get(p.package_id)
+        accepted=held=Decimal(0)
+        if r:
+            q=r["package"]
+            if (q.item_id,q.batch_id,q.unit,q.amount)!=(p.item_id,p.batch_id,p.unit,p.amount):
+                raise ValueError("receipt disagrees with dispatch snapshot")
+            accepted=quantity(r["accepted"],p.unit,zero=True)
+            held=quantity(r["held"],p.unit,zero=True)
+        unresolved=p.amount-accepted-held
+        totals.setdefault(p.unit,[Decimal(0),Decimal(0),Decimal(0),Decimal(0)])
+        for i,v in enumerate((p.amount,accepted,held,unresolved)):totals[p.unit][i]+=v
+        rows.append((p.name,p.package_id,p.amount,p.unit,accepted,held,unresolved,
+                     r.get("exception_reason","") if r else "未确认收货"))
+    summary="；".join(f"{u} 计划{v[0]} / 合格{v[1]} / 隔离{v[2]} / 未确认{v[3]}" for u,v in sorted(totals.items()))
+    return _table(f"配送差异核对 · {store_id} · {summary}",["物料","包装","计划量","单位","合格","隔离","未确认","差异说明"],rows,demo=True,revision=revision,as_of=as_of)
