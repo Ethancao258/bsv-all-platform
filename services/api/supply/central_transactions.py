@@ -768,6 +768,18 @@ class CentralDemo:
             conn.execute("BEGIN")
             if kind == "shipment":
                 return self._snapshot_shipment(conn, actor, shipment_id, store_id)
+            if kind == "shipments":
+                self._can_read(actor, store_id)
+                found = conn.execute(
+                    """SELECT s.id,s.src,s.dest,s.state,s.version,s.created_at
+                    FROM shipments s JOIN demo_central_shipments c USING(id)
+                    WHERE s.src=? OR s.dest=? ORDER BY s.created_at DESC,s.id LIMIT 200""",
+                    (store_id,store_id))
+                return {"items":[dict(r) for r in found if (
+                    r["src"]==store_id and self._has_role(actor,"dispatch",store_id) or
+                    r["dest"]==store_id and (self._has_role(actor,"receive",store_id) or
+                    self._has_role(actor,"dispatch",store_id) and self._has_role(actor,"dispatch",r["src"]))
+                )]}
             if kind == "labels":
                 return self._snapshot_labels(conn, actor, store_id, package_ids)
             if kind == "plans":

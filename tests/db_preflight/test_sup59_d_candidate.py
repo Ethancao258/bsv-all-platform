@@ -121,6 +121,11 @@ def test_real_postgres_complete_candidate_transaction(scenario):
     assert len(read("labels",store_id="WH")["history"])==4
     create=dict(source_store_id="WH",dest_store_id="BSVS",package_ids=[first,second],eta=eta,request_id=rid())
     ship=command("create",**create); sid=ship["id"]
+    assert read("shipments",store_id="BSVS")["items"][0]["id"]==sid
+    assert read("shipments",actor="shop",store_id="BSVS")["items"][0]["id"]==sid
+    read("shipments",actor="other",store_id="BSVS",expected=403)
+    with pytest.raises(psycopg.errors.CheckViolation):
+        with connect() as c:c.execute("UPDATE supply.shipment_package SET state='ACCEPTED' WHERE package_id=%s",(first,))
     command("prepare",shipment_id=sid,expected_version=1)
     sent=command("dispatch",shipment_id=sid,expected_version=2,scanned_codes=[first,second])
     assert sent["state"]=="DISPATCHED"

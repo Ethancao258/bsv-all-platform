@@ -42,3 +42,5 @@ GET 返回表内 JSON 对象本身。PackageFact 字段以 `central_production_r
 
 ### D 实现候选（非正式迁移）
 `central_d_postgres.DWorker` 是真实 PostgreSQL 事务候选，使用原 `supply.shipment`、`shipment_package`、`movement`、`idempotent_result`，不是演示 SQLite，也不新建另一套权威库存。计划、批次、签收、标签为增量事实。仅 `bsv_sup59_isolated_candidate` 可执行 `sup59_postgres_isolated_candidate.sql`；实际 D 的 schema/已有账本和 outbox 尚未查明，正式迁移必须经 D owner 映射并审核。DWorker 要求六个明确的真实接线回调：connect、identity（实时动作/法人授权）、location（C 稳定库位）、policy（A 批准规则）、consume_ingredients（按批准配方与真实原料批次、数量同事务扣库）、record_event（现有审计及 outbox 同事务）；无默认演示回调，无自动建表。D worker 不能安装在第二个库存服务上。若 D 尚不存在，由公司确认唯一 inventory owner 后将候选落实到该域。旧 API 写受控包装必须被 D 拒绝或接入同一实现；所有虚拟流水桶及余额投影映射到 D 已批准的库位约定。当前余料须独立分装或记录真实损耗才允许放行；未经确认的历史数据不得迁入。员工待办仍是投影，实际考勤及 E/G 需接线。隔离 PG 测试用专用数据库，真实原料扣减和审计回调采用明确合成 fixture，仅验证事务边界。不得据此宣布主机正式通过。
+
+中央配送单列表直接通过 `GET /supply/central/v1/shipments?store_id=` 查询 D，返回 `{items:[{id,src,dest,state,version,created_at}]}`，前端不再依赖旧配送列表。候选 PG 迁移包括受控包装及配送单旧路径误写保护和追加式库存流水保护；事务标记只防止误用，不替代数据库角色及 API 权限。正式迁移须按 D 实际表适配，不擅自部署候选触发器。

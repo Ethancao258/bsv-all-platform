@@ -39,3 +39,36 @@ CREATE UNIQUE INDEX sup59_print_confirm_once ON supply.central_print(package_id,
  WHERE operation='CONFIRM';
 -- Existing D legacy writers MUST reject these central rows or call the same
 -- transaction implementation. Do not grant application users direct SQL writes.
+
+-- Accidental legacy-path protection; not a privilege boundary against a DB owner.
+-- Real D service roles must still prohibit direct writes by external callers.
+CREATE FUNCTION supply.sup59_guard_object() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE owned boolean := false;
+BEGIN
+ IF TG_OP <> 'INSERT' THEN owned := OLD.central_legal IS NOT NULL; END IF;
+ IF TG_OP <> 'DELETE' THEN owned := owned OR NEW.central_legal IS NOT NULL; END IF;
+ IF owned AND current_setting('bsv.sup59_command',true) IS DISTINCT FROM '1' THEN
+   RAISE EXCEPTION 'SUP59 managed row: use the D command API' USING ERRCODE='23514';
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END $$;
+CREATE TRIGGER sup59_shipment_guard BEFORE INSERT OR UPDATE OR DELETE ON supply.shipment
+ FOR EACH ROW EXECUTE FUNCTION supply.sup59_guard_object();
+CREATE TRIGGER sup59_package_guard BEFORE INSERT OR UPDATE OR DELETE ON supply.shipment_package
+ FOR EACH ROW EXECUTE FUNCTION supply.sup59_guard_object();
+CREATE FUNCTION supply.sup59_guard_movement() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE owned boolean := false;
+BEGIN
+ IF TG_OP <> 'INSERT' THEN
+   owned := OLD.central_kind IS NOT NULL OR EXISTS(SELECT 1 FROM supply.shipment_package p WHERE p.package_id=OLD.package_id AND p.central_legal IS NOT NULL);
+ END IF;
+ IF TG_OP <> 'DELETE' THEN
+   owned := owned OR NEW.central_kind IS NOT NULL OR EXISTS(SELECT 1 FROM supply.shipment_package p WHERE p.package_id=NEW.package_id AND p.central_legal IS NOT NULL);
+ END IF;
+ IF owned AND (TG_OP<>'INSERT' OR current_setting('bsv.sup59_command',true) IS DISTINCT FROM '1') THEN
+   RAISE EXCEPTION 'SUP59 managed movement is append-only via D command API' USING ERRCODE='23514';
+ END IF;
+ IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END $$;
+CREATE TRIGGER sup59_movement_guard BEFORE INSERT OR UPDATE OR DELETE ON supply.movement
+ FOR EACH ROW EXECUTE FUNCTION supply.sup59_guard_movement();

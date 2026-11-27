@@ -55,7 +55,10 @@ async function boot(){
    ['source-store','dest-store','inspect-store','count-store'].forEach(id=>$(id).innerHTML=o);
    $('count-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)}</option>`).join('');
    $('create-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)} · ${escapeHtml(x.item_id)}</option>`).join('');
-   if(state.centralCandidate)enableCentral();
+   if(state.centralCandidate){
+     enableCentral();
+     if(state.mode==='remote'&&!document.querySelector('[data-tab="central"]').hidden)document.querySelector('[data-tab="create"]').hidden=true;
+   }
    if(state.centralCandidate&&!document.querySelector('[data-tab="central"]').hidden&&workspace!=='inspector')tab('central');
    else if(workspace==='inspector')tab('inspect');
    else loadShipments();

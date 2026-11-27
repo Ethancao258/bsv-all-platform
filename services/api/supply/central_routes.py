@@ -104,7 +104,7 @@ COMMANDS = {
     "consume": Consume, "dispose": Dispose, "recall": Recall, "label": Label,
 }
 DISPATCH_COMMANDS = {"plan-preview", "plan", "batch", "create", "prepare", "dispatch", "recall", "label"}
-SNAPSHOTS = {"inventory", "shipment", "labels", "tasks", "exceptions", "plans"}
+SNAPSHOTS = {"inventory", "shipment", "shipments", "labels", "tasks", "exceptions", "plans"}
 INSPECTION_ROLES = {"inspect_independent", "review_independent"}
 OPERATION_ROLES = {"dispatch", "receive"}
 

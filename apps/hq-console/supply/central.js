@@ -273,13 +273,11 @@ async function showCentralPlan(current){
 
 async function showCentralShipments(current){
   const store=centralStore();
-  let shipments=[];
-  try{shipments=centralEntries(centralData(await req(centralUrl('/shipments',{store_id:store}))),'items');}catch(error){if(![403,404,503].includes(error.status))throw error;}
+  const shipments=centralEntries(await centralRead('shipments'),'items');
   if(!current())return;
   const content=$('central-content');
   const canDispatch=workspace==='hq'&&centralRoles('dispatch');
-  const visible=state.mode==='demo'?shipments.filter(x=>x.central_production):shipments;
-  const options=visible.map(x=>selectOption(x.id,`${x.id} · ${centralName(x.src)} → ${centralName(x.dest)} · ${zhCentral(x.state)}`)).join('');
+  const options=shipments.map(x=>selectOption(x.id,`${x.id} · ${centralName(x.src)} → ${centralName(x.dest)} · ${zhCentral(x.state)}`)).join('');
   content.innerHTML=`
     <form id="central-shipment-lookup">
       ${fieldGroup('查看配送单',`<div class="grid2">${selectField('known_ship','已有配送',selectOption('','按配送单号查找')+options,false)}

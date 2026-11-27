@@ -120,6 +120,7 @@ class DWorker:
             # Small-business candidate serializes SUP59 by legal entity; legacy
             # D operations must use the same guard or reject central packages.
             c.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",("SUP59/"+legal,))
+            c.execute("SELECT set_config('bsv.sup59_command','1',true)")
         return dict(legal=legal,actor=actor,grants=grants,now=aware(self.clock()),
                     rid=uid(payload["request_id"]) if write else None)
 
@@ -447,6 +448,16 @@ class DWorker:
                 allowed=next((r for r in sorted(roles) if store_id in ctx["grants"].get(r,[])),None)
                 if not allowed:fail(403,"无门店权限")
                 self.permit(c,ctx,allowed,store_id)
+                if kind=="shipments":
+                    found=rows(c,"""SELECT shipment_id,source_location_id,dest_location_id,state,version,created_at
+                          FROM supply.shipment WHERE central_legal=%s AND (source_location_id=%s OR dest_location_id=%s)
+                          ORDER BY created_at DESC,shipment_id LIMIT 200""",(legal,store_id,store_id))
+                    return {"items":[dict(id=str(x["shipment_id"]),src=x["source_location_id"],dest=x["dest_location_id"],
+                            state=x["state"],version=x["version"],created_at=iso(x["created_at"])) for x in found if (
+                            x["source_location_id"]==store_id and store_id in ctx["grants"].get("dispatch",[]) or
+                            x["dest_location_id"]==store_id and (store_id in ctx["grants"].get("receive",[]) or
+                            store_id in ctx["grants"].get("dispatch",[]) and x["source_location_id"] in ctx["grants"].get("dispatch",[]))
+                            )]}
                 if kind=="plans":
                     plans=rows(c,"""SELECT p.*,b.batch_id FROM supply.central_plan p LEFT JOIN supply.central_batch b USING(plan_id)
                             WHERE p.legal_entity_id=%s AND p.source_location_id=%s ORDER BY p.created_at DESC LIMIT 100""",(legal,store_id))
