@@ -7,7 +7,7 @@
 | 请求 | 参数 | D 返回 |
 |---|---|---|
 | POST `plan-preview` | 源门店、目的门店、物料、下一配送时刻、用量与安全库存计划 | `{"state":"PREVIEW","data":{...}}`，供应库存及在途以 D 为准 |
-| POST `plan`, `batch`, `create`, `prepare`, `dispatch`, `receive`, `open`, `dispose`, `recall`, `label` | 精确字段见 `services/api/supply/central_routes.py` 的 Pydantic 模型 | HTTP 200/201，`{"state":"COMMITTED","request_id":"原UUID","data":{...}}`，配送动作返回实存版本 |
+| POST `plan`, `batch`, `create`, `prepare`, `dispatch`, `receive`, `open`, `consume`, `dispose`, `recall`, `label` | 精确字段见 `services/api/supply/central_routes.py` 的 Pydantic 模型 | HTTP 200/201，`{"state":"COMMITTED","request_id":"原UUID","data":{...}}`，配送动作返回实存版本 |
 | GET `inventory`, `labels` | `store_id`，标签另传重复的 `package_ids` 参数 | `{store_id,revision,packages:[PackageFact...]}` |
 | GET `shipment` | `shipment_id`，可另传 `store_id` | `{id,src,dest,version,state,eta,sent_at,sender_id,planned,receipts}` |
 | GET `plans`, `tasks`, `exceptions` | `store_id`，任务另传 `phase=START\|END` | 对应存量计划、班次任务视图和异常。督查整改证据仍来自 E |
@@ -33,3 +33,6 @@ GET 返回表内 JSON 对象本身。PackageFact 字段以 `central_production_r
 `central_authority.approved_catalog_policy` 使用 A 主源的批准规则候选视图 `GET /production-policy?item_id=&recipe_version=`。示例规则字段见函数返回校验。A 已有等价视图时只映射接口；未获批准、起算语义无法核实、缺储存或 SOP 时拒绝放行。该 helper 未接通真实 A。
 
 `central_authority.commit_d_command` 提供 psycopg 3 单事务壳及 PostgreSQL 幂等提交 (约定默认 READ COMMITTED)。它调用 D 所有者现有的 `authorize(cursor)` 与 `mutate(cursor)`，不会建立连接、建表、安装驱动或自动启用。真实字段映射与读写命令应依据已核验 schema。唯一键以现有正式配置为准，和提议 SQL 不同则仅适配 SQL 名称和作用域，不另建幂等账本。
+
+### 正常耗用增量
+`POST /supply/central/v1/consume` 接受 request_id、store_id、package_id、expected_version、amount（正十进制字符串，单位取正式包装）。D 在同一事务内实时核验收货操作权限、对象归属、已开封、合格、未过期、未召回、版本、剩余量及幂等。扣减实际耗用并记录 CONSUMED 流水，不作为报损，不改变原签收事实或效期；余量为零仍保留 ACCEPTED 历史状态，投影为不可用。禁止借此写假 POS 订单。浏览器、演示实现及测试候选已增量提供；实际 D 权威实现必须遵循现有正式 schema，不得用 demo 账本替代。

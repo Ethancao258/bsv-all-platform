@@ -87,6 +87,10 @@ class Dispose(Recall):
     amount: Amount
 
 
+class Consume(Open):
+    amount: Amount
+
+
 class Label(Command):
     package_ids: PackageIds
     store_id: Reference
@@ -97,7 +101,7 @@ class Label(Command):
 COMMANDS = {
     "plan-preview": PlanPreview, "plan": Plan, "batch": Batch, "create": ShipmentCreate,
     "prepare": Transition, "dispatch": Dispatch, "receive": Receipt, "open": Open,
-    "dispose": Dispose, "recall": Recall, "label": Label,
+    "consume": Consume, "dispose": Dispose, "recall": Recall, "label": Label,
 }
 DISPATCH_COMMANDS = {"plan-preview", "plan", "batch", "create", "prepare", "dispatch", "recall", "label"}
 SNAPSHOTS = {"inventory", "shipment", "labels", "tasks", "exceptions", "plans"}

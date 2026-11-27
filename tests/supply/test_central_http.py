@@ -82,3 +82,13 @@ def test_production_department_to_store_documents(tmp_path):
         assert exceptions.status_code == 200 and any(
             item["package_id"] == second for item in exceptions.json()["data"]["items"]
         )
+
+        inventory = client.get("/api/central/inventory", params={"store_id": "BSVS"}, headers=store).json()["data"]["packages"]
+        p = next(p for p in inventory if p["package_id"] == first)
+        opened = post("open", dict(request_id=str(uuid4()), store_id="BSVS", package_id=first, expected_version=p["version"]), store)
+        consumption = dict(request_id=str(uuid4()), store_id="BSVS", package_id=first,
+                           expected_version=opened["version"], amount="120")
+        assert client.post("/api/central/consume", json=consumption, headers=inspector).status_code == 403
+        result = post("consume", consumption, store)
+        assert result["remaining"] == "330"
+        assert post("consume", consumption, store) == result

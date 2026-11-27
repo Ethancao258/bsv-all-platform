@@ -467,6 +467,16 @@ class CentralDemo:
             end = expiry(rule, p.produced_at, opened_at=ctx["now"], restriction_at=p.expires_at)
             self._change_stock(conn, p, p.state, p.store_id, expires_at=end, opened_at=ctx["now"])
             self._movement(conn, ctx, p, p.state, p.remaining, reason="OPENED")
+        elif op == "consume":
+            if not available(p, ctx["now"]) or row["opened_at"] is None:
+                fail(409, "仅允许登记已开封、未过期的合格库存实际耗用")
+            amount = quantity(payload["amount"], p.unit)
+            if amount > p.remaining:
+                fail(409, "实际耗用量超过剩余量")
+            remaining = p.remaining - amount
+            # Receipt status is historical; zero remaining is not scrap.
+            self._change_stock(conn, p, p.state, p.store_id, remaining=remaining)
+            self._movement(conn, ctx, p, p.state, amount, reason="CONSUMED")
         elif op == "recall":
             reason = ident(payload["reason"])
             if p.state not in {"READY", "IN_TRANSIT", "ACCEPTED", "HOLD"} or not p.remaining:
@@ -548,7 +558,7 @@ class CentralDemo:
         }
 
     def mutate(self, op, payload, actor, shipment_id=None):
-        if op not in {"plan", "batch", "create", "prepare", "dispatch", "receive", "open", "dispose", "recall", "label"}:
+        if op not in {"plan", "batch", "create", "prepare", "dispatch", "receive", "open", "consume", "dispose", "recall", "label"}:
             fail(404, "未知中央生产操作")
         try:
             rid = str(UUID(ident(payload["request_id"])))
@@ -574,7 +584,7 @@ class CentralDemo:
                     result = self._create_shipment(conn, payload, ctx)
                 elif op in {"prepare", "dispatch", "receive"}:
                     result = self._shipment_step(conn, op, payload, resource, ctx)
-                elif op in {"open", "dispose", "recall"}:
+                elif op in {"open", "consume", "dispose", "recall"}:
                     result = self._inventory_step(conn, op, payload, resource, ctx)
                 else:
                     result = self._label(conn, payload, ctx)

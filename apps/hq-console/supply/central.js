@@ -430,6 +430,7 @@ function packageDescription(p){
   return escapeHtml(p.name||p.item_id)+'<br><span class="meta">'+escapeHtml(p.package_id)+'</span>';
 }
 function packageState(p){
+  if(p.state==='ACCEPTED'&&Number(p.remaining)===0)return '已用完';
   if(p.state==='HOLD'||p.state==='SCRAPPED')return zhCentral(p.state);
   return p.expires_at&&Date.parse(p.expires_at)<=Date.now()?'已过期':zhCentral(p.state);
 }
@@ -452,7 +453,8 @@ async function showCentralInventory(view,current){
     `<span class="state ${['HOLD','SCRAPPED'].includes(p.state)||packageState(p)==='已过期'?'bad-stock':''}">${escapeHtml(packageState(p))}</span>`,
     escapeHtml(p.storage),escapeHtml(p.usage),
     mayUpdate||mayRecall?`<div class="actions">
-      ${mayUpdate&&p.state==='ACCEPTED'&&!p.opened_at&&packageState(p)!=='已过期'?`<button type="button" data-package="${escapeHtml(p.package_id)}" data-package-action="open">登记开封</button>`:''}
+      ${mayUpdate&&p.state==='ACCEPTED'&&!p.opened_at&&p.usable===true?`<button type="button" data-package="${escapeHtml(p.package_id)}" data-package-action="open">登记开封</button>`:''}
+      ${mayUpdate&&p.opened_at&&p.usable===true?`<button type="button" data-package="${escapeHtml(p.package_id)}" data-package-action="consume">登记实际耗用</button>`:''}
       ${mayUpdate&&(p.state==='HOLD'||p.state==='ACCEPTED'&&packageState(p)==='已过期')&&Number(p.remaining)>0?`<button type="button" data-package="${escapeHtml(p.package_id)}" data-package-action="dispose">登记报损／处置</button>`:''}
       ${mayRecall&&['READY','ACCEPTED','IN_TRANSIT'].includes(p.state)&&Number(p.remaining)>0?`<button type="button" data-package="${escapeHtml(p.package_id)}" data-package-action="recall">召回</button>`:''}
     </div>`:escapeHtml(beijingTime(p.produced_at))
@@ -523,9 +525,10 @@ async function showCentralInventory(view,current){
 
 function showStockAction(p,action){
   if(!p)return;
-  const title={open:'登记实际开封',dispose:'登记实际处置',recall:'召回与隔离'}[action];
+  const title={open:'登记实际开封',consume:'登记实际耗用',dispose:'登记实际处置',recall:'召回与隔离'}[action];
   let fields;
   if(action==='open')fields='<p>提交后按服务端批准规则重新计算死期。</p>';
+  if(action==='consume')fields=formAmount('amount','本次实际耗用量（'+escapeHtml(p.unit)+'）','');
   if(action==='dispose')fields=`<div class="grid2">${formAmount('amount','确认实际处置量（'+escapeHtml(p.unit)+'）','')}
       ${formInput('reason','实际处置原因','text','maxlength="180" required')}</div>`;
   if(action==='recall')fields=formInput('reason','召回原因','text','maxlength="180" required');
@@ -536,7 +539,7 @@ function showStockAction(p,action){
   form.scrollIntoView({block:'nearest'});
   form.onsubmit=busyCentral(form,async values=>{
     await centralWrite(action,{...values,package_id:p.package_id,expected_version:p.version,store_id:centralStore()});
-    message({open:'已记录开封时间和新死期。',dispose:'已登记实际处置。',recall:'已记录召回与隔离。'}[action]);
+    message({open:'已记录开封时间和新死期。',consume:'已登记实际耗用并更新余量。',dispose:'已登记实际处置。',recall:'已记录召回与隔离。'}[action]);
     await showCentralView();
   });
 }

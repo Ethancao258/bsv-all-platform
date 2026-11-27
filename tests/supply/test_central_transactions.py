@@ -211,3 +211,50 @@ def test_recall_preserves_in_transit_and_cannot_be_accepted(scenario):
         exception_reasons={first: "召回隔离"},
     )
     assert final["state"] == "RECEIVED"
+
+
+def test_actual_consumption_is_not_disposal_and_is_idempotent(scenario):
+    shipment, (first, second) = scenario.send(scenario.batch())
+    scenario.mutate("receive", SHOP, shipment, expected_version=3, accepted_ids=[first], hold_ids=[second],
+                    exception_reasons={second: "隔离"})
+    inventory = scenario.read("inventory", SHOP, store_id=STORE)["packages"]
+    p = next(p for p in inventory if p["package_id"] == first)
+    body = dict(store_id=STORE, package_id=first, expected_version=p["version"], amount="100")
+    with pytest.raises(HTTPException) as err:
+        scenario.mutate("consume", SHOP, **body)
+    assert err.value.status_code == 409
+    opened = scenario.mutate("open", SHOP, store_id=STORE, package_id=first, expected_version=p["version"])
+    body.update(expected_version=opened["version"], request_id=str(uuid4()))
+    with pytest.raises(HTTPException) as err:
+        scenario.mutate("consume", AUDITOR, **body)
+    assert err.value.status_code == 403
+    consumed = scenario.mutate("consume", SHOP, **body)
+    assert consumed["remaining"] == "350" and consumed["state"] == "ACCEPTED"
+    assert consumed["expires_at"] == opened["expires_at"]
+    assert scenario.mutate("consume", SHOP, **body) == consumed
+    with pytest.raises(HTTPException) as err:
+        scenario.mutate("consume", SHOP, **{**body, "request_id": str(uuid4())})
+    assert err.value.status_code == 409
+    with pytest.raises(HTTPException) as err:
+        scenario.mutate("consume", SHOP, **{**body, "request_id": str(uuid4()), "expected_version": consumed["version"], "amount": "351"})
+    assert err.value.status_code == 409
+    with pytest.raises(HTTPException) as err:
+        scenario.mutate("consume", SHOP, **{**body, "request_id": str(uuid4()), "expected_version": consumed["version"], "package_id": second})
+    assert err.value.status_code == 409
+    empty = scenario.mutate("consume", SHOP, **{**body, "request_id": str(uuid4()), "expected_version": consumed["version"], "amount": "350"})
+    assert empty["remaining"] == "0" and empty["state"] == "ACCEPTED"
+    assert scenario.read("shipment", SHOP, shipment_id=shipment)["receipts"][0]["package"]["amount"] in {"450", "350"}
+    with scenario.ledger._conn() as conn:
+        movements = conn.execute("SELECT quantity FROM demo_central_movements WHERE package_id=? AND reason='CONSUMED'", (first,)).fetchall()
+        assert sorted(row[0] for row in movements) == ["100", "350"]
+
+
+def test_consumption_rejects_expired_opened_stock(scenario):
+    shipment, ids = scenario.send(scenario.batch())
+    scenario.mutate("receive", SHOP, shipment, expected_version=3, accepted_ids=ids, hold_ids=[])
+    p = next(p for p in scenario.read("inventory", SHOP, store_id=STORE)["packages"] if p["package_id"] == ids[0])
+    opened = scenario.mutate("open", SHOP, store_id=STORE, package_id=ids[0], expected_version=p["version"])
+    scenario.now += timedelta(hours=1)
+    with pytest.raises(HTTPException) as err:
+        scenario.mutate("consume", SHOP, store_id=STORE, package_id=ids[0], expected_version=opened["version"], amount="1")
+    assert err.value.status_code == 409
