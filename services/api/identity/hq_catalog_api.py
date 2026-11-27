@@ -354,3 +354,44 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
         entity,tr = actor(request,"review")
         _,digest=active_source()
         return review_draft(private_root(),key,entity,tr,body,digest)
+
+
+    @app.post("/api/v1/hq/catalog/drafts/{key}/prepare", include_in_schema=False)
+    def prepare_package(request: Request, key: str):
+        entity,tr=actor(request,"review")
+        if not DRAFT_ID.fullmatch(key):
+            fail("NOT_FOUND","未找到草稿。",404)
+        root=private_root()
+        fd=os.open(root/".prepare.lock",os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,"r+") as lock:
+            # Refuse a concurrent converter rather than starting multiple workers.
+            try:
+                fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError:
+                fail("PREPARE_BUSY","另一候选包正在生成，请查询草稿状态。",409)
+            file=root/(key+".json")
+            if file.is_symlink() or not file.is_file():
+                fail("NOT_FOUND","未找到草稿。",404)
+            data=json.loads(file.read_text(encoding="utf-8"))
+            if data.get("legal_entity")!=entity:
+                fail("NOT_FOUND","未找到草稿。",404)
+            if data.get("reviewed_by")!=tr:
+                fail("REVIEWER_REQUIRED","仅独立审核人可生成本候选包。",403)
+            if data["status"]=="VERIFIED_PACKAGE_NOT_PUBLISHED":
+                return data
+            if data["status"]!="REVIEWED_NOT_PUBLISHED":
+                fail("REVIEW_REQUIRED","草稿尚未独立审核。",409)
+            path,digest=active_source()
+            if data["baseline_sha256"]!=digest:
+                fail("STALE_BASELINE","活动版本已变化，请重新审核。",409)
+            from bsv_hq_candidate import prepare
+            try:
+                result=prepare(root,data,path)
+            except (ValueError,OSError,KeyError,RuntimeError):
+                fail("PACKAGE_PREPARE_BLOCKED","候选包未生成：需核对转换器、固定ID、公式、版本及数据契约。",409)
+            data["package"]=result
+            data["status"]=result["status"]
+            data["prepared_by"]=tr
+            data["prepared_at"]=now()
+            save_json(file,data)
+            return data

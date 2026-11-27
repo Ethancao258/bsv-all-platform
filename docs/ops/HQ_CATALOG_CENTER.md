@@ -17,3 +17,6 @@
 1. 读取 #63、PR #40/#42、#44/#58；本次独立候选不阻断M1。独立worktree，核对运行SHA及备份；接入现有身份服务和路由，不新增服务。运行 bash tests/bsv1/check.sh、identity和internal-stage回归，检查浏览器未授权拒绝、草稿/同人拒绝/异人审核、重复Excel、不匹配SHA、扫描失败、实际目录读。
 2. 结合主机上已批准 WorkBuddy 生成器和字段字典实现原始Excel及网页草稿到同一标准包，保留公式原文/缓存、K子区/引用/列，固定ID从历史账本分配，缺行默认退役申请。复用 bsv_catalog_import.py 的 _verified_package/import_package/activate_source_revision，建立经独立审查的身份双人审批到签名桥与受控执行账号。绝不能为了界面显示成功而跳过审批或放行可售。通过现有PG事务及审批激活、恢复和POS投影验收。不能确认条件时冻结阻断，禁止改正式库。
 3. 交付实际候选SHA、浏览器验证、回退步骤、未完成项；生产启用独立批准。不得改订单、地图、收款、配送等并行模块；不泄露私有资料。
+
+## 标准包候选转换接线（新增）
+现有HQ页面审核人可以点“生成待发布规范包”。仅支持已审核Excel和已有记录的精确编辑；服务通过 BSV_HQ_CATALOG_CONVERTER 绝对路径调用经过审查的转换器，传 --baseline 原始.xlsx --draft 审核JSON --output 私有临时目录，以及Excel草稿的 --candidate 已审核.xlsx。转换器必须产出 package/ 与 package.zip，完全符合原 WorkBuddy V2.x 契约；服务复用 _verified_package、核对原始Excel SHA、同一基线、字段级变更、缺行和公式差异。候选存私有目录并仅回显SHA，状态 VERIFIED_PACKAGE_NOT_PUBLISHED，不签名、不导入。转换器未安装、输出不匹配、已有记录改动涉及未知依赖等均拒绝。该适配器不是转换器本体；腾讯云需在已核验环境提供既有 WorkBuddy 转换器或实现符合真实字典的转换器。新增/退役/回退正式变更和发布桥仍需接入权威永久ID及原事务导入/激活服务。没有真实字段字典及运行数据库凭据时不构造假的数据包。

@@ -128,7 +128,10 @@ async def proxy(request: Request):
     headers = [(k, v) for k, v in request.headers.raw if k in INBOUND]
     headers.append((b"host", request.headers["host"].encode("ascii")))
     try:
-        async with httpx.AsyncClient(timeout=8, trust_env=False) as client:
+        # Only the bounded HQ scan/conversion paths need longer than ordinary API calls.
+        catalog_long = (path in {"/api/v1/hq/catalog/preview", "/api/v1/hq/catalog/excel-drafts"}
+                        or (path.startswith("/api/v1/hq/catalog/drafts/") and path.endswith("/prepare")))
+        async with httpx.AsyncClient(timeout=100 if catalog_long else 8, trust_env=False) as client:
             url = httpx.URL(UPSTREAM[key]).copy_with(path=target, query=request.scope["query_string"])
             async with client.stream(request.method, url, headers=headers, content=bytes(body)) as result:
                 data = bytearray()
