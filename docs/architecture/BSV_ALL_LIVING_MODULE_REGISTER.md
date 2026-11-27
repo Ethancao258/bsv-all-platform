@@ -1,4 +1,6 @@
 # BSV ALL｜全程序架构与持续需求总清单 V1.0
+> **ARCHIVED / 历史快照**：A+C-V1 已替代本独立B清单，活动标注迁至[架构A第8节](https://github.com/Ethancao258/bsv-all-platform/blob/docs/living-architecture-register-v1/docs/architecture/five-year-foundation/BSV_ALL_2026_2031_ENTERPRISE_ARCHITECTURE_FOUNDATION.md)。此文件保留历史，不再日常维护。详细任务状态见执行Issue。
+
 2026-11-27 | 架构治理候选 | 非运行配置，不授权研发/发布 | 维护入口：本文件
 依据：main e2a0368bb89d30627c5eae9be062cae38f82760d（治理）；feature/bsv1-excel-catalog 2052ef51f011be3c5898d816932d8982f420b752（已读取代码树、路由注册及数据契约）；planning/next-deliveries-20261126 88e9895ffcd24bc42b441aca039e7b4f0a01cca9（PR #57 路线）；#44/#58 接管；#52 既有供货执行卡、#59 需求设计。
 **禁止把任何分支、CI、设计清单等同线上事实。** 实际运行 SHA/DB schema/可用路由仍由 C 实机核实。仅展示脱敏逻辑信息，无真实数据/连接参数。
