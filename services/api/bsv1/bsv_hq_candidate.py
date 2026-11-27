@@ -46,18 +46,27 @@ def verify_draft_change(draft, baseline, candidate):
         if sha256(candidate)!=draft["source_sha256"]:
             raise ValueError("转换器输出不匹配已审核Excel字节")
         return
-    if draft["kind"]!="edit":
-        raise ValueError("新增/退役/恢复须先接通永久ID与发布审批服务")
+    if draft["kind"] not in {"edit","create"}:
+        raise ValueError("退役/恢复须走独立发布审批服务")
     before,bextras,_=_indexes(baseline)
     after,aextras,_=_indexes(candidate)
-    key=next((k for k in before if k[1]==draft["record_id"] and k[0].startswith(draft["domain"]+"_")),None)
-    if not key or set(before)!=set(after) or bextras!=aextras:
+    key=next((k for k in after if k[1]==draft["record_id"] and k[0].startswith(draft["domain"]+"_")),None)
+    if draft["kind"]=="create":
+        if not key or key in before or set(after)!=set(before)|{key} or bextras!=aextras:
+            raise ValueError("新增必须只增加已预留的永久ID")
+        for field,value in draft["fields"].items():
+            if str(after[key].get(field))!=value:raise ValueError("新增值不匹配已审核草稿")
+        from bsv_hq_workbook_package import MAIN,table_specs
+        ids={s["source_header"] for _,s in table_specs()[MAIN[draft["domain"]]] if s["source_column"]=="L"}
+        if any(v not in (None,"") for f,v in after[key].items() if f not in draft["fields"] and f not in ids):
+            raise ValueError("新增出现未审核字段")
+    elif not key or set(before)!=set(after) or bextras!=aextras:
         raise ValueError("可视化修改不得改变固定ID、记录集合或套餐子区")
     for k,row in before.items():
         current=after[k]
         if set(row)!=set(current):
             raise ValueError("转换器改变了已登记字段")
-        allowed=draft["fields"] if k==key else {}
+        allowed=draft["fields"] if k==key and draft["kind"]=="edit" else {}
         for field,value in row.items():
             if field in allowed:
                 # Values have been proposed as text; no hidden coercion.
@@ -72,9 +81,9 @@ def prepare(root, draft, baseline):
         raise ValueError("只有已独立审核且未发布的草稿可生成候选包")
     if sha256(baseline)!=draft["baseline_sha256"]:
         raise ValueError("活动版本已变化")
-    if draft["kind"] not in {"excel","edit"}:
-        raise ValueError("本候选仅支持Excel或现有记录修改")
-    converter=_trusted_converter()
+    if draft["kind"] not in {"excel","edit","create"}:
+        raise ValueError("本候选仅支持Excel、新增或现有记录修改")
+    converter=_trusted_converter() if os.getenv("BSV_HQ_CATALOG_CONVERTER") else None
     with tempfile.TemporaryDirectory(prefix="bsv-hq-package-",dir=root) as tmp:
         tmp=Path(tmp)
         request=tmp/"draft.json"
@@ -88,14 +97,21 @@ def prepare(root, draft, baseline):
             if source.is_symlink() or not source.is_file() or sha256(source)!=draft["source_sha256"]:
                 raise ValueError("审核的Excel候选已缺失或改变")
             args.extend(["--candidate",str(source)])
-        try:
-            result=subprocess.run(args,env={"PATH":"/usr/bin:/bin","LANG":"C.UTF-8"},
-                                  stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
-                                  timeout=75,check=False)
-        except (OSError,subprocess.TimeoutExpired) as exc:
-            raise ValueError("转换器运行失败") from exc
-        if result.returncode:
-            raise ValueError("转换器未生成有效规范包")
+        if converter:
+            try:
+                result=subprocess.run(args,env={"PATH":"/usr/bin:/bin","LANG":"C.UTF-8"},
+                                      stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+                                      timeout=75,check=False)
+            except (OSError,subprocess.TimeoutExpired) as exc:
+                raise ValueError("转换器运行失败") from exc
+            if result.returncode:
+                raise ValueError("转换器未生成有效规范包")
+        else:
+            from bsv_hq_workbook_package import make_package,patch_workbook
+            if draft["kind"]!="excel":
+                source=tmp/"edited.xlsx"
+                patch_workbook(baseline,draft,source)
+            make_package(source,tmp)
         package=tmp/"package";archive=tmp/"package.zip"
         if package.is_symlink() or not package.is_dir() or archive.is_symlink() or not archive.is_file():
             raise ValueError("转换器未返回预期产物")

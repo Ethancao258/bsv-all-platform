@@ -556,6 +556,9 @@ def import_package(package: Path, archive: Path, approval_file: Path) -> dict:
                 raise RuntimeError("repeat import count verification failed")
             return {"status": "IDEMPOTENT_NOOP", "source_sha256": sha,
                     "batch_id": str(prior[0]), "migration": migration_state, "counts": stored}
+        # Close the preceding SELECT transaction: the import must be a top-level
+        # transaction, not a savepoint that is rolled back on connection close.
+        conn.commit()
         batch_id = uuid.uuid4()
         record_counts = {table: len(value) for table, value in rows.items()}
         record_counts["catalog.main_records"] = sum(record_counts[t] for t in PACKAGE_ROWS)
@@ -568,6 +571,9 @@ def import_package(package: Path, archive: Path, approval_file: Path) -> dict:
                 active_source = active_row[0].strip() if active_row else None
                 if active_source != approval["expected_active_source_sha256"]:
                     raise RuntimeError("active content changed after package approval; request a new approval")
+                cur.execute("SELECT 1 FROM audit.import_batch WHERE source_sha256=%s", (sha,))
+                if cur.fetchone():
+                    raise RuntimeError("source imported concurrently; inspect existing revision")
                 cur.execute("""INSERT INTO audit.import_batch(
                     batch_id,source_sha256,package_sha256,package_version,status,counts,approval_id,approver,
                     change_id,manifest_sha256,contract_sha256,expected_active_source_sha256,approval_hmac_sha256)
