@@ -16,7 +16,7 @@ ALTER TABLE supply.shipment_package ALTER COLUMN shipment_id DROP NOT NULL,
  ADD COLUMN original jsonb, ADD COLUMN recall_reason text, ADD COLUMN recalled_at timestamptz,
  ADD CONSTRAINT sup59_package_facts CHECK (central_legal IS NULL OR
  (stock_location_id IS NOT NULL AND remaining_base IS NOT NULL AND remaining_base>=0
- AND remaining_base<=qty_base AND version>=1 AND expires_at IS NOT NULL AND original IS NOT NULL));
+ AND remaining_base<=qty_base AND version IS NOT NULL AND version>=1 AND expires_at IS NOT NULL AND original IS NOT NULL));
 CREATE INDEX sup59_stock_location ON supply.shipment_package(central_legal,stock_location_id,item_id);
 ALTER TABLE supply.movement ADD COLUMN central_kind text;
 CREATE TABLE supply.central_plan (

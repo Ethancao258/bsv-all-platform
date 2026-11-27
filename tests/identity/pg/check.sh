@@ -46,6 +46,8 @@ host bsv_identity_isolated_restore bsv_internal_app 127.0.0.1/32 scram-sha-256
 host bsv_identity_isolated_restore bsv_internal_app ${docker_gateway}/32 scram-sha-256
 host bsv_identity_isolated_clients bsv_internal_app 127.0.0.1/32 scram-sha-256
 host bsv_identity_isolated_clients bsv_internal_app ${docker_gateway}/32 scram-sha-256
+host bsv_sup59_isolated_candidate bsv_internal_app 127.0.0.1/32 scram-sha-256
+host bsv_sup59_isolated_candidate bsv_internal_app ${docker_gateway}/32 scram-sha-256
 host bsv_identity_isolated_stage bsv_internal_app 127.0.0.1/32 scram-sha-256
 host bsv_identity_isolated_stage bsv_internal_app ${docker_gateway}/32 scram-sha-256
 host bsv_all_prod bsv_catalog_importer 127.0.0.1/32 scram-sha-256
@@ -117,6 +119,8 @@ if [[ "${1:-}" == --with-apps ]]; then
         BSV_DB_PREFLIGHT_STAGE_URL="$stage_db_url" python -m pytest -q -p no:cacheprovider tests/identity/test_internal_stage.py tests/identity/test_acceptance_v3.py
         export BSV_DB_A_URL="$BSV_DB_PREFLIGHT_CLIENT_URL"
     fi
+    docker exec --user postgres "$name" createdb -U postgres -T template0 -O bsv_internal_app bsv_sup59_isolated_candidate
+    export BSV_SUP59_TEST_URL="postgresql://bsv_internal_app:apppw@127.0.0.1:$port/bsv_sup59_isolated_candidate"
     python -m pytest -q -p no:cacheprovider tests/db_preflight
     if [[ "${2:-}" == --update ]]; then
         python tests/db_preflight/schema_dictionary.py --update

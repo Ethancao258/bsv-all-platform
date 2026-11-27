@@ -39,3 +39,6 @@ GET 返回表内 JSON 对象本身。PackageFact 字段以 `central_production_r
 
 ### 统一工作台 HTTPS 会话（候选）
 正式供货页面通过原 `/supply-ui/` 命名空间进入，配置 `BSV_MODE=remote` 与 `BSV_SUPPLY_WEB_ORIGIN=https://<已批准正式管理域名>`。沿用 `bsv_identity_session` HttpOnly cookie、`bsv_csrf` 及 `X-CSRF-Token`；写入须精确匹配配置 Origin 与 Host。内部入口需原样转发 Host/Origin/cookie/CSRF，不依赖伪造 scheme。身份 B 实时授权仍为前提；当前 B production connector 尚有独立门禁，不因此放宽。API bearer 调用者兼容保留；浏览器不再弹令牌输入。未接通、无授权时隐藏操作区、提供重试及返回统一工作台。原 internal-stage 保持只读，demo 不挂正式域名。本候选不改共享网关或工作台配置，待 C 获准集成后接入。
+
+### D 实现候选（非正式迁移）
+`central_d_postgres.DWorker` 是真实 PostgreSQL 事务候选，使用原 `supply.shipment`、`shipment_package`、`movement`、`idempotent_result`，不是演示 SQLite，也不新建另一套权威库存。计划、批次、签收、标签为增量事实。仅 `bsv_sup59_isolated_candidate` 可执行 `sup59_postgres_isolated_candidate.sql`；实际 D 的 schema/已有账本和 outbox 尚未查明，正式迁移必须经 D owner 映射并审核。DWorker 要求六个明确的真实接线回调：connect、identity（实时动作/法人授权）、location（C 稳定库位）、policy（A 批准规则）、consume_ingredients（按批准配方与真实原料批次、数量同事务扣库）、record_event（现有审计及 outbox 同事务）；无默认演示回调，无自动建表。D worker 不能安装在第二个库存服务上。若 D 尚不存在，由公司确认唯一 inventory owner 后将候选落实到该域。旧 API 写受控包装必须被 D 拒绝或接入同一实现；所有虚拟流水桶及余额投影映射到 D 已批准的库位约定。当前余料须独立分装或记录真实损耗才允许放行；未经确认的历史数据不得迁入。员工待办仍是投影，实际考勤及 E/G 需接线。隔离 PG 测试用专用数据库，真实原料扣减和审计回调采用明确合成 fixture，仅验证事务边界。不得据此宣布主机正式通过。

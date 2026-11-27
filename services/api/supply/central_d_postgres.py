@@ -66,10 +66,15 @@ def one(cursor, sql, args=(), message="记录不存在"):
     return result[0]
 
 
-def selection(values):
+def selection(values, *, allow_empty=False):
     if not isinstance(values, list) or len(values)>100:
         fail(422, "包装列表最多100项")
-    return sorted(uid(v) for v in unique_codes(values))
+    if allow_empty and not values:
+        return []
+    ids=sorted(uid(v) for v in unique_codes(values))
+    if len(ids)!=len(set(ids)):
+        fail(422,"重复包装编号")
+    return ids
 
 
 def fact(row):
@@ -152,7 +157,7 @@ class DWorker:
                 fail(422,"中央仓及配送目的地无效")
             if op=="create":
                 for pid in selection(p["package_ids"]):
-                    if self.pack(c,ctx,pid,True)["stock_location_id"]!=p["source_store_id"]:
+                    if self.pack(c,ctx,pid,True)["stock_location_id"] not in {p["source_store_id"],p["dest_store_id"]}:
                         fail(403,"包装不在来源仓")
         elif op=="batch":
             r=self.plan_row(c,ctx,p["plan_id"],True)
@@ -311,7 +316,7 @@ class DWorker:
         else:
             if r["state"] not in {"DISPATCHED","PARTIAL_RECEIVED"} or not r["sent_at"] or r["sent_at"]>ctx["now"]:
                 fail(409,"配送尚未发出或已结束")
-            accepted=selection(p["accepted_ids"]); held=selection(p["hold_ids"]); reasons=p["exception_reasons"]
+            accepted=selection(p["accepted_ids"],allow_empty=True); held=selection(p["hold_ids"],allow_empty=True); reasons=p["exception_reasons"]
             if set(reasons)!=set(held):fail(422,"隔离须逐件登记原因")
             by_id={f.package_id:(f,x) for f,x in zip(facts,packs)}
             if any(by_id[pid][1]["recall_reason"] for pid in accepted if pid in by_id):fail(409,"召回包装不得合格签收")
@@ -396,7 +401,7 @@ class DWorker:
                 def authorize(c):
                     ctx=self.context(c,token,write=True,payload=p)
                     state.update(ctx=ctx,resource=self.scope(c,ctx,operation,p))
-                    return ctx["legal"]+"/"+ctx["actor"]
+                    return sha256(dump([ctx["legal"],ctx["actor"]]).encode()).hexdigest()
                 def mutate(c):
                     ctx=state["ctx"]; resource=state["resource"]
                     if operation=="plan":
