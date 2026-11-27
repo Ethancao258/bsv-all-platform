@@ -54,6 +54,7 @@ function enableCentral(){
   if(workspace!=='inspector'&&centralRoles('dispatch','receive'))views.push(['shipment','配送与签收']);
   if(workspace!=='inspector'&&centralRoles('dispatch','receive'))views.push(['inventory','库存与效期']);
   if(workspace!=='inspector'&&centralRoles('receive','dispatch'))views.push(['tasks','上下班待办']);
+  if(state.mode==='remote'&&workspace==='hq'&&centralRoles('receive')&&centralRoles('dispatch'))views.push(['opening','历史期初库存']);
   if(centralRoles('dispatch','receive','inspect_independent','review_independent'))views.push(['exceptions','异常与督查']);
   if(!views.length||!state.stores.length)return;
   const store=state.stores.find(x=>x.kind!=='warehouse')||state.stores[0];
@@ -154,6 +155,7 @@ async function showCentralView(){
     if(view==='shipment')await showCentralShipments(current);
     if(view==='inventory'||view==='labels')await showCentralInventory(view,current);
     if(view==='tasks')await showCentralTasks(current);
+    if(view==='opening')await showCentralOpening(current);
     if(view==='exceptions')await showCentralExceptions(current);
   }catch(error){
     if(current()){
@@ -608,4 +610,24 @@ function openCentralPrint(html){
     finally{button.disabled=false;}
   };
   $('central-print-dialog').showModal();
+}
+
+async function showCentralOpening(current){
+  const result=await centralRead('opening-candidates');
+  if(!current())return;
+  const items=centralEntries(result,'items');
+  const content=$('central-content');
+  const rows=items.map(r=>[
+    `<label><input type="checkbox" name="opening" value="${escapeHtml(r.evidence_id)}" ${r.approved===true&&r.not_already_accounted===true?'':'disabled'}> ${escapeHtml(r.evidence_id)}</label>`,
+    escapeHtml(r.item_id),escapeHtml(r.package_id),escapeHtml(r.remaining+' '+r.unit),escapeHtml(beijingTime(r.expires_at)),escapeHtml(r.approval_reference||'待核验')
+  ]);
+  content.innerHTML=`<form id="central-opening"><p class="hint">仅显示库存所有者批准的最近实盘凭证。未知效期、重复台账或无凭证物料不得作为可用库存入账。</p>${centralTable(['凭证','物料','包装','实盘余量','死期','批准引用'],rows)}<button type="submit" class="primary" ${items.length?'':'disabled'}>确认所选期初库存</button></form>`;
+  const form=$('central-opening');
+  form.onsubmit=busyCentral(form,async values=>{
+    const ids=form.querySelectorAll('input[name="opening"]:checked');
+    if(!ids.length)throw Error('请选择期初凭证。');
+    await centralWrite('opening-import',{store_id:centralStore(),evidence_ids:Array.from(ids,x=>x.value)});
+    message('期初库存已由权威台账确认。');
+    await showCentralView();
+  });
 }
