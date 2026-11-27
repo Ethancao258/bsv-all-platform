@@ -49,3 +49,10 @@
 ### 本期不能做的事
 
 不得把样本表结构当作 CloudBase 当前10表的真实形状；不得自动迁移生产数据库、迁移实际资金业务、覆盖旧 BSV1 服务、自动将私密原始素材推到 GitHub，或让各AI维护第二份独立主数据。
+
+
+## BSV ALL 五年底层架构｜2026–2031 Enterprise Architecture Foundation
+
+[五年架构总纲、系统图、数据库、API、权限、部署与AI交接](docs/architecture/five-year-foundation/BSV_ALL_2026_2031_ENTERPRISE_ARCHITECTURE_FOUNDATION.md) · [持续功能与议案清单](docs/architecture/BSV_ALL_LIVING_MODULE_REGISTER.md)
+
+状态：FOUNDATION-1.0-RC1，待治理批准及实机核实；不代表生产已上线，不解冻当前发布。
