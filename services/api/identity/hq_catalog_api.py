@@ -71,11 +71,21 @@ def private_root():
 
 def active_source():
     from bsv_catalog_config import get_excel_path
-    from bsv_catalog_repository import PostgresCatalogReadRepository, postgres_catalog_enabled
-    if not postgres_catalog_enabled() or not os.getenv("BSV_CATALOG_DIR"):
+    from bsv_catalog_repository import PostgresCatalogReadRepository
+    from services.api.shared.data_contracts import resolve_database
+    from urllib.parse import urlsplit
+    dsn = os.getenv("BSV_HQ_CATALOG_READ_DB_URL", "").strip()
+    if not dsn or not os.getenv("BSV_CATALOG_DIR"):
         fail("SOURCE_NOT_CONFIGURED", "未接通经批准的PG目录及原始Excel版本。", 503)
     try:
-        source = PostgresCatalogReadRepository().source()
+        # Dedicated read-only connection alias to the same registered central DB;
+        # never change the identity.A URL or silently fall back to another database.
+        if resolve_database(module="pos", environ={"BSV_DB_URL": dsn})["kind"] != "central":
+            fail("SOURCE_NOT_CONFIGURED", "目录连接不是登记的统一数据库。", 503)
+        dsn = dsn.replace("postgresql+psycopg://", "postgresql://", 1)
+        if urlsplit(dsn).hostname not in {"localhost", "127.0.0.1", "::1"}:
+            fail("SOURCE_NOT_CONFIGURED", "隔离目录只允许本机受控PG连接。", 503)
+        source = PostgresCatalogReadRepository(dsn=dsn).source()
         digest = source["sha256"]
         path = get_excel_path()
         if not HEX.fullmatch(digest) or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
@@ -104,13 +114,16 @@ def check_draft(body, rows, active):
         if not HEX.fullmatch(body.record_id) or body.record_id == active or body.fields or body.domain:
             fail("BAD_TARGET", "请填写不同于当前版本的目标SHA。", 422)
         return
+    if body.domain == "T":
+        fail("STORE_READ_ONLY", "门店主数据只能由原组织管理模块维护。", 403)
     if body.domain not in tuple(PREFIXES):
         fail("BAD_DOMAIN", "资料分类无效。", 422)
     if len(body.fields) > 30 or any(k not in EDIT_FIELDS or not v.strip() or len(v)>4000 for k,v in body.fields.items()):
         fail("BAD_FIELDS", "包含未开放、空白或过长字段。", 422)
     page = next((v for k,v in rows.items() if k.startswith(body.domain+"_")), [])
     if body.kind == "create":
-        if body.record_id or not body.fields:
+        name_field = {"C":"商品名称", "P":"半成品名称", "M":"物料名称", "K":"套餐名称", "R":"工序名称", "Q":"核准售价"}[body.domain]
+        if body.record_id or not body.fields.get(name_field, "").strip():
             fail("ID_ALLOCATION_REQUIRED", "新增仅提交草稿，永久编号由统一分配器核定。", 422)
     else:
         if not re.fullmatch(body.domain+r"\d{6}", body.record_id) or not any(x["id"]==body.record_id for x in page):
@@ -244,7 +257,7 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
     def css():
         return FileResponse(hq / "catalog.css", media_type="text/css")
 
-    @app.get("/api/v1/hq/catalog/status")
+    @app.get("/api/v1/hq/catalog/status", include_in_schema=False)
     def status(request: Request):
         entity, tr = actor(request, "read")
         path, digest = active_source()
@@ -253,7 +266,7 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
                 "counts":{k[0]:len(v) for k,v in rows.items()},
                 "activation":"BLOCKED_PACKAGE_CONVERTER_AND_PG_APPROVAL"}
 
-    @app.get("/api/v1/hq/catalog/records")
+    @app.get("/api/v1/hq/catalog/records", include_in_schema=False)
     def records(request: Request, domain: str="C", q: str="", offset: int=0):
         actor(request, "read")
         if domain not in tuple(PREFIXES) or len(q)>100 or not 0<=offset<=100000:
@@ -265,7 +278,7 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
         data = [x for x in data if q in x["id"].casefold() or q in x["name"].casefold()]
         return {"active_sha256":digest, "total":len(data), "items":data[offset:offset+100]}
 
-    @app.post("/api/v1/hq/catalog/preview")
+    @app.post("/api/v1/hq/catalog/preview", include_in_schema=False)
     async def preview(request: Request):
         await run_in_threadpool(actor,request,"draft")
         if request.headers.get("content-type","").split(";")[0] != "application/octet-stream":
@@ -278,7 +291,7 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
         path, digest = await run_in_threadpool(active_source)
         return await run_in_threadpool(inspect_upload, bytes(content), path, digest)
 
-    @app.post("/api/v1/hq/catalog/excel-drafts")
+    @app.post("/api/v1/hq/catalog/excel-drafts", include_in_schema=False)
     async def excel_draft(request: Request):
         entity,tr = await run_in_threadpool(actor,request,"draft")
         if request.headers.get("content-type","").split(";")[0] != "application/octet-stream":
@@ -317,19 +330,26 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
                     "source_sha256":expected,"preview":result,"reason":"Excel批量资料变更"})
         return await run_in_threadpool(persist)
 
-    @app.get("/api/v1/hq/catalog/drafts")
+    @app.get("/api/v1/hq/catalog/drafts", include_in_schema=False)
     def drafts(request: Request):
-        entity,_ = actor(request,"draft")
+        # Queue visibility is not inherited from the general read-only grant.
+        from domains.workforce.identity.core import DomainError
+        try:
+            entity,_ = actor(request,"draft")
+        except DomainError as exc:
+            if exc.status != 403:
+                raise
+            entity,_ = actor(request,"review")
         return {"items":list_drafts(private_root(),entity)[:100]}
 
-    @app.post("/api/v1/hq/catalog/drafts")
+    @app.post("/api/v1/hq/catalog/drafts", include_in_schema=False)
     def create(request: Request, body: Draft):
         entity,tr = actor(request,"draft")
         path,digest = active_source()
         check_draft(body,rows_for(path),digest)
         return new_draft(private_root(),entity,tr,body.model_dump())
 
-    @app.post("/api/v1/hq/catalog/drafts/{key}/review")
+    @app.post("/api/v1/hq/catalog/drafts/{key}/review", include_in_schema=False)
     def review(request: Request, key: str, body: Review):
         entity,tr = actor(request,"review")
         _,digest=active_source()

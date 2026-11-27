@@ -2,7 +2,7 @@
 独立基线 2052ef51f011be3c5898d816932d8982f420b752（PR #40）；选取 PR #42 的只读校验器和单元测试，不合并整条旧分支。沿用 identity.A、统一会话、CSRF、HQ 工作台和既有 catalog PG 读取。新页面 /hq/catalog；接口 /api/v1/hq/catalog/*。无新端口、数据库、登录或POS写入者。
  
 ## 隔离启用（不部署正式）
-在 #58 唯一集成工作树由 C 确认运行基线后，逐文件核对增量，严禁覆盖本地更新。仅现有 isolated identity 服务配置 BSV_HQ_CATALOG_ENABLE=1、BSV_HQ_CATALOG_LEGAL_ENTITY_ID（已核验法人）、BSV_IMPORT_ROOT（已有私有目录，同服务账号0700）、BSV_CATALOG_DIR（现有私有原始版本目录）、BSV_CATALOG_READ_SOURCE=postgres、BSV_APP_ENV=isolated，以及现有受限同库 PG reader BSV_DB_URL（核实不会改变 identity.A 数据源；不匹配则先解决连接别名，不改原身份库）。BSV_HQ_CATALOG_SCANNER 是既有受审的本地扫描器绝对路径，参数为文件路径，0表示干净，任何其他状态拒绝；不设置假扫描器。现有 ingress 4MiB 上限不扩大全站限制。通过原身份授权工作流分别授予 hq.catalog.read/draft/review（HQ、同法人、双人审批，不从地图权限派生）。本分支无预设授权。真实生产模式仍拒绝。
+在 #58 唯一集成工作树由 C 确认运行基线后，逐文件核对增量，严禁覆盖本地更新。仅现有 isolated identity 服务配置 BSV_HQ_CATALOG_ENABLE=1、BSV_HQ_CATALOG_LEGAL_ENTITY_ID（已核验法人）、BSV_IMPORT_ROOT（已有私有目录，同服务账号0700）、BSV_CATALOG_DIR（现有私有原始版本目录）、BSV_APP_ENV=isolated，以及 BSV_HQ_CATALOG_READ_DB_URL（仅用经核验的现有同库PG17目录只读连接，数据库名必须为注册的 bsv_all_prod；该别名不修改 identity.A 的任何连接配置）。BSV_HQ_CATALOG_SCANNER 是既有受审的本地扫描器绝对路径，参数为文件路径，0表示干净，任何其他状态拒绝；不设置假扫描器。现有 ingress 4MiB 上限不扩大全站限制。通过原身份授权工作流分别授予 hq.catalog.read/draft/review（HQ、同法人、双人审批，不从地图权限派生）。本分支无预设授权。真实生产模式仍拒绝。
  
 ## 已编写
 - 工作台和总部入口、移动端页面、C/P/M/K/R/Q/T 搜索分页、有限安全字段展示；原始Excel与PG活动SHA核验。

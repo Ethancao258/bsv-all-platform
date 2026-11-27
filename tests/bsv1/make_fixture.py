@@ -18,6 +18,7 @@ def write_fixture(path, *, approved=True, product_count=63, first_name=None, ext
         ("T_门店注册", "网点记录ID"),
     )
     with ZipFile(path, "w") as archive:
+        archive.writestr("[Content_Types].xml", '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>')
         for i, (page, label) in enumerate(pages, 1):
             target = f"sheet{i}.xml"
             ref = f"rId{i}"

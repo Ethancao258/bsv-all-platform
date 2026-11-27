@@ -56,6 +56,16 @@ def _validate_xlsx_bytes(content: bytes) -> None:
                 raise ValueError("工作簿含外部链接或嵌入对象，已拒绝预览")
             if any(name.lower().endswith("vbaproject.bin") for name in names):
                 raise ValueError("不接受含宏的工作簿")
+            # Reject entities and all external relationship targets before any XML parser.
+            for item in infos:
+                if item.filename.lower().endswith((".xml", ".rels")):
+                    raw = archive.read(item)
+                    if b"\x00" in raw or b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
+                        raise ValueError("工作簿XML含不支持的编码或实体声明")
+                    if item.filename.lower().endswith(".rels"):
+                        rels = ET.fromstring(raw)
+                        if any(str(x.get("TargetMode", "")).lower() == "external" for x in rels):
+                            raise ValueError("工作簿包含外部关系")
             bad = archive.testzip()
             if bad:
                 raise ValueError("Excel压缩包CRC校验失败")

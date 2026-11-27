@@ -49,7 +49,7 @@ function renderEdit(){
 }
 async function draft(){
  const kind=$("kind").value,fields={};for(const x of $("fields").querySelectorAll("textarea"))if(x.value.trim()&&(kind==="create"||x.value!==x.dataset.original))fields[x.dataset.field]=x.value;
- const result=await call("/drafts","POST",{kind,domain:$("domain").value,record_id:kind==="create"?"":$("record").value,fields,reason:$("reason").value});
+ const result=await call("/drafts","POST",{kind,baseline_sha256:active,domain:$("domain").value,record_id:kind==="create"?"":$("record").value,fields,reason:$("reason").value});
  say("草稿已提交："+result.id+"；未生效。");$("reason").value="";await drafts();
 }
 async function preview(){
@@ -57,7 +57,7 @@ async function preview(){
  const file=$("file").files[0];if(!file||!file.name.toLowerCase().endsWith(".xlsx"))throw Error("请选择.xlsx文件。");
  if(file.size>4*1024*1024)throw Error("文件超过当前4 MiB上限。");
  const d=await call("/preview","POST",file,true);
- if(d.baseline_sha256!==active)throw Error("活动版本已改变，请刷新。");
+ if(d.baseline_sha256!==active||$("file").files[0]!==file)throw Error("活动版本或所选文件已改变，请重新预览。");
  excel={file,data:d};$("diff").append(el("h3",statusLabels[d.status]||d.status));
  for(const [key,label] of [["added","新增"],["modified","修改"],["pending_retire","待退役"],["formula_cells","公式变化"]]){
  const rows=d.changes[key]||[];$("diff").append(el("p",label+"："+rows.length));for(const x of rows.slice(0,50))$("diff").append(el("p",typeof x==="string"?x:x.sheet+" / "+x.record_id+" "+(x.changed_fields||[]).join("、")));
