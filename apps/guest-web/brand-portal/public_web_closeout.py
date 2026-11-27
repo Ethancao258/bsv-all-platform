@@ -71,7 +71,8 @@ def audit():
         get(origin+"/cocktail/data/menu-public.json",{200},mime=["application/json"],parse_json=True)
         for p in ("/hq","/staff","/api/state","/api/history","/member/"):
             get(origin+p,{403,404})
-    get(ADMIN+"/",{401})
+    # V1.6 unified identity serves a public login shell; authorization is enforced by protected APIs.
+    get(ADMIN+"/",{200},mime=["text/html"])
     get(ADMIN+"/api/state",{401,403})
     for origin in (BASE,MENU):
         get(origin.replace("https:","http:")+"/cocktail/?from=qr",{301,308},target=origin+"/cocktail/?from=qr")
