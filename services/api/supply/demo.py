@@ -40,8 +40,6 @@ class DemoCentral:
         with self._conn() as c:
             c.executescript('''
             CREATE TABLE IF NOT EXISTS shipments(id TEXT PRIMARY KEY,src TEXT,dest TEXT,state TEXT,version INTEGER,created_by TEXT,created_at TEXT);
-            CREATE TABLE IF NOT EXISTS demo_central_shipments(id TEXT PRIMARY KEY REFERENCES shipments(id),
-                eta TEXT NOT NULL,sent_at TEXT,sender_id TEXT,dispatched TEXT,arrived_at TEXT);
             CREATE TABLE IF NOT EXISTS packages(code TEXT PRIMARY KEY, shipment_id TEXT,item_id TEXT,state TEXT,FOREIGN KEY(shipment_id) REFERENCES shipments(id));
             CREATE TABLE IF NOT EXISTS balances(location TEXT,item_id TEXT,qty INTEGER NOT NULL CHECK(qty>=0), PRIMARY KEY(location,item_id));
             CREATE TABLE IF NOT EXISTS movements(id TEXT PRIMARY KEY,shipment_id TEXT,item_id TEXT,src TEXT,dest TEXT,qty INTEGER,occurred_at TEXT,actor_id TEXT);
@@ -105,15 +103,23 @@ class DemoCentral:
         c.execute('INSERT INTO movements VALUES (?,?,?,?,?,?,?,?)',(str(uuid.uuid4()),sid,item,src,dest,qty,utc(),actor_id))
     def _pack(self,c,sid):
         return [dict(x) for x in c.execute('SELECT code,item_id,state,batch_id FROM packages WHERE shipment_id=? ORDER BY code',(sid,))]
+    @staticmethod
+    def _central_schema(c):
+        return c.execute(
+            "SELECT 1 FROM sqlite_schema WHERE type='table' AND name='demo_central_shipments'"
+        ).fetchone() is not None
+    def _central_shipment(self,c,sid):
+        return self._central_schema(c) and c.execute(
+            "SELECT 1 FROM demo_central_shipments WHERE id=?", (sid,)
+        ).fetchone() is not None
     def view(self,sid,actor):
         with self.lock,self._conn() as c:
-            row=c.execute('''SELECT s.*,c.id IS NOT NULL AS central_production
-                             FROM shipments s LEFT JOIN demo_central_shipments c USING(id)
-                             WHERE s.id=?''',(sid,)).fetchone()
+            row=c.execute("SELECT * FROM shipments WHERE id=?", (sid,)).fetchone()
             if not row:fail(404,'配送单不存在')
             s=dict(row)
             if s['src'] not in actor['stores'] and s['dest'] not in actor['stores']:fail(403,'无该单据权限')
             packs=self._pack(c,sid)
+            s['central_production']=self._central_shipment(c,sid)
             s['packages']=packs
             s['expected_count']=len(packs)
             s['received_count']=(
@@ -124,9 +130,15 @@ class DemoCentral:
     def list(self,actor,store_id=None):
         if store_id and store_id not in actor['stores']:fail(403,'无该网点权限')
         with self.lock,self._conn() as c:
-            r=[dict(x) for x in c.execute('''SELECT s.*,c.id IS NOT NULL AS central_production
-                                            FROM shipments s LEFT JOIN demo_central_shipments c USING(id)
-                                            ORDER BY s.created_at DESC LIMIT 100''')]
+            ids = set()
+            if self._central_schema(c):
+                ids = {row[0] for row in c.execute(
+                    "SELECT c.id FROM demo_central_shipments c JOIN shipments s USING(id) "
+                    "ORDER BY s.created_at DESC LIMIT 100"
+                )}
+            r=[{**dict(x), 'central_production': x['id'] in ids} for x in c.execute(
+                "SELECT * FROM shipments ORDER BY created_at DESC LIMIT 100"
+            )]
         return [x for x in r if (x['src'] in actor['stores'] or x['dest'] in actor['stores']) and
                 (not store_id or x['src']==store_id or x['dest']==store_id)]
     def inventory(self,actor,store_id):
@@ -159,7 +171,7 @@ class DemoCentral:
                     if shipment is None:fail(404,'配送单不存在')
                     self.authorize(actor,'receive' if op=='receive' else 'dispatch',
                                    shipment['dest'] if op=='receive' else shipment['src'])
-                    if c.execute('SELECT 1 FROM demo_central_shipments WHERE id=?',(sid,)).fetchone():
+                    if self._central_shipment(c,sid):
                         fail(409,'生产配送单须使用逐件中央生产操作')
                 old=self._idem(c,rid,fp)
                 if old is not None:c.execute('COMMIT');return old

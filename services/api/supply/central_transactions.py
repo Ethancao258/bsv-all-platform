@@ -30,6 +30,10 @@ DEMO_POLICY = {
 }
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS demo_central_shipments (
+    id TEXT PRIMARY KEY REFERENCES shipments(id), eta TEXT NOT NULL,
+    sent_at TEXT, sender_id TEXT, dispatched TEXT, arrived_at TEXT
+);
 CREATE TABLE IF NOT EXISTS demo_central_plans (
     id TEXT PRIMARY KEY, source TEXT NOT NULL, destination TEXT NOT NULL,
     item_id TEXT NOT NULL, facts TEXT NOT NULL
