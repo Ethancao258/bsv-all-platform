@@ -7,7 +7,6 @@ from pathlib import Path
 from bsv_v9_import import unpack_v9,cents_from_price,VALID_PUBLISH
 from bsv_catalog_import import _connect,_active_source,sha256
 from bsv_catalog_live import require_live_layout,live_enabled
-from psycopg.types.json import Jsonb
 
 ID=re.compile(r"C\d{6}")
 
@@ -60,6 +59,7 @@ def legacy_ids(path):
     return {key for key,_ in rows}
 
 def prepare_release(draft,source,pos_db):
+    from psycopg.types.json import Jsonb
     if not live_enabled():raise PermissionError("production sale release disabled")
     pages,_,_,_=unpack_v9(source)
     digest=sha256(source)
@@ -189,3 +189,43 @@ def execute_sale(draft,source,pos_db,menu_path):
     return {"status":"SALE_ACTIVE","draft_id":draft["id"],"sale_release_id":release["id"],
             "source_sha256":release["source_sha256"],"sellable_count":len(release["items"]),
             "pos_projection":"VERIFIED","menu_origin":"VERIFIED","edge_cache":"NOT_VERIFIED"}
+
+
+def sale_record_state(draft_id):
+    conn=_connect()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT status FROM catalog.sale_release WHERE draft_id=%s",(draft_id,))
+            row=cur.fetchone()
+            return row[0] if row else None
+    finally:conn.close()
+
+def archive_for_projection(source,catalog_dir,digest):
+    """Stable, private exact-byte source readable by the existing POS owner."""
+    import shutil
+    root=Path(catalog_dir);versions=root/"versions"
+    if not root.is_absolute() or root.is_symlink() or not root.is_dir() or root.stat().st_mode&0o077:
+        raise ValueError("私有版本目录异常")
+    versions.mkdir(mode=0o700,exist_ok=True)
+    if versions.is_symlink() or versions.stat().st_mode&0o077:raise ValueError("私有版本子目录异常")
+    owner=root.stat()
+    if os.geteuid()==0:os.chown(versions,owner.st_uid,owner.st_gid)
+    target=versions/(digest+".xlsx")
+    if target.exists():
+        if target.is_symlink() or sha256(target)!=digest:raise ValueError("历史版本冲突")
+        return target
+    fd,temp=tempfile.mkstemp(prefix=".live-catalog-",dir=versions)
+    try:
+        with os.fdopen(fd,"wb") as out,Path(source).open("rb") as inp:
+            os.fchmod(out.fileno(),0o600)
+            if os.geteuid()==0:os.fchown(out.fileno(),owner.st_uid,owner.st_gid)
+            shutil.copyfileobj(inp,out);out.flush();os.fsync(out.fileno())
+        if sha256(Path(temp))!=digest:raise ValueError("来源在复制过程中改变")
+        try:os.link(temp,target)
+        except FileExistsError:
+            if target.is_symlink() or sha256(target)!=digest:raise ValueError("版本冲突")
+        fd=os.open(versions,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+    finally:Path(temp).unlink(missing_ok=True)
+    return target

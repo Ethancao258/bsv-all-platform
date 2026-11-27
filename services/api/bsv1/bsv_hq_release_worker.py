@@ -27,6 +27,14 @@ def policy(path):
         changes=subprocess.check_output(["git","-C",str(repo),"status","--porcelain","--untracked-files=no"],text=True,timeout=5).strip()
     except (OSError,subprocess.SubprocessError) as exc:raise PermissionError("approved Git worktree required") from exc
     if head!=info["approved_git_sha"] or changes:raise PermissionError("running source is not the clean approved revision")
+    if live_enabled():
+        for directory in (repo,repo/"services",repo/"services/api",repo/"services/api/bsv1",repo/"services/api/identity",repo/"domains",repo/"config"):
+            st=directory.stat()
+            if directory.is_symlink() or st.st_uid!=0 or st.st_mode&0o022:raise PermissionError("untrusted production source directory")
+        for directory in (repo/"services",repo/"domains",repo/"config"):
+            for path in directory.rglob("*"):
+                st=path.lstat()
+                if path.is_symlink() or st.st_uid!=0 or st.st_mode&0o022:raise PermissionError("untrusted production source file")
     return info
 
 def run_once(info):
@@ -50,11 +58,12 @@ def run_once(info):
             try:
                 if d["kind"]=="sale":
                     from bsv_catalog_live import live_enabled
-                    from bsv_hq_live_sale import execute_sale
+                    from bsv_hq_live_sale import execute_sale,archive_for_projection
                     from bsv_hq_release import read_draft,require_grants,assert_source
                     if not live_enabled():raise PermissionError("正式销售发布未启用")
                     d=read_draft(root,key);require_grants(d)
                     source=assert_source(d["baseline_sha256"],root,catalog)
+                    source=archive_for_projection(source,catalog,d["baseline_sha256"])
                     result=execute_sale(d,source,Path(info["pos_database"]),Path(info["public_menu_json"]))
                     receipt(root,key,result);return result
                 if approval.exists():raise RuntimeError("prior signing attempt")
@@ -64,7 +73,14 @@ def run_once(info):
                     args.rollback_archive=Path(archive)
                 return execute(args)
             except Exception as exc:
-                result={"status":"RELEASE_RECONCILIATION_REQUIRED" if approval.exists() or d.get("kind")=="sale" else "RELEASE_BLOCKED",
+                if d.get("kind")=="sale":
+                    try:
+                        from bsv_hq_live_sale import sale_record_state
+                        if sale_record_state(key) in {"PENDING_PROJECTION","ACTIVE"}:
+                            return {"status":"SALE_RETRY_PENDING","draft_id":key,"error_type":type(exc).__name__}
+                    except Exception:
+                        return {"status":"SALE_STATE_UNAVAILABLE","draft_id":key,"error_type":type(exc).__name__}
+                result={"status":"RELEASE_RECONCILIATION_REQUIRED" if approval.exists() else "RELEASE_BLOCKED",
                         "draft_id":key,"error_type":type(exc).__name__}
                 if not (root/(key+".release.json")).exists():receipt(root,key,result)
                 return result

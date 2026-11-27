@@ -23,5 +23,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS sale_single_active ON catalog.sale_release((1)
 CREATE UNIQUE INDEX IF NOT EXISTS sale_single_pending ON catalog.sale_release((1)) WHERE status='PENDING_PROJECTION';
 REVOKE ALL ON catalog.sale_release FROM PUBLIC;
 GRANT SELECT,INSERT,UPDATE ON catalog.sale_release TO bsv_catalog_importer;
-GRANT SELECT (release_id,source_sha256,status,activated_at) ON catalog.sale_release TO bsv_catalog_reader;
+GRANT SELECT (release_id,source_sha256,status,activated_at,items) ON catalog.sale_release TO bsv_catalog_reader;
 COMMIT;
