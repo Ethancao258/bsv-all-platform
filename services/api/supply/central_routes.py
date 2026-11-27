@@ -175,7 +175,7 @@ def central_router(*, mode, demo, enabled, gateway, actor, token_of):
     @router.get("/{kind}")
     def snapshot(kind: str, request: Request, store_id: Reference | None = None,
                  shipment_id: Reference | None = None, phase: Literal["START", "END"] = "START",
-                 package_ids: Annotated[PackageIds | None, Query()] = None, current=Depends(actor)):
+                 package_ids: list[Reference] | None = Query(None, min_length=1, max_length=100), current=Depends(actor)):
         return {"data": read(kind, request, current, store_id, shipment_id, package_ids, phase)}
 
     @router.post("/{operation}")
@@ -221,7 +221,7 @@ def central_router(*, mode, demo, enabled, gateway, actor, token_of):
     @router.get("/print/{document}", response_class=HTMLResponse)
     def print_document(document: Literal["arrival", "expiry", "labels"], request: Request,
                        store_id: Reference | None = None, shipment_id: Reference | None = None,
-                       package_ids: Annotated[PackageIds | None, Query()] = None, current=Depends(actor)):
+                       package_ids: list[Reference] | None = Query(None, min_length=1, max_length=100), current=Depends(actor)):
         from .central_print import render_arrival, render_expiry, render_labels
         now = datetime.now(timezone.utc)
         if document == "labels" and not package_ids:
