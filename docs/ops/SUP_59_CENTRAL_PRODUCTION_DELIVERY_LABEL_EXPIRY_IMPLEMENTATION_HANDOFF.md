@@ -54,3 +54,16 @@ D事务顺序：实时服务端身份授权→幂等键与请求摘要检查（�
 - PostgreSQL 17 当前文档 https://www.postgresql.org/docs/17/explicit-locking.html ：行锁用于并发事务，不替代应用幂等。
 - AWS当前事务outbox指导 https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html ：业务记录及事件同事务、消费去重。
 这些是当前规范和实现指导，不是第三方对BSV的认证。实际部署、许可、保质期、设备、D后端及业务效果均待验。
+
+## 7. 本轮实际代码接口与尚未实现项（接管时不要重写）
+|函数|已提供的能力|调用前必须满足|
+|---|---|---|
+|ApprovedRule / expiry|批准时长、开封及早期限、精确时刻|由catalog适配器验证规则版本；禁止客户端自行批准|
+|validate_split / quantity|Decimal、单位、逐瓶总量与损耗闭合|D事务中锁住批次，保证原料与包装关系|
+|PackageFact / available|只读事实、剩余量与当前禁用判断|真实D快照，召回/开封更新有效截止时间|
+|receipt_intent|部分签收、跨店/重复/过期拒绝、隔离意图|D事务内锁单与包装，核权、召回/质量、真实数量；不直接接HTTP|
+|arrival_sheet / expiry_sheet|A4 HTML投影、已提交签收、旧库存与日期排序|授权且一致的D快照；demo默认开启；正式输出还需完整字段与设备验收|
+|shipment_reconciliation|计划、合格、隔离、未确认逐单位对账|已发货不可变清单与实际签收快照；用于补齐到货表差异区|
+|label_preview|50×40mm文字版式、实际装量、制作及死期|仅预览，必须加实际二维码、批准字段、源信息并验证HPRT；不是打印结果|
+|shift_due|稳定死期任务候选|真实班次与service_ops upsert、另接ETA及闭店交接|
+尚未实现：真实D存储事务、批准catalog适配、HTTP路由/前端接线、正式打印二维码/设备、A4整合分页/日期分组与版本失效、班次/通知接线、AI草稿和POS扣库。不得声称整个系统已可使用。接管执行人按第5节落地并独立核查这些缺口。当前候选不含真实数据/凭据/迁移/新服务。
