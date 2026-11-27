@@ -65,3 +65,17 @@ def test_printing():
     with pytest.raises(ValueError): arrival_sheet([{**row,"committed":False}],store_id=p.store_id,as_of=T,revision="1")
     with pytest.raises(ValueError): arrival_sheet([row,row],store_id=p.store_id,as_of=T,revision="1")
     with pytest.raises(ValueError): arrival_sheet([{**row,"accepted":"451"}],store_id=p.store_id,as_of=T,revision="1")
+
+def test_label_and_reconciliation():
+    from services.api.supply.central_production_rules import label_preview, shipment_reconciliation
+    p=pack(state="READY"); q=pack("synthetic-2","350")
+    label=label_preview(p,as_of=T)
+    assert "50mm 40mm" in label and "死期" in label and "非正式标签" in label
+    with pytest.raises(ValueError): label_preview(p,as_of=p.expires_at)
+    with pytest.raises(ValueError): receipt_intent([q],[q.package_id],[],store_id=q.store_id,now=T-timedelta(seconds=1))
+    row=dict(package=replace(p,state="ACCEPTED"),accepted="450",held="0",committed=True,
+        source_store_id="SYNTH-WH",sender_id="synthetic-sender",receiver_id="synthetic-receiver",
+        sent_at=T,received_at=T)
+    result=shipment_reconciliation([p,q],[row],store_id=p.store_id,as_of=T,revision="1")
+    assert "计划800 / 合格450 / 隔离0 / 未确认350" in result
+    with pytest.raises(ValueError): shipment_reconciliation([q],[row],store_id=p.store_id,as_of=T,revision="1")
