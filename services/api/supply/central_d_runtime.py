@@ -81,7 +81,11 @@ def consume_ingredients(c,ctx,policy,lots,total,batch,source,produced_at):
     for item,row in required.items():
         # No hidden rounding or mixing units. Unsupported fractional quantities
         # require the owner to publish an approved recipe with usable precision.
-        demand[item]=quantity(row["amount"]*ratio,row["unit"])
+        scaled=row["amount"]*ratio
+        canonical=scaled.quantize(Decimal("0.0001"))
+        if canonical*output!=row["amount"]*total:
+            refuse(409,"批准配方投入不能精确表示为基础单位四位小数")
+        demand[item]=quantity(canonical,row["unit"])
     if not lots or len(set(lots))!=len(lots):
         refuse(422,"须选择唯一的原料批次")
     selected=rows(c,"""SELECT * FROM supply.stock_lot WHERE legal_entity_id=%s AND stock_lot_id=ANY(%s)

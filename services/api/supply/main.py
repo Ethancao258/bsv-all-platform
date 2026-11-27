@@ -137,7 +137,11 @@ async def actor(request: Request):
     if not header.startswith('Bearer ') or not header[7:].strip():raise HTTPException(401,'请使用公司统一身份令牌')
     token=header[7:].strip()
     try:
-        res=gateway.read('B','/auth/me',user_token=token,allow_cache=False)
+        extra={}
+        if (settings.mode=='remote' and web_origin() and request.cookies.get('bsv_identity_session')
+                and request.method not in {'GET','HEAD'}):
+            extra['csrf_proof']=request.headers.get('X-CSRF-Token','')
+        res=gateway.read('B','/auth/me',user_token=token,allow_cache=False,**extra)
         me=res['data']
     except (Unreachable,KeyError):raise HTTPException(503,'公司身份服务不可用，拒绝新授权操作')
     if (not isinstance(me,dict) or any(not isinstance(me.get(k),str) or not me[k] for k in ('employee_id','department_id'))

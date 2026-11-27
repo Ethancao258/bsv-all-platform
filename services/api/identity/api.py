@@ -713,11 +713,24 @@ def hq_layout_session(body: HqLayoutSessionCheck, request: Request):
 def supply_identity(request: Request):
     conf = require_integration_service(request, "supply")
     legal = conf.get("legal_entity_id")
-    if settings.env == "production":
-        raise DomainError("Organization connector requires production acceptance", 503, "ORG_CONNECTOR_LOCKED")
     departments = conf.get("department_by_tr", {})
+    stores = conf.get("stores", [])
+    if settings.env == "production":
+        # C publishes one pinned, current, approved organization projection.
+        # Never use the isolated fixture or a stale directory as production proof.
+        from services.api.supply.central_source_adapter import organization_from_env
+        try:
+            organization = organization_from_env()
+            if legal not in settings.registration_entities or legal != organization["legal_entity_id"]:
+                raise ValueError("organization legal scope mismatch")
+            departments = organization["department_by_tr"]
+            stores = [s["store_id"] for s in organization["stores"] if s["store_id"] in stores]
+        except (ValueError, OSError, KeyError, TypeError):
+            raise DomainError("Organization connector requires current approved production scope", 503, "ORG_CONNECTOR_LOCKED")
     with router.session() as db:
         session = bearer_session(request, db)
+        if "X-CSRF-Token" in request.headers:
+            verify_csrf(session, request.headers["X-CSRF-Token"])
         person = person_for_subject(db, session.subject)
         department = departments.get(person.tr_code) if person else None
         if (person and not department and settings.env == "isolated"
@@ -726,7 +739,7 @@ def supply_identity(request: Request):
         if not legal or not department:
             raise DomainError("Organization reference unavailable", 403, "FORBIDDEN")
         role_stores = {
-            role: [store for store in conf.get("stores", [])
+            role: [store for store in stores
                    if has_action(db, session.subject, action, store, legal)]
             for role, action in SUPPLY_ROLE_ACTIONS.items() if action in conf.get("actions", [])
         }

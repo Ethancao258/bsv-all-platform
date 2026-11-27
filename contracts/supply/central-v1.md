@@ -48,3 +48,6 @@ GET 返回表内 JSON 对象本身。PackageFact 字段以 `central_production_r
 ### 可启动 D 权威服务候选与原料实际扣库
 `central_d_runtime.create_authority_app` 为显式启用的 ASGI factory，不自动迁移、不建立新数据源。若现有 D 服务已存在，应把 `d_router` 安装在原 D 应用内，复用其真正 stock_lot / audit / outbox 表；仅在确定没有对应事实所有者实现并经批准后，才按候选方案映射。当前参考 SQL 的 `supply.stock_lot` 及 `event_audit` 扩展仅用于可执行隔离测试，不授权正式新建表。
 A 批准视图须额外提供 `yield_amount`（按产出单位）、`recipe_inputs:[{material_id,unit,amount}]`（按该产出量的基础单位投入量，每个物料合并为一行）。C 主源返回已确认的 `legal_entity_id` 与 `approved:true`；不接受演示仓。程序以实际分装前总产量按批准配方比例计算投入，在被选择的实际原料批次中按FEFO扣减，拒绝未知/过期/隔离/跨仓/单位不符/数量不足/无效多余批次；与产出、D 流水、幂等、审计及 outbox 同事务提交。非精确四位小数投入须批准规则处理，不自行舍入。G 消费现有 outbox；未送达不修改库存事实。启动环境需要既有已批准的私有 D DSN 和 service token、远程 A/B/C、准确 schema，并显式 `BSV_SUP59_D_AUTHORITY_ENABLED=1` 与 `BSV_SUP59_D_SCHEMA_REVIEWED=1`；不能用开关替代正式授权或实际迁移审核。
+
+### A/C 既有主数据所有者接线及工作台
+`central_source_adapter.CatalogPolicyAdapter` 直接使用已有 catalog repository 的固定 P/M ID 与当前 source SHA；经所有者批准、SHA 固定的结构化规则投影是原目录发布物，不是第二套主数据。不得根据自由文本保质期推定规则；原 P 生产标准未批准、配方输入无真实物料、目录版本改变或投影校验失败，均拒绝。A 在原服务挂载 catalog_router；C 在原组织服务挂载 organization_router。C 的获准组织投影由同一权威来源发布，包含真实法人、仓/店、TR 到部门映射、as_of/valid_until、批准引用、SHA（有效期最长72小时，按实际源刷新）；B 正式授权使用此同一当前投影且继续实时核对员工及 grant，未配置仍拒绝生产。统一浏览器写请求的 CSRF 除入口 Host/Origin/双提交校验，还转 B 校验实际会话。原工作台在供货台账真实可读取且已登录时展示授权门店待办，不伪造班次、完成或通知。C/身份/目录的正式 owner 与真实发布资料仍须确认，不得用测试投影上线。

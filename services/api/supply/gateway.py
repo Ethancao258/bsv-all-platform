@@ -15,8 +15,13 @@ class Gateway:
     def _url(base,path):
         if not path.startswith('/') or '://' in path or '..' in path:raise ValueError('非法路径')
         return base+path
-    def read(self,key,path,*,user_token=None,params=None,allow_cache=True,permission_scope="",primary_only=False):
+    def read(self,key,path,*,user_token=None,params=None,allow_cache=True,permission_scope="",primary_only=False,csrf_proof=None):
         src=self.settings.sources[key]
+        headers=auth_header(src,user_token)
+        if csrf_proof is not None:
+            if key!="B" or path!="/auth/me" or allow_cache:
+                raise ValueError("browser CSRF proof may only go to live B identity")
+            headers["X-CSRF-Token"]=csrf_proof
         q=httpx.QueryParams(params or {})
         # Cache must be scoped by the caller's credential fingerprint to prevent cross-employee data leaks.
         # A fresh user token yields a new cache identity; credentials themselves are never persisted.
@@ -28,7 +33,7 @@ class Gateway:
             if not base:continue
             try:
                 with httpx.Client(timeout=self.settings.timeout_seconds,follow_redirects=False,trust_env=False) as client:
-                    r=client.get(self._url(base,path),params=params,headers=auth_header(src,user_token))
+                    r=client.get(self._url(base,path),params=params,headers=headers)
                 if r.status_code in (401,403):raise HTTPException(r.status_code,'上游拒绝授权')
                 if 400<=r.status_code<500:raise HTTPException(r.status_code,'上游请求失败: '+str(r.status_code))
                 r.raise_for_status()
