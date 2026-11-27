@@ -48,7 +48,7 @@ function centralTable(headers,rows){
 }
 
 function enableCentral(){
-  if(!state.centralCandidate||internal||state.mode==='internal-stage')return;
+  if(!state.centralCandidate||state.mode==='internal-stage')return;
   const views=[];
   if(workspace==='hq'&&centralRoles('dispatch'))views.push(['plan','补货及制作'],['labels','物料标签']);
   if(workspace!=='inspector'&&centralRoles('dispatch','receive'))views.push(['shipment','配送与签收']);
@@ -142,7 +142,7 @@ function busyCentral(control,callback){
 }
 
 async function showCentralView(){
-  if(!state.centralCandidate||internal)return;
+  if(!state.centralCandidate||state.mode==='internal-stage')return;
   const revision=++central.revision;
   const content=$('central-content');
   const current=()=>revision===central.revision;

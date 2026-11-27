@@ -1,7 +1,8 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>BSV｜中央供货与库存</title><link rel="stylesheet" href="/assets/style.css"></head><body>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>BSV｜中央供货与库存</title><link rel="stylesheet" href="/assets/style.css"></head><body class="loading">
 <header><div class="brand"><span class="mark">BSV</span><div><strong>中央供货与库存</strong><small>BSV ALL · 统一数据模块</small></div></div><div class="pill" id="mode">检查连接中…</div></header>
 <div class="shell"><aside><nav id="nav"><button data-tab="tasks" class="active">▦　待办与配送</button><button data-tab="create">＋　建立配送单</button><button data-tab="stock">▤　库存查询</button><button data-tab="inspect">☑　门店快检</button><button data-tab="central" hidden>中央生产与签收</button><button data-tab="sources">⌁　数据源状态</button></nav><div class="aside-info"><p>操作说明</p><span>总部生成单据 → 扫码出库 → 门店扫码收货。图片识别只能辅助，必须人工确认。</span></div></aside>
 <main><div id="feedback" role="status" aria-live="polite"></div>
+<section class="panel hidden boot-error" id="boot-error"><h1>暂时无法进入供货系统</h1><p id="boot-error-text" role="alert"></p><div class="actions"><button id="boot-retry" type="button">重新连接</button><a href="/">返回统一工作台</a><a href="/staff">进入个人中心</a></div></section>
 <section class="panel hidden" id="stage-limits" aria-labelledby="stage-title">
   <div class="heading"><div><h1 id="stage-title">供货与库存</h1><p id="stage-availability" role="status" aria-live="polite">正在核对服务与权限…</p></div></div>
   <div id="stage-authorization" class="stage-auth"></div>

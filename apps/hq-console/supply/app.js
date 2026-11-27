@@ -3,21 +3,20 @@ const $ = id=>document.getElementById(id);
 const state={me:null,stores:[],items:[],shipment:null,scanned:new Set(),camStream:null,camTimer:null,tab:'tasks',mode:'demo'};
 const zhState={DRAFT:'草稿',READY:'待发货',DISPATCHED:'在途',PARTIAL_RECEIVED:'部分收货',RECEIVED:'已收齐',DISPUTED:'有差异',CLOSED:'已结案'};
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const internal=location.pathname.startsWith('/supply-ui/');
+const namespaced=location.pathname.startsWith('/supply-ui/');
 const workspace=location.pathname.includes('/inspector/')?'inspector':location.pathname.includes('/store/')?'store':'hq';
 const uid=()=>crypto.randomUUID();
 function message(s,bad=false){let d=$('feedback');d.className='show '+(bad?'bad':'good');d.textContent=s;}
 async function req(path,opts={}){
  let headers={...opts.headers};if(opts.body&&! (opts.body instanceof FormData))headers['Content-Type']='application/json';
- if(state.mode==='remote'&&state.token)headers.Authorization='Bearer '+state.token;
  if(state.mode==='demo'&&(state.demoActor||(workspace==='inspector'?'DEMO-E03':workspace==='store'?'DEMO-E02':null)))headers['X-Demo-Actor']=(state.demoActor||(workspace==='inspector'?'DEMO-E03':workspace==='store'?'DEMO-E02':null));
- if(internal&&opts.method&&opts.method!=='GET'){
+ if((namespaced||state.webSession)&&opts.method&&opts.method!=='GET'){
   const csrf=document.cookie.split('; ').find(x=>x.startsWith('bsv_csrf='));
   if(csrf)headers['X-CSRF-Token']=csrf.slice('bsv_csrf='.length);
  }
  const writing=opts.method&&opts.method!=='GET';
  let r;
- try{r=await fetch((internal?'/supply-ui':'')+'/api'+path,{signal:AbortSignal.timeout(11000),...opts,headers});}
+ try{r=await fetch((namespaced?'/supply-ui':'')+'/api'+path,{signal:AbortSignal.timeout(11000),...opts,headers});}
  catch{throw Error(writing?'结果暂未确认。请先查看记录，再决定是否重试。':'暂时无法获取结果。请检查连接后重试。');}
  if(opts.response==='html'&&r.ok&&r.headers.get('content-type')?.includes('text/html'))return r.text();
  const j=await r.json().catch(()=>null);
@@ -39,7 +38,35 @@ async function req(path,opts={}){
 function on(id,evt,fn){$(id).addEventListener(evt,fn);}
 function tab(k){if(state.camStream&&state.tab!==k)stopCamera();state.tab=k;document.querySelectorAll('.panel').forEach(x=>x.classList.add('hidden'));$('panel-'+k).classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===k));if(k==='stock')loadInventory();if(k==='sources')loadSources();if(k==='inspect')loadInspections();if(k==='central')showCentralView();}
 function opts(items,placeholder){return `${placeholder?'<option value="">'+placeholder+'</option>':''}${items.map(x=>`<option value="${escapeHtml(x.store_id)}">${escapeHtml(x.name_zh)} (${escapeHtml(x.store_id)})</option>`).join('')}`;}
-async function boot(){if(internal)return internalReadOnly();try{let h=await req('/health');state.mode=h.mode;state.centralCandidate=h.central_candidate===true;$('mode').textContent=h.mode==='demo'?'独立演示 · 非生产':'公司中央 API 模式';if(state.mode==='remote'){let t=prompt('请输入公司统一身份令牌（仅本次页面内存持有，不保存至浏览器）');if(!t)return message('未登录：生产模式需要统一身份令牌。',true);state.token=t;}state.me=await req('/me');configureWorkspace();let [a,b]=await Promise.all([req('/stores'),req('/items')]);state.stores=a.data||[];state.items=b.data||[];let o=opts(state.stores);['filter-store','stock-store'].forEach(id=>$(id).innerHTML='<option value="">全部授权网点</option>'+o);['source-store','dest-store','inspect-store','count-store'].forEach(id=>$(id).innerHTML=o);$('count-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)}</option>`).join('');$('create-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)} · ${escapeHtml(x.item_id)}</option>`).join('');if(state.centralCandidate)enableCentral();if(workspace==='inspector')tab('inspect');else loadShipments();}catch(e){message(e.message,true);}}
+async function boot(){
+ document.body.classList.add('loading');
+ try{
+   const h=await req('/health');
+   state.mode=h.mode;state.centralCandidate=h.central_candidate===true;state.webSession=h.web_session===true;
+   if(h.mode==='internal-stage'){document.body.classList.remove('loading');return await internalReadOnly();}
+   if(h.mode==='remote'&&(!state.webSession||!namespaced))throw Error('正式供货须从公司统一工作台进入，当前入口尚未开放。');
+   $('mode').textContent=h.mode==='demo'?'独立演示 · 非生产':'公司中央 API 模式';
+   state.me=await req('/me');
+   configureWorkspace();
+   const [a,b]=await Promise.all([req('/stores'),req('/items')]);
+   state.stores=a.data||[];state.items=b.data||[];
+   const o=opts(state.stores);
+   ['filter-store','stock-store'].forEach(id=>$(id).innerHTML='<option value="">全部授权网点</option>'+o);
+   ['source-store','dest-store','inspect-store','count-store'].forEach(id=>$(id).innerHTML=o);
+   $('count-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)}</option>`).join('');
+   $('create-item').innerHTML=state.items.map(x=>`<option value="${escapeHtml(x.item_id)}">${escapeHtml(x.name_zh)} · ${escapeHtml(x.item_id)}</option>`).join('');
+   if(state.centralCandidate)enableCentral();
+   if(state.centralCandidate&&!document.querySelector('[data-tab="central"]').hidden&&workspace!=='inspector')tab('central');
+   else if(workspace==='inspector')tab('inspect');
+   else loadShipments();
+   document.body.classList.remove('loading');
+ }catch(e){
+   $('mode').textContent='连接或授权未就绪';
+   $('boot-error').classList.remove('hidden');
+   $('boot-error-text').textContent=e.message;
+   message(e.message,true);
+ }
+}
 async function internalReadOnly(){
  const inspector=workspace==='inspector';
  const title=inspector?'独立督查':'供货与库存';
@@ -96,6 +123,7 @@ async function internalReadOnly(){
  }
 }
 $('stage-refresh').onclick=internalReadOnly;
+$('boot-retry').onclick=()=>location.reload();
 function configureWorkspace(){
  const roles=state.me.roles||[];
  const sections=workspace==='inspector'?['inspect','sources']:

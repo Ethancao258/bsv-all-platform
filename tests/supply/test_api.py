@@ -33,3 +33,34 @@ def test_remote_guard_is_example():
     try:
         with pytest.raises(ValueError):load_settings()
     finally:os.environ.pop('BSV_MODE',None)
+
+
+def test_unified_remote_cookie_requires_exact_origin_and_csrf(monkeypatch):
+    from dataclasses import replace
+    from services.api.supply import main
+    from starlette.requests import Request
+    from fastapi import HTTPException
+    import pytest
+    monkeypatch.setattr(main, "settings", replace(main.settings, mode="remote"))
+    monkeypatch.setenv("BSV_SUPPLY_WEB_ORIGIN", "https://admin.example.test")
+    def req(method, host="admin.example.test", origin="https://admin.example.test", csrf="nonce",
+            cookie="bsv_identity_session=synthetic; bsv_csrf=nonce", auth=""):
+        return Request({"type":"http","method":method,"scheme":"http","path":"/api/me",
+                        "headers":[(k.encode(),v.encode()) for k,v in
+                                   {"host":host,"origin":origin,"x-csrf-token":csrf,
+                                    "cookie":cookie,"authorization":auth}.items()]})
+    assert main.session_header(req("GET")) == "Bearer synthetic"
+    assert main.session_header(req("POST")) == "Bearer synthetic"
+    for invalid in (req("POST", origin="https://wrong.test"), req("POST", origin=""),
+                    req("POST", csrf=""), req("POST", csrf="incorrect", auth="Bearer bypass"),
+                    req("GET", host="wrong.test")):
+        with pytest.raises(HTTPException) as e:
+            main.session_header(invalid)
+        assert e.value.status_code == 403
+    assert main.session_header(req("GET", cookie="", auth="Bearer service")) == "Bearer service"
+    with TestClient(main.app) as c:
+        assert 'href="/supply-ui/assets/style.css"' in c.get("/hq/supply").text
+        assert c.get("/api/health").json()["web_session"] is True
+    monkeypatch.setenv("BSV_SUPPLY_WEB_ORIGIN", "http://admin.example.test")
+    with pytest.raises(ValueError):
+        main.web_origin()

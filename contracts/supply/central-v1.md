@@ -36,3 +36,6 @@ GET 返回表内 JSON 对象本身。PackageFact 字段以 `central_production_r
 
 ### 正常耗用增量
 `POST /supply/central/v1/consume` 接受 request_id、store_id、package_id、expected_version、amount（正十进制字符串，单位取正式包装）。D 在同一事务内实时核验收货操作权限、对象归属、已开封、合格、未过期、未召回、版本、剩余量及幂等。扣减实际耗用并记录 CONSUMED 流水，不作为报损，不改变原签收事实或效期；余量为零仍保留 ACCEPTED 历史状态，投影为不可用。禁止借此写假 POS 订单。浏览器、演示实现及测试候选已增量提供；实际 D 权威实现必须遵循现有正式 schema，不得用 demo 账本替代。
+
+### 统一工作台 HTTPS 会话（候选）
+正式供货页面通过原 `/supply-ui/` 命名空间进入，配置 `BSV_MODE=remote` 与 `BSV_SUPPLY_WEB_ORIGIN=https://<已批准正式管理域名>`。沿用 `bsv_identity_session` HttpOnly cookie、`bsv_csrf` 及 `X-CSRF-Token`；写入须精确匹配配置 Origin 与 Host。内部入口需原样转发 Host/Origin/cookie/CSRF，不依赖伪造 scheme。身份 B 实时授权仍为前提；当前 B production connector 尚有独立门禁，不因此放宽。API bearer 调用者兼容保留；浏览器不再弹令牌输入。未接通、无授权时隐藏操作区、提供重试及返回统一工作台。原 internal-stage 保持只读，demo 不挂正式域名。本候选不改共享网关或工作台配置，待 C 获准集成后接入。

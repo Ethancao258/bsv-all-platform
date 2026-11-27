@@ -4,6 +4,7 @@ import hashlib, hmac, json, os, re, uuid
 from typing import Literal
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -88,6 +89,18 @@ def demo_actor(request: Request):
     return demo.actor(name)
 
 
+def web_origin():
+    """Explicit opt-in to the unified HTTPS gateway. Never enable demo access."""
+    value = os.environ.get("BSV_SUPPLY_WEB_ORIGIN", "")
+    if not value:
+        return ""
+    parsed = urlsplit(value)
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+            or parsed.path or parsed.query or parsed.fragment or value != f"https://{parsed.netloc}"):
+        raise ValueError("BSV_SUPPLY_WEB_ORIGIN must be an exact HTTPS origin")
+    return value
+
+
 def session_header(request: Request):
     if settings.mode == 'internal-stage':
         cookie = request.cookies.get('bsv_identity_session', '')
@@ -99,6 +112,21 @@ def session_header(request: Request):
                     origin and origin != f'{request.url.scheme}://{request.url.netloc}'):
                 raise HTTPException(403, '内部测试会话 CSRF 校验失败')
         return 'Bearer ' + cookie if cookie else ''
+    if settings.mode == "remote" and web_origin():
+        cookie = request.cookies.get("bsv_identity_session", "")
+        # Bearer-only service consumers retain the existing API contract.
+        # Browser requests carrying a session must never bypass CSRF via a header.
+        if cookie:
+            origin = web_origin()
+            if request.headers.get("host", "").lower() != urlsplit(origin).netloc.lower():
+                raise HTTPException(403, "统一工作台主机不匹配")
+            if request.method not in {"GET", "HEAD"}:
+                csrf = request.headers.get("X-CSRF-Token", "")
+                expected = request.cookies.get("bsv_csrf", "")
+                if (request.headers.get("Origin") != origin or not csrf or not expected
+                        or not hmac.compare_digest(csrf.encode(), expected.encode())):
+                    raise HTTPException(403, "统一工作台 CSRF 校验失败")
+            return "Bearer " + cookie
     return request.headers.get('Authorization', '')
 
 
@@ -162,14 +190,14 @@ app.include_router(central_router(mode=settings.mode, demo=demo, enabled=central
 @app.get('/inspector/supply',response_class=HTMLResponse)
 def index():
     page = (ROOT/'apps/hq-console/supply/index.html').read_text('utf-8')
-    if settings.mode == 'internal-stage':
+    if settings.mode == 'internal-stage' or (settings.mode == 'remote' and web_origin()):
         return page.replace('"/assets/', '"/supply-ui/assets/')
     return page
 
 @app.get('/api/health')
 def health():
     return {"status":"OK","mode":settings.mode,"version":"2.0.0","production_connected":False if settings.mode != 'remote' else 'NOT_VERIFIED',
-            "central_candidate":central_enabled, "source_aliases":{k:{'name':v.name,'configured':bool(v.primary and '.invalid' not in v.primary),
+            "central_candidate":central_enabled, "web_session":bool(settings.mode == "remote" and web_origin()), "source_aliases":{k:{'name':v.name,'configured':bool(v.primary and '.invalid' not in v.primary),
                            'standby_read':bool(v.standby_read)} for k,v in settings.sources.items()}}
 
 @app.get('/api/me')
