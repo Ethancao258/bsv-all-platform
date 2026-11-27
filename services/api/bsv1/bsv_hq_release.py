@@ -193,7 +193,7 @@ def main():
     p.add_argument("--draft-root",type=Path,required=True);p.add_argument("--draft-id",required=True)
     p.add_argument("--approval-dir",type=Path,required=True);p.add_argument("--catalog-dir",type=Path,required=True)
     p.add_argument("--rollback-archive",type=Path);p.add_argument("--apply",action="store_true")
-    p.add_argument("--confirm-isolated")
+    p.add_argument("--confirm-active-source","--confirm-isolated",dest="confirm_isolated")
     args=p.parse_args()
     try:print(json.dumps(execute(args),ensure_ascii=False,sort_keys=True));return 0
     except Exception as exc:

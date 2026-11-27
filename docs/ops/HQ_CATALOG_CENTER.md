@@ -1,3 +1,7 @@
+# 已被正式生产执行单替代
+
+当前唯一入口：[HQ_CATALOG_PRODUCTION.md](HQ_CATALOG_PRODUCTION.md)。以下为旧版本隔离交付的历史参考，不得按旧目标结束正式任务。
+
 # HQ-CATALOG-01｜总部商品与数据库管理中心：部署接管唯一入口（#63 / PR #64）
 
 状态：SOURCE_CANDIDATE / PRODUCTION_BLOCKED。此文替代旧版适配器说明。必须在 #58 唯一集成工作树增量接入，不解冻 #44 A/B，不阻断M1。GitHub公开仓库只含代码、合成测试和契约，不放经营资料、凭据、员工信息。真实主机没有由GitHub端验证。

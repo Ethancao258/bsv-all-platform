@@ -22,7 +22,15 @@ def main():
     p.add_argument("--enable",action="store_true")
     a=p.parse_args()
     if os.geteuid()!=0:raise PermissionError("root installation required")
-    repo=path(a.repo,"dir");python=path(a.python,"file")
+    repo=path(a.repo,"dir")
+    # Preserve the lexical venv executable path: resolving its symlink would
+    # run the system interpreter instead of the locked identity environment.
+    python=Path(a.python)
+    if not python.is_absolute() or not re.fullmatch(r"/[A-Za-z0-9_./-]+",str(python)) or not python.is_file() or not os.access(python,os.X_OK):
+        raise ValueError("verified identity Python executable required")
+    for pth in (python.parent,python.resolve(),python.parent.parent):
+        st=pth.stat()
+        if st.st_uid!=0 or st.st_mode&0o022:raise PermissionError("untrusted publisher Python")
     env=private_file(a.env);policy=private_file(a.policy);data=json.loads(policy.read_text())
     if data.get("status")!="APPROVED_PRODUCTION_CATALOG":raise PermissionError("not approved production policy")
     head=subprocess.check_output(["git","-C",str(repo),"rev-parse","HEAD"],text=True).strip()
@@ -49,7 +57,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ReadWritePaths={writable}
-TimeoutStartSec=180
+TimeoutStartSec=900
 """.format(repo=repo,env=env,python=python,source=source,policy=policy,writable=" ".join(map(str,writable)))
     timer="""[Unit]
 Description=BSV ALL catalog publication queue
