@@ -155,6 +155,8 @@ def expiry_rows(packages, *, store_id, now):
     for p in packages:
         if p.store_id!=store_id:
             raise ValueError("cross-store projection")
+        if aware(p.produced_at)>now:
+            raise ValueError("future production fact")
         if p.package_id in seen:
             raise ValueError("duplicate package projection")
         seen.add(p.package_id)
@@ -216,7 +218,7 @@ def arrival_sheet(receipts, *, store_id, as_of, revision, demo=True):
     totals_text=" / ".join(f"{v} {u}" for u,v in sorted(totals.items()))
     return _table(f"到货清单 · {store_id} · 合格实收合计 {totals_text}",["物料","批次","包装","装量","单位","合格","隔离","制作","死期","制作人","来源","发货人","发货时间","收货人","收货时间","储存","用法","签字"],rows,demo=demo,revision=revision,as_of=as_of)
 
-def label_preview(p, *, as_of, demo=True):
+def label_preview(p, *, as_of):
     """50x40 mm textual preview ONLY; actual approved device/QR adapter separate."""
     if p.state!="READY" or not aware(p.produced_at)<=aware(as_of)<aware(p.expires_at):
         raise ValueError("label release not eligible")
@@ -250,7 +252,7 @@ def shipment_reconciliation(expected_packages, receipts, *, store_id, as_of, rev
         accepted=held=Decimal(0)
         if r:
             q=r["package"]
-            if (q.item_id,q.batch_id,q.unit,q.amount)!=(p.item_id,p.batch_id,p.unit,p.amount):
+            if (q.item_id,q.batch_id,q.unit,q.amount,q.produced_at,q.rule_version)!=(p.item_id,p.batch_id,p.unit,p.amount,p.produced_at,p.rule_version):
                 raise ValueError("receipt disagrees with dispatch snapshot")
             accepted=quantity(r["accepted"],p.unit,zero=True)
             held=quantity(r["held"],p.unit,zero=True)
