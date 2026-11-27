@@ -91,6 +91,29 @@ class Consume(Open):
     amount: Amount
 
 
+class RawReceive(Command):
+    store_id: Reference
+    recipe_item_id: Reference
+    recipe_version: Reason
+    item_id: Reference
+    unit: Reason
+    amount: Amount
+    receipt_ref: Reason
+    supplier_lot_ref: Reason
+    expiry_evidence_ref: Reason
+    received_at: AwareDatetime
+    expires_at: AwareDatetime
+    unopened: Literal[True]
+    quality_accepted: Literal[True]
+
+
+class RawDispose(Command):
+    store_id: Reference
+    stock_lot_id: Reference
+    expected_version: Version
+    reason: Reason
+
+
 class OpeningImport(Command):
     store_id: Reference
     evidence_ids: PackageIds
@@ -106,7 +129,7 @@ class Label(Command):
 COMMANDS = {
     "plan-preview": PlanPreview, "plan": Plan, "batch": Batch, "create": ShipmentCreate,
     "prepare": Transition, "dispatch": Dispatch, "receive": Receipt, "open": Open,
-    "consume": Consume, "dispose": Dispose, "recall": Recall, "label": Label, "opening-import": OpeningImport,
+    "consume": Consume, "dispose": Dispose, "recall": Recall, "label": Label, "opening-import": OpeningImport, "raw-receive": RawReceive, "raw-dispose": RawDispose,
 }
 DISPATCH_COMMANDS = {"plan-preview", "plan", "batch", "create", "prepare", "dispatch", "recall", "label", "opening-import"}
 SNAPSHOTS = {"inventory", "shipment", "shipments", "labels", "tasks", "exceptions", "plans", "opening-candidates"}
@@ -208,8 +231,8 @@ def central_router(*, mode, demo, enabled, gateway, actor, token_of):
             raise HTTPException(422, "缺少配送单编号")
         roles = {"dispatch"} if operation in DISPATCH_COMMANDS else {"receive"}
         _authorized(current, roles, payload.get("source_store_id") or payload.get("store_id"))
-        if local and operation=="opening-import":
-            raise HTTPException(503,"历史期初库存仅可从真实D导入")
+        if local and operation in {"opening-import","raw-receive","raw-dispose"}:
+            raise HTTPException(503,"原料台账操作仅可在真实D执行")
         if local:
             try:
                 if operation == "plan-preview":

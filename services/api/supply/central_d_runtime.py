@@ -105,9 +105,14 @@ def consume_ingredients(c,ctx,policy,lots,total,batch,source,produced_at):
             continue
         demand[item]-=amount
         used.add(row["stock_lot_id"])
-        c.execute("""UPDATE supply.stock_lot SET remaining_base=remaining_base-%s,version=version+1
+        # The raw material policy currently attests unopened shelf life only.
+        # Residual quantity after opening is quarantined, not silently granted
+        # the supplier's unopened expiry. A later approved open-lot rule may
+        # permit release through an explicit quality workflow.
+        c.execute("""UPDATE supply.stock_lot SET remaining_base=remaining_base-%s,version=version+1,
+                  state=CASE WHEN remaining_base>%s THEN 'HOLD' ELSE state END
                   WHERE stock_lot_id=%s AND legal_entity_id=%s AND remaining_base>=%s""",
-                  (amount,row["stock_lot_id"],ctx["legal"],amount))
+                  (amount,amount,row["stock_lot_id"],ctx["legal"],amount))
         if c.rowcount!=1:
             refuse(409,"原料库存已变化")
         c.execute("""INSERT INTO supply.movement(movement_id,request_id,item_id,lot_id,
@@ -137,7 +142,7 @@ REQUIRED_COLUMNS={
     "supply.central_batch":{"batch_id","plan_id","facts"},
     "supply.central_receipt":{"shipment_id","package_id","facts"},
     "supply.central_print":{"request_id","package_id","operation"},
-    "supply.stock_lot":{"stock_lot_id","legal_entity_id","material_id","remaining_base","expires_at","opening_evidence_id"},
+    "supply.stock_lot":{"stock_lot_id","legal_entity_id","material_id","remaining_base","expires_at","opening_evidence_id","purchase_receipt_ref"},
     "supply.movement":{"movement_id","central_kind","qty_base"},
     "supply.idempotent_result":{"actor_scope","request_id","fingerprint","response"},
     "event_audit.supply_event":{"audit_event_id","request_id","facts"},

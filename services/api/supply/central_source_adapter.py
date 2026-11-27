@@ -109,9 +109,9 @@ class CatalogPolicyAdapter:
             material=ident(ingredient["material_id"])
             if not re.fullmatch(r"M[0-9]{6}",material) or material in material_ids:
                 raise ValueError("invalid or duplicate raw material stable ID")
-            self.record(material,revision)
+            material_record=self.record(material,revision)
             material_ids.add(material)
-            normalized.append(dict(material_id=material,unit=ingredient["unit"],amount=str(quantity(ingredient["amount"],ingredient["unit"]))))
+            normalized.append(dict(material_id=material,name=ident(material_record.get("name")),unit=ingredient["unit"],amount=str(quantity(ingredient["amount"],ingredient["unit"]))))
         return dict(item_id=item,name=ident(record.get("name")),approved=True,duration_basis="PRODUCED_AT",
                     rule_version=rule.version,elapsed_seconds=rule.elapsed_seconds,opened_seconds=rule.opened_seconds,
                     unit=unit,yield_amount=str(yield_amount),standard_amount=str(standard),recipe_inputs=normalized,
@@ -135,7 +135,8 @@ class CatalogPolicyAdapter:
             except (ValueError,TypeError,KeyError):
                 continue
             result.append(dict(item_id=p["item_id"],name_zh=p["name"],unit=p["unit"],package_size=p["standard_amount"],
-                               approved=True,track_package=True,stockable=True))
+                               approved=True,track_package=True,stockable=True,recipe_version=p["recipe_version"],
+                               raw_inputs=[dict(material_id=i["material_id"],name=i["name"],unit=i["unit"]) for i in p["recipe_inputs"]]))
         return result
 
 

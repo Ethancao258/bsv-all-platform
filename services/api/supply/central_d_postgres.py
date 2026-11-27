@@ -161,6 +161,8 @@ class DWorker:
                 for pid in selection(p["package_ids"]):
                     if self.pack(c,ctx,pid,True)["stock_location_id"] not in {p["source_store_id"],p["dest_store_id"]}:
                         fail(403,"包装不在来源仓")
+        elif op in {"raw-receive","raw-dispose"}:
+            self.permit(c,ctx,"receive",p["store_id"])
         elif op=="opening-import":
             self.permit(c,ctx,"dispatch",p["store_id"])
             self.permit(c,ctx,"receive",p["store_id"])
@@ -298,6 +300,45 @@ class DWorker:
             seen.add(eid)
             if eid not in existing:result.append(r)
         return result
+
+    def raw_receive(self,c,ctx,p):
+        policy=self.approved(c,ctx,p["recipe_item_id"])
+        ingredient=policy.get("recipe_inputs",{}).get(p["item_id"])
+        if not ingredient or ingredient["unit"]!=p["unit"] or p["recipe_version"]!=policy["recipe_version"]:
+            fail(409,"原料须对应当前批准配方及基础单位")
+        if p["unopened"] is not True or p["quality_accepted"] is not True:
+            fail(409,"不合格或非原包装原料不得入可用库")
+        amount=quantity(p["amount"],p["unit"])
+        received=at(p["received_at"]); end=at(p["expires_at"])
+        if not received<=ctx["now"]<end or (ctx["now"]-received).total_seconds()>86400:
+            fail(409,"收货需在24小时内登记且原包装有效")
+        ref=ident(p["receipt_ref"])
+        if rows(c,"SELECT stock_lot_id FROM supply.stock_lot WHERE legal_entity_id=%s AND purchase_receipt_ref=%s",(ctx["legal"],ref)):
+            fail(409,"该采购收货行已登记，请核对原批次")
+        lot=uid()
+        c.execute("""INSERT INTO supply.stock_lot(stock_lot_id,legal_entity_id,material_id,stock_location_id,
+            base_uom,remaining_base,received_at,expires_at,state,version,purchase_receipt_ref)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'ACCEPTED',1,%s)""",
+            (lot,ctx["legal"],p["item_id"],p["store_id"],p["unit"],amount,received,end,ref))
+        c.execute("""INSERT INTO supply.movement(movement_id,request_id,item_id,lot_id,from_location_id,
+            to_location_id,qty_base,actor_employee_id,occurred_at,central_kind)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'RAW_RECEIVED')""",
+            (uid(),ctx["rid"],p["item_id"],lot,"SUP59:SUPPLIER",p["store_id"],amount,ctx["actor"],ctx["now"]))
+        return dict(stock_lot_id=lot,item_id=p["item_id"],store_id=p["store_id"],unit=p["unit"],
+                    remaining=str(amount),expires_at=iso(end),state="ACCEPTED",version=1,receipt_ref=ref)
+
+    def raw_dispose(self,c,ctx,p):
+        row=one(c,"""SELECT * FROM supply.stock_lot WHERE legal_entity_id=%s AND stock_location_id=%s
+                    AND stock_lot_id=%s FOR UPDATE""",(ctx["legal"],p["store_id"],p["stock_lot_id"]))
+        amount=row["remaining_base"]
+        if row["version"]!=p["expected_version"] or amount<=0 or (row["state"]!="HOLD" and row["expires_at"]>ctx["now"]):
+            fail(409,"仅可处置隔离或已过期的原料余量，需当前版本")
+        c.execute("UPDATE supply.stock_lot SET remaining_base=0,state='SCRAPPED',version=version+1 WHERE stock_lot_id=%s",(row["stock_lot_id"],))
+        c.execute("""INSERT INTO supply.movement(movement_id,request_id,item_id,lot_id,from_location_id,
+            to_location_id,qty_base,actor_employee_id,occurred_at,central_kind)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'RAW_DISPOSED')""",
+            (uid(),ctx["rid"],row["material_id"],row["stock_lot_id"],p["store_id"],"SUP59:DISPOSED",amount,ctx["actor"],ctx["now"]))
+        return dict(stock_lot_id=row["stock_lot_id"],state="SCRAPPED",remaining="0",version=row["version"]+1,disposed=str(amount))
 
     def raw_opening(self,c,ctx,store,r):
         # Only an owner-approved, physically observed, unopened supplier lot.
@@ -512,6 +553,8 @@ class DWorker:
                                   (data["plan_id"],ctx["legal"],p["source_store_id"],p["dest_store_id"],p["item_id"],dump(data),ctx["now"]))
                     elif operation=="batch":data=self.release(c,ctx,p,resource)
                     elif operation=="opening-import":data=self.opening_import(c,ctx,p)
+                    elif operation=="raw-receive":data=self.raw_receive(c,ctx,p)
+                    elif operation=="raw-dispose":data=self.raw_dispose(c,ctx,p)
                     elif operation=="create":data=self.create(c,ctx,p)
                     elif operation in {"prepare","dispatch","receive"}:data=self.ship_step(c,ctx,operation,p,resource)
                     elif operation=="label":data=self.label(c,ctx,p)

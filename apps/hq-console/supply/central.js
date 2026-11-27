@@ -54,6 +54,7 @@ function enableCentral(){
   if(workspace!=='inspector'&&centralRoles('dispatch','receive'))views.push(['shipment','配送与签收']);
   if(workspace!=='inspector'&&centralRoles('dispatch','receive'))views.push(['inventory','库存与效期']);
   if(workspace!=='inspector'&&centralRoles('receive','dispatch'))views.push(['tasks','上下班待办']);
+  if(state.mode==='remote'&&workspace!=='inspector'&&centralRoles('receive'))views.push(['raw-receive','原料采购收货']);
   if(state.mode==='remote'&&workspace==='hq'&&centralRoles('receive')&&centralRoles('dispatch'))views.push(['opening','历史期初库存']);
   if(centralRoles('dispatch','receive','inspect_independent','review_independent'))views.push(['exceptions','异常与督查']);
   if(!views.length||!state.stores.length)return;
@@ -156,6 +157,7 @@ async function showCentralView(){
     if(view==='inventory'||view==='labels')await showCentralInventory(view,current);
     if(view==='tasks')await showCentralTasks(current);
     if(view==='opening')await showCentralOpening(current);
+    if(view==='raw-receive')await showRawReceive(current);
     if(view==='exceptions')await showCentralExceptions(current);
   }catch(error){
     if(current()){
@@ -472,7 +474,8 @@ async function showCentralInventory(view,current){
     <p class="hint">在打印窗口选 50 × 40 mm 和实际大小。核对实物与二维码后，再确认已经打印。</p></form>
     <div id="central-label-history-list"></div>`:
     `<div class="actions"><button type="button" id="central-expiry-print">打印 A4 效期与处置清单</button></div>
-      ${table}<div id="central-stock-action"></div>`;
+      ${table}<div id="central-stock-action"></div>${state.mode==='remote'?renderRawLots(snapshot,mayUpdate):''}`;
+  if(!labels&&state.mode==='remote')bindRawLots(snapshot);
   if(labels){
     const form=$('central-label-form');
     form.elements.print_request_id.value=central.lastPrintByStore.get(store)??'';
@@ -629,5 +632,68 @@ async function showCentralOpening(current){
     await centralWrite('opening-import',{store_id:centralStore(),evidence_ids:Array.from(ids,x=>x.value)});
     message('期初库存已由权威台账确认。');
     await showCentralView();
+  });
+}
+
+function renderRawLots(snapshot,mayUpdate){
+  const rows=centralEntries(snapshot,'raw_lots').map(x=>[
+    escapeHtml(x.item_id),escapeHtml(x.stock_lot_id),escapeHtml(x.remaining+' '+x.unit),
+    escapeHtml(beijingTime(x.expires_at)),escapeHtml(x.usable?'可用':x.state==='HOLD'?'隔离待处理':Number(x.remaining)===0?'已用完':zhCentral(x.state)),
+    mayUpdate&&Number(x.remaining)>0&&(x.state==='HOLD'||Date.parse(x.expires_at)<=Date.now())?
+      `<button type="button" data-raw-dispose="${escapeHtml(x.stock_lot_id)}">登记处置</button>`:'—'
+  ]);
+  return '<h3>原材料批次</h3>'+centralTable(['物料','批次','余量','原包装效期','状态','操作'],rows)+'<div id="raw-dispose-form"></div>';
+}
+function bindRawLots(snapshot){
+  document.querySelectorAll('[data-raw-dispose]').forEach(button=>button.onclick=()=>{
+    const lot=centralEntries(snapshot,'raw_lots').find(x=>x.stock_lot_id===button.dataset.rawDispose);
+    if(!lot)return;
+    const target=$('raw-dispose-form');
+    target.innerHTML=`<form id="raw-dispose-confirm"><p>确认实际处置 ${escapeHtml(lot.remaining+' '+lot.unit)}，不会自动恢复库存。</p>${formInput('reason','实际处置原因','text','required maxlength="200"')}${submitButton('确认实际处置')}</form>`;
+    const form=$('raw-dispose-confirm');
+    form.onsubmit=busyCentral(form,async values=>{
+      await centralWrite('raw-dispose',{store_id:centralStore(),stock_lot_id:lot.stock_lot_id,expected_version:lot.version,reason:values.reason});
+      message('已记录原料实际处置。');await showCentralView();
+    });
+  });
+}
+async function showRawReceive(current){
+  if(!current())return;
+  const content=$('central-content');
+  const recipes=state.items.filter(x=>x.approved===true&&Array.isArray(x.raw_inputs)&&x.raw_inputs.length&&x.recipe_version);
+  if(!recipes.length){content.textContent='暂无已批准的结构化投料规则，请先在总部商品管理中心完成审批。';return;}
+  content.innerHTML=`<form id="raw-receive-form">${fieldGroup('原包装采购收货',`
+    <div class="grid2">${selectField('recipe_item_id','对应已批准半成品',recipes.map(x=>selectOption(x.item_id,x.name_zh||x.item_id)).join(''))}
+    ${selectField('item_id','实际原料','')}
+    ${formAmount('amount','实际收货量（基础单位）','')}
+    <p id="raw-receive-unit" class="hint"></p>
+    ${formInput('receipt_ref','采购单号＋唯一行号','text','required maxlength="200"')}
+    ${formInput('supplier_lot_ref','供应商原包装批号','text','required maxlength="200"')}
+    ${formInput('expiry_evidence_ref','效期标签或凭证编号','text','required maxlength="200"')}
+    ${formInput('received_at','实际收货时间（北京时间）','datetime-local')}
+    ${formInput('expires_at','原包装有效期截止（北京时间）','datetime-local')}</div>
+    <label><input type="checkbox" name="unopened" required> 实际原包装未开封</label>
+    <label><input type="checkbox" name="quality_accepted" required> 已检查实物、效期及验收质量</label>
+    <p class="hint">未批准原料、无效期凭证或已开封物料不得进入可用库存。供应商效期不等同开封后的效期；原料批次部分耗用后的剩余量暂隔离。</p>
+    ${submitButton('确认实收并入库')}`)}</form>`;
+  const form=$('raw-receive-form');
+  const recipe=()=>recipes.find(x=>x.item_id===form.elements.recipe_item_id.value);
+  const ingredient=()=>recipe()?.raw_inputs.find(x=>x.material_id===form.elements.item_id.value);
+  function refresh(){
+    form.elements.item_id.innerHTML=recipe().raw_inputs.map(x=>selectOption(x.material_id,x.name||x.material_id)).join('');
+    $('raw-receive-unit').textContent='基础单位：'+ingredient().unit;
+  }
+  form.elements.recipe_item_id.onchange=refresh;
+  form.elements.item_id.onchange=()=>{$('raw-receive-unit').textContent='基础单位：'+ingredient().unit;};
+  refresh();form.elements.received_at.value=localNow();
+  form.onsubmit=busyCentral(form,async values=>{
+    const item=ingredient(),p=recipe();
+    if(!item||!p)throw Error('请选择批准原料。');
+    const result=await centralWrite('raw-receive',{store_id:centralStore(),recipe_item_id:p.item_id,recipe_version:p.recipe_version,
+      item_id:item.material_id,unit:item.unit,amount:values.amount,receipt_ref:values.receipt_ref,supplier_lot_ref:values.supplier_lot_ref,
+      expiry_evidence_ref:values.expiry_evidence_ref,received_at:localDateTime(values.received_at),expires_at:localDateTime(values.expires_at),
+      unopened:values.unopened==='on',quality_accepted:values.quality_accepted==='on'});
+    message('已确认原料入库，批次 '+result.stock_lot_id);
+    $('central-view').value='inventory';await showCentralView();
   });
 }

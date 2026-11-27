@@ -114,7 +114,7 @@ def test_real_postgres_complete_candidate_transaction(scenario):
     assert command("batch",**body)==batch
     first,second=[x["package_id"] for x in batch["packages"]]
     with connect() as c:
-        assert c.execute("SELECT remaining_base FROM supply.stock_lot").fetchone()[0]==3200
+        assert c.execute("SELECT remaining_base,state FROM supply.stock_lot").fetchone()==(3200,"HOLD")
     print_id=rid()
     command("label",request_id=print_id,package_ids=[first,second],store_id="WH",operation="PRINT")
     command("label",package_ids=[first,second],store_id="WH",operation="CONFIRM",print_request_id=print_id)
@@ -182,3 +182,21 @@ def test_real_postgres_complete_candidate_transaction(scenario):
     with connect() as c:
         assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='OPENING'").fetchone()[0]==80
         assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='RAW_OPENING'").fetchone()[0]==300
+
+    raw=dict(store_id="BSVS",recipe_item_id="SYNTH-P",recipe_version="R1",item_id="M001",unit="mL",amount="500",
+             receipt_ref="PO-1-LINE-1",supplier_lot_ref="SUP-1",expiry_evidence_ref="LABEL-1",
+             received_at=now[0].isoformat(),expires_at=(now[0]+timedelta(hours=2)).isoformat(),
+             unopened=True,quality_accepted=True,request_id=rid())
+    command("raw-receive",actor="other",expected=403,**raw)
+    command("raw-receive",actor="shop",expected=409,**{**raw,"unit":"g"})
+    purchase=command("raw-receive",actor="shop",**raw)
+    assert Decimal(purchase["remaining"])==500
+    assert command("raw-receive",actor="shop",**raw)==purchase
+    command("raw-receive",actor="shop",expected=409,**{**raw,"request_id":rid()})
+    command("raw-dispose",actor="shop",expected=409,store_id="BSVS",stock_lot_id=purchase["stock_lot_id"],expected_version=1,reason="fixture")
+    now[0]+=timedelta(hours=3)
+    disposed_raw=command("raw-dispose",actor="shop",store_id="BSVS",stock_lot_id=purchase["stock_lot_id"],expected_version=1,reason="fixture expired")
+    assert disposed_raw["state"]=="SCRAPPED" and Decimal(disposed_raw["disposed"])==500
+    with connect() as c:
+        assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='RAW_RECEIVED'").fetchone()[0]==500
+        assert c.execute("SELECT sum(qty_base) FROM supply.movement WHERE central_kind='RAW_DISPOSED'").fetchone()[0]==500

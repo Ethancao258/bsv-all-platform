@@ -86,6 +86,8 @@ CREATE TABLE supply.stock_lot (
  version integer NOT NULL CHECK(version>=1), opening_evidence_id text, CHECK(expires_at>received_at)
 );
 CREATE UNIQUE INDEX sup59_raw_opening_once ON supply.stock_lot(legal_entity_id,opening_evidence_id) WHERE opening_evidence_id IS NOT NULL;
+ALTER TABLE supply.stock_lot ADD COLUMN purchase_receipt_ref text;
+CREATE UNIQUE INDEX sup59_raw_purchase_once ON supply.stock_lot(legal_entity_id,purchase_receipt_ref) WHERE purchase_receipt_ref IS NOT NULL;
 CREATE SCHEMA event_audit;
 CREATE TABLE event_audit.supply_event (
  audit_event_id uuid PRIMARY KEY, legal_entity_id text NOT NULL, actor_employee_id text NOT NULL,
