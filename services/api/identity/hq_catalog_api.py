@@ -29,8 +29,22 @@ ACTIONS = {"read": "hq.catalog.read", "draft": "hq.catalog.draft", "review": "hq
 SAFE_FIELDS = {"商品名称", "半成品名称", "物料名称", "套餐名称", "商品ID", "半成品ID",
                "物料ID", "套餐ID", "门店ID", "配方文字", "完整制作步骤",
                "制作时长（秒）", "销售系列", "标注售价", "核准售价", "币种",
-               "销售渠道", "生效日期", "失效日期", "工序名称"}
+               "销售渠道", "生效日期", "失效日期", "工序名称", "记录名称", "报价名称",
+               "出品关联ID", "投入物料ID", "投料数量", "投料单位", "配方文字｜制作记录",
+               "完整制作步骤｜制作记录", "计价单位", "包装量", "包装单位", "保质期", "储存条件",
+               "运输条件", "套餐包含内容", "完整商品文案", "门店差异文案", "标注原价",
+               "区域参考售价", "核心参考售价", "规格量", "规格单位", "售卖扣减量",
+               "英文名称", "产品故事", "风味描述", "过敏原", "酒精属性", "成品图文件名"}
 EDIT_FIELDS = SAFE_FIELDS - {"商品ID", "半成品ID", "物料ID", "套餐ID", "门店ID"}
+
+def registered_fields(prefix, confidential=False):
+    from bsv_hq_workbook_package import MAIN,table_specs
+    permissions={"PUBLIC","INTERNAL"} | ({"CONFIDENTIAL"} if confidential else set())
+    return {s["source_header"] for _,s in table_specs()[MAIN[prefix]] if s["permission_class"] in permissions}
+
+def editable_fields(prefix):
+    fields=EDIT_FIELDS | ({"商品ID","门店ID"} if prefix=="Q" else set())
+    return fields & registered_fields(prefix,True)
 PREFIXES = "CPMKRQT"
 HEX = re.compile(r"[0-9a-f]{64}")
 DRAFT_ID = re.compile(r"[0-9a-f]{32}")
@@ -71,23 +85,20 @@ def private_root():
 
 def active_source():
     from bsv_catalog_config import get_excel_path
-    from bsv_catalog_repository import PostgresCatalogReadRepository
-    from services.api.shared.data_contracts import resolve_database
-    from urllib.parse import urlsplit
+    from bsv_hq_ids import repository
     dsn = os.getenv("BSV_HQ_CATALOG_READ_DB_URL", "").strip()
     if not dsn or not os.getenv("BSV_CATALOG_DIR"):
         fail("SOURCE_NOT_CONFIGURED", "未接通经批准的PG目录及原始Excel版本。", 503)
     try:
         # Dedicated read-only connection alias to the same registered central DB;
         # never change the identity.A URL or silently fall back to another database.
-        if resolve_database(module="pos", environ={"BSV_DB_URL": dsn})["kind"] != "central":
-            fail("SOURCE_NOT_CONFIGURED", "目录连接不是登记的统一数据库。", 503)
-        dsn = dsn.replace("postgresql+psycopg://", "postgresql://", 1)
-        if urlsplit(dsn).hostname not in {"localhost", "127.0.0.1", "::1"}:
-            fail("SOURCE_NOT_CONFIGURED", "隔离目录只允许本机受控PG连接。", 503)
-        source = PostgresCatalogReadRepository(dsn=dsn).source()
-        digest = source["sha256"]
-        path = get_excel_path()
+        source=repository().source()
+        digest=source["sha256"]
+        if not HEX.fullmatch(digest):fail("SOURCE_UNAVAILABLE","活动版本异常。",503)
+        local=Path(os.getenv("BSV_IMPORT_ROOT",""))/"hq-catalog-drafts"/(digest+".xlsx")
+        managed=Path(os.environ["BSV_CATALOG_DIR"])/"versions"/(digest+".xlsx")
+        path=next((p for p in (local,managed) if p.is_file() and not p.is_symlink()),None)
+        if path is None:path=get_excel_path()
         if not HEX.fullmatch(digest) or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
             fail("STALE_BASELINE", "Excel与PG活动版本不一致。", 409)
         return path, digest
@@ -101,9 +112,9 @@ def rows_for(path):
     rows, _, _, _ = unpack_v9(path)
     return rows
 
-def visible_record(row, prefix):
+def visible_record(row, prefix, confidential=False):
     return {"id": row["id"], "name": row["name"] if prefix in "CPMK" else row["id"],
-            "fields": {k:v for k,v in row["fields"].items() if k in SAFE_FIELDS}}
+            "fields": {k:v for k,v in row["fields"].items() if k in SAFE_FIELDS and k in registered_fields(prefix,confidential)}}
 
 def check_draft(body, rows, active):
     if body.baseline_sha256 != active:
@@ -118,13 +129,15 @@ def check_draft(body, rows, active):
         fail("STORE_READ_ONLY", "门店主数据只能由原组织管理模块维护。", 403)
     if body.domain not in tuple(PREFIXES):
         fail("BAD_DOMAIN", "资料分类无效。", 422)
-    if len(body.fields) > 30 or any(k not in EDIT_FIELDS or not v.strip() or len(v)>4000 for k,v in body.fields.items()):
+    if len(body.fields) > 30 or any(k not in editable_fields(body.domain) or not v.strip() or len(v)>4000 for k,v in body.fields.items()):
         fail("BAD_FIELDS", "包含未开放、空白或过长字段。", 422)
     page = next((v for k,v in rows.items() if k.startswith(body.domain+"_")), [])
     if body.kind == "create":
-        name_field = {"C":"商品名称", "P":"半成品名称", "M":"物料名称", "K":"套餐名称", "R":"工序名称", "Q":"核准售价"}[body.domain]
+        name_field = {"C":"商品名称", "P":"半成品名称", "M":"物料名称", "K":"套餐名称", "R":"记录名称", "Q":"报价名称"}[body.domain]
         if body.record_id or not body.fields.get(name_field, "").strip():
-            fail("ID_ALLOCATION_REQUIRED", "新增仅提交草稿，永久编号由统一分配器核定。", 422)
+            fail("ID_ALLOCATION_REQUIRED", "新增须填写名称，永久编号由后台分配。", 422)
+        required={"R":{"出品关联ID","投入物料ID","投料数量","投料单位"},"Q":{"商品ID","门店ID","核准售价","币种"}}.get(body.domain,set())
+        if not required.issubset(body.fields):fail("REQUIRED_FIELDS","缺少关联、数量或报价必需字段。",422)
     else:
         if not re.fullmatch(body.domain+r"\d{6}", body.record_id) or not any(x["id"]==body.record_id for x in page):
             fail("RECORD_NOT_FOUND", "未找到当前版本的固定编号。", 404)
@@ -239,10 +252,20 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
             fail("SCOPE_REQUIRED", "总部法人范围尚未配置。", 503)
         with router.session() as db:
             subject = grant_guard(request, db, ACTIONS[action], entity)
+            if action in {"draft","review"}:grant_guard(request,db,"hq.catalog.confidential",entity)
             person = person_for_subject(db, subject)
             if not person:
                 fail("AUTH_REQUIRED", "需要统一人员身份。", 403)
             return entity, person.tr_code
+
+    def can_confidential(request,entity):
+        from domains.workforce.identity.core import DomainError
+        with router.session() as db:
+            try:grant_guard(request,db,"hq.catalog.confidential",entity)
+            except DomainError as exc:
+                if exc.status==403:return False
+                raise
+            return True
 
     @app.get("/hq/catalog", include_in_schema=False)
     def page():
@@ -268,15 +291,16 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
 
     @app.get("/api/v1/hq/catalog/records", include_in_schema=False)
     def records(request: Request, domain: str="C", q: str="", offset: int=0):
-        actor(request, "read")
+        entity,_=actor(request, "read")
+        confidential=can_confidential(request,entity)
         if domain not in tuple(PREFIXES) or len(q)>100 or not 0<=offset<=100000:
             fail("BAD_QUERY", "筛选参数无效。", 422)
         path, digest = active_source()
         data = next(v for k,v in rows_for(path).items() if k.startswith(domain+"_"))
         q = q.casefold()
-        data = [visible_record(x,domain) for x in data]
+        data = [visible_record(x,domain,confidential) for x in data]
         data = [x for x in data if q in x["id"].casefold() or q in x["name"].casefold()]
-        return {"active_sha256":digest, "total":len(data), "items":data[offset:offset+100]}
+        return {"active_sha256":digest, "total":len(data), "items":data[offset:offset+100], "editable_fields":sorted(editable_fields(domain)) if confidential and domain!="T" else []}
 
     @app.post("/api/v1/hq/catalog/preview", include_in_schema=False)
     async def preview(request: Request):
@@ -326,9 +350,22 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
                 for item in list_drafts(root,entity):
                     if item.get("kind")=="excel" and item.get("source_sha256")==expected and item.get("baseline_sha256")==baseline:
                         return item
+                from bsv_hq_ids import allocate
+                added=[x["record_id"] for x in result["changes"]["added"]]
+                if added:
+                    try:allocate(root,None,tr,{row["id"] for group in rows_for(path).values() for row in group},requested=added)
+                    except ValueError:fail("ID_HISTORY_CONFLICT","上传含未核验或已使用的永久ID。")
                 return new_draft(root,entity,tr,{"kind":"excel","baseline_sha256":baseline,
                     "source_sha256":expected,"preview":result,"reason":"Excel批量资料变更"})
         return await run_in_threadpool(persist)
+
+    @app.get("/api/v1/hq/catalog/versions", include_in_schema=False)
+    def versions(request:Request):
+        actor(request,"read")
+        from bsv_hq_ids import repository
+        with repository()._connection() as conn,conn.cursor() as cur:
+            cur.execute("SELECT source_sha256,package_version,status,imported_at FROM audit.import_batch ORDER BY imported_at DESC LIMIT 100")
+            return {"items":[{"sha256":r[0].strip(),"version":r[1],"status":r[2],"imported_at":r[3].isoformat()} for r in cur.fetchall()]}
 
     @app.get("/api/v1/hq/catalog/drafts", include_in_schema=False)
     def drafts(request: Request):
@@ -346,8 +383,13 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
     def create(request: Request, body: Draft):
         entity,tr = actor(request,"draft")
         path,digest = active_source()
-        check_draft(body,rows_for(path),digest)
-        return new_draft(private_root(),entity,tr,body.model_dump())
+        rows=rows_for(path);check_draft(body,rows,digest)
+        root=private_root();payload=body.model_dump()
+        if body.kind=="create":
+            from bsv_hq_ids import allocate
+            try:payload["record_id"]=allocate(root,body.domain,tr,{row["id"] for group in rows.values() for row in group})[0]
+            except ValueError:fail("ID_HISTORY_REQUIRED","永久ID历史尚未核验或号段耗尽。",409)
+        return new_draft(root,entity,tr,payload)
 
     @app.post("/api/v1/hq/catalog/drafts/{key}/review", include_in_schema=False)
     def review(request: Request, key: str, body: Review):

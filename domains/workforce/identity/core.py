@@ -19,7 +19,7 @@ STAGES = {"TR": "TR", "EMP": "EMP", "BM": "BM"}
 MANAGEMENT_ACTIONS = frozenset({
     "hq.people.read", "people.verify", "people.approve", "engagement.manage",
     "hq.layout.read", "hq.layout.edit", "hq.layout.publish", "hq.store.register",
-    "hq.catalog.read", "hq.catalog.draft", "hq.catalog.review",
+    "hq.catalog.read", "hq.catalog.draft", "hq.catalog.review", "hq.catalog.confidential", "hq.catalog.release.request",
     "qualification.attest", "stage.request", "stage.issue", "stage.revoke",
     "grant.request", "grant.approve", "grant.revoke", "audit.read",
     "legacy.preview", "legacy.commit", "people.suspend", "people.redact",

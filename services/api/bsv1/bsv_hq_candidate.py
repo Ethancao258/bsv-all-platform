@@ -48,6 +48,8 @@ def verify_draft_change(draft, baseline, candidate):
         return
     if draft["kind"] not in {"edit","create"}:
         raise ValueError("退役/恢复须走独立发布审批服务")
+    if draft["kind"]=="create" and not draft.get("record_id"):
+        raise ValueError("新增未取得永久ID")
     before,bextras,_=_indexes(baseline)
     after,aextras,_=_indexes(candidate)
     key=next((k for k in after if k[1]==draft["record_id"] and k[0].startswith(draft["domain"]+"_")),None)
@@ -142,6 +144,15 @@ def prepare(root, draft, baseline):
         except FileExistsError:
             if dest.is_symlink() or sha256(dest)!=archive_sha:
                 raise ValueError("已存在的候选包哈希冲突")
+        original_dest=root/(manifest["source_sha256"]+".xlsx")
+        try:
+            fd=os.open(original_dest,os.O_CREAT|os.O_EXCL|os.O_WRONLY|os.O_NOFOLLOW,0o600)
+            with os.fdopen(fd,"wb") as out,candidate.open("rb") as stream:
+                for chunk in iter(lambda:stream.read(1024*1024),b""):out.write(chunk)
+                out.flush();os.fsync(out.fileno())
+        except FileExistsError:
+            if original_dest.is_symlink() or sha256(original_dest)!=manifest["source_sha256"]:
+                raise ValueError("候选原始文件冲突")
         return {"status":"VERIFIED_PACKAGE_NOT_PUBLISHED","archive_sha256":archive_sha,
                 "source_sha256":manifest["source_sha256"],
                 "manifest_sha256":sha256(package/"manifest.json"),
