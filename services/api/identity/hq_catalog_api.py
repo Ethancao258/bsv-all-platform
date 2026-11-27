@@ -25,7 +25,7 @@ if str(POS) not in sys.path:
     sys.path.insert(0, str(POS))
 
 LIMIT = 4 * 1024 * 1024
-ACTIONS = {"read": "hq.catalog.read", "draft": "hq.catalog.draft", "review": "hq.catalog.review"}
+ACTIONS = {"read": "hq.catalog.read", "draft": "hq.catalog.draft", "review": "hq.catalog.review", "release":"hq.catalog.release.request"}
 SAFE_FIELDS = {"商品名称", "半成品名称", "物料名称", "套餐名称", "商品ID", "半成品ID",
                "物料ID", "套餐ID", "门店ID", "配方文字", "完整制作步骤",
                "制作时长（秒）", "销售系列", "标注售价", "核准售价", "币种",
@@ -113,8 +113,9 @@ def rows_for(path):
     return rows
 
 def visible_record(row, prefix, confidential=False):
+    allowed=registered_fields(prefix,confidential)
     return {"id": row["id"], "name": row["name"] if prefix in "CPMK" else row["id"],
-            "fields": {k:v for k,v in row["fields"].items() if k in SAFE_FIELDS and k in registered_fields(prefix,confidential)}}
+            "fields": {k:v for k,v in row["fields"].items() if k in SAFE_FIELDS and k in allowed}}
 
 def check_draft(body, rows, active):
     if body.baseline_sha256 != active:
@@ -161,7 +162,7 @@ def scan(content):
         file.write_bytes(content)
         try:
             result = subprocess.run([str(executable), str(file)], stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL, timeout=30, check=False)
+                                    stderr=subprocess.DEVNULL, env={"PATH":"/usr/bin:/bin","LANG":"C.UTF-8"}, timeout=30, check=False)
         except (OSError, subprocess.TimeoutExpired):
             fail("SCAN_UNAVAILABLE", "文件扫描失败，未保存。", 503)
         if result.returncode:
@@ -174,6 +175,10 @@ def inspect_upload(content, path, digest):
     scan(content)
     try:
         result = preview_workbook(content, path, digest)
+        from bsv_hq_sale_gate import validate_raw_change
+        with tempfile.TemporaryDirectory(prefix="bsv-hq-gate-") as temp:
+            candidate=Path(temp)/"candidate.xlsx";candidate.write_bytes(content)
+            gate=validate_raw_change(path,candidate)
     except (ValueError, KeyError, AssertionError, zipfile.BadZipFile, ElementTree.ParseError):
         fail("WORKBOOK_INVALID", "Excel模板、固定ID或工作簿结构异常，请检查七表。", 422)
     # Do not expose raw protected field values or import warnings that may include them.
@@ -183,11 +188,13 @@ def inspect_upload(content, path, digest):
         safe_changes[key] = [{k:v for k,v in x.items() if k in {"sheet","record_id","changed_fields","status"}}
                              for x in changes.get(key, [])]
     safe_changes["formula_cells"] = changes.get("formula_cells", [])
+    safe_changes["bundle_aux_changed"]=gate["bundle_aux_changed"]
     return {"status": result["status"], "source_sha256": result["source_sha256"],
             "baseline_sha256": digest, "schema_compatible": result.get("schema_compatible", False),
             "changes": safe_changes, "write_performed": False,
             "review_ready": result.get("content_contract_compatible", False)
-                            and not safe_changes["pending_retire"] and not safe_changes["formula_cells"],
+                            and not safe_changes["pending_retire"] and not safe_changes["formula_cells"]
+                            and not safe_changes["bundle_aux_changed"],
             "activation": "BLOCKED_PACKAGE_CONVERTER_AND_PG_APPROVAL"}
 
 def save_json(path, value):
@@ -216,6 +223,12 @@ def list_drafts(root, entity):
             continue
         data = json.loads(file.read_text(encoding="utf-8"))
         if data.get("legal_entity") == entity:
+            receipt=root/(file.stem+".release.json")
+            if receipt.is_file() and not receipt.is_symlink():
+                result=json.loads(receipt.read_text(encoding="utf-8"))
+                if result.get("draft_id")==data["id"] and result.get("status")=="RAW_REVISION_ACTIVE":
+                    data["release_result"]=result
+                    data["status"]="RAW_REVISION_ACTIVE"
             output.append(data)
     return sorted(output, key=lambda x:x["created_at"], reverse=True)
 
@@ -252,7 +265,7 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
             fail("SCOPE_REQUIRED", "总部法人范围尚未配置。", 503)
         with router.session() as db:
             subject = grant_guard(request, db, ACTIONS[action], entity)
-            if action in {"draft","review"}:grant_guard(request,db,"hq.catalog.confidential",entity)
+            if action in {"draft","review","release"}:grant_guard(request,db,"hq.catalog.confidential",entity)
             person = person_for_subject(db, subject)
             if not person:
                 fail("AUTH_REQUIRED", "需要统一人员身份。", 403)
@@ -437,3 +450,32 @@ def install_catalog_routes(app, router, settings, grant_guard, person_for_subjec
             data["prepared_at"]=now()
             save_json(file,data)
             return data
+
+
+    @app.post("/api/v1/hq/catalog/drafts/{key}/release-request",include_in_schema=False)
+    def release_request(request:Request,key:str):
+        entity,tr=actor(request,"release")
+        if not DRAFT_ID.fullmatch(key):fail("NOT_FOUND","未找到草稿。",404)
+        root=private_root()
+        fd=os.open(root/".prepare.lock",os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,"r+") as lock:
+            try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError:fail("PREPARE_BUSY","候选包处理中，请刷新。")
+            file=root/(key+".json")
+            if file.is_symlink() or not file.is_file():fail("NOT_FOUND","未找到草稿。",404)
+            d=json.loads(file.read_text(encoding="utf-8"))
+            if d.get("legal_entity")!=entity:fail("NOT_FOUND","未找到草稿。",404)
+            if d.get("reviewed_by")!=tr or tr==d["created_by"]:fail("REVIEWER_REQUIRED","须由独立审核人申请发布。",403)
+            if d["status"]=="RELEASE_REQUESTED":return d
+            expected="REVIEWED_NOT_PUBLISHED" if d["kind"]=="rollback" else "VERIFIED_PACKAGE_NOT_PUBLISHED"
+            if d["status"]!=expected:fail("PACKAGE_REQUIRED","请先审核并生成候选包。")
+            _,digest=active_source()
+            if digest!=d["baseline_sha256"]:fail("STALE_BASELINE","活动版本已变更。")
+            if d["kind"]=="rollback":
+                from bsv_hq_ids import repository
+                with repository()._connection() as conn,conn.cursor() as cur:
+                    cur.execute("SELECT status FROM audit.import_batch WHERE source_sha256=%s",(d["record_id"],))
+                    row=cur.fetchone()
+                    if not row or row[0]!="COMMITTED_RAW":fail("TARGET_NOT_IMPORTED","目标历史版本不存在。")
+            d.update(status="RELEASE_REQUESTED",release_requested_by=tr,release_requested_at=now())
+            save_json(file,d);return d

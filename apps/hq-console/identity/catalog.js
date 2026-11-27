@@ -1,7 +1,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
 const labels={C:"现场成品",K:"套餐组合",P:"预调半成品",M:"采购纯饮",R:"配方耗用",Q:"门店报价",T:"门店注册"};
-const statusLabels={PENDING_REVIEW:"待另一位管理员审核",REVIEWED_NOT_PUBLISHED:"已审核 · 未发布",VERIFIED_PACKAGE_NOT_PUBLISHED:"候选规范包已校验 · 未发布",REJECTED:"已拒绝",IDEMPOTENT_NOOP:"与当前版本相同",PREVIEW_ONLY:"预览完成 · 未写入"};
+const statusLabels={PENDING_REVIEW:"待另一位管理员审核",REVIEWED_NOT_PUBLISHED:"已审核 · 未发布",VERIFIED_PACKAGE_NOT_PUBLISHED:"候选规范包已校验 · 未发布",RELEASE_REQUESTED:"待受控签名执行",RAW_REVISION_ACTIVE:"原始资料版本已生效 · 销售状态未改变",REJECTED:"已拒绝",IDEMPOTENT_NOOP:"与当前版本相同",PREVIEW_ONLY:"预览完成 · 未写入"};
 const fieldsFor={C:["商品名称","销售系列","配方文字","完整制作步骤","标注售价"],K:["套餐名称"],P:["半成品名称","完整制作步骤"],M:["物料名称"],R:["工序名称","完整制作步骤"],Q:["核准售价","币种","销售渠道","生效日期","失效日期"],T:[]};
 const forbidden=new Set(["商品ID","半成品ID","物料ID","套餐ID","门店ID"]);
 let active="",offset=0,selected=null,excel=null,allowedFields=[];
@@ -64,6 +64,7 @@ async function preview(){
  const rows=d.changes[key]||[];$("diff").append(el("p",label+"："+rows.length));for(const x of rows.slice(0,50))$("diff").append(el("p",typeof x==="string"?x:x.sheet+" / "+x.record_id+" "+(x.changed_fields||[]).join("、")));
  if(rows.length>50)$("diff").append(el("p","仅展示前50条；总数如上。"));
  }
+ if(d.changes.bundle_aux_changed)$("diff").append(el("p","套餐槽位/NPS子区发生变化，当前需单独核验，不能提交。"));
  $("submitExcel").disabled=!d.review_ready||d.status==="IDEMPOTENT_NOOP";say("预览完成，未写入商品主库。");
 }
 async function drafts(){
@@ -73,6 +74,7 @@ async function drafts(){
  if(x.status==="PENDING_REVIEW"){let reason=el("textarea");reason.placeholder="审核理由（至少8字）";reason.maxLength=500;box.append(reason);
  for(const decision of ["approve","reject"]){let b=el("button",decision==="approve"?"审核通过（不发布）":"拒绝");b.type="button";b.onclick=run(async()=>{if(reason.value.trim().length<8)throw Error("请填写审核理由。");await call("/drafts/"+x.id+"/review","POST",{decision,reason:reason.value});say("审核已记录；未发布。");await drafts();});box.append(b);}}
  if(x.status==="REVIEWED_NOT_PUBLISHED"&&["edit","excel","create"].includes(x.kind)){let b=el("button","生成待发布规范包");b.type="button";b.onclick=run(async()=>{await call("/drafts/"+x.id+"/prepare","POST",{});say("候选包已校验，尚未发布。");await drafts();});box.append(b);}
+ if(x.status==="VERIFIED_PACKAGE_NOT_PUBLISHED"||(x.kind==="rollback"&&x.status==="REVIEWED_NOT_PUBLISHED")){let b=el("button","申请资料生效（不自动上架）");b.type="button";b.onclick=run(async()=>{if(!confirm("提交受控发布申请？本操作不直接改变门店销售状态。"))return;await call("/drafts/"+x.id+"/release-request","POST",{});say("发布申请已登记，等待受控签名执行。");await drafts();});box.append(b);}
  if(x.package)box.append(el("p","候选包SHA："+x.package.archive_sha256));
  $("drafts").append(box);}
  if(!d.items.length)$("drafts").append(el("p","暂无草稿。"));

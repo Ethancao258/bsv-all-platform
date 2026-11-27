@@ -109,7 +109,7 @@ def _records(path: Path):
     for sheet, rows in workbook_read(path).items():
         head = rows.get(8, {})
         last = col_num(MAIN_LAST[sheet])
-        headers[sheet] = [str(head[column]) for column in range(11, last + 1)
+        headers[sheet] = [(column,str(head[column])) for column in range(11, last + 1)
                           if head.get(column) not in (None, "")]
     return index, headers, len(extras), len(quotes), summary
 
