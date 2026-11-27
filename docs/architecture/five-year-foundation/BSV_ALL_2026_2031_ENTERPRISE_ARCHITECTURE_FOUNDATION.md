@@ -1,7 +1,7 @@
 # BSV ALL 2026–2031｜五年企业软件底层架构总纲
 Enterprise Architecture · System Map · Domain Ownership · Database · API · Events · Security · Deployment · AI Handoff
 版本 FOUNDATION-1.0-RC1 | 2026-11-27 | PROPOSED_BASELINE / NOT_RUNTIME_CERTIFIED
-**唯一对外阅读入口（完整合订版）**。本文件包含架构总图、25模块基线、数据库与API、开发与接管流程、独立风险审计；人和AI无需逐份阅读附件。原注册表仍为唯一机器权威，动态需求只更新[持续功能清单](../BSV_ALL_LIVING_MODULE_REGISTER.md)。冻结须负责人批准；不启动 #52/#59，不影响 #44/#58。此合订版仅重新组织已有规范，不改变技术决策。
+**唯一日常研发入口 A（A+C-V1）**：本文件包含固定架构正文与第8节的活动变更标注。原注册表仍是唯一机器技术权威。[不可变架构原版SHA](https://github.com/Ethancao258/bsv-all-platform/blob/6c64056f2d96f545a346ad94c169d53e502b3f14/docs/architecture/five-year-foundation/BSV_ALL_2026_2031_ENTERPRISE_ARCHITECTURE_FOUNDATION.md) 永久保留，不包含后续动态状态。今后日常开发只修改本文件第8节的活动标注及对应唯一执行Issue C；不改架构原则、原有代码归属、数据库owner及其他固定正文。原独立B清单仅作历史档案，不再维护。#44/#58 发布门禁不变，#52/#59未获开工授权。
 
 ## 1. 一眼看懂：C4层级及业务边界
 系统上下文：经营负责人/总部、门店员工、顾客、独立督查、合作方 -> BSV ALL；外部支付、市场平台、AI及设备 -> 受控适配器 -> BSV ALL。BSV1/2/3是企业业务责任圈层，不是软件版本、进程或数据库；现行中央供货注册在BSV2，门店基础库存属BSV1，不在本审计重分类。
@@ -71,7 +71,7 @@ flowchart TB
 - main 的 config/architecture-lock.json、app-registry.json、domain-registry.json、data-ownership.json、use-case-registry.json 是治理基线。
 - 参考开发分支的 config/change-routing.json、data-contracts.json、contracts/database、contracts/supply、contracts/identity、contracts/menu 作为已有实现契约证据；main尚未包含前两文件，不能假定已合并。
 - 实际主机与发布证据由 docs/ops/CURRENT_STATE.md 及受控证据清单维护；公开Git只放无敏感内容的哈希及状态。
-- [25模块及活动议案](../BSV_ALL_LIVING_MODULE_REGISTER.md)；[机器索引](ARCHITECTURE_REFERENCE_INDEX.json)包含6入口、20域、65键及12路由引用。索引是固定SHA的审计快照，不是新权威注册表。
+- 本文件第8节（25模块及活动议案）；[机器索引](ARCHITECTURE_REFERENCE_INDEX.json)包含6入口、20域、65键及12路由引用。索引是固定SHA的审计快照，不是新权威注册表。
 - PR #57 后续任务路线；#44/#58 当前发布门禁；#52中央供货唯一执行卡，#59/SUP-59候选需求。
  
 ## 5. 2026–2031演进路径（条件触发，非日期承诺）
@@ -90,35 +90,43 @@ OWASP object authorization：https://owasp.org/projects/api-security-project
 
 
 ## 8. 全程序功能与数据归属（基线快照）
-以下25项是阅读索引，不是25个独立程序；开发状态仅为参考代码/设计状态，不是实机确认。动态议案及状态以[持续功能清单](../BSV_ALL_LIVING_MODULE_REGISTER.md)为准。
+以下25项是阅读索引，不是25个独立程序；基线状态仅为参考代码/设计状态，不是实机确认。最右列为唯一日常可更新的活动标注；其余列为原始基线。详细进度、决策、审批和验收证据以相应执行Issue为准。
 
-|编号|程序/模块（既有路由ID如有）|已有参考位置/能力|数据owner与事实|状态/现有工单|
-|---|---|---|---|---|
-|M01|统一身份与权限 identity-api / identity-hq-ui|services/api/identity; apps/hq-console/identity; apps/staff-center/identity；人员与授权|identity_access: auth_subject_id/grant_id；workforce: employee_id|CODE #47|
-|M02|组织门店与库位|config/data-ownership.json; supply.C; 门店映射契约|organization: store_id/legal_entity_id/org_unit_id|MIXED #47|
-|M03|文森特学院 vincent-academy|services/api/identity/academy_api.py; academy_policy.py; apps/staff-center/identity|learning: course_id/credential_id；catalog: SOP引用|CODE #47|
-|M04|排班、考勤与交接 store-shifts|services/api/identity; domains/workforce; 员工中心；排班已有隔离契约，考勤事件待核|workforce: shift_id/employee_id/employment_id|MIXED #47|
-|M05|总部商品、物料、配方与导入 reviewed-import|services/api/bsv1/bsv_catalog_*; config/data-contracts.json; PR40/42/39|catalog: product_id/material_id/recipe_version/publication_id|CODE/MIXED #50|
-|M06|POS点单/桌台/人工收款 store-pos|services/api/bsv1/app.py; apps/store-console/bsv1; bsv_layouts.py|commerce: order_id；payments: payment_event_id（真实到账另核）|CODE #44/#58|
-|M07|调酒辅助与出品|services/api/bsv1; catalog配方接口|catalog: recipe_version；service_ops: service_event_id|MIXED #45|
-|M08|总部地图/设备POS|services/api/bsv1/bsv_layouts.py; bsv_device_pos.py; apps/hq-console/bsv1|organization: store_id；identity_access: device_id/grant_id|CODE #38|
-|M09|顾客电子菜单 guest-menu|apps/guest-web/bsv1; public_menu_projection.py|catalog: publication_id；只读公开投影|CODE #51|
-|M10|顾客扫码点单/核券|apps/guest-web; commerce/市场平台契约|commerce: order_id；payments 外部确认|MIXED #51|
-|M11|会员/客户/认领 customer-growth|services/api/customer_growth; apps/guest-web/member; apps/staff-center/growth; bsv_growth_pos.py|customer: customer_id/consent_id；marketing: attribution_id|CODE #48|
-|M12|佣金/会员权益|customer_growth；营销/财务契约|customer: loyalty_account_id；marketing: attribution_id；operating_finance: settlement_id|MIXED #48|
-|M13|中央供货 supply-api|services/api/supply; apps/hq-console/supply; apps/store-console/supply; contracts/supply；配送/签收/补货预览|production: batch_id/shipment_id/label_id|CODE，D权威事务未证实 #52|
-|M14|采购/库存/盘点（复用 supply-api）|services/api/supply; contracts/supply；库存/五档观察|procurement: supplier_id/purchase_order_id/receipt_id；inventory: stock_lot_id/stock_movement_id/inventory_count_id|MIXED #52|
-|M15|标签设备 device-label|integrations/devices；现有设计/模板需从受控交付核查|production: label_id/batch_id；容器复用package_id（owner待注册确认）|DESIGN #52|
-|M16|督查 quality-inspection|services/api/supply; apps/inspector-console; contracts/supply|quality: inspection_id/finding_id/corrective_action_id|CODE，E权威写入未证实 #53|
-|M17|工作台/公告/任务/日会|apps/staff-center/identity/workbench.*; #46; service_ops域|service_ops: task_id/incident_id；knowledge: acknowledgement_id|MIXED #46|
-|M18|知识库/SOP/培训材料|domains/knowledge; 学院及商品SOP已有部分资料|knowledge: document_id/version；catalog: recipe_version|MIXED #45/#47|
-|M19|支付/退款/对账|domains/payments; integrations/payment; POS人工登记|payments: payment_event_id/refund_id/reconciliation_id|MIXED #49|
-|M20|经营财务/薪资/SDF|domains/operating_finance; POS日报；#54|operating_finance: cost_entry_id/payroll_run_id/settlement_id|MIXED #54|
-|M21|合同/人事档案/离职|workforce/knowledge/compliance；#56|workforce: employment_id；knowledge: document_id|DESIGN #56|
-|M22|客诉与回访|customer_growth; quality; #53|customer/quality/service_ops|MIXED #53|
-|M23|外部合作与推广/商业化|apps/partner-portal; capabilities/bsv2; domains/partnership/marketing|partnership: partner_id/agreement_id/project_id；marketing: campaign_id|DESIGN|
-|M24|资本治理/合规|domains/capital/compliance; capabilities/bsv3|capital: capital_decision_id/funding_id/investment_id；compliance: license_id/policy_id|DESIGN|
-|M25|集成底座：部署、同步、事件、AI、硬件、备份 deployment-config|platform/lighthouse; integrations/vision/supply_photo.py; integrations/ai/messaging; services/api/shared; config/change-routing.json|event_audit: audit_event_id/sync_event_id；原owner不变|MIXED #55|
+|编号|程序/模块（既有路由ID如有）|已有参考位置/能力|数据owner与事实|状态/现有工单|活动变更（点击工单）|
+|---|---|---|---|---|---|
+|M01|统一身份与权限 identity-api / identity-hq-ui|services/api/identity; apps/hq-console/identity; apps/staff-center/identity；人员与授权|identity_access: auth_subject_id/grant_id；workforce: employee_id|CODE #47|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：制作/发货/收货/处置动作级鉴权）|
+|M02|组织门店与库位|config/data-ownership.json; supply.C; 门店映射契约|organization: store_id/legal_entity_id/org_unit_id|MIXED #47|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：来源/目的/库位合法映射）|
+|M03|文森特学院 vincent-academy|services/api/identity/academy_api.py; academy_policy.py; apps/staff-center/identity|learning: course_id/credential_id；catalog: SOP引用|CODE #47|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：生产/验收资格及新品指引引用）|
+|M04|排班、考勤与交接 store-shifts|services/api/identity; domains/workforce; 员工中心；排班已有隔离契约，考勤事件待核|workforce: shift_id/employee_id/employment_id|MIXED #47|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：上下班事件触发门店任务）|
+|M05|总部商品、物料、配方与导入 reviewed-import|services/api/bsv1/bsv_catalog_*; config/data-contracts.json; PR40/42/39|catalog: product_id/material_id/recipe_version/publication_id|CODE/MIXED #50|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：批准效期、开封规则、储运、标准装量、SOP版本）|
+|M06|POS点单/桌台/人工收款 store-pos|services/api/bsv1/app.py; apps/store-console/bsv1; bsv_layouts.py|commerce: order_id；payments: payment_event_id（真实到账另核）|CODE #44/#58|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：后续批准配方耗用与禁用物料提示；不改支付）|
+|M07|调酒辅助与出品|services/api/bsv1; catalog配方接口|catalog: recipe_version；service_ops: service_event_id|MIXED #45|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：可用批次/新品用法；后期耗用事件）|
+|M08|总部地图/设备POS|services/api/bsv1/bsv_layouts.py; bsv_device_pos.py; apps/hq-console/bsv1|organization: store_id；identity_access: device_id/grant_id|CODE #38|无|
+|M09|顾客电子菜单 guest-menu|apps/guest-web/bsv1; public_menu_projection.py|catalog: publication_id；只读公开投影|CODE #51|无|
+|M10|顾客扫码点单/核券|apps/guest-web; commerce/市场平台契约|commerce: order_id；payments 外部确认|MIXED #51|无|
+|M11|会员/客户/认领 customer-growth|services/api/customer_growth; apps/guest-web/member; apps/staff-center/growth; bsv_growth_pos.py|customer: customer_id/consent_id；marketing: attribution_id|CODE #48|无|
+|M12|佣金/会员权益|customer_growth；营销/财务契约|customer: loyalty_account_id；marketing: attribution_id；operating_finance: settlement_id|MIXED #48|无|
+|M13|中央供货 supply-api|services/api/supply; apps/hq-console/supply; apps/store-console/supply; contracts/supply；配送/签收/补货预览|production: batch_id/shipment_id/label_id|CODE，D权威事务未证实 #52|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：计划→生产→逐瓶分装→配送→验收→A4）|
+|M14|采购/库存/盘点（复用 supply-api）|services/api/supply; contracts/supply；库存/五档观察|procurement: supplier_id/purchase_order_id/receipt_id；inventory: stock_lot_id/stock_movement_id/inventory_count_id|MIXED #52|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：FEFO、逐批剩余、隔离、实际报损、追溯）|
+|M15|标签设备 device-label|integrations/devices；现有设计/模板需从受控交付核查|production: label_id/batch_id；容器复用package_id（owner待注册确认）|DESIGN #52|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：实际装量、死期、同件重印、物理验收）|
+|M16|督查 quality-inspection|services/api/supply; apps/inspector-console; contracts/supply|quality: inspection_id/finding_id/corrective_action_id|CODE，E权威写入未证实 #53|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：冷链异常、效期违规、召回及复核）|
+|M17|工作台/公告/任务/日会|apps/staff-center/identity/workbench.*; #46; service_ops域|service_ops: task_id/incident_id；knowledge: acknowledgement_id|MIXED #46|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：上班任务、到货准备、报损、下班交接）|
+|M18|知识库/SOP/培训材料|domains/knowledge; 学院及商品SOP已有部分资料|knowledge: document_id/version；catalog: recipe_version|MIXED #45/#47|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：新品使用说明版本化与展示）|
+|M19|支付/退款/对账|domains/payments; integrations/payment; POS人工登记|payments: payment_event_id/refund_id/reconciliation_id|MIXED #49|无|
+|M20|经营财务/薪资/SDF|domains/operating_finance; POS日报；#54|operating_finance: cost_entry_id/payroll_run_id/settlement_id|MIXED #54|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：只读实际损耗和采购成本供核算）|
+|M21|合同/人事档案/离职|workforce/knowledge/compliance；#56|workforce: employment_id；knowledge: document_id|DESIGN #56|无|
+|M22|客诉与回访|customer_growth; quality; #53|customer/quality/service_ops|MIXED #53|无|
+|M23|外部合作与推广/商业化|apps/partner-portal; capabilities/bsv2; domains/partnership/marketing|partnership: partner_id/agreement_id/project_id；marketing: campaign_id|DESIGN|无|
+|M24|资本治理/合规|domains/capital/compliance; capabilities/bsv3|capital: capital_decision_id/funding_id/investment_id；compliance: license_id/policy_id|DESIGN|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：仅合规资格读取；资本不变）|
+|M25|集成底座：部署、同步、事件、AI、硬件、备份 deployment-config|platform/lighthouse; integrations/vision/supply_photo.py; integrations/ai/messaging; services/api/shared; config/change-routing.json|event_audit: audit_event_id/sync_event_id；原owner不变|MIXED #55|（+[SUP-59](https://github.com/Ethancao258/bsv-all-platform/issues/52)：G通知/outbox、F识别候选、只读备份、适配及发布）|
+
+### 8.1 活动变更管理规则（唯一可日常更新区）
+- 格式：`（+任务代码：一句话拟变更）`，代码链接唯一执行工单。多个议案分别标注；只读依赖亦可标记，但不等于修改程序。
+- 新需求：先阅读固定正文和最新标注，核对真实代码/契约，登记受影响模块并更新执行Issue；Issue记录任务代码、决策状态、执行阶段、owner、代码/API、数据库边界、依赖、验收、证据、回退。状态只以Issue为权威；A仅索引，可注明最近核对时间。Excel只需A的最新入口与本任务C的链接。
+- 否决/延期：从活动列撤下该任务标注，Issue记录原因和日期；正式上线：移除活动标注，在本节新增已验收变更记录（功能/工单/发布SHA），不覆盖原基线。历史由Git与Issue保存。未经批准不把候选视为上线。重大架构变更另走ADR，批准后发布新版固定SHA；日常禁止修改正文。
+- 并发：只维护涉及任务的单元格，更新前读取最新blob SHA并核对Issue；冲突重新读取，不覆盖其他任务。一个共享文件写入负责人；技术代码/测试按原PR规则执行。公开Git不写敏感数据。
+- 当前关联任务：**[SUP-59 / NEXT-SUPPLY01](https://github.com/Ethancao258/bsv-all-platform/issues/52)**（截至2026-11-27：方案准备，执行 PREPARED_NOT_STARTED；#44/#58 未解除，不启动）。原始需求参考[#59](https://github.com/Ethancao258/bsv-all-platform/issues/59)。16个相关模块，非16项独立开发。详细P0–P4见#52。
+- 已验收变更记录：暂无本机制下已验收发布记录。不得依据CI代替实机证据。
 
 ## 9. 实施、数据库、API、事件、研发和AI交接（完整手册）
 
@@ -135,7 +143,7 @@ FOUNDATION-1.0-RC1；以下代码片段为规范示例，非已部署代码。�
 |对客菜单|apps/guest-web/bsv1；services/api/bsv1/public_menu_projection.py|contracts/menu/public-menu-v2.schema.json|tests/internal-stage|
 |外部视觉/标签|integrations/vision/supply_photo.py；integrations/devices|contracts/supply/HANDOFF.md|tests/supply；打印实际设备另验|
 |部署控制|platform/lighthouse/internal-stage/bsvctl.py、stage.py、ingress.py|docs/architecture/BSV_ALL_DELIVERY_CONTROL_PLANE_V1.md|tests/internal-stage、tests/ui|
-其余业务以持续功能清单定位；设计功能不要捏造实际文件。目录分层建议：页面调用API→认证/动作授权→业务命令处理→owner仓储事务→审计/事件→投影；禁止页面直接写表。
+其余业务以本文件第8节定位；设计功能不要捏造实际文件。目录分层建议：页面调用API→认证/动作授权→业务命令处理→owner仓储事务→审计/事件→投影；禁止页面直接写表。
 ### 9.2 统一数据使用
 每个业务实体由config/data-ownership.json唯一指定owner，索引只引用，不重新声明所有权。环境登记每个域的 logical_source_id / authority_writer / schema_revision / deployed_sha / config_digest / evidence_ref / verified_at / state。物理连接和凭据只在私有运行配置中。参考契约业务PG17、身份隔离PG、POS SQLite、增长存储、供货demo/cache并存；禁止未经ADR物理合库或自动failover写入。
 供货A商品只读；B身份实时核权；C门店库位只读；D生产/库存/采购事务；E独立督查；F识别候选；G通知。identity.A不同于supply.A。正式D和E接通状态未知。实体保持永久ID，历史别名按法人+来源系统+原值映射；日期UTC存储、北京时区显示；金额整数分+币种；数量Decimal+单位；原料质量与储运规则按批准版本保存。
@@ -195,8 +203,8 @@ sequenceDiagram
 订单→出品→库存→支付→财务：订单只属于commerce；批准配方按版本引用；出品与耗用独立去重；真实付款由payments可信确认；财务读真实账本，人工登记不等于支付机构到账。
 会员→消费归因→佣金：customer管理会员/同意，marketing管理归因，实际付款与可核验消费触发佣金候选，operating_finance结算。不得双重认领/重复结算。
 ### 9.6 新需求到交付的固定流程
-- READ：本五年总纲、持续功能清单、已有关联Issue、技术注册表、实际候选SHA、现有代码与接口。先查已有实现。
-- MAP：在功能清单登记议案ID、模块M号、真正技术module_id、PRIMARY/ADAPTER/READ/EVENT/NO_CHANGE、数据owner、输入输出、状态、现有执行卡；无法映射则候选注册，不能擅自造模块。
+- READ：本五年总纲（含第8节活动标注）、已有关联Issue、技术注册表、实际候选SHA、现有代码与接口。先查已有实现。
+- MAP：在本文件第8节登记议案ID、模块M号、真正技术module_id、PRIMARY/ADAPTER/READ/EVENT/NO_CHANGE、数据owner、输入输出、状态、现有执行卡；无法映射则候选注册，不能擅自造模块。
 - DESIGN：写明最小增量、非目标、依赖、兼容与回退、正反验收；影响冻结规则才开ADR；常规UI/字段兼容改动按现有路由卡。
 - APPROVE：负责人批准议案与开工是两件事，生产另批。#44/#58当前优先；不得自动启动SUP-59。
 - IMPLEMENT：独立worktree/分支/唯一文件owner，禁止并发共享写入；短小提交。按定向CI、契约、隔离浏览器、业务数据对账、回退验证完成。
@@ -220,7 +228,7 @@ sequenceDiagram
   "rollback":"feature_disable_preserve_committed_stock"
 }
 ```
-实际M索引映射更多模块，完整见持续清单；没有现有module_id的任务/通知先登记候选接口，不造ID。 
+实际M索引映射更多模块，完整见本文件第8节；没有现有module_id的任务/通知先登记候选接口，不造ID。 
 ### 9.7 检查与规模门槛
 现有 scripts/verify_architecture.py（治理）、scripts/verify_change_routing.py（参考开发分支）、tests/contracts 与各模块测试为优先复用入口。新增静态门禁脚本仅检查根目录、注册owner、应用路径、路由路径及别名一致性，不能替代CI、运行核验及人审。
 建议SLO须负责人批准且实测：核心营业操作P95延迟、成功率、错误、峰值负载；库存/财务可核验一致性为100%；不允许跨店越权、重复记账、过期出品；RPO/RTO依据可接受经营损失设定并实测恢复。容量、费用、故障时间未测，禁止宣布可支持某个门店规模。新增服务前对1x/3x/10x实际峰值合成压测；有可观测瓶颈才做拆分。
