@@ -34,10 +34,17 @@ def scenario():
     with connect() as c:
         c.execute("SELECT set_config('bsv.sup59_schema_fixture','yes',true)")
         c.execute((ROOT/"contracts/supply/central_schema_proposal.sql").read_text())
-        c.execute((ROOT/"contracts/supply/sup59_postgres_isolated_candidate.sql").read_text())
+        latest=(ROOT/"contracts/supply/sup59_postgres_isolated_candidate.sql").read_text()
+        old=latest.replace("ALTER TABLE supply.stock_lot ADD COLUMN purchase_receipt_ref text;\n","").replace("CREATE UNIQUE INDEX sup59_raw_purchase_once ON supply.stock_lot(legal_entity_id,purchase_receipt_ref) WHERE purchase_receipt_ref IS NOT NULL;\n","")
+        assert old!=latest and "purchase_receipt_ref" not in old
+        c.execute(old)
         c.execute("""INSERT INTO supply.stock_lot VALUES
           ('LOT-1','SYNTH','M001','WH','mL',4000,'2026-11-26T00:00:00Z','2026-11-30T00:00:00Z','ACCEPTED',1)
         """)
+    with connect() as c:
+        c.execute("SELECT set_config('bsv.sup59_schema_fixture','yes',true)")
+        c.execute((ROOT/"contracts/supply/sup59_upgrade_raw_receipts.sql").read_text())
+        assert c.execute("SELECT remaining_base,purchase_receipt_ref FROM supply.stock_lot WHERE stock_lot_id='LOT-1'").fetchone()==(4000,None)
     with connect() as c:
         assert schema_report(c)["compatible_columns"]
     now=[datetime(2026,11,27,12,tzinfo=timezone.utc)]
