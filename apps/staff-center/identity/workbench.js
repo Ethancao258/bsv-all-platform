@@ -106,6 +106,21 @@
    const mayInspect=[...actions].some(action=>action.startsWith('quality.'));
    try{
      const health=await request('/supply-ui/api/health');
+     if(health.mode==='remote'&&health.web_session===true&&health.central_candidate===true&&me){
+       const actor=await request('/supply-ui/api/me');
+       const scopes=actor.role_stores||{};
+       const stores=[...new Set([...(scopes.receive||[]),...(scopes.dispatch||[])])];
+       const responses=await Promise.allSettled(stores.map(async store=>{
+         const response=await request('/supply-ui/api/central/tasks?store_id='+encodeURIComponent(store)+'&phase=START');
+         if(!Array.isArray(response.data?.tasks))throw Error('invalid tasks');
+         return response.data.tasks.map(t=>({...t,store_id:store,hq:(scopes.dispatch||[]).includes(store)}));
+       }));
+       const ok=responses.filter(x=>x.status==='fulfilled');
+       card('supply',ok.length?'ready':'blocked',ok.length?'已核对台账':'待核对',
+            ok.length?('供货待办已读取；提交以中央台账回执为准。'+(ok.length<stores.length?'部分门店尚不可读取。':'')):'没有可读取的供货门店或中央台账尚未连接。');
+       card('inspection','read','核对实际权限','通过独立督查入口查看正式服务是否开放。');
+       return ok.flatMap(x=>x.value);
+     }
      if(health.mode!=='internal-stage')throw new Error('Unexpected service mode');
      card('supply','blocked','暂未启用','中央台账尚未连接。可查看授权范围，配送、收货与盘点都不能提交。');
      card('inspection','read','仅查看',
@@ -150,7 +165,8 @@
                           :'如果今天需要点单，请向总部申请当班门店权限。');
    card('hq',hq?'ready':'blocked',hq?'可操作':'暂未授权',
         hq?'按已授权的所属公司查询人员和处理待审事项。':'切换到拥有总部权限的账号后继续。');
-   await Promise.all([supply(me),(async()=>{
+   let currentWork=null;
+   const [supplyTasks]=await Promise.all([supply(me),(async()=>{
      try{
        const config=await request('/api/bootstrap');
        if(config.device_required!==true){
@@ -158,13 +174,28 @@
          setPriority('查看当前账号的入职进度和门店权限。','/staff','打开个人中心');
          return;
        }
-       summary(await request('/api/v1/academy/work'));
+       currentWork=await request('/api/v1/academy/work');
+       summary(currentWork);
      }catch{
        unavailable('学院和班次暂时无法核对。请检查连接后刷新，未确认前不能视作已获岗位资格。');
        card('pos','blocked','权限待核对','暂时无法确认当前班次和点单资格。');
        setPriority('请先重新核对班次和门店权限。','/academy','打开学院与排班');
      }
    })()]);
+   if(supplyTasks?.length){
+     const current=currentWork?.shifts?.find(s=>s.status==='confirmed'&&new Date(s.start)<=Date.now()&&new Date(s.end)>Date.now());
+     const pending=supplyTasks.filter(t=>t.hq||!current||t.store_id===current.store_id);
+     const list=$('#task-list');
+     if(pending.length&&list.textContent==='目前没有需要你处理的待办。')list.replaceChildren();
+     for(const task of pending){
+       const item=node('article','','item');
+       const label={EXPIRY_REVIEW:'物料效期复核',RECEIPT_REVIEW:'到货待签收',USE_GUIDANCE:'物料使用说明'}[task.kind]||'供货待办';
+       const link=node('a','打开中央配送','action-link');
+       link.href=task.hq?'/supply-ui/hq/supply':'/supply-ui/store/supply';
+       item.append(node('h2',label+' · '+task.store_id),node('p',[task.due,task.usage,task.package_id||task.shipment_id].filter(Boolean).join(' · ')),link);
+       list.append(item);
+     }
+   }
  }
  BSV.action($('#refresh-workbench'),'正在核对…',async()=>{await load();return $('#work-status').textContent;});
  load();

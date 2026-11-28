@@ -13,3 +13,22 @@
 .internal-stage .stage-next{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .internal-stage a{color:#503923;font-weight:650}
 .internal-stage a:focus-visible,.internal-stage button:focus-visible{outline:3px solid #2368a0;outline-offset:3px}
+
+.central form {margin: 0 0 1rem}
+.central fieldset {border: 1px solid #dfe8e3; border-radius: 9px; padding: 16px; margin: 14px 0}
+.central legend {padding: 0 5px; font-weight: 650}
+.central textarea {resize: vertical}
+.central .check-line {display: flex; align-items: center; gap: 8px; margin: 0; color: inherit}
+.central .check-line input {width: auto; margin: 0; accent-color: #186552}
+.central td {white-space: normal}
+.central td input,.central td select {margin: 0; min-width: 110px}
+.central .quantity {min-width: 72px}
+.central .bad-stock {background: #fff0ed; color: #902a22}
+.central dialog {width: min(96vw, 950px); max-height: 96vh; border: 1px solid #aac1b8; border-radius: 10px}
+.central dialog::backdrop {background: #0008}
+.central dialog .heading {margin-bottom: .65rem; align-items: center}
+.central dialog .heading h2,.central dialog form,.central dialog .actions {margin: 0}
+.central iframe {width: 100%; height: 70vh; border: 1px solid #dfe8e3; display: block; background: #fff}
+
+/* Lock the business panels until the identity/catalog boot succeeds. */
+body.loading aside{display:none}body.loading .shell{grid-template-columns:minmax(0,1fr)}body.loading main .panel:not(.boot-error){display:none!important}.boot-error h1{font-size:20px}.boot-error a{color:#186552;padding:10px 0}

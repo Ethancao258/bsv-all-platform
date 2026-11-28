@@ -4,6 +4,7 @@ import hashlib, hmac, json, os, re, uuid
 from typing import Literal
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +15,7 @@ from .demo import DemoCentral, DEMO_STORES, DEMO_ITEMS, DEMO_ACTORS
 from .domain import calc_reorder, validate_count, unique_codes
 from .gateway import Gateway, Unreachable
 from .shipment_contract import shipment_for_console
+from .central_routes import central_router
 
 settings=load_settings()
 cache=LocalCache(settings.cache_dir)
@@ -87,6 +89,18 @@ def demo_actor(request: Request):
     return demo.actor(name)
 
 
+def web_origin():
+    """Explicit opt-in to the unified HTTPS gateway. Never enable demo access."""
+    value = os.environ.get("BSV_SUPPLY_WEB_ORIGIN", "")
+    if not value:
+        return ""
+    parsed = urlsplit(value)
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+            or parsed.path or parsed.query or parsed.fragment or value != f"https://{parsed.netloc}"):
+        raise ValueError("BSV_SUPPLY_WEB_ORIGIN must be an exact HTTPS origin")
+    return value
+
+
 def session_header(request: Request):
     if settings.mode == 'internal-stage':
         cookie = request.cookies.get('bsv_identity_session', '')
@@ -98,6 +112,21 @@ def session_header(request: Request):
                     origin and origin != f'{request.url.scheme}://{request.url.netloc}'):
                 raise HTTPException(403, '内部测试会话 CSRF 校验失败')
         return 'Bearer ' + cookie if cookie else ''
+    if settings.mode == "remote" and web_origin():
+        cookie = request.cookies.get("bsv_identity_session", "")
+        # Bearer-only service consumers retain the existing API contract.
+        # Browser requests carrying a session must never bypass CSRF via a header.
+        if cookie:
+            origin = web_origin()
+            if request.headers.get("host", "").lower() != urlsplit(origin).netloc.lower():
+                raise HTTPException(403, "统一工作台主机不匹配")
+            if request.method not in {"GET", "HEAD"}:
+                csrf = request.headers.get("X-CSRF-Token", "")
+                expected = request.cookies.get("bsv_csrf", "")
+                if (request.headers.get("Origin") != origin or not csrf or not expected
+                        or not hmac.compare_digest(csrf.encode(), expected.encode())):
+                    raise HTTPException(403, "统一工作台 CSRF 校验失败")
+            return "Bearer " + cookie
     return request.headers.get('Authorization', '')
 
 
@@ -108,7 +137,11 @@ async def actor(request: Request):
     if not header.startswith('Bearer ') or not header[7:].strip():raise HTTPException(401,'请使用公司统一身份令牌')
     token=header[7:].strip()
     try:
-        res=gateway.read('B','/auth/me',user_token=token,allow_cache=False)
+        extra={}
+        if (settings.mode=='remote' and web_origin() and request.cookies.get('bsv_identity_session')
+                and request.method not in {'GET','HEAD'}):
+            extra['csrf_proof']=request.headers.get('X-CSRF-Token','')
+        res=gateway.read('B','/auth/me',user_token=token,allow_cache=False,**extra)
         me=res['data']
     except (Unreachable,KeyError):raise HTTPException(503,'公司身份服务不可用，拒绝新授权操作')
     if (not isinstance(me,dict) or any(not isinstance(me.get(k),str) or not me[k] for k in ('employee_id','department_id'))
@@ -148,20 +181,27 @@ def remote_mutation(k,path,body,request,me,allow_queue=True):
         return JSONResponse(status_code=202,content={'state':'QUEUED_NOT_COMMITTED','request_id':body['request_id'],
                              'warning':'中央服务离线，未入正式库存，请勿当作收货成功','queue':row['state']})
 
+central_enabled = settings.mode == 'demo' or (
+    settings.mode == 'remote' and os.environ.get('BSV_SUP59_D_V1') == '1'
+    and bool(settings.sources['D'].primary) and not settings.sources['D'].read_only
+)
+app.include_router(central_router(mode=settings.mode, demo=demo, enabled=central_enabled,
+                                 gateway=gateway, actor=actor, token_of=token_of))
+
 @app.get('/',response_class=HTMLResponse)
 @app.get('/hq/supply',response_class=HTMLResponse)
 @app.get('/store/supply',response_class=HTMLResponse)
 @app.get('/inspector/supply',response_class=HTMLResponse)
 def index():
     page = (ROOT/'apps/hq-console/supply/index.html').read_text('utf-8')
-    if settings.mode == 'internal-stage':
+    if settings.mode == 'internal-stage' or (settings.mode == 'remote' and web_origin()):
         return page.replace('"/assets/', '"/supply-ui/assets/')
     return page
 
 @app.get('/api/health')
 def health():
     return {"status":"OK","mode":settings.mode,"version":"2.0.0","production_connected":False if settings.mode != 'remote' else 'NOT_VERIFIED',
-            "source_aliases":{k:{'name':v.name,'configured':bool(v.primary and '.invalid' not in v.primary),
+            "central_candidate":central_enabled, "web_session":bool(settings.mode == "remote" and web_origin()), "source_aliases":{k:{'name':v.name,'configured':bool(v.primary and '.invalid' not in v.primary),
                            'standby_read':bool(v.standby_read)} for k,v in settings.sources.items()}}
 
 @app.get('/api/me')
