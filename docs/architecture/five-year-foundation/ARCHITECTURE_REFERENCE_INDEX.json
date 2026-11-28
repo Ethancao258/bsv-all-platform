@@ -1,0 +1,636 @@
+{
+  "schema_version": "1.0",
+  "status": "STATIC_AUDIT_REFERENCE_NOT_RUNTIME_CONFIG",
+  "effective_approval": "PENDING",
+  "source_refs": {
+    "governance": "e2a0368bb89d30627c5eae9be062cae38f82760d",
+    "implementation_reference": "2052ef51f011be3c5898d816932d8982f420b752",
+    "planning": "88e9895ffcd24bc42b441aca039e7b4f0a01cca9"
+  },
+  "source_files": [
+    {
+      "path": "config/architecture-lock.json",
+      "ref": "e2a0368bb89d30627c5eae9be062cae38f82760d",
+      "blob_sha": "5f15ed276d5a02aa64064e779cf8b0d812dfc24e"
+    },
+    {
+      "path": "config/app-registry.json",
+      "ref": "e2a0368bb89d30627c5eae9be062cae38f82760d",
+      "blob_sha": "1e49ed7e6def4e6a5e48eed09756b61229b02561"
+    },
+    {
+      "path": "config/domain-registry.json",
+      "ref": "e2a0368bb89d30627c5eae9be062cae38f82760d",
+      "blob_sha": "083c8e1efda8201c3d1747842ba5c6913bc7d994"
+    },
+    {
+      "path": "config/data-ownership.json",
+      "ref": "e2a0368bb89d30627c5eae9be062cae38f82760d",
+      "blob_sha": "16c0d0fa9f88392709be3a97897829efaed9e8ac"
+    },
+    {
+      "path": "config/change-routing.json",
+      "ref": "2052ef51f011be3c5898d816932d8982f420b752",
+      "blob_sha": "5fb22018c5ccfc018f69dd69a061a5a9dfed501c"
+    }
+  ],
+  "roots": [
+    ".github",
+    "apps",
+    "capabilities",
+    "domains",
+    "services",
+    "integrations",
+    "cloudbase",
+    "contracts",
+    "platform",
+    "ingestion",
+    "docs",
+    "config",
+    "tests",
+    "scripts"
+  ],
+  "apps": [
+    {
+      "id": "store-console",
+      "path": "apps/store-console"
+    },
+    {
+      "id": "staff-center",
+      "path": "apps/staff-center"
+    },
+    {
+      "id": "guest-web",
+      "path": "apps/guest-web"
+    },
+    {
+      "id": "hq-console",
+      "path": "apps/hq-console"
+    },
+    {
+      "id": "inspector-console",
+      "path": "apps/inspector-console"
+    },
+    {
+      "id": "partner-portal",
+      "path": "apps/partner-portal"
+    }
+  ],
+  "domains": [
+    {
+      "id": "organization",
+      "path": "domains/organization",
+      "entity_keys": [
+        "legal_entity_id",
+        "store_id",
+        "org_unit_id"
+      ]
+    },
+    {
+      "id": "identity_access",
+      "path": "domains/identity_access",
+      "entity_keys": [
+        "auth_subject_id",
+        "role_id",
+        "grant_id",
+        "device_id"
+      ]
+    },
+    {
+      "id": "workforce",
+      "path": "domains/workforce",
+      "entity_keys": [
+        "employee_id",
+        "shift_id",
+        "employment_id"
+      ]
+    },
+    {
+      "id": "learning",
+      "path": "domains/learning",
+      "entity_keys": [
+        "course_id",
+        "exam_id",
+        "attempt_id",
+        "credential_id"
+      ]
+    },
+    {
+      "id": "knowledge",
+      "path": "domains/knowledge",
+      "entity_keys": [
+        "document_id",
+        "document_version_id",
+        "acknowledgement_id"
+      ]
+    },
+    {
+      "id": "catalog",
+      "path": "domains/catalog",
+      "entity_keys": [
+        "product_id",
+        "bundle_id",
+        "material_id",
+        "recipe_version",
+        "publication_id"
+      ]
+    },
+    {
+      "id": "procurement",
+      "path": "domains/procurement",
+      "entity_keys": [
+        "supplier_id",
+        "purchase_order_id",
+        "receipt_id"
+      ]
+    },
+    {
+      "id": "inventory",
+      "path": "domains/inventory",
+      "entity_keys": [
+        "stock_lot_id",
+        "stock_movement_id",
+        "inventory_count_id"
+      ]
+    },
+    {
+      "id": "production",
+      "path": "domains/production",
+      "entity_keys": [
+        "batch_id",
+        "shipment_id",
+        "label_id"
+      ]
+    },
+    {
+      "id": "commerce",
+      "path": "domains/commerce",
+      "entity_keys": [
+        "order_id",
+        "quote_id",
+        "booking_id"
+      ]
+    },
+    {
+      "id": "payments",
+      "path": "domains/payments",
+      "entity_keys": [
+        "payment_event_id",
+        "refund_id",
+        "reconciliation_id"
+      ]
+    },
+    {
+      "id": "service_ops",
+      "path": "domains/service_ops",
+      "entity_keys": [
+        "task_id",
+        "service_event_id",
+        "incident_id"
+      ]
+    },
+    {
+      "id": "customer",
+      "path": "domains/customer",
+      "entity_keys": [
+        "customer_id",
+        "consent_id",
+        "loyalty_account_id"
+      ]
+    },
+    {
+      "id": "marketing",
+      "path": "domains/marketing",
+      "entity_keys": [
+        "campaign_id",
+        "touchpoint_id",
+        "attribution_id"
+      ]
+    },
+    {
+      "id": "quality",
+      "path": "domains/quality",
+      "entity_keys": [
+        "inspection_id",
+        "finding_id",
+        "corrective_action_id"
+      ]
+    },
+    {
+      "id": "partnership",
+      "path": "domains/partnership",
+      "entity_keys": [
+        "partner_id",
+        "agreement_id",
+        "project_id",
+        "tenant_id"
+      ]
+    },
+    {
+      "id": "operating_finance",
+      "path": "domains/operating_finance",
+      "entity_keys": [
+        "cost_entry_id",
+        "payroll_run_id",
+        "settlement_id"
+      ]
+    },
+    {
+      "id": "compliance",
+      "path": "domains/compliance",
+      "entity_keys": [
+        "license_id",
+        "policy_id",
+        "compliance_issue_id"
+      ]
+    },
+    {
+      "id": "capital",
+      "path": "domains/capital",
+      "entity_keys": [
+        "capital_decision_id",
+        "funding_id",
+        "investment_id"
+      ]
+    },
+    {
+      "id": "event_audit",
+      "path": "domains/event_audit",
+      "entity_keys": [
+        "audit_event_id",
+        "sync_event_id",
+        "schema_version_id"
+      ]
+    }
+  ],
+  "owner_keys": {
+    "legal_entity_id": "organization",
+    "store_id": "organization",
+    "org_unit_id": "organization",
+    "auth_subject_id": "identity_access",
+    "role_id": "identity_access",
+    "grant_id": "identity_access",
+    "device_id": "identity_access",
+    "employee_id": "workforce",
+    "shift_id": "workforce",
+    "employment_id": "workforce",
+    "course_id": "learning",
+    "exam_id": "learning",
+    "attempt_id": "learning",
+    "credential_id": "learning",
+    "document_id": "knowledge",
+    "document_version_id": "knowledge",
+    "acknowledgement_id": "knowledge",
+    "product_id": "catalog",
+    "bundle_id": "catalog",
+    "material_id": "catalog",
+    "recipe_version": "catalog",
+    "publication_id": "catalog",
+    "supplier_id": "procurement",
+    "purchase_order_id": "procurement",
+    "receipt_id": "procurement",
+    "stock_lot_id": "inventory",
+    "stock_movement_id": "inventory",
+    "inventory_count_id": "inventory",
+    "batch_id": "production",
+    "shipment_id": "production",
+    "label_id": "production",
+    "order_id": "commerce",
+    "quote_id": "commerce",
+    "booking_id": "commerce",
+    "payment_event_id": "payments",
+    "refund_id": "payments",
+    "reconciliation_id": "payments",
+    "task_id": "service_ops",
+    "service_event_id": "service_ops",
+    "incident_id": "service_ops",
+    "customer_id": "customer",
+    "consent_id": "customer",
+    "loyalty_account_id": "customer",
+    "campaign_id": "marketing",
+    "touchpoint_id": "marketing",
+    "attribution_id": "marketing",
+    "inspection_id": "quality",
+    "finding_id": "quality",
+    "corrective_action_id": "quality",
+    "partner_id": "partnership",
+    "agreement_id": "partnership",
+    "project_id": "partnership",
+    "tenant_id": "partnership",
+    "cost_entry_id": "operating_finance",
+    "payroll_run_id": "operating_finance",
+    "settlement_id": "operating_finance",
+    "license_id": "compliance",
+    "policy_id": "compliance",
+    "compliance_issue_id": "compliance",
+    "capital_decision_id": "capital",
+    "funding_id": "capital",
+    "investment_id": "capital",
+    "audit_event_id": "event_audit",
+    "sync_event_id": "event_audit",
+    "schema_version_id": "event_audit"
+  },
+  "routes": [
+    {
+      "module_id": "identity-api",
+      "primary_domain": "workforce",
+      "code_paths": [
+        "services/api/identity",
+        "domains/workforce/identity",
+        "domains/identity_access",
+        "config/modules/identity-data-sources.json"
+      ],
+      "test_paths": [
+        "tests/identity"
+      ],
+      "data_sources": [
+        "identity.A",
+        "identity.B"
+      ],
+      "reference_stage": "ISOLATED_RUNNING"
+    },
+    {
+      "module_id": "identity-hq-ui",
+      "primary_domain": "identity_access",
+      "code_paths": [
+        "apps/staff-center/identity",
+        "apps/hq-console/identity"
+      ],
+      "test_paths": [
+        "tests/internal-stage",
+        "tests/ui/stage_browser.py"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "reference_stage": "ISOLATED_RUNNING"
+    },
+    {
+      "module_id": "store-pos",
+      "primary_domain": "commerce",
+      "code_paths": [
+        "services/api/bsv1",
+        "apps/store-console/bsv1",
+        "integrations/auth/identity_client.py"
+      ],
+      "test_paths": [
+        "tests/bsv1",
+        "tests/internal-stage",
+        "tests/v4-1"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "reference_stage": "ISOLATED_UNPAID_AND_DEVICE_SCOPED"
+    },
+    {
+      "module_id": "supply-api",
+      "primary_domain": "production",
+      "code_paths": [
+        "services/api/supply",
+        "apps/hq-console/supply",
+        "apps/store-console/supply"
+      ],
+      "test_paths": [
+        "tests/supply",
+        "tests/internal-stage"
+      ],
+      "data_sources": [
+        "supply.A",
+        "supply.B",
+        "supply.C",
+        "supply.D"
+      ],
+      "reference_stage": "READ_ONLY_ISOLATED_D_BLOCKED"
+    },
+    {
+      "module_id": "quality-inspection",
+      "primary_domain": "quality",
+      "code_paths": [
+        "services/api/supply",
+        "apps/inspector-console"
+      ],
+      "test_paths": [
+        "tests/supply",
+        "tests/internal-stage"
+      ],
+      "data_sources": [
+        "supply.B",
+        "supply.E"
+      ],
+      "reference_stage": "READ_ONLY_ISOLATED_E_BLOCKED"
+    },
+    {
+      "module_id": "guest-menu",
+      "primary_domain": "catalog",
+      "code_paths": [
+        "apps/guest-web",
+        "platform/lighthouse/internal-stage/ingress.py"
+      ],
+      "test_paths": [
+        "tests/internal-stage"
+      ],
+      "data_sources": [
+        "supply.A"
+      ],
+      "reference_stage": "COCKTAIL_PREVIEW_ONLY"
+    },
+    {
+      "module_id": "customer-growth",
+      "primary_domain": "customer",
+      "code_paths": [
+        "services/api/customer_growth",
+        "services/api/bsv1/bsv_growth_pos.py",
+        "apps/guest-web/member",
+        "apps/staff-center/growth",
+        "platform/lighthouse/internal-stage/ingress.py"
+      ],
+      "test_paths": [
+        "tests/customer_growth",
+        "tests/v4-1",
+        "tests/internal-stage"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "reference_stage": "ISOLATED_CANDIDATE_ONLY_NO_PAYMENT"
+    },
+    {
+      "module_id": "deployment-config",
+      "primary_domain": "platform",
+      "code_paths": [
+        "platform/lighthouse/internal-stage",
+        "docs/ops",
+        "config/change-routing.json",
+        "scripts/route_change.py",
+        "scripts/verify_change_routing.py"
+      ],
+      "test_paths": [
+        "tests/internal-stage",
+        "tests/internal-stage/test_control.py",
+        "tests/identity/test_acceptance_v3.py",
+        "tests/ui",
+        "tests/v4-1"
+      ],
+      "data_sources": [
+        "identity.A",
+        "supply.B"
+      ],
+      "reference_stage": "MANUAL_CONTROLLER_IMPLEMENTED_HOST_NOT_RUN"
+    },
+    {
+      "module_id": "device-label",
+      "primary_domain": "production",
+      "code_paths": [
+        "integrations/devices"
+      ],
+      "test_paths": [],
+      "data_sources": [
+        "supply.A",
+        "supply.D"
+      ],
+      "reference_stage": "DESIGN_NOT_DEPLOYED"
+    },
+    {
+      "module_id": "vincent-academy",
+      "primary_domain": "learning",
+      "code_paths": [
+        "services/api/identity",
+        "domains/learning",
+        "apps/staff-center/identity",
+        "apps/hq-console/identity",
+        "platform/lighthouse/identity/migrations"
+      ],
+      "test_paths": [
+        "tests/v4-1",
+        "tests/ui"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "reference_stage": "ISOLATED_SYNTHETIC"
+    },
+    {
+      "module_id": "store-shifts",
+      "primary_domain": "workforce",
+      "code_paths": [
+        "services/api/identity",
+        "domains/workforce",
+        "apps/staff-center/identity"
+      ],
+      "test_paths": [
+        "tests/v4-1"
+      ],
+      "data_sources": [
+        "identity.A"
+      ],
+      "reference_stage": "ISOLATED_SYNTHETIC"
+    },
+    {
+      "module_id": "reviewed-import",
+      "primary_domain": "platform",
+      "code_paths": [
+        "ingestion/v4-1"
+      ],
+      "test_paths": [
+        "tests/ingestion"
+      ],
+      "data_sources": [],
+      "reference_stage": "ISOLATED_ONLY_REAL_IMPORT_NOT_RUN"
+    }
+  ],
+  "logical_sources": [
+    "identity.A",
+    "identity.B",
+    "identity.LOCAL",
+    "supply.A",
+    "supply.B",
+    "supply.C",
+    "supply.D",
+    "supply.E",
+    "supply.F",
+    "supply.G"
+  ],
+  "human_index": "../BSV_ALL_LIVING_MODULE_REGISTER.md",
+  "proposal": "SUP-59",
+  "execution_issue": 52,
+  "release_gate_issue": 58,
+  "management_index_to_route": {
+    "M01": [
+      "identity-api",
+      "identity-hq-ui"
+    ],
+    "M02": [],
+    "M03": [
+      "vincent-academy"
+    ],
+    "M04": [
+      "store-shifts"
+    ],
+    "M05": [
+      "reviewed-import",
+      "store-pos"
+    ],
+    "M06": [
+      "store-pos"
+    ],
+    "M07": [
+      "store-pos"
+    ],
+    "M08": [
+      "store-pos",
+      "identity-hq-ui"
+    ],
+    "M09": [
+      "guest-menu"
+    ],
+    "M10": [
+      "guest-menu",
+      "store-pos"
+    ],
+    "M11": [
+      "customer-growth"
+    ],
+    "M12": [
+      "customer-growth"
+    ],
+    "M13": [
+      "supply-api"
+    ],
+    "M14": [
+      "supply-api"
+    ],
+    "M15": [
+      "device-label"
+    ],
+    "M16": [
+      "quality-inspection"
+    ],
+    "M17": [
+      "identity-hq-ui",
+      "store-shifts"
+    ],
+    "M18": [
+      "vincent-academy"
+    ],
+    "M19": [
+      "store-pos"
+    ],
+    "M20": [
+      "store-pos"
+    ],
+    "M21": [],
+    "M22": [
+      "customer-growth",
+      "quality-inspection"
+    ],
+    "M23": [],
+    "M24": [],
+    "M25": [
+      "deployment-config",
+      "reviewed-import"
+    ]
+  },
+  "mapping_note": "Existing route hints only; empty arrays mean no dedicated mapped route verified; routes with partial capability do not imply implementation. primary_domain platform is technical routing category, not business data owner.",
+  "runtime_state": "UNKNOWN_PENDING_PRIVATE_HOST_VERIFICATION"
+}
